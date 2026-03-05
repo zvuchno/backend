@@ -2,18 +2,10 @@
 
 Backend API проекта **Звучно**.
 
-## Полезные ссылки
-
-[ТЗ](https://docs.google.com/document/d/1KF20rmNy9wJ-I-7rHasdEu9yB3oPRfTq3mpu663hKrE/edit?tab=t.0)
-
-[Figma](https://www.figma.com/design/r1d9TFiYFiQP2pg9jorQAd/1st-%D0%BD%D0%BE%D0%B2%D1%8B%D0%B9-%D1%81%D1%82%D0%B8%D0%BB%D1%8C?node-id=2090-1138)
-
-[Доска](https://github.com/orgs/zvuchno/projects/2)
-
 
 ## Стек
 
-* Python
+* Python 3.12
 * Django 5.2
 * Django REST Framework
 * django-allauth
@@ -50,7 +42,7 @@ cd backend
 Linux / macOS
 
 ```
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 ```
 
