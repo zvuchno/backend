@@ -1,0 +1,12 @@
+asgiref==3.11.1
+Django==5.2.12
+django-allauth==65.14.3
+django-filter==25.2
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
+isort==8.0.1
+Markdown==3.10.2
+PyJWT==2.11.0
+python-dotenv==1.2.2
+ruff==0.15.4
+sqlparse==0.5.5
