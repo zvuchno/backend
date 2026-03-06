@@ -9,42 +9,26 @@ from ..constants import (
 from .abstract import ActivatableModel, TimestampModel
 
 
-class LinkType(models.TextChoices):
-    """Типы контактов."""
-    CONTACT = 'contact', 'Контакт'
-    SOCIAL = 'social', 'Соцсеть'
-
-
-class ArtistLink(ActivatableModel, TimestampModel):
+class ArtistSocial(ActivatableModel, TimestampModel):
     """Контакт или ссылка на соцсеть артиста."""
 
     artist = models.ForeignKey(
         'ArtistProfile',
         on_delete=models.CASCADE,
-        related_name='links',
+        related_name='socials',
         verbose_name='Артист'
     )
-
-    link_type = models.CharField(
-        'Тип ссылки',
-        max_length=ARTIST_LINK_TYPE_MAX_LENGTH,
-        choices=LinkType,
-    )
     label = models.CharField(
-        'Название',
+        'Название соцсети',
         max_length=ARTIST_LINK_LABEL_MAX_LENGTH,
         validators=[MinLengthValidator(ARTIST_LINK_LABEL_MIN_LENGTH)],
     )
-    value = models.CharField(
-        'Значение',
-        max_length=ARTIST_LINK_FIELD_MAX_LENGTH,
-        validators=[MinLengthValidator(ARTIST_LINK_FIELD_MIN_LENGTH)],
-    )
+    value = models.URLField('Ссылка')
 
     class Meta:
-        verbose_name = 'Ссылка артиста'
-        verbose_name_plural = 'ссылки артиста'
-        ordering = ['-created_at', 'link_type', 'label', 'value']
+        verbose_name = 'Соцсеть артиста'
+        verbose_name_plural = 'соцсети артиста'
+        ordering = ['-created_at', 'label', 'value']
 
     def __str__(self):
         return f'{self.label}: {self.value}'

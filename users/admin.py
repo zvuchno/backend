@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 
-from .models import ArtistLink, ArtistProfile
+from .models import ArtistContact, ArtistSocial, ArtistProfile
 
 User = get_user_model()
 
@@ -12,9 +12,14 @@ class CoreUserAdmin(UserAdmin):
     """Админка для кастомной модели пользователя."""
 
 
-@admin.register(ArtistLink)
-class ArtistLinkAdmin(admin.ModelAdmin):
-    """Для ссылок и контактов артиста."""
+@admin.register(ArtistContact)
+class ArtistContactAdmin(admin.ModelAdmin):
+    """Для контактов артиста."""
+
+
+@admin.register(ArtistSocial)
+class ArtistSocialAdmin(admin.ModelAdmin):
+    """Для ссылок на соцсети артиста."""
 
 
 @admin.register(ArtistProfile)

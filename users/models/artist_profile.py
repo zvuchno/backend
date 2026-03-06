@@ -23,12 +23,6 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         related_name='artist_profile',
         verbose_name='Профиль артиста',
     )
-    managers = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name='managed_artists',
-        blank=True,
-        verbose_name='Менеджеры'
-    )
     name = models.CharField(
         'Имя артиста',
         max_length=ARTIST_NAME_FIELD_MAX_LENGTH,
@@ -63,8 +57,17 @@ class ArtistProfile(ActivatableModel, TimestampModel):
     )
 
     def save(self, *args, **kwargs):
+        """Переопределено сохранение, чтобы гарантированно получить slug."""
         if not self.slug:
-            self.slug = slugify(self.name)
+            slug = slugify(self.name)
+            new_slug = slug
+            slug_counter = 1
+            while ArtistProfile.objects.filter(slug=new_slug).exclude(
+                pk=self.pk
+            ).exists():
+                new_slug = f'{slug}-{slug_counter}'
+                slug_counter += 1
+            self.slug = new_slug
         super().save(*args, **kwargs)
 
     class Meta:
