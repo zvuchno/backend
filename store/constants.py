@@ -1,0 +1,4 @@
+MAX_CHAR_LENGTH = 256
+MAX_PRICE_DIGITS = 10
+MAX_STR_LENGHT = 40
+PRICE_DECIMAL_PLACES = 2  # Количество цифр после запятой
