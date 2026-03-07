@@ -1,5 +1,4 @@
-from .base_release import BaseRelease
-from .album import Album
-from .single import Single
+from .release import Release
 
-__all__ = ['BaseRelease', 'Album', 'Single']
+
+__all__ = ['Release',]

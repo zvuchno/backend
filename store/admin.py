@@ -1,13 +1,14 @@
 from django.contrib import admin
 
-from .models import Album, Single
+from .models import Release
 
 
-class ReleaseAdminMixin:
-    """Общие настройки для админки релизов."""
+@admin.register(Release)
+class ReleaseAdmin(admin.ModelAdmin):
 
     list_display = (
         'name',
+        'release_type',
         'release_date',
         'genre',
         'price',
@@ -16,14 +17,22 @@ class ReleaseAdminMixin:
     )
     search_fields = ('name',)
     ordering = ('name',)
-    list_filter = ('name', 'genre',)
+    list_filter = ('release_type', 'genre',)
     list_editable = (
         'price',
         'allow_fans_to_pay_more',
     )
     fieldsets = (
         ('Основные данные', {
-            'fields': ('name', 'release_date', 'genre', 'description',)
+            'fields': (
+                'name',
+                'release_type',
+                'release_date',
+                'genre',
+                'description',
+                'visibility',
+                'cover_image',
+            )
         }),
         ('Цены и оплата', {
             'fields': ('price', 'allow_fans_to_pay_more'),
@@ -35,13 +44,3 @@ class ReleaseAdminMixin:
         if not obj.user_id:
             obj.user = request.user
         super().save_model(request, obj, form, change)
-
-
-@admin.register(Album)
-class AlbumAdmin(ReleaseAdminMixin, admin.ModelAdmin):
-    pass
-
-
-@admin.register(Single)
-class SingleAdmin(ReleaseAdminMixin, admin.ModelAdmin):
-    pass

@@ -6,7 +6,9 @@ djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 isort==8.0.1
 Markdown==3.10.2
+pillow==12.1.1
 PyJWT==2.11.0
 python-dotenv==1.2.2
 ruff==0.15.4
 sqlparse==0.5.5
+tzdata==2025.3
