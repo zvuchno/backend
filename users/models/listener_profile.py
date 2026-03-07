@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from phonenumber_field.modelfields import PhoneNumberField
+
 
 User = get_user_model()
 
@@ -7,7 +9,7 @@ User = get_user_model()
 PHONE_FIELD_MAX_LENGTH = 50
 
 
-class Listener(models.Model):
+class ListenerProfile(models.Model):
     """Модель слушателя"""
 
     user = models.OneToOneField(
@@ -15,7 +17,7 @@ class Listener(models.Model):
         on_delete=models.CASCADE,
         related_name='listener_profile',
     )
-    phone = models.CharField(
+    phone = PhoneNumberField(
         'Номер телефона',
         max_length=PHONE_FIELD_MAX_LENGTH,
         help_text='Номер телефона',
