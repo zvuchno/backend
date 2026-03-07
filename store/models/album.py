@@ -4,6 +4,8 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 
+from .genre import Genre
+
 
 from ..constants import (
     MAX_CHAR_LENGTH,
@@ -15,12 +17,8 @@ from ..constants import (
 User = get_user_model()
 
 
-class Release(models.Model):
+class Album(models.Model):
     """Музыкальный релиз."""
-
-    class ReleaseType(models.TextChoices):
-        SINGLE = 'single', 'Сингл'
-        ALBUM = 'album', 'Альбом'
 
     class Visibility(models.TextChoices):
         PUBLIC = 'public', 'Опубликовано'
@@ -31,10 +29,16 @@ class Release(models.Model):
     release_type = models.CharField(
         'Тип релиза',
         max_length=10,
-        choices=ReleaseType.choices
     )
     release_date = models.DateField('Дата релиза')
-    genre = models.CharField('Жанр', max_length=MAX_CHAR_LENGTH)
+    genre = models.ForeignKey(
+        Genre,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Жанр',
+        related_name='releases'
+        )
     price = models.DecimalField(
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
@@ -61,6 +65,7 @@ class Release(models.Model):
         choices=Visibility.choices,
         default=Visibility.PUBLIC
     )
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -68,8 +73,8 @@ class Release(models.Model):
     )
 
     class Meta:
-        verbose_name = 'релиз'
-        verbose_name_plural = 'Релизы'
+        verbose_name = 'альбом'
+        verbose_name_plural = 'Альбомы'
 
     def __str__(self):
         return self.name[:MAX_STR_LENGHT]

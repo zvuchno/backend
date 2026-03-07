@@ -1,14 +1,13 @@
 from django.contrib import admin
 
-from .models import Release
+from .models import Genre, Album
 
 
-@admin.register(Release)
-class ReleaseAdmin(admin.ModelAdmin):
+@admin.register(Album)
+class AlbumAdmin(admin.ModelAdmin):
 
     list_display = (
         'name',
-        'release_type',
         'release_date',
         'genre',
         'price',
@@ -17,7 +16,8 @@ class ReleaseAdmin(admin.ModelAdmin):
     )
     search_fields = ('name',)
     ordering = ('name',)
-    list_filter = ('release_type', 'genre',)
+    list_filter = ('genre',)
+    readonly_fields = ('created_at',)
     list_editable = (
         'price',
         'allow_fans_to_pay_more',
@@ -26,12 +26,12 @@ class ReleaseAdmin(admin.ModelAdmin):
         ('Основные данные', {
             'fields': (
                 'name',
-                'release_type',
-                'release_date',
                 'genre',
+                'release_date',
                 'description',
-                'visibility',
                 'cover_image',
+                'visibility',
+                'created_at',
             )
         }),
         ('Цены и оплата', {
@@ -44,3 +44,12 @@ class ReleaseAdmin(admin.ModelAdmin):
         if not obj.user_id:
             obj.user = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(Genre)
+class GenreAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+    )
+    search_fields = ('name',)
+    list_filter = ('name',)
