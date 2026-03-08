@@ -1,6 +1,6 @@
 from django.db import models
 
-from ..constants import MAX_CHAR_LENGTH, MAX_STR_LENGHT
+from ..constants import MAX_CHAR_LENGTH, MAX_STR_LENGTH
 
 
 class Genre(models.Model):
@@ -14,6 +14,7 @@ class Genre(models.Model):
     class Meta:
         verbose_name = 'жанр'
         verbose_name_plural = 'Жанры'
+        ordering = ('name',)
 
     def __str__(self):
-        return self.name[:MAX_STR_LENGHT]
+        return self.name[:MAX_STR_LENGTH]

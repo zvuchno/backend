@@ -10,7 +10,7 @@ from .genre import Genre
 from ..constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
-    MAX_STR_LENGHT,
+    MAX_STR_LENGTH,
     PRICE_DECIMAL_PLACES,
 )
 
@@ -18,7 +18,7 @@ User = get_user_model()
 
 
 class Album(models.Model):
-    """Музыкальный релиз."""
+    """Музыкальный альбом."""
 
     class Visibility(models.TextChoices):
         PUBLIC = 'public', 'Опубликовано'
@@ -26,10 +26,6 @@ class Album(models.Model):
         HIDDEN = 'hidden', 'Скрыто'
 
     name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
-    release_type = models.CharField(
-        'Тип релиза',
-        max_length=10,
-    )
     release_date = models.DateField('Дата релиза')
     genre = models.ForeignKey(
         Genre,
@@ -37,7 +33,7 @@ class Album(models.Model):
         null=True,
         blank=True,
         verbose_name='Жанр',
-        related_name='releases'
+        related_name='albums'
         )
     price = models.DecimalField(
         'Цена',
@@ -52,10 +48,10 @@ class Album(models.Model):
         default=False,
         help_text='Если включено, фанаты смогут заплатить больше стоимости.'
     )
-    description = models.TextField('Описание', blank=True, null=True)
+    description = models.TextField('Описание', blank=True, default='')
     cover_image = models.ImageField(
         'Обложка релиза',
-        upload_to='release_covers',
+        upload_to='album_covers',
         blank=True,
         null=True,
     )
@@ -69,12 +65,14 @@ class Album(models.Model):
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='releases'
+        related_name='albums',
+        verbose_name='Владелец'
     )
 
     class Meta:
         verbose_name = 'альбом'
         verbose_name_plural = 'Альбомы'
+        ordering = ['-release_date']
 
     def __str__(self):
-        return self.name[:MAX_STR_LENGHT]
+        return self.name[:MAX_STR_LENGTH]
