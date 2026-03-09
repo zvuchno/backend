@@ -72,7 +72,7 @@ class Album(models.Model):
     class Meta:
         verbose_name = 'альбом'
         verbose_name_plural = 'Альбомы'
-        ordering = ['-release_date']
+        ordering = ('-release_date',)
 
     def __str__(self):
         return self.name[:MAX_STR_LENGTH]
