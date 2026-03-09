@@ -3,7 +3,7 @@ from django.utils.text import slugify
 
 from users.models.abstract import ActivatableModel, TimestampModel
 
-from ..constants import NAME_MERCH_MAX_LENGTH
+from store.constants import NAME_MERCH_MAX_LENGTH
 
 
 class Category(ActivatableModel, TimestampModel):

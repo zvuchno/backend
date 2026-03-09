@@ -6,7 +6,7 @@ from django.utils.text import slugify
 
 from users.models.abstract import ActivatableModel, TimestampModel
 
-from ..constants import (
+from store.constants import (
     NAME_MERCH_MAX_LENGTH,
     DESCRIPTION_MERCH_MAX_LENGTH,
     MAX_PRICE_DIGITS,
@@ -14,8 +14,8 @@ from ..constants import (
     VISIBILITY_MAX_LENGTH,
     DEFAULT_QUANTITY,
 )
-from .album import Album
-from .category import Category
+from store.models.album import Album
+from store.models.category import Category
 
 
 User = get_user_model()
@@ -114,8 +114,8 @@ class Merch(ActivatableModel, TimestampModel):
         default=Visibility.PUBLIC,
         max_length=VISIBILITY_MAX_LENGTH
     )
-    property = models.ManyToManyField(
-        Property, blank=True,
+    property = models.ForeignKey(
+        Property, on_delete=models.SET_NULL, blank=True, null=True,
         verbose_name='Свойства', related_name='merch'
     )
     album = models.ManyToManyField(Album, blank=True,

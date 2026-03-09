@@ -189,9 +189,9 @@ class MerchAdmin(admin.ModelAdmin):
     )
     search_fields = (
         'name',
-        'category',
-        'type',
-        'owner'
+        'category__name',
+        'type__name',
+        'owner__username'
     )
     search_help_text = 'Поиск по названию, категории, типу и владельцу'
     readonly_fields = ('image_preview',)
