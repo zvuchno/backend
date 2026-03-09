@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'phonenumber_field',
     'users.apps.UsersConfig',
-    'phonenumber_field',
     'store.apps.StoreConfig',
 ]
 
