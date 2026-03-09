@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 
-from ..models import Album
-from ..serializers import AlbumReadSerializer, AlbumWriteSerializer
+from store.models import Album
+from store.serializers import AlbumReadSerializer, AlbumWriteSerializer
 
 
 class AlbumViewSet(viewsets.ModelViewSet):

@@ -55,6 +55,7 @@ class AlbumAdmin(AutoUserAdminMixin, admin.ModelAdmin):
 class GenreAdmin(admin.ModelAdmin):
     list_display = (
         'name',
+        'slug',
     )
     search_fields = ('name',)
     ordering = ('name',)

@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 
-from ..models import Genre
-from ..serializers import GenreSerializer
+from store.models import Genre
+from store.serializers import GenreSerializer
 
 
 class GenreViewSet(viewsets.ModelViewSet):

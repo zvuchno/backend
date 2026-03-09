@@ -1,10 +1,12 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from ..models import Album
+from store.models import Album
 
 
 class AlbumReadSerializer(serializers.ModelSerializer):
+    """Сериализатор для чтения Album."""
+
     user = serializers.ReadOnlyField(source='user.username')
     genre = serializers.StringRelatedField(read_only=True)
 
@@ -34,6 +36,7 @@ class AlbumReadSerializer(serializers.ModelSerializer):
 
 
 class AlbumWriteSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания и обновления Album."""
 
     class Meta:
         model = Album
