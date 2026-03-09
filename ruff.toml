@@ -4,10 +4,12 @@ required-version = ">=0.15.5"
 target-version = "py312"
 # Enable preview features.
 preview = true
-# Содержимое папок migrations в проверку не включаем.
+# Папки и файлы, которые не включаем в проверку.
 exclude = [
     "store/migrations",
-    "user/migrations",
+    "users/migrations",
+    "config/settings.py",
+    "manage.py",
 ]
 
 [format]
