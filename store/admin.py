@@ -1,10 +1,19 @@
 from django.contrib import admin
 
-from .models import Genre, Album
+from .models import Album, Genre, Track
+
+
+class AutoUserAdminMixin:
+
+    def save_model(self, request, obj, form, change):
+        # Если объект ещё не имеет user, ставим текущего
+        if not getattr(obj, 'user_id', None):
+            obj.user = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Album)
-class AlbumAdmin(admin.ModelAdmin):
+class AlbumAdmin(AutoUserAdminMixin, admin.ModelAdmin):
 
     list_display = (
         'name',
@@ -12,15 +21,16 @@ class AlbumAdmin(admin.ModelAdmin):
         'genre',
         'price',
         'allow_fans_to_pay_more',
-        'description',
+        'visibility',
     )
-    search_fields = ('name',)
+    search_fields = ('genre', 'name',)
+    list_filter = ('genre', 'visibility',)
     ordering = ('name',)
-    list_filter = ('genre',)
-    readonly_fields = ('created_at',)
+    readonly_fields = ('created_at', 'user',)
     list_editable = (
         'price',
         'allow_fans_to_pay_more',
+        'visibility',
     )
     fieldsets = (
         ('Основные данные', {
@@ -31,19 +41,14 @@ class AlbumAdmin(admin.ModelAdmin):
                 'description',
                 'cover_image',
                 'visibility',
+                'user',
                 'created_at',
             )
         }),
         ('Цены и оплата', {
-            'fields': ('price', 'allow_fans_to_pay_more'),
+            'fields': ('price', 'allow_fans_to_pay_more',)
         }),
     )
-
-    def save_model(self, request, obj, form, change):
-        # Если объект не имеет пользователя, ставим текущего
-        if not obj.user_id:
-            obj.user = request.user
-        super().save_model(request, obj, form, change)
 
 
 @admin.register(Genre)
@@ -52,4 +57,37 @@ class GenreAdmin(admin.ModelAdmin):
         'name',
     )
     search_fields = ('name',)
-    list_filter = ('name',)
+    ordering = ('name',)
+
+
+@admin.register(Track)
+class TrackAdmin(AutoUserAdminMixin, admin.ModelAdmin):
+    list_display = (
+        'name',
+        'album',
+        'individual_price',
+        'allow_fans_to_pay_more',
+    )
+    search_fields = ('album', 'lyrics', 'name',)
+    list_filter = ('album', 'allow_fans_to_pay_more',)
+    ordering = ('name',)
+    readonly_fields = ('created_at', 'user',)
+    list_editable = (
+        'individual_price',
+        'allow_fans_to_pay_more',
+    )
+    fieldsets = (
+        ('Основные данные', {
+            'fields': (
+                'name',
+                'album',
+                'audio_file',
+                'lyrics',
+                'user',
+                'created_at',
+            )
+        }),
+        ('Цены и оплата', {
+            'fields': ('individual_price', 'allow_fans_to_pay_more',)
+        }),
+    )
