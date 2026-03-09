@@ -1,6 +1,7 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
-from .models import Album, Genre, Track
+from .models import Album, Genre, Track, Category, Type, Property, Merch, Image
 
 
 class AutoUserAdminMixin:
@@ -91,3 +92,128 @@ class TrackAdmin(AutoUserAdminMixin, admin.ModelAdmin):
             'fields': ('individual_price', 'allow_fans_to_pay_more',)
         }),
     )
+
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    """Админка категорий."""
+    list_display = (
+        'name',
+        'slug'
+    )
+    list_filter = ('created_at', 'is_active')
+    search_fields = ('name',)
+    search_help_text = 'Поиск по имени'
+
+
+@admin.register(Type)
+class TypeAdmin(admin.ModelAdmin):
+    """Админка типов мерча."""
+    list_display = (
+        'name',
+        'slug'
+    )
+    list_filter = (
+        'created_at',
+        'is_active',
+    )
+    search_fields = (
+        'name',
+    )
+    search_help_text = 'Поиск по имени'
+
+
+@admin.register(Property)
+class PropertyAdmin(admin.ModelAdmin):
+    """Админка свойств мерча."""
+    list_display = (
+        'name',
+        'property',
+        'sku',
+        'quantity'
+    )
+    list_filter = (
+        'created_at',
+        'is_active',
+        'quantity'
+    )
+    search_fields = (
+        'name',
+        'property'
+    )
+    search_help_text = 'Поиск по названию и свойству'
+
+
+class PhotoInline(admin.TabularInline):
+    """Отображение фото в модели мерча."""
+    model = Image
+    max_num = 4
+    fields = ('image', 'preview')
+    readonly_fields = ('preview',)
+
+    @admin.display(description='Превью')
+    def preview(self, image):
+        if image.image:
+            return format_html(
+                '<img src="{}" style="height:100px; border-radius:4px"/>',
+                image.image.url
+            )
+        return '-'
+
+
+@admin.register(Merch)
+class MerchAdmin(admin.ModelAdmin):
+    """Админка мерча."""
+    inlines = (PhotoInline,)
+    list_display = (
+        'name',
+        'price',
+        'quantity',
+        'category',
+        'type',
+        'owner',
+        'created_at',
+        'image_preview'
+    )
+    list_editable = (
+        'price',
+        'quantity',
+        'type',
+        'category',
+    )
+    list_filter = (
+        'created_at',
+        'is_active',
+        'type',
+        'category'
+    )
+    search_fields = (
+        'name',
+        'category',
+        'type',
+        'owner'
+    )
+    search_help_text = 'Поиск по названию, категории, типу и владельцу'
+    readonly_fields = ('image_preview',)
+
+    fieldsets = [
+        ('Основная информация', {
+            'fields': ('name', 'quantity', 'category', 'type',
+                       'owner', 'description', 'visibility',
+                       'property', 'album'),
+
+        }),
+        ('Финансы', {
+            'fields': ('price', 'access_price_more'),
+        })
+    ]
+
+    @admin.display(description='Главная картинка')
+    def image_preview(self, image):
+        for image_obj in image.images_merch.all()[:4]:
+            if image_obj.image:
+                return format_html(
+                    '<img src="{}" width="200" height="150" />',
+                    image_obj.image.url
+                )
+        return '-'
