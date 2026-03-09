@@ -10,7 +10,7 @@ PHONE_FIELD_MAX_LENGTH = 50
 
 
 class ListenerProfile(models.Model):
-    """Модель слушателя"""
+    """Модель слушателя."""
 
     user = models.OneToOneField(
         User,
