@@ -1,6 +1,7 @@
 from django.db import models
-from users.models.abstract import ActivatableModel, TimestampModel
 from django.utils.text import slugify
+
+from users.models.abstract import ActivatableModel, TimestampModel
 
 from ..constants import NAME_MERCH_MAX_LENGTH
 

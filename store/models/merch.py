@@ -1,11 +1,11 @@
 from decimal import Decimal
-from django.db import models
-from django.core.validators import MinValueValidator
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
+from django.db import models
 from django.utils.text import slugify
 
 from users.models.abstract import ActivatableModel, TimestampModel
+
 from ..constants import (
     NAME_MERCH_MAX_LENGTH,
     DESCRIPTION_MERCH_MAX_LENGTH,
@@ -14,8 +14,8 @@ from ..constants import (
     VISIBILITY_MAX_LENGTH,
     DEFAULT_QUANTITY,
 )
-from .category import Category
 from .album import Album
+from .category import Category
 
 
 User = get_user_model()
