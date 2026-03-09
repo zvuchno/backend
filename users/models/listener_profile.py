@@ -2,7 +2,6 @@ from django.conf import settings
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
-from ..constants import PHONE_FIELD_MAX_LENGTH
 from .abstract.activatable_model import ActivatableModel
 from .abstract.timestamp_model import TimestampModel
 
@@ -17,7 +16,6 @@ class ListenerProfile(ActivatableModel, TimestampModel):
     )
     phone = PhoneNumberField(
         'Номер телефона',
-        max_length=PHONE_FIELD_MAX_LENGTH,
         help_text='Номер телефона',
         unique=True,
     )
