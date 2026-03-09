@@ -20,7 +20,7 @@ djangorestframework==3.16.1
 django-allauth==65.14.3
 djangorestframework_simplejwt==5.5.1
 django-filter==25.2
-ruff==0.15.4
+ruff==0.15.5
 ```
 
 ---
