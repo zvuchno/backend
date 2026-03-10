@@ -4,6 +4,7 @@ from store.models import Album
 from store.serializers import AlbumReadSerializer, AlbumWriteSerializer
 
 
+@album_schema
 class AlbumViewSet(viewsets.ModelViewSet):
     """Управление альбомами."""
 
