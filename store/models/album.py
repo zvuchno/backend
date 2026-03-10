@@ -5,14 +5,13 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 
 from .genre import Genre
-
-
 from ..constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MAX_STR_LENGTH,
     PRICE_DECIMAL_PLACES,
 )
+from ..validators import validate_file_size
 
 User = get_user_model()
 
@@ -54,6 +53,7 @@ class Album(models.Model):
         upload_to='album_covers',
         blank=True,
         null=True,
+        validators=(validate_file_size,)
     )
     visibility = models.CharField(
         'Приватность',
