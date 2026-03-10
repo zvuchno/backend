@@ -8,6 +8,8 @@ Backend API проекта **Звучно**.
 * Python 3.12
 * Django 5.2
 * Django REST Framework
+* drf-spectacular (OpenAPI 3)
+* Swagger UI / Redoc
 * django-allauth
 * SimpleJWT
 * SQLite (для локальной разработки)
@@ -132,6 +134,16 @@ docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py collectstatic
 ```
 Проект доступен по адресу: [http://localhost:8000](http://localhost:8000)
+
+---
+
+## Документация API доступна по следующим URL:
+
+| URL | Назначение |
+|-----|------------|
+| `/api/docs/schema/` | JSON OpenAPI 3.0 (для генерации клиентов или проверки схемы) |
+| `/api/docs/swagger/` | Swagger UI — интерактивная документация с возможностью тестирования эндпоинтов |
+| `/api/docs/redoc/` | Redoc UI — удобная читаемая документация для разработчиков |
 
 ---
 

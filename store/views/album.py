@@ -1,11 +1,19 @@
+"""
+ViewSet для управления альбомами.
+
+Предоставляет полный цикл CRUD-операций для модели Album.
+"""
+
 from rest_framework import viewsets
 
 from store.models import Album
+from store.schema import album_schema
 from store.serializers import AlbumReadSerializer, AlbumWriteSerializer
 
 
+@album_schema
 class AlbumViewSet(viewsets.ModelViewSet):
-    """Управление альбомами."""
+    """API для работы с альбомами."""
 
     queryset = Album.objects.all()
 
