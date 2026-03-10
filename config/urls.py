@@ -23,10 +23,6 @@ api_urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
 ]
 
-api_urlpatterns = [
-    path('store/', include('store.urls', namespace='store')),
-]
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_urlpatterns, 'api'))),
