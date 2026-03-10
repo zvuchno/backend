@@ -5,6 +5,7 @@ from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class AlbumMerch(ActivatableModel, TimestampModel):
+    """Модель для связи альбома и мерча."""
     album = models.ForeignKey(Album, on_delete=models.SET_NULL, null=True)
     merch = models.ForeignKey(Merch, on_delete=models.CASCADE)
 

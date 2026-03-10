@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from store.models import (
-    Album, Genre, Track, Category, Kind, Merch, Image, AlbumMerch
+    Album, AlbumMerch, Genre, Track, Category, Kind, Merch, Image
 )
 
 from store.constants import MAX_IMAGE_FOR_MERCH
@@ -146,7 +146,7 @@ class PhotoInline(admin.TabularInline):
 
 
 class AlbumMerchInline(admin.TabularInline):
-    """Отображение обложки альбома в админке мерча"""
+    """Отображение обложки альбома в админке мерча."""
     model = AlbumMerch
     fields = ('album', 'preview')
     readonly_fields = ('preview',)

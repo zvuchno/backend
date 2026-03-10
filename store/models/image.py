@@ -8,8 +8,7 @@ class Image(ActivatableModel, TimestampModel):
     """Фото/Изображение мерча."""
     merch = models.ForeignKey(Merch, on_delete=models.CASCADE,
                               related_name='images_merch', verbose_name='Мерч')
-    image = models.ImageField('Фото', upload_to='photos_merch/',
-                              blank=True, null=True)
+    image = models.ImageField('Фото', upload_to='photos_merch/')
 
     class Meta:
         verbose_name = 'Фото мерча'
