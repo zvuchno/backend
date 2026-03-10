@@ -26,6 +26,7 @@ api_urlpatterns = [
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_urlpatterns, 'api'))),
+    path('', include('users.urls'))
 ]
 
 if settings.DEBUG:

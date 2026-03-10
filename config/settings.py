@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'djoser',
     'phonenumber_field',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
@@ -137,6 +138,14 @@ MEDIA_URL = '/media/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+DJOSER = {
+    'SERIALIZERS': {
+        'user_create': 'users.serializers.registration.RegistrationSerializer',
+        # 'user': 'users.serializers.registration.RegistrationSerializer',
+        # 'current_user': "users.serializers.CustomUserSerializer",
+    }
+}
 
 AUTH_USER_MODEL = 'users.CoreUser'
 

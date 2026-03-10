@@ -9,12 +9,12 @@ User = get_user_model()
 
 @admin.register(User)
 class CoreUserAdmin(UserAdmin):
-    """Админка для кастомной модели пользователя."""
+    """Админка для кастомной модели пользователя"""
 
 
 @admin.register(ArtistContact)
 class ArtistContactAdmin(admin.ModelAdmin):
-    """Для контактов артиста."""
+    """Админка для контактов артиста."""
 
 
 @admin.register(ArtistSocial)
