@@ -1,7 +1,11 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Album, Genre, Track, Category, Type, Property, Merch, Image
+from store.models import (
+    Album, Genre, Track, Category, Kind, Merch, Image, AlbumMerch
+)
+
+from store.constants import MAX_IMAGE_FOR_MERCH
 
 
 class AutoUserAdminMixin:
@@ -106,8 +110,8 @@ class CategoryAdmin(admin.ModelAdmin):
     search_help_text = 'Поиск по имени'
 
 
-@admin.register(Type)
-class TypeAdmin(admin.ModelAdmin):
+@admin.register(Kind)
+class KindAdmin(admin.ModelAdmin):
     """Админка типов мерча."""
     list_display = (
         'name',
@@ -121,27 +125,6 @@ class TypeAdmin(admin.ModelAdmin):
         'name',
     )
     search_help_text = 'Поиск по имени'
-
-
-@admin.register(Property)
-class PropertyAdmin(admin.ModelAdmin):
-    """Админка свойств мерча."""
-    list_display = (
-        'name',
-        'property',
-        'sku',
-        'quantity'
-    )
-    list_filter = (
-        'created_at',
-        'is_active',
-        'quantity'
-    )
-    search_fields = (
-        'name',
-        'property'
-    )
-    search_help_text = 'Поиск по названию и свойству'
 
 
 class PhotoInline(admin.TabularInline):
@@ -161,16 +144,21 @@ class PhotoInline(admin.TabularInline):
         return '-'
 
 
+class AlbumMerchInline(admin.TabularInline):
+    model = AlbumMerch
+    fields = ('album', 'merch')
+
+
 @admin.register(Merch)
 class MerchAdmin(admin.ModelAdmin):
     """Админка мерча."""
-    inlines = (PhotoInline,)
+    inlines = (PhotoInline, AlbumMerchInline)
     list_display = (
         'name',
         'price',
         'quantity',
         'category',
-        'type',
+        'kind',
         'owner',
         'created_at',
         'image_preview'
@@ -178,29 +166,29 @@ class MerchAdmin(admin.ModelAdmin):
     list_editable = (
         'price',
         'quantity',
-        'type',
+        'kind',
         'category',
     )
     list_filter = (
         'created_at',
         'is_active',
-        'type',
+        'kind',
         'category'
     )
     search_fields = (
         'name',
         'category__name',
-        'type__name',
+        'kind__name',
         'owner__username'
     )
     search_help_text = 'Поиск по названию, категории, типу и владельцу'
-    readonly_fields = ('image_preview',)
+    readonly_fields = ('image_preview', 'created_at')
 
     fieldsets = [
         ('Основная информация', {
-            'fields': ('name', 'quantity', 'category', 'type',
+            'fields': ('name', 'quantity', 'category', 'kind',
                        'owner', 'description', 'visibility',
-                       'property', 'album'),
+                       'characteristic'),
 
         }),
         ('Финансы', {
@@ -210,7 +198,7 @@ class MerchAdmin(admin.ModelAdmin):
 
     @admin.display(description='Главная картинка')
     def image_preview(self, image):
-        for image_obj in image.images_merch.all()[:4]:
+        for image_obj in image.images_merch.all()[:MAX_IMAGE_FOR_MERCH]:
             if image_obj.image:
                 return format_html(
                     '<img src="{}" width="200" height="150" />',
