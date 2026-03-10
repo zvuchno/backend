@@ -3,6 +3,7 @@ Django==5.2.12
 django-allauth==65.14.3
 django-filter==25.2
 django-phonenumber-field==8.4.0
+django-phonenumber-field==8.4.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 isort==8.0.1

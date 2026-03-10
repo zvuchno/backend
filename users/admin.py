@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 
-from .models import ArtistContact, ArtistSocial, ArtistProfile
+from .models import ArtistContact, ArtistSocial, ArtistProfile, ListenerProfile
 
 User = get_user_model()
 
@@ -25,3 +25,8 @@ class ArtistSocialAdmin(admin.ModelAdmin):
 @admin.register(ArtistProfile)
 class ArtistProfileAdmin(admin.ModelAdmin):
     """Админка профиля артиста."""
+
+
+@admin.register(ListenerProfile)
+class ListenerProfileAdmin(admin.ModelAdmin):
+    """Админка профиля слушателя"""
