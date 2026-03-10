@@ -1,0 +1,9 @@
+db.sqlite3
+logs
+media
+venv
+nginx
+.env
+.env.prod
+.git
+README.md

@@ -11,6 +11,10 @@ Backend API проекта **Звучно**.
 * django-allauth
 * SimpleJWT
 * SQLite (для локальной разработки)
+* PostgreSQL
+* Docker / Docker Compose
+* Gunicorn
+
 
 Основные зависимости:
 
@@ -101,6 +105,33 @@ http://127.0.0.1:8000
 ```
 http://127.0.0.1:8000/admin
 ```
+### Запуск через Docker
+
+Этот метод запускает полную связку: Django + PostgreSQL + Gunicorn + Nginx.
+
+Подготовьте окружение:
+Создайте файл .env в корневой папке проекта на основе примера:
+```
+DEBUG=False
+USE_SQLITE=False
+POSTGRES_DB=zvuchno_db
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=db%77&htc85
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+```
+Соберите и запустите контейнеры:
+```
+docker compose up --build
+```
+Подготовьте базу данных и статику при первом запуске:
+```
+# Миграции
+docker compose exec backend python manage.py migrate
+# Сбор статических файлов
+docker compose exec backend python manage.py collectstatic
+```
+Проект доступен по адресу: [http://localhost:8000](http://localhost:8000)
 
 ---
 
