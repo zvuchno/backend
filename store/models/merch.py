@@ -1,0 +1,79 @@
+from decimal import Decimal
+from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
+from django.db import models
+
+from users.models.abstract import ActivatableModel, TimestampModel
+from store.constants import (
+    NAME_MERCH_MAX_LENGTH,
+    DESCRIPTION_MERCH_MAX_LENGTH,
+    MAX_PRICE_DIGITS,
+    PRICE_DECIMAL_PLACEC,
+    VISIBILITY_MAX_LENGTH,
+    DEFAULT_QUANTITY,
+)
+from store.models.album import Album
+from store.models.category import Category
+from store.models.kind import Kind
+
+
+User = get_user_model()
+
+
+class Merch(ActivatableModel, TimestampModel):
+    """Модель мерча."""
+
+    class Visibility(models.TextChoices):
+        PUBLIC = 'public', 'Опубликовано'
+        LINK_ONLY = 'link_only', 'Доступно по ссылке'
+        HIDDEN = 'hidden', 'Скрыто'
+
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL,
+                                 related_name='merch',
+                                 verbose_name='Категория',
+                                 null=True)
+    name = models.CharField(
+        'Название', max_length=NAME_MERCH_MAX_LENGTH
+    )
+    price = models.DecimalField(
+        'Цена', max_digits=MAX_PRICE_DIGITS,
+        decimal_places=PRICE_DECIMAL_PLACEC,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        default=Decimal('0.00')
+    )
+    access_price_more = models.BooleanField(
+        'Разрешение платить больше', default=False
+    )
+    quantity = models.PositiveIntegerField(
+        'Количество', default=DEFAULT_QUANTITY
+    )
+    kind = models.ForeignKey(
+        Kind, on_delete=models.SET_NULL,
+        verbose_name='Тип', related_name='merch',
+        null=True
+    )
+    description = models.TextField(
+        'Описание', max_length=DESCRIPTION_MERCH_MAX_LENGTH,
+        null=True, blank=True
+    )
+    owner = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name='Автор'
+    )
+    visibility = models.CharField(
+        'Приватность', choices=Visibility.choices,
+        default=Visibility.PUBLIC,
+        max_length=VISIBILITY_MAX_LENGTH
+    )
+    characteristic = models.JSONField(
+        default=dict, blank=True, verbose_name='Свойства'
+    )
+    album = models.ManyToManyField(Album, blank=True, through='AlbumMerch',
+                                   verbose_name='Альбом', related_name='merch')
+
+    class Meta:
+        verbose_name = 'Мерч'
+        verbose_name_plural = 'Мерчи'
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name
