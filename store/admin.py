@@ -145,8 +145,19 @@ class PhotoInline(admin.TabularInline):
 
 
 class AlbumMerchInline(admin.TabularInline):
+    """Отображение обложки альбома в админке мерча"""
     model = AlbumMerch
-    fields = ('album', 'merch')
+    fields = ('album', 'preview')
+    readonly_fields = ('preview',)
+
+    @admin.display(description='Фото альбома')
+    def preview(self, album):
+        if album.album:
+            return format_html(
+                '<img src="{}" style="height:100px; border-radius:4px"/>',
+                album.album.cover_image.url
+            )
+        return '-'
 
 
 @admin.register(Merch)
