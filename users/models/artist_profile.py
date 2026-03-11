@@ -1,3 +1,11 @@
+"""Модели профиля артиста.
+
+Модуль содержит модель профиля артиста, связанную
+с пользователем системы. Профиль хранит публичные данные
+артиста, которые используются для отображения на сайте
+и в личном кабинете.
+"""
+
 from django.conf import settings
 from django.core.validators import MinLengthValidator, MaxLengthValidator
 from django.db import models
@@ -6,8 +14,8 @@ from slugify import slugify
 from phonenumber_field.modelfields import PhoneNumberField
 
 from .abstract import ActivatableModel, TimestampModel
-# TODO перенести эти константы в core, но потом.
-from ..constants import (
+
+from users.constants import (
     ARTIST_NAME_FIELD_MAX_LENGTH, ARTIST_NAME_FIELD_MIN_LENGTH,
     ARTIST_DESC_FIELD_MAX_LENGTH, ARTIST_DESC_FIELD_MIN_LENGTH,
     CITY_FIELD_MAX_LENGTH, CITY_FIELD_MIN_LENGTH,
@@ -15,7 +23,12 @@ from ..constants import (
 
 
 class ArtistProfile(ActivatableModel, TimestampModel):
-    """Модель артиста."""
+    """Профиль артиста.
+
+    Связан с пользователем отношением один к одному и хранит
+    основные публичные данные артиста: имя, slug, описание,
+    контактную информацию, город и обложку профиля.
+    """
 
     owner = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -57,7 +70,12 @@ class ArtistProfile(ActivatableModel, TimestampModel):
     )
 
     def save(self, *args, **kwargs):
-        """Переопределено сохранение, чтобы гарантированно получить slug."""
+        """Сохраняет профиль артиста и при необходимости создает slug.
+
+        Если slug не был задан вручную, он формируется автоматически
+        на основе имени артиста. При совпадении slug с уже существующим
+        значением подбирается уникальный вариант с числовым суффиксом.
+        """
         if not self.slug:
             slug = slugify(self.name)
             new_slug = slug
@@ -71,9 +89,10 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         super().save(*args, **kwargs)
 
     class Meta:
-        verbose_name = 'Артист'
+        verbose_name = 'артист'
         verbose_name_plural = 'артисты'
         ordering = ['name']
 
     def __str__(self):
+        """Возвращает имя артиста."""
         return self.name
