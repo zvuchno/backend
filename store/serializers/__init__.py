@@ -4,6 +4,8 @@ from .album import (
     AlbumWriteSerializer,
 )
 from .genre import GenreSerializer
+from .track import TrackSerializer
+
 
 __all__ = [
     'AlbumReadSerializer',
