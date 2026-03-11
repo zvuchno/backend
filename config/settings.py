@@ -141,7 +141,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 DJOSER = {
     'SERIALIZERS': {
-        'user_create': 'users.serializers.registration.RegistrationSerializer',
+        # 'user_create': 'users.serializers.registration.RegistrationSerializer',
         # 'user': 'users.serializers.registration.RegistrationSerializer',
         # 'current_user': "users.serializers.CustomUserSerializer",
     }

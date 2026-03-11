@@ -1,0 +1,3 @@
+from .base_registration import BaseRegistrationView
+from .artist_registration import ArtistRegistrationView
+from .listener_registration import ListenerRegistrationView
