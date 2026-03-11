@@ -6,6 +6,7 @@ from .album_merch import AlbumMerch
 from .kind import Kind
 from .image import Image
 from .category import Category
+from .favorite import Favorite
 
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     'Genre',
     'Track',
     'Category',
+    'Favorite',
     'Kind',
     'Merch',
     'Image',
