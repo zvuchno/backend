@@ -1,11 +1,17 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from store.models import (
-    Album, AlbumMerch, Genre, Track, Category, Kind, Merch, Image
-)
-
 from store.constants import MAX_IMAGE_FOR_MERCH
+from store.models import (
+    Album,
+    AlbumMerch,
+    Category,
+    Genre,
+    Image,
+    Kind,
+    Merch,
+    Track,
+)
 
 
 class AutoUserAdminMixin:
@@ -102,6 +108,7 @@ class TrackAdmin(AutoUserAdminMixin, admin.ModelAdmin):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     """Админка категорий."""
+
     list_display = (
         'name',
         'slug'
@@ -114,6 +121,7 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Kind)
 class KindAdmin(admin.ModelAdmin):
     """Админка типов мерча."""
+
     list_display = (
         'name',
         'slug'
@@ -130,6 +138,7 @@ class KindAdmin(admin.ModelAdmin):
 
 class PhotoInline(admin.TabularInline):
     """Отображение фото в модели мерча."""
+
     model = Image
     max_num = 4
     fields = ('image', 'preview')
@@ -147,6 +156,7 @@ class PhotoInline(admin.TabularInline):
 
 class AlbumMerchInline(admin.TabularInline):
     """Отображение обложки альбома в админке мерча."""
+
     model = AlbumMerch
     fields = ('album', 'preview')
     readonly_fields = ('preview',)
@@ -164,6 +174,7 @@ class AlbumMerchInline(admin.TabularInline):
 @admin.register(Merch)
 class MerchAdmin(admin.ModelAdmin):
     """Админка мерча."""
+
     inlines = (PhotoInline, AlbumMerchInline)
     list_display = (
         'name',
@@ -204,7 +215,7 @@ class MerchAdmin(admin.ModelAdmin):
 
         }),
         ('Финансы', {
-            'fields': ('price', 'access_price_more'),
+            'fields': ('price', 'allow_fans_overpay'),
         })
     ]
 
