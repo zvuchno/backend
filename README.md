@@ -64,6 +64,16 @@ venv\Scripts\activate
 ```
 pip install -r requirements.txt
 ```
+```
+pre-commit install
+```
+Команда pre-commit install создаст скрипт в .git/hooks/pre-commit, который будет вызывать pre-commit run при каждом git commit.
+Можно запустить все хуки вручную (без коммита):
+```
+pre-commit run --all-files
+```
+Для утилиты pre-commit создан конфигурационный файл .pre-commit-config.yaml. Сначала запускаются стандартные хуки (проверки) из https://github.com/pre-commit/pre-commit-hooks. А потом запускаются хуки для ruff (https://github.com/astral-sh/ruff-pre-commit). Правила для ruff описаны в конфигурационном файле ruff.toml. Он сначала работает как линтер и исправляет ошибки, а потом как форматтер (автоматически форматирует код).
+
 
 ---
 
@@ -153,6 +163,7 @@ AUTH_USER_MODEL = "users.CoreUser"
 
 ```python
 from django.contrib.auth import get_user_model
+
 User = get_user_model()
 ```
 
@@ -196,4 +207,25 @@ python manage.py shell
 
 ```
 python manage.py check
+```
+
+---
+
+# Команды для ruff
+
+Проверка и исправление ошибок в текущей директории:
+```
+ruff check --fix .
+```
+Проверка в текущей директории без исправлений (только отчёт об ошибках):
+```
+ruff check .
+```
+Демонстрация изменений в текущей директории в формате diff без записи в файлы:
+```
+ruff check --diff .
+```
+Автоматическое форматирование код в текущей директории:
+```
+ruff format .
 ```

@@ -54,6 +54,6 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
     def validate_release_date(self, value):
         if value > timezone.now().date():
             raise serializers.ValidationError(
-                'Дата релиза не может быть в будущем.'
+                'Дата релиза не может быть в будущем.',
             )
         return value

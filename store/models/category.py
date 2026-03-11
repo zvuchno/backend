@@ -1,18 +1,22 @@
 from django.db import models
 from django.utils.text import slugify
 
-from users.models.abstract import ActivatableModel, TimestampModel
-
 from store.constants import NAME_MERCH_MAX_LENGTH
+from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class Category(ActivatableModel, TimestampModel):
     """Категории."""
+
     name = models.CharField(
-        'Название', max_length=NAME_MERCH_MAX_LENGTH, unique=True
+        'Название',
+        max_length=NAME_MERCH_MAX_LENGTH,
+        unique=True,
     )
     slug = models.SlugField(
-        'slug', max_length=NAME_MERCH_MAX_LENGTH, unique=True
+        'slug',
+        max_length=NAME_MERCH_MAX_LENGTH,
+        unique=True,
     )
 
     def save(self, *args, **kwargs):
@@ -21,9 +25,14 @@ class Category(ActivatableModel, TimestampModel):
             slug = slugify(self.name)
             new_slug = slug
             counter = 1
-            while Category.objects.filter(
-                slug=new_slug
-            ).exclude(pk=self.pk).exists():
+            while (
+                Category.objects
+                .filter(
+                    slug=new_slug,
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            ):
                 new_slug = f'{slug}-{counter}'
                 counter += 1
             self.slug = new_slug

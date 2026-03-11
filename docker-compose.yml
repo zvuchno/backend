@@ -2,7 +2,7 @@ volumes:
   pg_data:
   static:
   media:
-  
+
 services:
   db:
     image: postgres:17.5
@@ -22,7 +22,7 @@ services:
     env_file: .env
     volumes:
       - static:/staticfiles
-      - media:/media/ 
+      - media:/media/
     depends_on:
       - backend
     ports:

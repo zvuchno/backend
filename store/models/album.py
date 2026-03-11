@@ -1,10 +1,9 @@
 from decimal import Decimal
 
-from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
+from django.db import models
 
-from .genre import Genre
 from ..constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
@@ -12,6 +11,7 @@ from ..constants import (
     PRICE_DECIMAL_PLACES,
 )
 from ..validators import validate_file_size
+from .genre import Genre
 
 User = get_user_model()
 
@@ -32,20 +32,20 @@ class Album(models.Model):
         null=True,
         blank=True,
         verbose_name='Жанр',
-        related_name='albums'
-        )
+        related_name='albums',
+    )
     price = models.DecimalField(
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
         validators=[MinValueValidator(Decimal('0.00'))],
         default=Decimal('0.00'),
-        help_text='Цена, руб.'
+        help_text='Цена, руб.',
     )
     allow_fans_to_pay_more = models.BooleanField(
         'Разрешить платить больше',
         default=False,
-        help_text='Если включено, фанаты смогут заплатить больше стоимости.'
+        help_text='Если включено, фанаты смогут заплатить больше стоимости.',
     )
     description = models.TextField('Описание', blank=True, default='')
     cover_image = models.ImageField(
@@ -53,20 +53,20 @@ class Album(models.Model):
         upload_to='album_covers',
         blank=True,
         null=True,
-        validators=(validate_file_size,)
+        validators=(validate_file_size,),
     )
     visibility = models.CharField(
         'Приватность',
         max_length=20,
         choices=Visibility.choices,
-        default=Visibility.PUBLIC
+        default=Visibility.PUBLIC,
     )
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='albums',
-        verbose_name='Владелец'
+        verbose_name='Владелец',
     )
 
     class Meta:
