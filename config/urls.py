@@ -21,12 +21,12 @@ from django.urls import include, path
 
 api_urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
+    path('auth/', include('users.urls'))
 ]
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include((api_urlpatterns, 'api'))),
-    path('', include('users.urls'))
 ]
 
 if settings.DEBUG:
