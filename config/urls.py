@@ -21,7 +21,7 @@ from django.urls import include, path
 
 api_urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
-    path('auth/', include('users.urls'))
+    path('auth/', include('users.urls', namespace='users')),
 ]
 
 urlpatterns = [

@@ -24,7 +24,7 @@ class ArtistSocial(ActivatableModel, TimestampModel):
     value = models.URLField('Ссылка')
 
     class Meta:
-        verbose_name = 'Соцсеть артиста'
+        verbose_name = 'соцсеть артиста'
         verbose_name_plural = 'соцсети артиста'
         ordering = ['-created_at', 'label', 'value']
 

@@ -24,7 +24,7 @@ class ArtistContact(ActivatableModel, TimestampModel):
     value = models.EmailField('Контакт')
 
     class Meta:
-        verbose_name = 'Контакт артиста'
+        verbose_name = 'контакт артиста'
         verbose_name_plural = 'контакты артиста'
         ordering = ['-created_at', 'label', 'value']
 

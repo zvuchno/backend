@@ -70,7 +70,7 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         super().save(*args, **kwargs)
 
     class Meta:
-        verbose_name = 'Артист'
+        verbose_name = 'артист'
         verbose_name_plural = 'артисты'
         ordering = ['name']
 

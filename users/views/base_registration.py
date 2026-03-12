@@ -17,4 +17,4 @@ class BaseRegistrationView(CreateAPIView):
     регистрации слушателя и артиста.
     """
 
-    permission_classes = [AllowAny, ]
+    permission_classes = [AllowAny]
