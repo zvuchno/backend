@@ -15,4 +15,4 @@ class AlbumViewSet(viewsets.ModelViewSet):
         return AlbumReadSerializer
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(owner=self.request.user)
