@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
 
-from store.constants import NAME_MERCH_MAX_LENGTH
+from store.constants import MAX_CHAR_LENGTH, MAX_SLUG_LENGTH
 from users.models.abstract import ActivatableModel, TimestampModel
 
 
@@ -9,18 +9,15 @@ class Category(ActivatableModel, TimestampModel):
     """Категории."""
 
     name = models.CharField(
-        'Название',
-        max_length=NAME_MERCH_MAX_LENGTH,
-        unique=True,
+        'Название', max_length=MAX_CHAR_LENGTH, unique=True
     )
     slug = models.SlugField(
-        'slug',
-        max_length=NAME_MERCH_MAX_LENGTH,
-        unique=True,
+        'slug', max_length=MAX_SLUG_LENGTH, unique=True
     )
 
     def save(self, *args, **kwargs):
         """Получение слага при отсутствии."""
+
         if not self.slug:
             slug = slugify(self.name)
             new_slug = slug
@@ -39,8 +36,8 @@ class Category(ActivatableModel, TimestampModel):
         super().save(*args, **kwargs)
 
     class Meta:
-        verbose_name = 'Категория'
-        verbose_name_plural = 'Категории'
+        verbose_name = 'категория'
+        verbose_name_plural = 'категории'
 
     def __str__(self):
         return self.name

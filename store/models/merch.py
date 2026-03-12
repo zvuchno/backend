@@ -5,11 +5,10 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from store.constants import (
-    DEFAULT_QUANTITY,
+    MAX_CHAR_LENGTH,
     DESCRIPTION_MERCH_MAX_LENGTH,
     MAX_PRICE_DIGITS,
-    NAME_MERCH_MAX_LENGTH,
-    PRICE_DECIMAL_PLACEC,
+    PRICE_DECIMAL_PLACES,
     VISIBILITY_MAX_LENGTH,
 )
 from store.models.album import Album
@@ -36,19 +35,16 @@ class Merch(ActivatableModel, TimestampModel):
         null=True,
     )
     name = models.CharField(
-        'Название',
-        max_length=NAME_MERCH_MAX_LENGTH,
+        'Название', max_length=MAX_CHAR_LENGTH
     )
     price = models.DecimalField(
-        'Цена',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACEC,
+        'Цена', max_digits=MAX_PRICE_DIGITS,
+        decimal_places=PRICE_DECIMAL_PLACES,
         validators=[MinValueValidator(Decimal('0.00'))],
         default=Decimal('0.00'),
     )
-    access_price_more = models.BooleanField(
-        'Разрешение платить больше',
-        default=False,
+    allow_fans_overpay = models.BooleanField(
+        'Разрешение платить больше', default=False
     )
     quantity = models.PositiveIntegerField(
         'Количество',
@@ -90,10 +86,13 @@ class Merch(ActivatableModel, TimestampModel):
         verbose_name='Альбом',
         related_name='merch',
     )
+    album = models.ManyToManyField(Album, blank=True,
+                                   through='AlbumMerch',
+                                   verbose_name='Альбом', related_name='merch')
 
     class Meta:
-        verbose_name = 'Мерч'
-        verbose_name_plural = 'Мерчи'
+        verbose_name = 'мерч'
+        verbose_name_plural = 'мерчи'
         ordering = ('name',)
 
     def __str__(self):

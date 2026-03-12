@@ -7,7 +7,7 @@ from store.models import Album
 class AlbumReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Album."""
 
-    user = serializers.ReadOnlyField(source='user.username')
+    owner = serializers.ReadOnlyField(source='user.username')
     genre = serializers.StringRelatedField(read_only=True)
 
     class Meta:
@@ -15,22 +15,25 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'name',
+            'is_single',
             'release_date',
             'genre',
             'price',
             'description',
             'cover_image',
-            'allow_fans_to_pay_more',
+            'allow_fans_overpay',
             'visibility',
-            'user',
+            'is_published',
+            'is_active',
+            'owner',
         )
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        user = self.context['request'].user
+        owner = self.context['request'].user
 
-        # Если юзер не автор, удаляем поле из ответа
-        if user != instance.user:
+        # Если юзер не владелец, удаляем поле из ответа
+        if owner != instance.owner:
             ret.pop('visibility', None)
         return ret
 
@@ -42,13 +45,16 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
         model = Album
         fields = (
             'name',
+            'is_single',
             'release_date',
             'genre',
             'price',
             'description',
             'cover_image',
-            'allow_fans_to_pay_more',
+            'allow_fans_overpay',
             'visibility',
+            'is_published',
+            'is_active',
         )
 
     def validate_release_date(self, value):

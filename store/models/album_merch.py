@@ -1,6 +1,7 @@
 from django.db import models
 
-from store.models import Album, Merch
+from store.models.album import Album
+from store.models.merch import Merch
 from users.models.abstract import ActivatableModel, TimestampModel
 
 
@@ -18,5 +19,5 @@ class AlbumMerch(ActivatableModel, TimestampModel):
             ),
         ]
         ordering = ['-created_at']
-        verbose_name = 'Альбом и мерч'
-        verbose_name_plural = 'Альбомы и мерчи'
+        verbose_name = 'альбом и мерч'
+        verbose_name_plural = 'альбомы и мерчи'

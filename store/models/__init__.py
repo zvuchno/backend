@@ -9,11 +9,11 @@ from .track import Track
 
 __all__ = [
     'Album',
-    'Genre',
-    'Track',
+    'AlbumMerch',
     'Category',
+    'Genre',
+    'Image',
     'Kind',
     'Merch',
-    'Image',
-    'AlbumMerch',
+    'Track',
 ]

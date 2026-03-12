@@ -1,6 +1,6 @@
 from django.db import models
 
-from store.models import Merch
+from store.models.merch import Merch
 from users.models.abstract import ActivatableModel, TimestampModel
 
 
@@ -16,5 +16,5 @@ class Image(ActivatableModel, TimestampModel):
     image = models.ImageField('Фото', upload_to='photos_merch/')
 
     class Meta:
-        verbose_name = 'Фото мерча'
-        verbose_name_plural = 'Фотографии мерча'
+        verbose_name = 'фото мерча'
+        verbose_name_plural = 'фотографии мерча'
