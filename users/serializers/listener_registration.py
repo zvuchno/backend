@@ -4,6 +4,7 @@
 за создание пользователя и связанного профиля слушателя,
 а также за формирование ответа с дополнительными данными профиля.
 """
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from phonenumber_field.validators import validate_international_phonenumber
@@ -22,6 +23,7 @@ class ListenerRegistrationSerializer(BaseRegistrationSerializer):
     Дополнительно принимает номер телефона, проверяет его
     и возвращает в ответе после успешной регистрации.
     """
+
     extra_field_name = 'phone'
     phone = serializers.CharField(
         label='Номер телефона',

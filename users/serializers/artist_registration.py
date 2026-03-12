@@ -4,6 +4,7 @@
 за создание пользователя и связанного профиля артиста,
 а также за формирование ответа с данными профиля.
 """
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
@@ -21,6 +22,7 @@ class ArtistRegistrationSerializer(BaseRegistrationSerializer):
     Дополнительно принимает имя артиста и возвращает его
     в ответе после успешной регистрации.
     """
+
     extra_field_name = 'name'
     name = serializers.CharField(
         label='Имя артиста',

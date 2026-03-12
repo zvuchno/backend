@@ -4,6 +4,7 @@
 получения JWT-токенов и регистрации пользователей
 разных ролей.
 """
+
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
