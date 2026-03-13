@@ -22,9 +22,14 @@ class Category(ActivatableModel, TimestampModel):
             slug = slugify(self.name)
             new_slug = slug
             counter = 1
-            while Category.objects.filter(
-                slug=new_slug
-            ).exclude(pk=self.pk).exists():
+            while (
+                Category.objects
+                .filter(
+                    slug=new_slug,
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            ):
                 new_slug = f'{slug}-{counter}'
                 counter += 1
             self.slug = new_slug

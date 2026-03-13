@@ -7,7 +7,7 @@ class CoreUser(AbstractUser):
 
     email = models.EmailField(unique=True)
 
-    REQUIRED_FIELDS = ['email', ]
+    REQUIRED_FIELDS = ['email']
 
     class Meta:
         verbose_name = 'Пользователь'
