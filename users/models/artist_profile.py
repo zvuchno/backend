@@ -5,6 +5,7 @@ from slugify import slugify
 
 from phonenumber_field.modelfields import PhoneNumberField
 
+from store.validators import validate_file_size
 from .abstract import ActivatableModel, TimestampModel
 # TODO перенести эти константы в core, но потом.
 from ..constants import (
@@ -51,9 +52,11 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         ],
     )
     cover = models.ImageField(
-        'Обложка',
+        'Обложка артиста',
         upload_to='artists/covers',
         blank=True,
+        null=True,
+        validators=(validate_file_size,)
     )
 
     def save(self, *args, **kwargs):
