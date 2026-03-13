@@ -1,3 +1,10 @@
+"""
+Административная конфигурация моделей музыкального каталога.
+
+Определяет регистрацию моделей и настройки их отображения
+в интерфейсе Django Admin.
+"""
+
 from django.contrib import admin
 from django.utils.html import format_html
 
@@ -14,33 +21,72 @@ from store.models import (
 )
 
 
-class AutoUserAdminMixin:
+class AutoOwnerAdminMixin:
+    """Mixin: автоматически назначает владельца при сохранении объектов."""
 
     def save_model(self, request, obj, form, change):
-        # Если объект ещё не имеет user, ставим текущего
+        """Назначает пользователя владельцем при сохранении через админку."""
         if not getattr(obj, 'user_id', None):
-            obj.user = request.user
+            obj.owner = request.user
         super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        """
+        Назначает текущего пользователя владельцем
+        для всех объектов из Inline при сохранении формы.
+        """
+        instances = formset.save(commit=False)
+        for obj in instances:
+            if not getattr(obj, 'owner_id', None):
+                obj.owner = request.user
+            obj.save()
+        formset.save_m2m()
+
+
+class TrackInline(admin.TabularInline):
+    """Inline для треков внутри формы альбома."""
+
+    model = Track
+    extra = 1
+    min_num = 1
+    readonly_fields = ('duration',)
+    fields = (
+        'track_number',
+        'name',
+        'album',
+        'audio_file',
+        'is_active',
+        'individual_price',
+        'allow_fans_overpay',
+    )
 
 
 @admin.register(Album)
-class AlbumAdmin(AutoUserAdminMixin, admin.ModelAdmin):
+class AlbumAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
+    """Админка для модели Album с Inline треков."""
 
     list_display = (
         'name',
-        'release_date',
         'genre',
+        'release_date',
+        'is_active',
         'price',
-        'allow_fans_to_pay_more',
+        'allow_fans_overpay',
         'visibility',
     )
     search_fields = ('genre', 'name',)
-    list_filter = ('genre', 'visibility',)
-    ordering = ('name',)
-    readonly_fields = ('created_at', 'user',)
+    list_filter = (
+        'visibility',
+        'is_active',
+        'created_at',
+        'updated_at',
+    )
+    ordering = ('name', 'is_active',)
+    readonly_fields = ('image_preview', 'created_at', 'updated_at', 'owner',)
     list_editable = (
         'price',
-        'allow_fans_to_pay_more',
+        'allow_fans_overpay',
+        'is_active',
         'visibility',
     )
     fieldsets = (
@@ -48,61 +94,110 @@ class AlbumAdmin(AutoUserAdminMixin, admin.ModelAdmin):
             'fields': (
                 'name',
                 'genre',
+                'is_single',
                 'release_date',
                 'description',
                 'cover_image',
+                'image_preview',
+                'is_active',
                 'visibility',
-                'user',
+                'owner',
                 'created_at',
+                'updated_at',
             )
         }),
         ('Цены и оплата', {
-            'fields': ('price', 'allow_fans_to_pay_more',)
+            'fields': ('price', 'allow_fans_overpay',)
         }),
     )
+    inlines = (TrackInline,)
+
+    @admin.display(description='Изображение')
+    def image_preview(self, obj):
+        """Возвращает HTML-превью обложки альбома в списке админки."""
+        if obj.cover_image:
+            return format_html(
+                '<img src="{}" style="height:80px;border-radius:4px;">',
+                obj.cover_image.url
+            )
+        return ''
 
 
 @admin.register(Genre)
 class GenreAdmin(admin.ModelAdmin):
+    """Админка для модели Genre."""
+
     list_display = (
         'name',
         'slug',
+        'is_active',
     )
     search_fields = ('name',)
-    ordering = ('name',)
+    list_filter = ('is_active',)
+    list_editable = ('is_active',)
+    ordering = ('name', 'is_active',)
 
 
 @admin.register(Track)
-class TrackAdmin(AutoUserAdminMixin, admin.ModelAdmin):
+class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
+    """Админка для модели Track."""
+
     list_display = (
         'name',
         'album',
+        'track_number',
+        'is_active',
         'individual_price',
-        'allow_fans_to_pay_more',
+        'allow_fans_overpay',
     )
     search_fields = ('album', 'lyrics', 'name',)
-    list_filter = ('album', 'allow_fans_to_pay_more',)
-    ordering = ('name',)
-    readonly_fields = ('created_at', 'user',)
+    list_filter = (
+        'is_active',
+        'allow_fans_overpay',
+        'created_at',
+        'updated_at',
+    )
+    ordering = ('track_number', 'name',)
+    readonly_fields = (
+        'formatted_duration',
+        'created_at',
+        'updated_at',
+        'owner',
+    )
     list_editable = (
         'individual_price',
-        'allow_fans_to_pay_more',
+        'allow_fans_overpay',
+        'is_active',
+        'track_number',
     )
     fieldsets = (
         ('Основные данные', {
             'fields': (
                 'name',
                 'album',
+                'is_active',
+                'track_number',
                 'audio_file',
+                'formatted_duration',
                 'lyrics',
-                'user',
+                'owner',
                 'created_at',
+                'updated_at',
             )
         }),
         ('Цены и оплата', {
-            'fields': ('individual_price', 'allow_fans_to_pay_more',)
+            'fields': ('individual_price', 'allow_fans_overpay',)
         }),
     )
+
+    @admin.display(description='Длительность')
+    def formatted_duration(self, obj):
+        """Показывает длительность трека в формате мм:сс."""
+        if obj.duration is None:
+            return "-"
+        minutes = obj.duration // 60
+        seconds = obj.duration % 60
+        return f"{minutes}:{seconds:02}"
 
 
 @admin.register(Category)

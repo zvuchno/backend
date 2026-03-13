@@ -38,6 +38,7 @@ class ArtistContact(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'контакт артиста'
         verbose_name_plural = 'контакты артиста'
+        # TODO tuple
         ordering = ['-created_at', 'label', 'value']
 
     def __str__(self):
