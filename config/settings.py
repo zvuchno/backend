@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'djoser',
@@ -117,6 +118,19 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Zvuchno API',
+    'DESCRIPTION': 'Документация API проекта',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,  # Разделяет сериализаторы input/output
+    'COMPONENT_SPLIT_PATCH': True,  # Для PATCH чтобы все поля - необязательные
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,  # Не вылетает логин при обновлении
+    },
+}
+
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -160,6 +174,7 @@ REST_FRAMEWORK = {
         'refresh': '10/min',
         'verify': '20/minute',
     },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # TODO: настроить периодический запуск flushexpiredtokens
