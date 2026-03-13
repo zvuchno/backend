@@ -1,9 +1,18 @@
+"""
+Модель жанра музыкальных релизов.
+
+Жанры используются для классификации альбомов.
+Представляют собой справочную сущность с уникальным названием
+и slug для использования в URL и API.
+"""
+
 from django.db import models
 
-from ..constants import MAX_CHAR_LENGTH, MAX_SLUG_LENGTH, MAX_STR_LENGTH
+from store.constants import MAX_CHAR_LENGTH, MAX_STR_LENGTH, MAX_SLUG_LENGTH
+from users.models.abstract import ActivatableModel
 
 
-class Genre(models.Model):
+class Genre(ActivatableModel):
     """Жанр музыкального релиза."""
 
     name = models.CharField(
@@ -21,7 +30,7 @@ class Genre(models.Model):
 
     class Meta:
         verbose_name = 'жанр'
-        verbose_name_plural = 'Жанры'
+        verbose_name_plural = 'жанры'
         ordering = ('name',)
 
     def __str__(self):
