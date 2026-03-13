@@ -26,7 +26,7 @@ class ArtistSocial(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'соцсеть артиста'
         verbose_name_plural = 'соцсети артиста'
-        ordering = ['-created_at', 'label', 'value']
+        ordering = ('-created_at', 'label', 'value',)
 
     def __str__(self):
         return f'{self.label}: {self.value}'

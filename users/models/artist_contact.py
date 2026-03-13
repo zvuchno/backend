@@ -26,7 +26,7 @@ class ArtistContact(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'контакт артиста'
         verbose_name_plural = 'контакты артиста'
-        ordering = ['-created_at', 'label', 'value']
+        ordering = ('-created_at', 'label', 'value',)
 
     def __str__(self):
         return f'{self.label}: {self.value}'

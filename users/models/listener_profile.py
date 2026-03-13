@@ -21,7 +21,7 @@ class ListenerProfile(ActivatableModel, TimestampModel):
     )
 
     class Meta:
-        verbose_name = 'слушатель'
+        verbose_name = 'Слушатель'
         verbose_name_plural = 'слушатели'
 
     def __str__(self):

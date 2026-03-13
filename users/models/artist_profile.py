@@ -72,7 +72,7 @@ class ArtistProfile(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'артист'
         verbose_name_plural = 'артисты'
-        ordering = ['name']
+        ordering = ('name',)
 
     def __str__(self):
         return self.name
