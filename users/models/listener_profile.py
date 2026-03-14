@@ -4,6 +4,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from .abstract.activatable_model import ActivatableModel
 from .abstract.timestamp_model import TimestampModel
+from ..constants import FULL_NAME_FIELD_MAX_LENGTH
 
 
 class ListenerProfile(ActivatableModel, TimestampModel):
@@ -18,6 +19,10 @@ class ListenerProfile(ActivatableModel, TimestampModel):
         'Номер телефона',
         help_text='Номер телефона',
         unique=True,
+    )
+    full_name = models.CharField(
+        'Имя и фамилия',
+        max_length=FULL_NAME_FIELD_MAX_LENGTH,
     )
 
     class Meta:
