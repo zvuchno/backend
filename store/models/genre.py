@@ -1,5 +1,4 @@
-"""
-Модель жанра музыкальных релизов.
+"""Модель жанра музыкальных релизов.
 
 Жанры используются для классификации альбомов.
 Представляют собой справочную сущность с уникальным названием
@@ -8,7 +7,7 @@
 
 from django.db import models
 
-from store.constants import MAX_CHAR_LENGTH, MAX_STR_LENGTH, MAX_SLUG_LENGTH
+from store.constants import MAX_CHAR_LENGTH, MAX_SLUG_LENGTH, MAX_STR_LENGTH
 from users.models.abstract import ActivatableModel
 
 

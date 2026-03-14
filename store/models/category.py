@@ -9,15 +9,18 @@ class Category(ActivatableModel, TimestampModel):
     """Категории."""
 
     name = models.CharField(
-        'Название', max_length=MAX_CHAR_LENGTH, unique=True
+        'Название',
+        max_length=MAX_CHAR_LENGTH,
+        unique=True,
     )
     slug = models.SlugField(
-        'slug', max_length=MAX_SLUG_LENGTH, unique=True
+        'slug',
+        max_length=MAX_SLUG_LENGTH,
+        unique=True,
     )
 
     def save(self, *args, **kwargs):
         """Получение слага при отсутствии."""
-
         if not self.slug:
             slug = slugify(self.name)
             new_slug = slug

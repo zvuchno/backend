@@ -30,12 +30,14 @@ from drf_spectacular.views import (
 docs_urlpatterns = [
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path(
-        'swagger/', SpectacularSwaggerView.as_view(url_name='api-docs:schema'),
-        name='swagger-ui'
+        'swagger/',
+        SpectacularSwaggerView.as_view(url_name='api-docs:schema'),
+        name='swagger-ui',
     ),
     path(
-        'redoc/', SpectacularRedocView.as_view(url_name='api-docs:schema'),
-        name='redoc'
+        'redoc/',
+        SpectacularRedocView.as_view(url_name='api-docs:schema'),
+        name='redoc',
     ),
 ]
 

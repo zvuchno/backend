@@ -1,5 +1,4 @@
-"""
-Музыкальный альбом или сингл исполнителя.
+"""Музыкальный альбом или сингл исполнителя.
 
 Альбом объединяет один или несколько треков и содержит метаданные
 релиза.
@@ -11,6 +10,7 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
 
+from .abstract import VisibilityModel
 from .genre import Genre
 from store.constants import (
     MAX_CHAR_LENGTH,
@@ -18,10 +18,8 @@ from store.constants import (
     MAX_STR_LENGTH,
     PRICE_DECIMAL_PLACES,
 )
-from .abstract import VisibilityModel
 from store.validators import validate_file_size
 from users.models.abstract import ActivatableModel, TimestampModel
-
 
 User = get_user_model()
 
@@ -37,8 +35,8 @@ class Album(ActivatableModel, TimestampModel, VisibilityModel):
         null=True,
         blank=True,
         verbose_name='Жанр',
-        related_name='albums'
-        )
+        related_name='albums',
+    )
     is_single = models.BooleanField('Сингл', default=False)
     price = models.DecimalField(
         'Цена',

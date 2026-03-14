@@ -1,5 +1,4 @@
-"""
-Модель музыкального трека, входящего в состав альбома.
+"""Модель музыкального трека, входящего в состав альбома.
 
 Связан с альбомом и пользователем-владельцем.
 """
@@ -36,22 +35,24 @@ class Track(ActivatableModel, TimestampModel):
     audio_file = models.FileField(
         'Файл трека',
         upload_to='tracks/',
-        validators=[FileExtensionValidator(
-            allowed_extensions=ALLOWED_AUDIO_EXTENSIONS
-        )],
-        help_text='Аудиофайл'
-        )
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=ALLOWED_AUDIO_EXTENSIONS,
+            ),
+        ],
+        help_text='Аудиофайл',
+    )
     duration = models.PositiveIntegerField(
         'Длительность',
         null=True,
         blank=True,
-        help_text='Длительность трека в секундах'
+        help_text='Длительность трека в секундах',
     )
     track_number = models.PositiveIntegerField(
         'Номер трека',
         null=True,
         blank=True,
-        help_text='Порядок трека в альбоме'
+        help_text='Порядок трека в альбоме',
     )
     individual_price = models.DecimalField(
         'Цена трека',
@@ -77,11 +78,12 @@ class Track(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'трек'
         verbose_name_plural = 'треки'
-        ordering = ('album', 'track_number', 'name',)
+        ordering = ('album', 'track_number', 'name')
         constraints = [
             models.UniqueConstraint(
                 fields=['album', 'track_number'],
-                name='unique_track_number_per_album')
+                name='unique_track_number_per_album',
+            ),
         ]
 
     def __str__(self):

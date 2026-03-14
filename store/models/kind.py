@@ -9,15 +9,17 @@ class Kind(ActivatableModel, TimestampModel):
     """Тип мерча."""
 
     name = models.CharField(
-        'Название', max_length=MAX_CHAR_LENGTH
+        'Название',
+        max_length=MAX_CHAR_LENGTH,
     )
     slug = models.SlugField(
-        'slug', max_length=MAX_SLUG_LENGTH, unique=True
+        'slug',
+        max_length=MAX_SLUG_LENGTH,
+        unique=True,
     )
 
     def save(self, *args, **kwargs):
-        """Получение слага при его отсутствии"""
-
+        """Получение слага при его отсутствии."""
         if not self.slug:
             slug = slugify(self.name)
             new_slug = slug
