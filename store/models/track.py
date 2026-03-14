@@ -6,9 +6,9 @@
 
 from decimal import Decimal
 
-from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import FileExtensionValidator, MinValueValidator
+from django.db import models
 
 from .album import Album
 from store.constants import (
@@ -31,8 +31,8 @@ class Track(ActivatableModel, TimestampModel):
         Album,
         on_delete=models.CASCADE,
         related_name='tracks',
-        verbose_name='Альбом'
-        )
+        verbose_name='Альбом',
+    )
     audio_file = models.FileField(
         'Файл трека',
         upload_to='tracks/',
@@ -59,19 +59,19 @@ class Track(ActivatableModel, TimestampModel):
         decimal_places=PRICE_DECIMAL_PLACES,
         validators=[MinValueValidator(Decimal('0.00'))],
         default=Decimal('0.00'),
-        help_text='Цена, руб.'
+        help_text='Цена, руб.',
     )
     allow_fans_overpay = models.BooleanField(
         'Разрешить платить больше',
         default=False,
-        help_text='Если включено, фанаты смогут заплатить больше стоимости.'
+        help_text='Если включено, фанаты смогут заплатить больше стоимости.',
     )
     lyrics = models.TextField('Текст трека', blank=True, default='')
     owner = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='tracks',
-        verbose_name='Владелец'
+        verbose_name='Владелец',
     )
 
     class Meta:
