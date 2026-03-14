@@ -1,9 +1,4 @@
-"""Модели ссылок на соцсети артиста.
-
-Модуль содержит модель, которая хранит внешние ссылки,
-связанные с профилем артиста, например ссылки на соцсети
-или другие публичные страницы.
-"""
+"""Модель ссылок на соцсети и внешние ресурсы артиста."""
 
 from django.core.validators import MinLengthValidator
 from django.db import models
@@ -42,5 +37,4 @@ class ArtistSocial(ActivatableModel, TimestampModel):
         ordering = ('-created_at', 'label', 'value')
 
     def __str__(self):
-        """Возвращает строковое представление ссылки артиста."""
         return f'{self.label}: {self.value}'

@@ -1,10 +1,4 @@
-"""Модели профиля артиста.
-
-Модуль содержит модель профиля артиста, связанную
-с пользователем системы. Профиль хранит публичные данные
-артиста, которые используются для отображения на сайте
-и в личном кабинете.
-"""
+"""Модель профиля артиста."""
 
 from django.conf import settings
 from django.core.validators import MaxLengthValidator, MinLengthValidator
@@ -101,5 +95,4 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         ordering = ('name',)
 
     def __str__(self):
-        """Возвращает имя артиста."""
         return self.name

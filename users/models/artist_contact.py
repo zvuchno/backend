@@ -1,9 +1,4 @@
-"""Модели контактов артиста.
-
-Модуль содержит модель контактных данных артиста.
-Контакты хранятся отдельно от основного профиля,
-чтобы артист мог указывать несколько способов связи.
-"""
+"""Модель контактных данных артиста."""
 
 from django.core.validators import MinLengthValidator
 from django.db import models
@@ -42,5 +37,4 @@ class ArtistContact(ActivatableModel, TimestampModel):
         ordering = ('-created_at', 'label', 'value')
 
     def __str__(self):
-        """Возвращает строковое представление контакта артиста."""
         return f'{self.label}: {self.value}'

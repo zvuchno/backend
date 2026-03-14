@@ -1,10 +1,4 @@
-"""Модели профиля слушателя.
-
-Модуль содержит модель профиля слушателя, связанную
-с пользователем системы. Профиль хранит данные,
-которые относятся именно к роли слушателя и не входят
-в базовую модель пользователя.
-"""
+"""Модель профиля слушателя."""
 
 from django.conf import settings
 from django.db import models
@@ -38,5 +32,4 @@ class ListenerProfile(ActivatableModel, TimestampModel):
         verbose_name_plural = 'слушатели'
 
     def __str__(self):
-        """Возвращает строковое представление профиля слушателя."""
         return self.user.email

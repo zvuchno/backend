@@ -1,9 +1,4 @@
-"""Пользовательская модель приложения.
-
-Модуль содержит кастомную модель пользователя,
-используемую в проекте в качестве основной модели
-для аутентификации и связи с профилями ролей.
-"""
+"""Кастомная модель пользователя."""
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -28,5 +23,4 @@ class CoreUser(AbstractUser):
         ordering = ('-date_joined', 'username')
 
     def __str__(self):
-        """Возвращает строковое представление пользователя."""
         return self.email
