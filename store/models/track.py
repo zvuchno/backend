@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.validators import FileExtensionValidator, MinValueValidator
+from django.db import models
 
 from .album import Album
 from store.constants import (
