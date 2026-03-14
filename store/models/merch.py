@@ -5,12 +5,12 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from store.constants import (
-    MAX_CHAR_LENGTH,
+    DEFAULT_QUANTITY,
     DESCRIPTION_MERCH_MAX_LENGTH,
+    MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
     VISIBILITY_MAX_LENGTH,
-    DEFAULT_QUANTITY,
 )
 from store.models.album import Album
 from store.models.category import Category
@@ -36,16 +36,19 @@ class Merch(ActivatableModel, TimestampModel):
         null=True,
     )
     name = models.CharField(
-        'Название', max_length=MAX_CHAR_LENGTH
+        'Название',
+        max_length=MAX_CHAR_LENGTH,
     )
     price = models.DecimalField(
-        'Цена', max_digits=MAX_PRICE_DIGITS,
+        'Цена',
+        max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
         validators=[MinValueValidator(Decimal('0.00'))],
         default=Decimal('0.00'),
     )
     allow_fans_overpay = models.BooleanField(
-        'Разрешение платить больше', default=False
+        'Разрешение платить больше',
+        default=False,
     )
     quantity = models.PositiveIntegerField(
         'Количество',

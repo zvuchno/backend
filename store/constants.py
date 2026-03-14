@@ -1,6 +1,4 @@
-"""
-Константы, используемые в приложении store.
-"""
+"""Константы, используемые в приложении store."""
 
 ALLOWED_AUDIO_EXTENSIONS = ('mp3', 'wav', 'flac')
 MAX_CHAR_LENGTH = 256
