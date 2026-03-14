@@ -5,6 +5,9 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 
 from users.models.abstract.timestamp_model import TimestampModel
 from users.models.abstract.activatable_model import ActivatableModel
+from .track import Track
+from .album import Album
+from .merch import Merch
 
 
 class Favorite(ActivatableModel, TimestampModel):
@@ -16,26 +19,32 @@ class Favorite(ActivatableModel, TimestampModel):
         related_name='favorites',
         verbose_name='Слушатель',
     )
-    content_type = models.ForeignKey(
-        ContentType,
+    track = models.ForeignKey(
+        'Track',
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name='Трек',
     )
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey()
+    album = models.ForeignKey(
+        'Album',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name='Альбом',
+    )
+    merch = models.ForeignKey(
+        'Merch',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name='Мерч',
+    )
 
     class Meta:
         verbose_name = 'избранные'
         verbose_name_plural = 'избранное'
-        constraints = [
-            models.constraints.UniqueConstraint(
-                fields=[
-                    'listener',
-                    'content_type',
-                    'object_id',
-                ],
-                name='unique_favorite_per_user',
-            )
-        ]
+        default_related_name = 'favorited_by'
         ordering = ['-created_at']
 
     def __str__(self):
