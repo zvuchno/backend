@@ -8,10 +8,11 @@
 from django.core.validators import MinLengthValidator
 from django.db import models
 
-from users.constants import (
-    ARTIST_LINK_LABEL_MAX_LENGTH, ARTIST_LINK_LABEL_MIN_LENGTH,
-)
 from .abstract import ActivatableModel, TimestampModel
+from users.constants import (
+    ARTIST_LINK_LABEL_MAX_LENGTH,
+    ARTIST_LINK_LABEL_MIN_LENGTH,
+)
 
 
 class ArtistContact(ActivatableModel, TimestampModel):
@@ -26,7 +27,7 @@ class ArtistContact(ActivatableModel, TimestampModel):
         'ArtistProfile',
         on_delete=models.CASCADE,
         related_name='contacts',
-        verbose_name='Артист'
+        verbose_name='Артист',
     )
     label = models.CharField(
         'Название контакта',
@@ -38,8 +39,7 @@ class ArtistContact(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'контакт артиста'
         verbose_name_plural = 'контакты артиста'
-        # TODO tuple
-        ordering = ['-created_at', 'label', 'value']
+        ordering = ('-created_at', 'label', 'value')
 
     def __str__(self):
         """Возвращает строковое представление контакта артиста."""

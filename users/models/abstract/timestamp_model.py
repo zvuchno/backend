@@ -18,11 +18,11 @@ class TimestampModel(models.Model):
 
     created_at = models.DateTimeField(
         'Дата создания',
-        auto_now_add=True
+        auto_now_add=True,
     )
     updated_at = models.DateTimeField(
         'Дата обновления',
-        auto_now=True
+        auto_now=True,
     )
 
     class Meta:

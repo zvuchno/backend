@@ -25,7 +25,7 @@ class CoreUser(AbstractUser):
     class Meta:
         verbose_name = 'пользователь'
         verbose_name_plural = 'пользователи'
-        ordering = ['-date_joined', 'username']
+        ordering = ('-date_joined', 'username')
 
     def __str__(self):
         """Возвращает строковое представление пользователя."""

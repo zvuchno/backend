@@ -13,8 +13,10 @@ class AlbumMerch(ActivatableModel, TimestampModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['album', 'merch'],
-                                    name='unique_album_merch')
+            models.UniqueConstraint(
+                fields=['album', 'merch'],
+                name='unique_album_merch',
+            ),
         ]
         ordering = ['-created_at']
         verbose_name = 'альбом и мерч'

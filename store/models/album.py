@@ -7,12 +7,12 @@
 
 from decimal import Decimal
 
-from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
+from django.db import models
 
 from .genre import Genre
-from ..constants import (
+from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MAX_STR_LENGTH,
@@ -46,12 +46,12 @@ class Album(ActivatableModel, TimestampModel, VisibilityModel):
         decimal_places=PRICE_DECIMAL_PLACES,
         validators=[MinValueValidator(Decimal('0.00'))],
         default=Decimal('0.00'),
-        help_text='Цена, руб.'
+        help_text='Цена, руб.',
     )
     allow_fans_overpay = models.BooleanField(
         'Разрешить платить больше',
         default=False,
-        help_text='Если включено, фанаты смогут заплатить больше стоимости.'
+        help_text='Если включено, фанаты смогут заплатить больше стоимости.',
     )
     description = models.TextField('Описание', blank=True, default='')
     cover_image = models.ImageField(
@@ -59,13 +59,13 @@ class Album(ActivatableModel, TimestampModel, VisibilityModel):
         upload_to='album_covers',
         blank=True,
         null=True,
-        validators=(validate_file_size,)
+        validators=(validate_file_size,),
     )
     owner = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='albums',
-        verbose_name='Владелец'
+        verbose_name='Владелец',
     )
 
     class Meta:

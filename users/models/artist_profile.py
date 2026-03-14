@@ -7,18 +7,19 @@
 """
 
 from django.conf import settings
-from django.core.validators import MinLengthValidator, MaxLengthValidator
+from django.core.validators import MaxLengthValidator, MinLengthValidator
 from django.db import models
+from phonenumber_field.modelfields import PhoneNumberField
 from slugify import slugify
 
-from phonenumber_field.modelfields import PhoneNumberField
-
 from .abstract import ActivatableModel, TimestampModel
-
 from users.constants import (
-    ARTIST_NAME_FIELD_MAX_LENGTH, ARTIST_NAME_FIELD_MIN_LENGTH,
-    ARTIST_DESC_FIELD_MAX_LENGTH, ARTIST_DESC_FIELD_MIN_LENGTH,
-    CITY_FIELD_MAX_LENGTH, CITY_FIELD_MIN_LENGTH,
+    ARTIST_DESC_FIELD_MAX_LENGTH,
+    ARTIST_DESC_FIELD_MIN_LENGTH,
+    ARTIST_NAME_FIELD_MAX_LENGTH,
+    ARTIST_NAME_FIELD_MIN_LENGTH,
+    CITY_FIELD_MAX_LENGTH,
+    CITY_FIELD_MIN_LENGTH,
 )
 
 
@@ -80,9 +81,12 @@ class ArtistProfile(ActivatableModel, TimestampModel):
             slug = slugify(self.name)
             new_slug = slug
             slug_counter = 1
-            while ArtistProfile.objects.filter(slug=new_slug).exclude(
-                pk=self.pk
-            ).exists():
+            while (
+                ArtistProfile.objects
+                .filter(slug=new_slug)
+                .exclude(pk=self.pk)
+                .exists()
+            ):
                 new_slug = f'{slug}-{slug_counter}'
                 slug_counter += 1
             self.slug = new_slug
@@ -91,7 +95,7 @@ class ArtistProfile(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'артист'
         verbose_name_plural = 'артисты'
-        ordering = ['name']
+        ordering = ('name',)
 
     def __str__(self):
         """Возвращает имя артиста."""

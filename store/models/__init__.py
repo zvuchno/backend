@@ -7,7 +7,6 @@ from .kind import Kind
 from .merch import Merch
 from .track import Track
 
-
 __all__ = [
     'Album',
     'AlbumMerch',

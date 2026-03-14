@@ -8,10 +8,11 @@
 from django.core.validators import MinLengthValidator
 from django.db import models
 
-from users.constants import (
-    ARTIST_LINK_LABEL_MAX_LENGTH, ARTIST_LINK_LABEL_MIN_LENGTH,
-)
 from .abstract import ActivatableModel, TimestampModel
+from users.constants import (
+    ARTIST_LINK_LABEL_MAX_LENGTH,
+    ARTIST_LINK_LABEL_MIN_LENGTH,
+)
 
 
 class ArtistSocial(ActivatableModel, TimestampModel):
@@ -26,7 +27,7 @@ class ArtistSocial(ActivatableModel, TimestampModel):
         'ArtistProfile',
         on_delete=models.CASCADE,
         related_name='socials',
-        verbose_name='Артист'
+        verbose_name='Артист',
     )
     label = models.CharField(
         'Название соцсети',
@@ -38,7 +39,7 @@ class ArtistSocial(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'соцсеть артиста'
         verbose_name_plural = 'соцсети артиста'
-        ordering = ['-created_at', 'label', 'value']
+        ordering = ('-created_at', 'label', 'value')
 
     def __str__(self):
         """Возвращает строковое представление ссылки артиста."""
