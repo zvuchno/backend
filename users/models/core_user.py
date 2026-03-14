@@ -23,8 +23,8 @@ class CoreUser(AbstractUser):
     REQUIRED_FIELDS = ['email']
 
     class Meta:
-        verbose_name = 'пользователь'
-        verbose_name_plural = 'пользователи'
+        verbose_name = 'учетная запись'
+        verbose_name_plural = 'учетные записи'
         ordering = ('-date_joined', 'username')
 
     def __str__(self):

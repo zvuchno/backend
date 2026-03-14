@@ -13,6 +13,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 from slugify import slugify
 
 from .abstract import ActivatableModel, TimestampModel
+from store.validators import validate_file_size
 from users.constants import (
     ARTIST_DESC_FIELD_MAX_LENGTH,
     ARTIST_DESC_FIELD_MIN_LENGTH,
@@ -65,9 +66,11 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         ],
     )
     cover = models.ImageField(
-        'Обложка',
+        'Обложка артиста',
         upload_to='artists/covers',
         blank=True,
+        null=True,
+        validators=(validate_file_size,),
     )
 
     def save(self, *args, **kwargs):
