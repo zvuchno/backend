@@ -1,0 +1,29 @@
+volumes:
+  pg_data:
+  static:
+  media:
+  
+services:
+  db:
+    image: postgres:17.5
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+  backend:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env.prod
+    volumes:
+      - static:/app/staticfiles
+      - media:/app/media/
+    depends_on:
+      - db
+  gateway:
+    image: inswty/zvuchno_gateway:latest
+    env_file: .env
+    volumes:
+      - static:/staticfiles
+      - media:/media/ 
+    depends_on:
+      - backend
+    ports:
+      - 8000:80
