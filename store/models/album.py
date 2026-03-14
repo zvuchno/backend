@@ -11,7 +11,8 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from ..constants import (
+from .genre import Genre
+from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MAX_STR_LENGTH,

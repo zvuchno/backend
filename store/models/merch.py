@@ -10,6 +10,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
     VISIBILITY_MAX_LENGTH,
+    DEFAULT_QUANTITY,
 )
 from store.models.album import Album
 from store.models.category import Category
@@ -86,9 +87,6 @@ class Merch(ActivatableModel, TimestampModel):
         verbose_name='Альбом',
         related_name='merch',
     )
-    album = models.ManyToManyField(Album, blank=True,
-                                   through='AlbumMerch',
-                                   verbose_name='Альбом', related_name='merch')
 
     class Meta:
         verbose_name = 'мерч'
