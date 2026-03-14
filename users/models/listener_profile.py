@@ -1,3 +1,5 @@
+"""Модель профиля слушателя."""
+
 from django.conf import settings
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
@@ -7,7 +9,12 @@ from .abstract.timestamp_model import TimestampModel
 
 
 class ListenerProfile(ActivatableModel, TimestampModel):
-    """Модель слушателя."""
+    """Профиль слушателя.
+
+    Связан с пользователем отношением один к одному и хранит
+    дополнительные данные слушателя. В текущей реализации
+    профиль используется для хранения уникального номера телефона.
+    """
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -21,8 +28,8 @@ class ListenerProfile(ActivatableModel, TimestampModel):
     )
 
     class Meta:
-        verbose_name = 'Слушатель'
+        verbose_name = 'слушатель'
         verbose_name_plural = 'слушатели'
 
     def __str__(self):
-        return self.user.username
+        return self.user.email

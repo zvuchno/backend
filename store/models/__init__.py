@@ -1,22 +1,21 @@
 from .album import Album
-from .genre import Genre
-from .track import Track
-from .merch import Merch
 from .album_merch import AlbumMerch
-from .kind import Kind
-from .image import Image
 from .category import Category
 from .favorite import Favorite
-
+from .genre import Genre
+from .image import Image
+from .kind import Kind
+from .merch import Merch
+from .track import Track
 
 __all__ = [
     'Album',
-    'Genre',
-    'Track',
+    'AlbumMerch',
     'Category',
     'Favorite',
+    'Genre',
+    'Image',
     'Kind',
     'Merch',
-    'Image',
-    'AlbumMerch',
+    'Track',
 ]
