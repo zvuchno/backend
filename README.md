@@ -15,7 +15,10 @@ Backend API проекта **Звучно**.
 * SQLite (для локальной разработки)
 * PostgreSQL
 * Docker / Docker Compose
+* Nginx
 * Gunicorn
+* GitHub Actions (CI/CD)
+
 
 
 Основные зависимости:
@@ -241,3 +244,29 @@ ruff check --diff .
 ```
 ruff format .
 ```
+
+
+# Продакшен / Деплой:
+1. Создайте файл .env с переменными окружения и скопируйте его на сервер в директорию проекта - 'zvuchno'
+2. Добавьте Secrets в GitHub Actions (Settings → Secrets and variables → Actions → New repository secret):
+```
+DOCKER_USERNAME  # Логин Docker Hub
+DOCKER_PASSWORD  # Пароль или access token Docker Hub
+HOST  # IP или домен сервера
+USER  # Пользователь на сервере
+SSH_KEY  # Приватный SSH ключ
+SSH_PASSPHRASE  # Пароль от ключа (если он есть)
+```
+
+## Как запустить деплой через GitHub Actions
+
+- Перейдите во вкладку Actions в репозитории
+- В списке workflows выберите Main Zvuchno workflow
+- Нажмите кнопку Run workflow
+
+После этого GitHub запустит pipeline, который:
+- выполнит проверки кода (ruff)
+- запустит тесты (pytest)
+- соберёт Docker-образы
+- отправит образы в Docker Hub
+- выполнит деплой на сервер через SSH
