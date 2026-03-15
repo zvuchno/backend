@@ -36,7 +36,7 @@ class ListenerProfile(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'слушатель'
         verbose_name_plural = 'слушатели'
-        ordering = ['-created_at']
+        ordering = ('-created_at',)
 
     def __str__(self):
         return self.user.email
