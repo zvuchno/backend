@@ -1,5 +1,4 @@
-"""
-Административная конфигурация моделей музыкального каталога.
+"""Административная конфигурация моделей музыкального каталога.
 
 Определяет регистрацию моделей и настройки их отображения
 в интерфейсе Django Admin.
@@ -31,9 +30,9 @@ class AutoOwnerAdminMixin:
         super().save_model(request, obj, form, change)
 
     def save_formset(self, request, form, formset, change):
-        """
-        Назначает текущего пользователя владельцем
-        для всех объектов из Inline при сохранении формы.
+        """Назначает текущего пользователя владельцем.
+
+        Для всех объектов из Inline при сохранении формы.
         """
         instances = formset.save(commit=False)
         for obj in instances:
@@ -74,15 +73,15 @@ class AlbumAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         'allow_fans_overpay',
         'visibility',
     )
-    search_fields = ('genre', 'name',)
+    search_fields = ('genre', 'name')
     list_filter = (
         'visibility',
         'is_active',
         'created_at',
         'updated_at',
     )
-    ordering = ('name', 'is_active',)
-    readonly_fields = ('image_preview', 'created_at', 'updated_at', 'owner',)
+    ordering = ('name', 'is_active')
+    readonly_fields = ('image_preview', 'created_at', 'updated_at', 'owner')
     list_editable = (
         'price',
         'allow_fans_overpay',
@@ -90,25 +89,31 @@ class AlbumAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         'visibility',
     )
     fieldsets = (
-        ('Основные данные', {
-            'fields': (
-                'name',
-                'genre',
-                'is_single',
-                'release_date',
-                'description',
-                'cover_image',
-                'image_preview',
-                'is_active',
-                'visibility',
-                'owner',
-                'created_at',
-                'updated_at',
-            )
-        }),
-        ('Цены и оплата', {
-            'fields': ('price', 'allow_fans_overpay',)
-        }),
+        (
+            'Основные данные',
+            {
+                'fields': (
+                    'name',
+                    'genre',
+                    'is_single',
+                    'release_date',
+                    'description',
+                    'cover_image',
+                    'image_preview',
+                    'is_active',
+                    'visibility',
+                    'owner',
+                    'created_at',
+                    'updated_at',
+                ),
+            },
+        ),
+        (
+            'Цены и оплата',
+            {
+                'fields': ('price', 'allow_fans_overpay'),
+            },
+        ),
     )
     inlines = (TrackInline,)
 
@@ -118,7 +123,7 @@ class AlbumAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         if obj.cover_image:
             return format_html(
                 '<img src="{}" style="height:80px;border-radius:4px;">',
-                obj.cover_image.url
+                obj.cover_image.url,
             )
         return ''
 
@@ -135,7 +140,7 @@ class GenreAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     list_filter = ('is_active',)
     list_editable = ('is_active',)
-    ordering = ('name', 'is_active',)
+    ordering = ('name', 'is_active')
 
 
 @admin.register(Track)
@@ -150,14 +155,14 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         'individual_price',
         'allow_fans_overpay',
     )
-    search_fields = ('album', 'lyrics', 'name',)
+    search_fields = ('album', 'lyrics', 'name')
     list_filter = (
         'is_active',
         'allow_fans_overpay',
         'created_at',
         'updated_at',
     )
-    ordering = ('track_number', 'name',)
+    ordering = ('track_number', 'name')
     readonly_fields = (
         'formatted_duration',
         'created_at',
@@ -171,33 +176,39 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         'track_number',
     )
     fieldsets = (
-        ('Основные данные', {
-            'fields': (
-                'name',
-                'album',
-                'is_active',
-                'track_number',
-                'audio_file',
-                'formatted_duration',
-                'lyrics',
-                'owner',
-                'created_at',
-                'updated_at',
-            )
-        }),
-        ('Цены и оплата', {
-            'fields': ('individual_price', 'allow_fans_overpay',)
-        }),
+        (
+            'Основные данные',
+            {
+                'fields': (
+                    'name',
+                    'album',
+                    'is_active',
+                    'track_number',
+                    'audio_file',
+                    'formatted_duration',
+                    'lyrics',
+                    'owner',
+                    'created_at',
+                    'updated_at',
+                ),
+            },
+        ),
+        (
+            'Цены и оплата',
+            {
+                'fields': ('individual_price', 'allow_fans_overpay'),
+            },
+        ),
     )
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):
         """Показывает длительность трека в формате мм:сс."""
         if obj.duration is None:
-            return "-"
+            return '-'
         minutes = obj.duration // 60
         seconds = obj.duration % 60
-        return f"{minutes}:{seconds:02}"
+        return f'{minutes}:{seconds:02}'
 
 
 @admin.register(Category)
@@ -206,7 +217,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
     list_display = (
         'name',
-        'slug'
+        'slug',
     )
     list_filter = ('created_at', 'is_active')
     search_fields = ('name',)
@@ -219,15 +230,13 @@ class KindAdmin(admin.ModelAdmin):
 
     list_display = (
         'name',
-        'slug'
+        'slug',
     )
     list_filter = (
         'created_at',
         'is_active',
     )
-    search_fields = (
-        'name',
-    )
+    search_fields = ('name',)
     search_help_text = 'Поиск по имени'
 
 
@@ -244,7 +253,7 @@ class PhotoInline(admin.TabularInline):
         if image.image:
             return format_html(
                 '<img src="{}" style="height:100px; border-radius:4px"/>',
-                image.image.url
+                image.image.url,
             )
         return '-'
 
@@ -261,7 +270,7 @@ class AlbumMerchInline(admin.TabularInline):
         if album.album:
             return format_html(
                 '<img src="{}" style="height:100px; border-radius:4px"/>',
-                album.album.cover_image.url
+                album.album.cover_image.url,
             )
         return '-'
 
@@ -279,7 +288,7 @@ class MerchAdmin(admin.ModelAdmin):
         'kind',
         'owner',
         'created_at',
-        'image_preview'
+        'image_preview',
     )
     list_editable = (
         'price',
@@ -291,27 +300,39 @@ class MerchAdmin(admin.ModelAdmin):
         'created_at',
         'is_active',
         'kind',
-        'category'
+        'category',
     )
     search_fields = (
         'name',
         'category__name',
         'kind__name',
-        'owner__username'
+        'owner__username',
     )
     search_help_text = 'Поиск по названию, категории, типу и владельцу'
     readonly_fields = ('image_preview', 'created_at')
 
     fieldsets = [
-        ('Основная информация', {
-            'fields': ('name', 'quantity', 'category', 'kind',
-                       'owner', 'description', 'visibility',
-                       'characteristic'),
-
-        }),
-        ('Финансы', {
-            'fields': ('price', 'allow_fans_overpay'),
-        })
+        (
+            'Основная информация',
+            {
+                'fields': (
+                    'name',
+                    'quantity',
+                    'category',
+                    'kind',
+                    'owner',
+                    'description',
+                    'visibility',
+                    'characteristic',
+                ),
+            },
+        ),
+        (
+            'Финансы',
+            {
+                'fields': ('price', 'access_price_more'),
+            },
+        ),
     ]
 
     @admin.display(description='Главная картинка')
@@ -320,6 +341,6 @@ class MerchAdmin(admin.ModelAdmin):
             if image_obj.image:
                 return format_html(
                     '<img src="{}" width="200" height="150" />',
-                    image_obj.image.url
+                    image_obj.image.url,
                 )
         return '-'

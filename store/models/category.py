@@ -9,22 +9,30 @@ class Category(ActivatableModel, TimestampModel):
     """Категории."""
 
     name = models.CharField(
-        'Название', max_length=MAX_CHAR_LENGTH, unique=True
+        'Название',
+        max_length=MAX_CHAR_LENGTH,
+        unique=True,
     )
     slug = models.SlugField(
-        'slug', max_length=MAX_SLUG_LENGTH, unique=True
+        'slug',
+        max_length=MAX_SLUG_LENGTH,
+        unique=True,
     )
 
     def save(self, *args, **kwargs):
         """Получение слага при отсутствии."""
-
         if not self.slug:
             slug = slugify(self.name)
             new_slug = slug
             counter = 1
-            while Category.objects.filter(
-                slug=new_slug
-            ).exclude(pk=self.pk).exists():
+            while (
+                Category.objects
+                .filter(
+                    slug=new_slug,
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            ):
                 new_slug = f'{slug}-{counter}'
                 counter += 1
             self.slug = new_slug

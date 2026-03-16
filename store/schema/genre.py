@@ -1,5 +1,4 @@
-"""
-Схемы автодокументации OpenAPI для сущности Жанров.
+"""Схемы автодокументации OpenAPI для сущности Жанров.
 
 Содержит конфигурации `drf-spectacular` для валидного отображения
 CRUD-операций в Swagger/ReDoc.
@@ -8,7 +7,6 @@ CRUD-операций в Swagger/ReDoc.
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from store.serializers import GenreSerializer
-
 
 genre_schema = extend_schema_view(
     list=extend_schema(

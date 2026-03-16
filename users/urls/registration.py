@@ -12,6 +12,14 @@ from users.views import (
 )
 
 urlpatterns = [
-    path('listener/', ListenerRegistrationView.as_view(), name='listener_registration'),
-    path('artist/', ArtistRegistrationView.as_view(), name='artist_registration'),
+    path(
+        'listener/',
+        ListenerRegistrationView.as_view(),
+        name='listener_registration',
+    ),
+    path(
+        'artist/',
+        ArtistRegistrationView.as_view(),
+        name='artist_registration',
+    ),
 ]

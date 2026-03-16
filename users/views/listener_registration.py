@@ -6,8 +6,8 @@
 
 from rest_framework.permissions import AllowAny
 
-from users.serializers import ListenerRegistrationSerializer
 from .base_registration import BaseRegistrationView
+from users.serializers import ListenerRegistrationSerializer
 
 
 class ListenerRegistrationView(BaseRegistrationView):

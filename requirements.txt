@@ -25,6 +25,7 @@ Markdown==3.10.2
 oauthlib==3.3.1
 phonenumbers==9.0.25
 pillow==12.1.1
+pre-commit==4.5.1
 pycparser==3.0
 PyJWT==2.11.0
 python-dotenv==1.2.2
@@ -32,10 +33,10 @@ python-slugify==8.0.4
 PyYAML==6.0.3
 referencing==0.37.0
 rpds-py==0.30.0
+ruff==0.15.5
 python3-openid==3.2.0
 requests==2.32.5
 requests-oauthlib==2.0.0
-ruff==0.15.4
 social-auth-app-django==5.7.0
 social-auth-core==4.8.5
 sqlparse==0.5.5

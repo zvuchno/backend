@@ -1,5 +1,4 @@
-"""
-JWT views проекта.
+"""JWT views проекта.
 
 Модуль содержит обертки над стандартными представлениями
 `rest_framework_simplejwt`, используемыми для получения
@@ -13,8 +12,8 @@ JWT views проекта.
     TokenObtainPairView
     TokenRefreshView
 """
+
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -22,7 +21,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
-    TokenVerifyView
+    TokenVerifyView,
 )
 
 
@@ -81,7 +80,7 @@ class CustomLogoutView(APIView):
     """Инвалидирует refresh токен пользователя."""
 
     @staticmethod
-    def post(request):
+    def post(request) -> Response:
         """Добавляет refresh token в blacklist."""
         try:
             token = request.data.get('refresh')

@@ -9,8 +9,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
 
-from users.models import ArtistProfile
 from .base_registration import BaseRegistrationSerializer
+from users.models import ArtistProfile
 
 User = get_user_model()
 

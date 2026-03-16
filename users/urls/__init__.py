@@ -1,6 +1,6 @@
 """Корневые URL-маршруты приложения users."""
 
-from django.urls import path, include
+from django.urls import include, path
 
 app_name = 'users'
 

@@ -10,8 +10,8 @@ from django.db import transaction
 from phonenumber_field.validators import validate_international_phonenumber
 from rest_framework import serializers
 
-from users.models import ListenerProfile
 from .base_registration import BaseRegistrationSerializer
+from users.models import ListenerProfile
 
 User = get_user_model()
 
@@ -32,7 +32,7 @@ class ListenerRegistrationSerializer(BaseRegistrationSerializer):
     )
 
     @staticmethod
-    def validate_phone(value):
+    def validate_phone(value) -> str:
         """Проверяет корректность и уникальность номера телефона.
 
         Проводит валидацию номера телефона в международном формате
@@ -45,11 +45,11 @@ class ListenerRegistrationSerializer(BaseRegistrationSerializer):
             validate_international_phonenumber(value)
         except Exception:
             raise serializers.ValidationError(
-                'Введите номер в международном формате.'
+                'Введите номер в международном формате.',
             )
         if ListenerProfile.objects.filter(phone=value).exists():
             raise serializers.ValidationError(
-                'Слушатель с таким номером уже существует.'
+                'Слушатель с таким номером уже существует.',
             )
         return value
 

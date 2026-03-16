@@ -6,8 +6,8 @@
 
 from rest_framework.permissions import AllowAny
 
-from users.serializers import ArtistRegistrationSerializer
 from .base_registration import BaseRegistrationView
+from users.serializers import ArtistRegistrationSerializer
 
 
 class ArtistRegistrationView(BaseRegistrationView):
