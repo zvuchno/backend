@@ -13,6 +13,7 @@
     TokenRefreshView
 """
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -25,6 +26,7 @@ from rest_framework_simplejwt.views import (
 )
 
 
+@extend_schema(tags=['Auth'])
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Выдача пары JWT токенов (access + refresh).
 
@@ -42,6 +44,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     throttle_scope = 'login'
 
 
+@extend_schema(tags=['Auth'])
 class CustomTokenRefreshView(TokenRefreshView):
     """Обновление access токена по refresh токену.
 
@@ -59,6 +62,7 @@ class CustomTokenRefreshView(TokenRefreshView):
     throttle_scope = 'refresh'
 
 
+@extend_schema(tags=['Auth'])
 class CustomTokenVerifyView(TokenVerifyView):
     """Верификация access токена.
 
@@ -76,6 +80,10 @@ class CustomTokenVerifyView(TokenVerifyView):
     throttle_scope = 'verify'
 
 
+@extend_schema(
+    tags=['Auth'],
+    auth=[],
+)
 class CustomLogoutView(APIView):
     """Инвалидирует refresh токен пользователя."""
 
