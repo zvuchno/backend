@@ -45,6 +45,7 @@ docs_urlpatterns = [
 # Список эндпоинтов бизнес-логики (Store, Users и т.д.)
 api_v1_urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
+    path('auth/', include('users.urls', namespace='users')),
 ]
 
 urlpatterns = [
