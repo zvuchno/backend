@@ -1,5 +1,4 @@
-"""
-OpenAPI схемы для API приложения store.
+"""OpenAPI схемы для API приложения store.
 
 Пакет содержит декларации схем drf-spectacular, используемых
 для документирования ViewSet'. Схемы вынесены из views,
@@ -13,4 +12,4 @@ from .genre import genre_schema
 __all__ = [
     'album_schema',
     'genre_schema',
-    ]
+]

@@ -1,18 +1,27 @@
+"""Кастомная модель пользователя."""
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
 class CoreUser(AbstractUser):
-    """Кастомная модель пользователя."""
+    """Кастомная модель пользователя.
+
+    Расширяет стандартную модель Django и использует email
+    как основное поле для входа в систему. Дополнительно
+    сохраняет username для отображения и совместимости
+    с механизмами Django и сторонних библиотек.
+    """
 
     email = models.EmailField(unique=True)
 
-    REQUIRED_FIELDS = ['email', ]
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
 
     class Meta:
         verbose_name = 'учетная запись'
         verbose_name_plural = 'учетные записи'
-        ordering = ['-date_joined', 'username']
+        ordering = ('-date_joined', 'username')
 
     def __str__(self):
-        return self.username
+        return self.email
