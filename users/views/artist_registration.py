@@ -1,9 +1,3 @@
-"""Представление для регистрации артиста.
-
-Модуль содержит endpoint, который отвечает за создание
-пользователя и связанного с ним профиля артиста.
-"""
-
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny
 

@@ -3,14 +3,6 @@
 Модуль содержит обертки над стандартными представлениями
 `rest_framework_simplejwt`, используемыми для получения
 и обновления JWT-токенов.
-
-Логика Simple JWT не переопределяется — классы добавлены
-для возможности настройки политик DRF (например throttling)
-без изменения поведения стандартных эндпоинтов.
-
-Используются вместо стандартных:
-    TokenObtainPairView
-    TokenRefreshView
 """
 
 from drf_spectacular.utils import extend_schema

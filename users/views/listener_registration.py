@@ -1,8 +1,4 @@
-"""Представление для регистрации слушателя.
-
-Модуль содержит endpoint, который отвечает за создание
-пользователя и связанного с ним профиля слушателя.
-"""
+"""Представление для регистрации слушателя."""
 
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny
