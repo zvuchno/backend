@@ -1,0 +1,109 @@
+"""Представления для управления учетной записью пользователя."""
+
+import logging
+
+from django.conf import settings
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.generics import GenericAPIView, RetrieveAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+
+from users.serializers import (
+    ChangePasswordSerializer,
+    EmailVerificationSerializer,
+    MeSerializer,
+)
+from users.services import build_email_verification_url
+
+logger = logging.getLogger(__name__)
+
+
+@extend_schema(tags=['Account'])
+class MeView(RetrieveAPIView):
+    """Возвращает данные текущего пользователя."""
+
+    serializer_class = MeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        """Возвращает пользователя из текущего запроса."""
+        return self.request.user
+
+
+@extend_schema(tags=['Account'])
+class ChangePasswordView(GenericAPIView):
+    """Обрабатывает смену пароля пользователя."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChangePasswordSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'change_password'
+
+    def post(self, request, *args, **kwargs):
+        """Валидирует данные и обновляет пароль пользователя."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {'detail': 'Пароль успешно изменен.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(tags=['Account'], auth=[])
+class EmailVerificationView(GenericAPIView):
+    """Подтверждает email пользователя по uid и токену."""
+
+    permission_classes = [AllowAny]
+    serializer_class = EmailVerificationSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'verify_email'
+
+    def post(self, request, *args, **kwargs):
+        """Проверяет данные и подтверждает email пользователя."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {'detail': 'Email подтвержден.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(tags=['Account'])
+class ResendVerificationEmailView(GenericAPIView):
+    """Повторно инициирует отправку письма подтверждения email."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'resend_verification_email'
+
+    def post(self, request, *args, **kwargs):
+        """Генерирует ссылку подтверждения и логирует ее."""
+        user = request.user
+
+        if user.is_email_verified:
+            return Response(
+                {'detail': 'Email уже подтвержден.'},
+                status=status.HTTP_200_OK,
+            )
+
+        frontend_base_url = settings.FRONTEND_VERIFY_EMAIL_URL
+
+        verification_url = build_email_verification_url(
+            user=user,
+            frontend_base_url=frontend_base_url,
+        )
+
+        logger.info(
+            'Email verification link for %s: %s',
+            user.email,
+            verification_url,
+        )
+
+        return Response(
+            {'detail': 'Запрос на подтверждение Email принят.'},
+            status=status.HTTP_200_OK,
+        )

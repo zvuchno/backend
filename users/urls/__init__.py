@@ -7,4 +7,5 @@ app_name = 'users'
 urlpatterns = [
     path('token/', include('users.urls.auth')),
     path('register/', include('users.urls.registration')),
+    path('account/', include('users.urls.account')),
 ]

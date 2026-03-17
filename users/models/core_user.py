@@ -18,6 +18,11 @@ class CoreUser(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
+    is_email_verified = models.BooleanField(
+        'Email подтвержден',
+        default=False,
+    )
+
     class Meta:
         verbose_name = 'учетная запись'
         verbose_name_plural = 'учетные записи'
