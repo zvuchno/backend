@@ -1,6 +1,6 @@
 """Сервис подтверждения email.
 
-Пока без отправки письма, с выводом в терминал.
+Пока без отправки письма.
 """
 
 from django.contrib.auth.tokens import default_token_generator
