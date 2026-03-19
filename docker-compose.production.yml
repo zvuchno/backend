@@ -12,6 +12,7 @@ services:
   backend:
     image: inswty/zvuchno_backend:latest
     env_file: .env
+    user: "${UID}:${GID}"
     volumes:
       - static:/app/staticfiles
       - media:/app/media/
@@ -26,4 +27,4 @@ services:
     depends_on:
       - backend
     ports:
-      - 8000:80
+      - "127.0.0.1:8000:80"
