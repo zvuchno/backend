@@ -4,30 +4,20 @@
 релиза.
 """
 
-from decimal import Decimal
-
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
 from django.db import models
 
-from .abstract import VisibilityModel
 from .genre import Genre
-from store.constants import (
-    MAX_CHAR_LENGTH,
-    MAX_PRICE_DIGITS,
-    MAX_STR_LENGTH,
-    PRICE_DECIMAL_PLACES,
-)
+from store.constants import MAX_STR_LENGTH
+from store.models.abstract import AbstractContent
 from store.validators import validate_file_size
-from users.models.abstract import ActivatableModel, TimestampModel
 
 User = get_user_model()
 
 
-class Album(ActivatableModel, TimestampModel, VisibilityModel):
+class Album(AbstractContent):
     """Музыкальный альбом."""
 
-    name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
     release_date = models.DateField('Дата релиза')
     genre = models.ForeignKey(
         Genre,
@@ -38,20 +28,6 @@ class Album(ActivatableModel, TimestampModel, VisibilityModel):
         related_name='albums',
     )
     is_single = models.BooleanField('Сингл', default=False)
-    price = models.DecimalField(
-        'Цена',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        validators=[MinValueValidator(Decimal('0.00'))],
-        default=Decimal('0.00'),
-        help_text='Цена, руб.',
-    )
-    allow_fans_overpay = models.BooleanField(
-        'Разрешить платить больше',
-        default=False,
-        help_text='Если включено, фанаты смогут заплатить больше стоимости.',
-    )
-    description = models.TextField('Описание', blank=True, default='')
     cover_image = models.ImageField(
         'Обложка релиза',
         upload_to='album_covers',
@@ -59,11 +35,11 @@ class Album(ActivatableModel, TimestampModel, VisibilityModel):
         null=True,
         validators=(validate_file_size,),
     )
-    owner = models.ForeignKey(
-        User,
+    product = models.OneToOneField(
+        'models.Product',
         on_delete=models.CASCADE,
-        related_name='albums',
-        verbose_name='Владелец',
+        primary_key=True,
+        related_name='album',
     )
 
     class Meta:

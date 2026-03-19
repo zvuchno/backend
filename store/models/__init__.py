@@ -5,6 +5,7 @@ from .genre import Genre
 from .image import Image
 from .kind import Kind
 from .merch import Merch
+from .product import Product
 from .track import Track
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     'Kind',
     'Merch',
     'Track',
+    'Product',
 ]
