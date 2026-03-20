@@ -6,7 +6,16 @@
 from django.contrib import admin
 
 from .mixins import AutoOwnerAdminMixin
-from store.models import Track
+from store.models import Product, Track
+
+
+class ProductInline(admin.StackedInline):
+    """Инлайн для редактирования полей продукта, связанных с треком."""
+
+    model = Product
+    fields = ('base_price', 'allow_fans_overpay')
+    can_delete = False
+    verbose_name = 'Торговые настройки трека'
 
 
 @admin.register(Track)
@@ -18,17 +27,17 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         'album',
         'track_number',
         'is_active',
-        'individual_price',
-        'allow_fans_overpay',
+        'get_price',
+        'get_allow_fans_overpay',
     )
-    search_fields = ('album', 'lyrics', 'name')
+
+    search_fields = ('album__name', 'lyrics', 'name')
     list_filter = (
         'is_active',
-        'allow_fans_overpay',
         'created_at',
         'updated_at',
     )
-    ordering = ('track_number', 'name')
+    ordering = ('album', 'track_number')
     readonly_fields = (
         'formatted_duration',
         'created_at',
@@ -36,8 +45,6 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         'owner',
     )
     list_editable = (
-        'individual_price',
-        'allow_fans_overpay',
         'is_active',
         'track_number',
     )
@@ -59,13 +66,21 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
                 ),
             },
         ),
-        (
-            'Цены и оплата',
-            {
-                'fields': ('individual_price', 'allow_fans_overpay'),
-            },
-        ),
     )
+    inlines = (ProductInline,)
+
+    # Геттеры для данных из связанного Product
+    @admin.display(description='Цена (индив.)')
+    def get_price(self, obj):
+        if hasattr(obj, 'product') and obj.product:
+            return obj.product.base_price
+        return '-'
+
+    @admin.display(description='Переплата')
+    def get_allow_fans_overpay(self, obj):
+        if hasattr(obj, 'product') and obj.product:
+            return 'Да' if obj.product.allow_fans_overpay else 'Нет'
+        return '-'
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):

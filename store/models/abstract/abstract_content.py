@@ -1,10 +1,15 @@
-from django.contrib.auth import get_user_model
+"""Модуль базовых моделей контента.
+
+Содержит абстрактную модель AbstractContent с общими полями для всех
+типов контента (название, описание, владелец, метки активности и времени).
+Предназначена для наследования моделями Album, Track и другими.
+"""
+
 from django.db import models
 
 from store.constants import MAX_CHAR_LENGTH
+from users.models import ArtistProfile
 from users.models.abstract import ActivatableModel, TimestampModel
-
-User = get_user_model()
 
 
 class AbstractContent(ActivatableModel, TimestampModel):
@@ -14,10 +19,10 @@ class AbstractContent(ActivatableModel, TimestampModel):
     description = models.TextField('Описание', blank=True, default='')
 
     owner = models.ForeignKey(
-        User,
+        ArtistProfile,
         on_delete=models.CASCADE,
-        related_name='products',
-        verbose_name='Владелец',
+        related_name='%(class)s_set',
+        verbose_name='Артист',
     )
 
     class Meta:
