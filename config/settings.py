@@ -13,9 +13,11 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -165,6 +167,8 @@ AUTH_USER_MODEL = 'users.CoreUser'
 
 PHONENUMBER_DEFAULT_REGION = 'RU'
 
+FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://localhost:3000/verify-email')
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -173,6 +177,9 @@ REST_FRAMEWORK = {
         'login': '5/min',
         'refresh': '10/min',
         'verify': '20/minute',
+        'change_password': '5/min',
+        'verify_email': '10/min',
+        'resend_verification_email': '3/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
@@ -188,4 +195,21 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'users': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }

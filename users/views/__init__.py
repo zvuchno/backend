@@ -1,3 +1,9 @@
+from .account import (
+    ChangePasswordView,
+    EmailVerificationView,
+    MeView,
+    ResendVerificationEmailView,
+)
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
 from .jwt import (
@@ -16,4 +22,8 @@ __all__ = [
     'CustomTokenRefreshView',
     'CustomTokenVerifyView',
     'ListenerRegistrationView',
+    'MeView',
+    'ChangePasswordView',
+    'EmailVerificationView',
+    'ResendVerificationEmailView',
 ]
