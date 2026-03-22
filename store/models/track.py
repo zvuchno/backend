@@ -10,10 +10,10 @@ from store.constants import (
     ALLOWED_AUDIO_EXTENSIONS,
     MAX_STR_LENGTH,
 )
-from store.models.abstract import AbstractContent
+from store.models.abstract import BaseContent
 
 
-class Track(AbstractContent):
+class Track(BaseContent):
     """Музыкальный трек в составе альбома."""
 
     album = models.ForeignKey(
@@ -38,20 +38,20 @@ class Track(AbstractContent):
         blank=True,
         help_text='Длительность трека в секундах',
     )
-    track_number = models.PositiveIntegerField(
-        'Номер трека',
+    position = models.PositiveIntegerField(
+        'Порядок',
         null=True,
         blank=True,
-        help_text='Порядок трека в альбоме',
+        help_text='Порядковый номер трека в альбоме',
     )
     lyrics = models.TextField('Текст трека', blank=True, default='')
 
     class Meta:
         verbose_name = 'трек'
         verbose_name_plural = 'треки'
-        ordering = ('album', 'track_number', 'name')
+        ordering = ('album', 'position', 'name')
 
     def __str__(self):
-        if self.track_number is not None:
-            return f'{self.track_number}. {self.name[:MAX_STR_LENGTH]}'
+        if self.position is not None:
+            return f'{self.position}. {self.name[:MAX_STR_LENGTH]}'
         return self.name[:MAX_STR_LENGTH]

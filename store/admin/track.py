@@ -13,7 +13,7 @@ class ProductInline(admin.StackedInline):
     """Инлайн для редактирования полей продукта, связанных с треком."""
 
     model = Product
-    fields = ('base_price', 'allow_fans_overpay')
+    fields = ('allow_overpay',)
     can_delete = False
     verbose_name = 'Торговые настройки трека'
 
@@ -25,10 +25,9 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
     list_display = (
         'name',
         'album',
-        'track_number',
+        'position',
         'is_active',
-        'get_price',
-        'get_allow_fans_overpay',
+        'get_allow_overpay',
     )
 
     search_fields = ('album__name', 'lyrics', 'name')
@@ -37,17 +36,14 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         'created_at',
         'updated_at',
     )
-    ordering = ('album', 'track_number')
+    ordering = ('album', 'position')
     readonly_fields = (
         'formatted_duration',
         'created_at',
         'updated_at',
         'owner',
     )
-    list_editable = (
-        'is_active',
-        'track_number',
-    )
+    list_editable = ('is_active',)
     fieldsets = (
         (
             'Основные данные',
@@ -56,7 +52,6 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
                     'name',
                     'album',
                     'is_active',
-                    'track_number',
                     'audio_file',
                     'formatted_duration',
                     'lyrics',
@@ -69,17 +64,11 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
     )
     inlines = (ProductInline,)
 
-    # Геттеры для данных из связанного Product
-    @admin.display(description='Цена (индив.)')
-    def get_price(self, obj):
-        if hasattr(obj, 'product') and obj.product:
-            return obj.product.base_price
-        return '-'
-
     @admin.display(description='Переплата')
-    def get_allow_fans_overpay(self, obj):
+    def get_allow_overpay(self, obj):
+        """Геттер для отображения поля allow_overpay из связанного Product."""
         if hasattr(obj, 'product') and obj.product:
-            return 'Да' if obj.product.allow_fans_overpay else 'Нет'
+            return 'Да' if obj.product.allow_overpay else 'Нет'
         return '-'
 
     @admin.display(description='Длительность')

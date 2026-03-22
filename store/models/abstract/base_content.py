@@ -1,25 +1,27 @@
 """Модуль базовых моделей контента.
 
-Содержит абстрактную модель AbstractContent с общими полями для всех
+Содержит абстрактную модель BaseContent с общими полями для всех
 типов контента (название, описание, владелец, метки активности и времени).
 Предназначена для наследования моделями Album, Track и другими.
 """
 
+from django.contrib.auth import get_user_model
 from django.db import models
 
 from store.constants import MAX_CHAR_LENGTH
-from users.models import ArtistProfile
 from users.models.abstract import ActivatableModel, TimestampModel
 
+User = get_user_model()
 
-class AbstractContent(ActivatableModel, TimestampModel):
+
+class BaseContent(ActivatableModel, TimestampModel):
     """Абстрактная модель для моделей контента."""
 
     name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
     description = models.TextField('Описание', blank=True, default='')
 
     owner = models.ForeignKey(
-        ArtistProfile,
+        User,
         on_delete=models.CASCADE,
         related_name='%(class)s_set',
         verbose_name='Артист',

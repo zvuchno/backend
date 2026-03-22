@@ -6,18 +6,17 @@
 
 from django.db import models
 
-from .genre import Genre
 from store.constants import MAX_STR_LENGTH
-from store.models.abstract import AbstractContent, VisibilityModel
+from store.models.abstract import BaseContent, VisibilityModel
 from store.validators import validate_file_size
 
 
-class Album(AbstractContent, VisibilityModel):
+class Album(BaseContent, VisibilityModel):
     """Музыкальный альбом."""
 
     release_date = models.DateField('Дата релиза', blank=True, null=True)
     genre = models.ForeignKey(
-        Genre,
+        'store.Genre',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
