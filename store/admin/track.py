@@ -13,7 +13,7 @@ class ProductInline(admin.StackedInline):
     """Инлайн для редактирования полей продукта, связанных с треком."""
 
     model = Product
-    fields = ('allow_overpay',)
+    fields = ('base_price', 'allow_overpay')
     can_delete = False
     verbose_name = 'Торговые настройки трека'
 
@@ -25,9 +25,10 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
     list_display = (
         'name',
         'album',
-        'position',
         'is_active',
+        'get_base_price',
         'get_allow_overpay',
+        'position',
     )
 
     search_fields = ('album__name', 'lyrics', 'name')
@@ -63,6 +64,13 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         ),
     )
     inlines = (ProductInline,)
+
+    @admin.display(description='Цена')
+    def get_base_price(self, obj):
+        """Геттер для отображения поля base_price из связанного Product."""
+        if hasattr(obj, 'product') and obj.product:
+            return obj.product.base_price
+        return '-'
 
     @admin.display(description='Переплата')
     def get_allow_overpay(self, obj):

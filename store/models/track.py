@@ -1,7 +1,4 @@
-"""Модель музыкального трека, входящего в состав альбома.
-
-Связан с альбомом и пользователем-артистом.
-"""
+"""Модель музыкального трека, входящего в состав альбома."""
 
 from django.core.validators import FileExtensionValidator
 from django.db import models
@@ -14,7 +11,10 @@ from store.models.abstract import BaseContent
 
 
 class Track(BaseContent):
-    """Музыкальный трек в составе альбома."""
+    """Музыкальный трек в составе альбома.
+
+    Связан с альбомом и пользователем-владельцем.
+    """
 
     album = models.ForeignKey(
         'store.Album',

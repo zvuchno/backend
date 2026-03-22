@@ -4,9 +4,17 @@
 как точка входа для коммерческой логики.
 """
 
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
+
+from store.constants import (
+    MAX_PRICE_DIGITS,
+    PRICE_DECIMAL_PLACES,
+)
 
 
 class Product(models.Model):
@@ -20,6 +28,14 @@ class Product(models.Model):
     3. Целостность на уровне БД: CheckConstraint гарантирует, что товар
     не может быть привязан к двум объектам одновременно и что поле
     'product_type' всегда соответствует заполненной связи.
+    4. Связь carriers = ManyToManyField(through=ProductVariant) позволяет
+    обращаться к носителям альбома напрямую через album.carriers.all().
+    - Упрощённый доступ к носителям без дополнительных циклов и фильтров.
+    - Вместо
+    queryset = Album.objects.prefetch_related('product__variants__carrier')
+    можно использовать queryset = Album.objects.prefetch_related('carriers')
+    для оптимизации запросов, благодаря чему сериализатор не создаёт лишних
+    запросов к базе при обходе носителей в цикле (0 дополнительных запросов).
     """
 
     class ProductType(models.TextChoices):
@@ -28,6 +44,14 @@ class Product(models.Model):
         MERCH = 'merch', 'Merch'
 
     product_type = models.CharField(max_length=20, choices=ProductType.choices)
+    base_price = models.DecimalField(
+        'Цена',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=PRICE_DECIMAL_PLACES,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        default=Decimal('0.00'),
+        help_text='Цена, руб.',
+    )
     allow_overpay = models.BooleanField(
         'Разрешить платить больше',
         default=False,

@@ -68,8 +68,40 @@ class ProductVariant(models.Model):
             models.UniqueConstraint(
                 fields=['product', 'carrier'],
                 name='unique_product_carrier',
+                # Только если носитель указан
+                condition=models.Q(carrier__isnull=False),
             ),
         ]
 
+    @property
+    def variant_name(self):
+        """Генерирует информативное имя варианта продукта."""
+        parts = []
+        # Тип продукта
+        p_type = getattr(self.product, 'product_type', None)
+        if p_type:
+            parts.append(str(p_type))
+        # Название
+        name = None
+        if hasattr(self.product, 'album') and self.product.album:
+            name = self.product.album.name
+        elif hasattr(self.product, 'track') and self.product.track:
+            name = self.product.track.name
+        elif hasattr(self.product, 'merch') and self.product.merch:
+            name = self.product.merch.name
+        if name:
+            parts.append(f'"{name}"')
+        # Носитель
+        if self.carrier:
+            parts.append(f'[{self.carrier.name}]')
+        # Характеристики
+        if self.characteristic:
+            char_values = ', '.join(
+                str(v) for v in self.characteristic.values() if v
+            )
+            if char_values:
+                parts.append(f'({char_values})')
+        return ' '.join(parts)
+
     def __str__(self):
-        return f'SKU: {self.sku} [{self.product.product_type}]'
+        return f'SKU: {self.sku} | {self.variant_name}'
