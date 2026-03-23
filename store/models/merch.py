@@ -10,8 +10,8 @@ from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
-    VISIBILITY_MAX_LENGTH,
 )
+from store.models.abstract.visibility_model import VisibilityModel
 from store.models.album import Album
 from store.models.category import Category
 from store.models.kind import Kind
@@ -20,13 +20,8 @@ from users.models.abstract import ActivatableModel, TimestampModel
 User = get_user_model()
 
 
-class Merch(ActivatableModel, TimestampModel):
+class Merch(ActivatableModel, TimestampModel, VisibilityModel):
     """Модель мерча."""
-
-    class Visibility(models.TextChoices):
-        PUBLIC = 'public', 'Опубликовано'
-        LINK_ONLY = 'link_only', 'Доступно по ссылке'
-        HIDDEN = 'hidden', 'Скрыто'
 
     category = models.ForeignKey(
         Category,
@@ -71,12 +66,6 @@ class Merch(ActivatableModel, TimestampModel):
         User,
         on_delete=models.CASCADE,
         verbose_name='Автор',
-    )
-    visibility = models.CharField(
-        'Приватность',
-        choices=Visibility.choices,
-        default=Visibility.PUBLIC,
-        max_length=VISIBILITY_MAX_LENGTH,
     )
     characteristic = models.JSONField(
         default=dict,
