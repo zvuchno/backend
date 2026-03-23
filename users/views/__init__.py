@@ -4,6 +4,12 @@ from .account import (
     MeView,
     ResendVerificationEmailView,
 )
+from .artist_profile import (
+    ArtistCoverUpdateView,
+    ArtistListView,
+    ArtistMeView,
+    ArtistPublicView,
+)
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
 from .jwt import (
@@ -15,6 +21,10 @@ from .jwt import (
 from .listener_registration import ListenerRegistrationView
 
 __all__ = [
+    'ArtistCoverUpdateView',
+    'ArtistListView',
+    'ArtistMeView',
+    'ArtistPublicView',
     'ArtistRegistrationView',
     'BaseRegistrationView',
     'CustomLogoutView',
