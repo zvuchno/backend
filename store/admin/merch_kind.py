@@ -5,10 +5,10 @@
 
 from django.contrib import admin
 
-from store.models import Kind
+from store.models import MerchKind
 
 
-@admin.register(Kind)
+@admin.register(MerchKind)
 class KindAdmin(admin.ModelAdmin):
     """Админка типов мерча."""
 

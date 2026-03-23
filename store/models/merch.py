@@ -14,7 +14,7 @@ from store.constants import (
 )
 from store.models.album import Album
 from store.models.category import Category
-from store.models.kind import Kind
+from store.models.merch_kind import MerchKind
 from users.models.abstract import ActivatableModel, TimestampModel
 
 User = get_user_model()
@@ -55,7 +55,7 @@ class Merch(ActivatableModel, TimestampModel):
         default=DEFAULT_QUANTITY,
     )
     kind = models.ForeignKey(
-        Kind,
+        MerchKind,
         on_delete=models.SET_NULL,
         verbose_name='Тип',
         related_name='merch',

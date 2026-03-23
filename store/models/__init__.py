@@ -3,8 +3,8 @@ from .album_merch import AlbumMerch
 from .category import Category
 from .genre import Genre
 from .image import Image
-from .kind import Kind
 from .merch import Merch
+from .merch_kind import MerchKind
 from .track import Track
 
 __all__ = [
@@ -13,7 +13,7 @@ __all__ = [
     'Category',
     'Genre',
     'Image',
-    'Kind',
+    'MerchKind',
     'Merch',
     'Track',
 ]
