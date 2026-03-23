@@ -26,7 +26,7 @@ urlpatterns = [
         name='artist_list',
     ),
     path(
-        'id/<slug:slug>/',
+        'profile/<slug:slug>/',
         ArtistPublicView.as_view(),
         name='artist_public',
     ),

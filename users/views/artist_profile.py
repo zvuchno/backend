@@ -44,6 +44,7 @@ class ArtistMeView(RetrieveUpdateAPIView):
 
     # TODO добавить пермишн на владельца
     permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'patch']
 
     def get_object(self):
         """Возвращает профиль артиста текущего пользователя."""
@@ -72,6 +73,7 @@ class ArtistPublicView(RetrieveAPIView):
     lookup_field = 'slug'
 
 
+# TODO пагинация, фильтрация.
 @extend_schema(tags=['Профиль артиста'], auth=[])
 class ArtistListView(ListAPIView):
     """Публичный список артистов."""
