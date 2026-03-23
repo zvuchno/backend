@@ -54,7 +54,6 @@ class MerchAdmin(admin.ModelAdmin):
         'name',
         'price',
         'quantity',
-        'category',
         'kind',
         'owner',
         'created_at',
@@ -64,17 +63,14 @@ class MerchAdmin(admin.ModelAdmin):
         'price',
         'quantity',
         'kind',
-        'category',
     )
     list_filter = (
         'created_at',
         'is_active',
         'kind',
-        'category',
     )
     search_fields = (
         'name',
-        'category__name',
         'kind__name',
         'owner__username',
     )
@@ -88,7 +84,6 @@ class MerchAdmin(admin.ModelAdmin):
                 'fields': (
                     'name',
                     'quantity',
-                    'category',
                     'kind',
                     'owner',
                     'description',
