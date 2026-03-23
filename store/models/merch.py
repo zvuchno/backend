@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal  # noqa: I001
 
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
@@ -13,7 +13,6 @@ from store.constants import (
     VISIBILITY_MAX_LENGTH,
 )
 from store.models.album import Album
-from store.models.category import Category
 from store.models.kind import Kind
 from users.models.abstract import ActivatableModel, TimestampModel
 
@@ -28,13 +27,6 @@ class Merch(ActivatableModel, TimestampModel):
         LINK_ONLY = 'link_only', 'Доступно по ссылке'
         HIDDEN = 'hidden', 'Скрыто'
 
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.SET_NULL,
-        related_name='merch',
-        verbose_name='Категория',
-        null=True,
-    )
     name = models.CharField(
         'Название',
         max_length=MAX_CHAR_LENGTH,
