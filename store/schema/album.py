@@ -6,7 +6,10 @@ CRUD-операций в Swagger/ReDoc.
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from store.serializers import AlbumReadSerializer, AlbumWriteSerializer
+from store.serializers import (
+    AlbumReadDetailSerializer,
+    AlbumWriteSerializer,
+)
 
 album_schema = extend_schema_view(
     list=extend_schema(
@@ -23,19 +26,19 @@ album_schema = extend_schema_view(
         summary='Создать альбом',
         tags=['Album'],
         description='Создаёт новый альбом.',
-        responses={201: AlbumReadSerializer},
+        responses={201: AlbumReadDetailSerializer},
     ),
     update=extend_schema(
         summary='Полностью обновить альбом',
         tags=['Album'],
         request=AlbumWriteSerializer,
-        responses=AlbumReadSerializer,
+        responses={200: AlbumReadDetailSerializer},
     ),
     partial_update=extend_schema(
         summary='Частично обновить альбом',
         tags=['Album'],
         request=AlbumWriteSerializer,
-        responses={200: AlbumReadSerializer},
+        responses={200: AlbumReadDetailSerializer},
     ),
     destroy=extend_schema(
         summary='Удалить альбом',
