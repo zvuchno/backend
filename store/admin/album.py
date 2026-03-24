@@ -29,17 +29,18 @@ class TrackInlineForm(forms.ModelForm):
     """Форма для TrackInline с редактированием цены из связанного Product.
 
     Особенности:
-    - Добавляет виртуальное поле 'base_price', которого нет в модели Track.
-    Оно отображает и редактирует 'Product.base_price'.
+    - Добавляет виртуальное поле 'price', которого нет в модели Track.
+    Оно отображает и редактирует 'Product.price'.
     - Цепочка save_m2m сохраняет существующую логику других inline-форм.
     - Использует атомарную транзакцию при сохранении цены.
     """
 
-    base_price = forms.DecimalField(
+    price = forms.DecimalField(
         label='Цена',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
         validators=[MinValueValidator(Decimal('0.00'))],
+        initial=Decimal('0.00'),
         required=False,
     )
 
@@ -60,7 +61,7 @@ class TrackInlineForm(forms.ModelForm):
 
         if product:
             # Если Product существует, подставляем его цену в initial
-            self.fields['base_price'].initial = product.base_price
+            self.fields['price'].initial = product.price
 
     def save(self, commit=True):
         """Сохраняет Track и синхронизирует цену с Product.
@@ -75,16 +76,16 @@ class TrackInlineForm(forms.ModelForm):
         # Сохраняем Track (может быть commit=False)
         instance = super().save(commit=commit)
         # Берём цену из формы, 0.00 если поле пустое
-        price = self.cleaned_data.get('base_price') or Decimal('0.00')
+        price = self.cleaned_data.get('price') or Decimal('0.00')
 
         @transaction.atomic
         def sync_price() -> None:
             """Функция синхронизации цены с Product."""
             product, _ = Product.objects.get_or_create(track=instance)
-            if price is not None and product.base_price != price:
-                product.base_price = price
-                # Сохраняем только поле base_price
-                product.save(update_fields=['base_price'])
+            if price is not None and product.price != price:
+                product.price = price
+                # Сохраняем только поле price
+                product.save(update_fields=['price'])
 
         if commit:
             # Для обычного сохранения вызываем сразу
@@ -115,7 +116,7 @@ class TrackInline(NestedTabularInline):
         'audio_file',
         'duration',
         'is_active',
-        'base_price',
+        'price',
     )
     readonly_fields = ('duration',)
     extra = 0  # Чтобы Nested-сортировка не требовала заполнять пустое поле
@@ -133,13 +134,9 @@ class ProductVariantInline(NestedTabularInline):
     """Инлайн для редактирования вариантов продукта в админке."""
 
     model = ProductVariant
-    fields = ('carrier', 'price', 'sku', 'stock')
-    extra = 1
-
-    def get_queryset(self, request):
-        """Подтянуть связанные с ProductVariant поля."""
-        qs = super().get_queryset(request)
-        return qs.select_related('carrier')
+    fields = ('sku', 'stock', 'characteristic')
+    extra = 0
+    readonly_fields = ('sku',)
 
 
 class ProductInline(NestedStackedInline):
@@ -147,7 +144,7 @@ class ProductInline(NestedStackedInline):
 
     model = Product
     inlines = (ProductVariantInline,)
-    fields = ('base_price', 'allow_overpay')
+    fields = ('price', 'allow_overpay')
     can_delete = False
 
     def has_delete_permission(self, request, obj=None):
@@ -175,7 +172,7 @@ class AlbumAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
         'is_single',
         'release_date',
         'is_published',
-        'get_base_price',
+        'get_price',
         'get_allow_overpay',
         'visibility',
         'is_active',
@@ -218,10 +215,10 @@ class AlbumAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
     inlines = (ProductInline, TrackInline)
 
     @admin.display(description='Цена')
-    def get_base_price(self, obj):
-        """Геттер для отображения поля base_price из связанного Product."""
+    def get_price(self, obj):
+        """Геттер для отображения поля price из связанного Product."""
         if hasattr(obj, 'product') and obj.product:
-            return obj.product.base_price
+            return obj.product.price
         return '-'
 
     @admin.display(description='Переплата')

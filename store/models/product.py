@@ -28,14 +28,6 @@ class Product(models.Model):
     3. Целостность на уровне БД: CheckConstraint гарантирует, что товар
     не может быть привязан к двум объектам одновременно и что поле
     'product_type' всегда соответствует заполненной связи.
-    4. Связь carriers = ManyToManyField(through=ProductVariant) позволяет
-    обращаться к носителям альбома напрямую через album.carriers.all().
-    - Упрощённый доступ к носителям без дополнительных циклов и фильтров.
-    - Вместо
-    queryset = Album.objects.prefetch_related('product__variants__carrier')
-    можно использовать queryset = Album.objects.prefetch_related('carriers')
-    для оптимизации запросов, благодаря чему сериализатор не создаёт лишних
-    запросов к базе при обходе носителей в цикле (0 дополнительных запросов).
     """
 
     class ProductType(models.TextChoices):
@@ -44,7 +36,7 @@ class Product(models.Model):
         MERCH = 'merch', 'Merch'
 
     product_type = models.CharField(max_length=20, choices=ProductType.choices)
-    base_price = models.DecimalField(
+    price = models.DecimalField(
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
@@ -77,11 +69,6 @@ class Product(models.Model):
         null=True,
         blank=True,
         related_name='product',
-    )
-    carriers = models.ManyToManyField(
-        'store.Carrier',
-        through='store.ProductVariant',
-        related_name='products',
     )
 
     def determine_product_type(self):
@@ -134,3 +121,9 @@ class Product(models.Model):
                 name='%(app_label)s_%(class)s_integrity',
             ),
         ]
+
+    def __str__(self):
+        content_object = self.album or self.track or self.merch
+        if not content_object:
+            return f'Новый товар ({self.get_product_type_display()})'
+        return f'{self.get_product_type_display()}: {content_object}'

@@ -5,7 +5,6 @@
 """
 
 from .album import AlbumAdmin
-from .carrier import Carrier
 from .category import CategoryAdmin
 from .genre import GenreAdmin
 from .kind import KindAdmin
@@ -14,7 +13,6 @@ from .track import TrackAdmin
 
 __all__ = [
     'AlbumAdmin',
-    'Carrier',
     'CategoryAdmin',
     'GenreAdmin',
     'KindAdmin',

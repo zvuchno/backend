@@ -1,16 +1,13 @@
 """Модуль описания торговых предложений (SKU) для интернет-магазина."""
 
-from decimal import Decimal
+import uuid
 
-from django.core.validators import MinValueValidator
 from django.db import models
 
 from store.constants import (
     MAX_CHAR_LENGTH,
-    MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
 )
-from store.models import Carrier, Product
+from store.models import Product
 
 
 class ProductVariant(models.Model):
@@ -28,26 +25,11 @@ class ProductVariant(models.Model):
         related_name='variants',
         verbose_name='Вариант продукта',
     )
-    carrier = models.ForeignKey(
-        Carrier,
-        on_delete=models.PROTECT,
-        related_name='variants',
-        verbose_name='Носитель',
-        null=True,
-        blank=True,
-    )
     sku = models.CharField(
         'SKU',
         max_length=MAX_CHAR_LENGTH,
         unique=True,
-    )
-    price = models.DecimalField(
-        'Цена',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        validators=[MinValueValidator(Decimal('0.00'))],
-        default=Decimal('0.00'),
-        help_text='Цена, руб.',
+        blank=True,
     )
     stock = models.PositiveIntegerField(
         'Доступно',
@@ -60,18 +42,37 @@ class ProductVariant(models.Model):
         blank=True,
     )
 
+    def generate_sku(self):
+        """Генерирует уникальный SKU на основе типа продукта и его ID.
+
+        Пример: ALB-12-V1 (Альбом №12, Вариант 1).
+        """
+        if not self.product:
+            return f'TMP-{uuid.uuid4().hex[:6].upper()}'
+        p_type = self.product.product_type[:3].upper()  # ALB, TRA, MER
+        p_id = (
+            self.product.album_id
+            or self.product.track_id
+            or self.product.merch_id
+        )
+        new_sku = f'{p_type}-{p_id}-V{self.id}'
+        # Проверка на уникальность (на случай коллизий или ручного ввода)
+        if ProductVariant.objects.filter(sku=new_sku).exists():
+            return f'{new_sku}-{uuid.uuid4().hex[:2].upper()}'
+        return new_sku
+
+    def save(self, *args, **kwargs):
+        """Сохраняет вариант и вызывет generate_sku после получения ID."""
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and not self.sku:
+            self.sku = self.generate_sku()
+            super().save(update_fields=['sku'])
+
     class Meta:
         verbose_name = 'вариант продукта'
         verbose_name_plural = 'варианты продукта'
         ordering = ('id',)
-        constraints = [
-            models.UniqueConstraint(
-                fields=['product', 'carrier'],
-                name='unique_product_carrier',
-                # Только если носитель указан
-                condition=models.Q(carrier__isnull=False),
-            ),
-        ]
 
     @property
     def variant_name(self):
@@ -91,9 +92,6 @@ class ProductVariant(models.Model):
             name = self.product.merch.name
         if name:
             parts.append(f'"{name}"')
-        # Носитель
-        if self.carrier:
-            parts.append(f'[{self.carrier.name}]')
         # Характеристики
         if self.characteristic:
             char_values = ', '.join(
