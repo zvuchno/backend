@@ -29,7 +29,7 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='artist_profile',
-        verbose_name='Профиль артиста',
+        verbose_name='Учетная запись',
     )
     name = models.CharField(
         'Имя артиста',

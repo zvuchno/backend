@@ -13,17 +13,20 @@ class ListenerProfile(ActivatableModel, TimestampModel):
 
     Связан с пользователем отношением один к одному и хранит
     дополнительные данные слушателя. В текущей реализации
-    профиль используется для хранения уникального номера телефона.
+    содержит отображаемое имя пользователя.
     """
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='listener_profile',
+        verbose_name='Учетная запись',
     )
     full_name = models.CharField(
         'Имя и фамилия',
         max_length=FULL_NAME_FIELD_MAX_LENGTH,
+        blank=True,
+        default='',
     )
 
     class Meta:

@@ -22,7 +22,7 @@ class CoreUser(AbstractUser):
     )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = ['username', 'phone']
 
     is_email_verified = models.BooleanField(
         'Email подтвержден',

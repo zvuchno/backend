@@ -25,6 +25,7 @@ class ListenerProfileInline(admin.StackedInline):
     can_delete = False
     fk_name = 'user'
     extra = 0
+    fields = ('full_name',)
 
 
 class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
@@ -41,7 +42,6 @@ class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
         'cover',
         'image_preview',
         'city',
-        'phone',
         'url',
         'is_active',
     )
@@ -80,7 +80,13 @@ class CoreUserAdmin(UserAdmin):
         (
             'Данные для аутентификации',
             {
-                'fields': ('email', 'username', 'password'),
+                'fields': ('email', 'username', 'phone', 'password'),
+            },
+        ),
+        (
+            'Подтверждение контактов',
+            {
+                'fields': ('is_email_verified', 'is_phone_verified'),
             },
         ),
         (
@@ -110,6 +116,7 @@ class CoreUserAdmin(UserAdmin):
                 'fields': (
                     'email',
                     'username',
+                    'phone',
                     'password1',
                     'password2',
                     'is_active',

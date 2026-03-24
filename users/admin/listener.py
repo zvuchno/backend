@@ -31,4 +31,4 @@ class ListenerProfileAdmin(admin.ModelAdmin):
         'user__email',
     )
     ordering = ('-created_at',)
-    autocomplete_fields = ('user', 'full_name')
+    autocomplete_fields = ('user',)

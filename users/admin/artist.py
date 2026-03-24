@@ -95,7 +95,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'user__email',
     )
     ordering = ('-created_at',)
-    autocomplete_fields = ('user', 'name')
+    autocomplete_fields = ('user',)
 
     def get_fieldsets(self, request, obj=None):
         """В интерфейсе добавления артиста скрывает created_at, updated_at."""
@@ -128,10 +128,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             (
                 'Контакты и ссылки',
                 {
-                    'fields': (
-                        'phone',
-                        'url',
-                    ),
+                    'fields': ('url',),
                 },
             ),
             (
