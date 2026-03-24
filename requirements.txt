@@ -8,6 +8,7 @@ defusedxml==0.7.1
 Django==5.2.12
 django-allauth==65.14.3
 django-filter==25.2
+django-nested-admin==4.1.6
 django-phonenumber-field==8.4.0
 django-stubs==5.2.9
 django-stubs-ext==5.2.9
