@@ -19,6 +19,9 @@ class CoreUser(AbstractUser):
         'Номер телефона',
         help_text='Номер телефона',
         unique=True,
+        # TODO чтобы не дропать локальную бд при миграции. Потом обязательное.
+        null=True,
+        blank=True,
     )
 
     USERNAME_FIELD = 'email'
