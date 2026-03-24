@@ -3,7 +3,6 @@
 from django.conf import settings
 from django.core.validators import MaxLengthValidator, MinLengthValidator
 from django.db import models
-from phonenumber_field.modelfields import PhoneNumberField
 from slugify import slugify
 
 from .abstract import ActivatableModel, TimestampModel
@@ -26,7 +25,7 @@ class ArtistProfile(ActivatableModel, TimestampModel):
     контактную информацию, город и обложку профиля.
     """
 
-    owner = models.OneToOneField(
+    user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='artist_profile',
@@ -43,7 +42,6 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         blank=True,
         max_length=ARTIST_NAME_FIELD_MAX_LENGTH,
     )
-    phone = PhoneNumberField('Номер телефона', blank=True)
     city = models.CharField(
         'Город',
         max_length=CITY_FIELD_MAX_LENGTH,
