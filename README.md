@@ -1,3 +1,6 @@
+[![Main Zvuchno workflow](https://github.com/zvuchno/backend/actions/workflows/main.yml/badge.svg)](https://github.com/zvuchno/backend/actions/workflows/main.yml)
+[![Website](https://img.shields.io/badge/Visit-Live%20Site-brightgreen)](https://zvuchno-dev.duckdns.org/)
+
 # Звучно — Backend
 
 Backend API проекта **Звучно**.
@@ -252,8 +255,8 @@ ruff format .
 ```
 DOCKER_USERNAME  # Логин Docker Hub
 DOCKER_PASSWORD  # Пароль или access token Docker Hub
-HOST  # IP или домен сервера
-USER  # Пользователь на сервере
+SSH_HOST  # IP или домен сервера
+SSH_USER  # Пользователь на сервере
 SSH_KEY  # Приватный SSH ключ
 SSH_PASSPHRASE  # Пароль от ключа (если он есть)
 ```

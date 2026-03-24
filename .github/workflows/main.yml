@@ -1,6 +1,9 @@
 name: Main Zvuchno workflow
 
 on:
+  push:
+    branches:
+      - feat/60-github-actions-deploy
   workflow_dispatch:
 
 jobs:
@@ -21,7 +24,7 @@ jobs:
       - name: Push to DockerHub
         uses: docker/build-push-action@v5
         with:
-          context: ./backend/
+          context: ./
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_backend:latest
 
@@ -56,19 +59,17 @@ jobs:
     - name: Copy docker-compose.production.yml via ssh
       uses: appleboy/scp-action@master
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USER }}
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
         source: "docker-compose.production.yml"
         target: "zvuchno"
     - name: Executing remote ssh commands to deploy
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USER }}
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
-        passphrase: ${{ secrets.SSH_PASSPHRASE }}
         script: |
           cd zvuchno
           # Проверяем наличие UID/GID в .env, если их нет — записываем
