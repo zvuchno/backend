@@ -4,6 +4,8 @@
 """
 
 from django.contrib import admin
+from django.urls import reverse
+from django.utils.html import format_html
 
 from users.admin.mixins import ImagePreviewMixin
 from users.models import ArtistContact, ArtistProfile, ArtistSocial
@@ -83,6 +85,8 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'created_at',
     )
     readonly_fields = (
+        'account_phone',
+        'user_link',
         'image_preview',
         'created_at',
         'updated_at',
@@ -97,13 +101,22 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     ordering = ('-created_at',)
     autocomplete_fields = ('user',)
 
+    @admin.display(description='Учетная запись')
+    def user_link(self, obj):
+        url = reverse('admin:users_coreuser_change', args=[obj.user_id])
+        return format_html('<a href="{}">{}</a>', url, obj.user.email)
+
+    @admin.display(description='Телефон учетной записи')
+    def account_phone(self, obj):
+        return obj.user.phone or '—'
+
     def get_fieldsets(self, request, obj=None):
         """В интерфейсе добавления артиста скрывает created_at, updated_at."""
         fieldsets = [
             (
                 'Пользователь',
                 {
-                    'fields': ('user',),
+                    'fields': ('user', 'user_link'),
                 },
             ),
             (
@@ -128,7 +141,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             (
                 'Контакты и ссылки',
                 {
-                    'fields': ('url',),
+                    'fields': ('url', 'account_phone'),
                 },
             ),
             (
