@@ -1,6 +1,5 @@
 """ViewSet для управления альбомами.
 
-Предоставляет полный цикл CRUD-операций для модели Album.
 TODO: Пагинация, фильтрация, пермишены.
 """
 
@@ -23,9 +22,10 @@ class AlbumViewSet(viewsets.ModelViewSet):
     """API для работы с альбомами."""
 
     permission_classes = (IsAuthenticatedOrReadOnly,)
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_serializer_class(self):
-        if self.action in ('create', 'update', 'partial_update'):
+        if self.action in ('create', 'partial_update'):
             return AlbumWriteSerializer
         if self.action == 'retrieve':
             return AlbumReadDetailSerializer
@@ -45,17 +45,9 @@ class AlbumViewSet(viewsets.ModelViewSet):
                 filters |= Q(owner=user)
             queryset = Album.objects.filter(filters)
 
-        # Оптимизация (N+1 problem)
-        if self.action == 'list':
-            # Для списка подтягиваем основную карточку продукта
-            return queryset.select_related('product', 'genre')
-        if self.action == 'retrieve':
-            # Для деталки тянем всё дерево связей:
-            # Альбом -> Продукт -> Варианты -> Носитель
-            return queryset.select_related(
-                'product',
-                'genre',
-            ).prefetch_related('product__variants__carrier')
+        if self.action in ('list', 'retrieve'):
+            queryset = queryset.select_related('product', 'genre')
+
         return queryset
 
     def create(self, request, *args, **kwargs):

@@ -28,12 +28,6 @@ album_schema = extend_schema_view(
         description='Создаёт новый альбом.',
         responses={201: AlbumReadDetailSerializer},
     ),
-    update=extend_schema(
-        summary='Полностью обновить альбом',
-        tags=['Album'],
-        request=AlbumWriteSerializer,
-        responses={200: AlbumReadDetailSerializer},
-    ),
     partial_update=extend_schema(
         summary='Частично обновить альбом',
         tags=['Album'],
