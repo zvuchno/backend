@@ -1,6 +1,7 @@
 """Базовые сериализаторы регистрации пользователей."""
 
 from djoser.serializers import UserCreateSerializer
+from rest_framework import serializers
 
 
 class BaseRegistrationSerializer(UserCreateSerializer):
@@ -11,6 +12,7 @@ class BaseRegistrationSerializer(UserCreateSerializer):
     используется при создании связанного профиля роли.
     """
 
+    phone = serializers.CharField(required=True, allow_blank=False)
     extra_field_name = None
 
     def validate(self, attrs):
