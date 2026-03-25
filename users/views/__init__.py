@@ -1,5 +1,6 @@
 from .account import (
     ChangePasswordView,
+    ChangePhoneView,
     EmailVerificationView,
     MeView,
     ResendVerificationEmailView,
@@ -23,6 +24,7 @@ __all__ = [
     'CustomTokenVerifyView',
     'ListenerRegistrationView',
     'MeView',
+    'ChangePhoneView',
     'ChangePasswordView',
     'EmailVerificationView',
     'ResendVerificationEmailView',

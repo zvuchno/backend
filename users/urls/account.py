@@ -4,11 +4,11 @@ from django.urls import path
 
 from users.views import (
     ChangePasswordView,
+    ChangePhoneView,
     EmailVerificationView,
     MeView,
     ResendVerificationEmailView,
 )
-from users.views.account import ChangePhoneView
 
 urlpatterns = [
     path('me/', MeView.as_view(), name='me'),
