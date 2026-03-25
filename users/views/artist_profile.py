@@ -49,7 +49,12 @@ class ArtistMeView(RetrieveUpdateAPIView):
     def get_object(self):
         """Возвращает профиль артиста текущего пользователя."""
         try:
-            return self.request.user.artist_profile
+            return (
+                ArtistProfile.objects
+                .select_related('user')
+                .prefetch_related('contacts', 'socials')
+                .get(user=self.request.user)
+            )
         except ArtistProfile.DoesNotExist:
             raise Http404('Профиль артиста не найден.')
 

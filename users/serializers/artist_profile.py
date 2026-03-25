@@ -1,6 +1,7 @@
 """Сериализаторы профиля артиста."""
 
 from django.db import transaction
+from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from users.models import ArtistContact, ArtistProfile, ArtistSocial
@@ -8,6 +9,8 @@ from users.models import ArtistContact, ArtistProfile, ArtistSocial
 
 class ArtistCoverUpdateSerializer(serializers.ModelSerializer):
     """Сериализатор обновления обложки артиста."""
+
+    id = serializers.IntegerField(required=False)
 
     class Meta:
         model = ArtistProfile
@@ -17,9 +20,11 @@ class ArtistCoverUpdateSerializer(serializers.ModelSerializer):
 class ArtistContactSerializer(serializers.ModelSerializer):
     """Сериализатор контактных данных артиста."""
 
+    id = serializers.IntegerField(required=False)
+
     class Meta:
         model = ArtistContact
-        fields = ('label', 'value')
+        fields = ('id', 'label', 'value')
 
 
 class ArtistSocialSerializer(serializers.ModelSerializer):
@@ -27,7 +32,7 @@ class ArtistSocialSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ArtistSocial
-        fields = ('label', 'value')
+        fields = ('id', 'label', 'value')
 
 
 class ArtistPublicShortSerializer(serializers.ModelSerializer):
@@ -61,28 +66,27 @@ class ArtistPublicSerializer(ArtistPublicShortSerializer):
 class ArtistMeSerializer(ArtistPublicSerializer):
     """Сериализатор профиля текущего артиста."""
 
+    phone = PhoneNumberField(
+        label='Телефон',
+        source='user.phone',
+        read_only=True,
+    )
+
     username = serializers.ReadOnlyField(
         label='Имя пользователя',
-        source='owner.username',
+        source='user.username',
     )
     email = serializers.ReadOnlyField(
         label='Email',
-        source='owner.email',
+        source='user.email',
     )
 
     class Meta(ArtistPublicSerializer.Meta):
         fields = (
             'username',
             'email',
-            'name',
-            'description',
-            'cover',
-            'city',
-            'url',
             'phone',
-            'contacts',
-            'socials',
-        )
+        ) + ArtistPublicSerializer.Meta.fields
 
 
 class ArtistMeUpdateSerializer(serializers.ModelSerializer):
@@ -91,9 +95,41 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
     contacts = ArtistContactSerializer(many=True, required=False)
     socials = ArtistSocialSerializer(many=True, required=False)
 
+    @staticmethod
+    def _sync_nested_items(instance, items_data, model, related_name) -> None:
+        """Синхронизирует состав связанных объектов по id.
+
+        Новые создает, отсутствующие в запросе удаляет.
+        """
+        manager = getattr(instance, related_name)
+        existing_items = {item.id: item for item in manager.all()}
+        received_ids = set()
+        new_items = []
+
+        for item_data in items_data:
+            item_id = item_data.get('id')
+            if item_id is None:
+                new_items.append(model(artist=instance, **item_data))
+                continue
+
+            item = existing_items.get(item_id)
+            if item is None:
+                raise serializers.ValidationError({
+                    related_name: (
+                        f'Запись с id={item_id} не найдена '
+                        'или не принадлежит артисту.'
+                    ),
+                })
+            received_ids.add(item_id)
+        if new_items:
+            model.objects.bulk_create(new_items)
+        ids_for_delete = set(existing_items.keys()) - received_ids
+        if ids_for_delete:
+            manager.filter(id__in=ids_for_delete).delete()
+
     @transaction.atomic
     def update(self, instance, validated_data):
-        """Обновляет артиста и заменяет связанные контакты и соцсети."""
+        """Обновляет профиль артиста и синхронизирует контакты и соцсети."""
         contacts_data = validated_data.pop('contacts', None)
         socials_data = validated_data.pop('socials', None)
 
@@ -102,19 +138,19 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
         instance.save()
 
         if contacts_data is not None:
-            instance.contacts.all().delete()
-            contacts = [
-                ArtistContact(artist=instance, **contact_data)
-                for contact_data in contacts_data
-            ]
-            ArtistContact.objects.bulk_create(contacts)
+            self._sync_nested_items(
+                instance,
+                contacts_data,
+                ArtistContact,
+                'contacts',
+            )
         if socials_data is not None:
-            instance.socials.all().delete()
-            socials = [
-                ArtistSocial(artist=instance, **social_data)
-                for social_data in socials_data
-            ]
-            ArtistSocial.objects.bulk_create(socials)
+            self._sync_nested_items(
+                instance,
+                socials_data,
+                ArtistSocial,
+                'socials',
+            )
         return instance
 
     class Meta:
@@ -124,7 +160,6 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
             'description',
             'city',
             'url',
-            'phone',
             'socials',
             'contacts',
         )
