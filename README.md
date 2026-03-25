@@ -127,17 +127,10 @@ http://127.0.0.1:8000/admin
 
 Этот метод запускает полную связку: Django + PostgreSQL + Gunicorn + Nginx.
 
-Подготовьте окружение:
-Создайте файл .env в корневой папке проекта на основе примера:
-```
-DEBUG=False
-USE_SQLITE=False
-POSTGRES_DB=zvuchno_db
-POSTGRES_USER=admin
-POSTGRES_PASSWORD=db%77&htc85
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-```
+**Подготовьте окружение:**
+
+Создайте файл .env в корневой папке проекта на основе примера: env.example
+
 Соберите и запустите контейнеры:
 ```
 docker compose up --build
@@ -263,6 +256,10 @@ SSH_PASSPHRASE  # Пароль от ключа (если он есть)
 
 ## Как запустить деплой через GitHub Actions
 
+> [!NOTE]
+> При пуше в ветку 'main' и 'develop' деплой запусается автоматически
+
+### Вручную:
 - Перейдите во вкладку Actions в репозитории
 - В списке workflows выберите Main Zvuchno workflow
 - Нажмите кнопку Run workflow

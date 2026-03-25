@@ -1,10 +1,12 @@
 name: Main Zvuchno workflow
 
 on:
+  workflow_dispatch:
   push:
     branches:
+      - main
+      - develop
       - feat/60-github-actions-deploy
-  workflow_dispatch:
 
 jobs:
 
@@ -79,6 +81,8 @@ jobs:
           # Проверяем наличие UID/GID в .env, если их нет — записываем
           grep -qq "^UID=" .env || echo "UID=$(id -u)" >> .env
           grep -qq "^GID=" .env || echo "GID=$(id -g)" >> .env
+          mkdir -p staticfiles media
+          chmod 775 staticfiles media
           docker compose -f docker-compose.production.yml pull
           docker compose -f docker-compose.production.yml down
           docker compose -f docker-compose.production.yml up -d
