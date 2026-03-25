@@ -16,8 +16,7 @@ class PhoneRegistrationMixin:
         write_only=True,
     )
 
-    @staticmethod
-    def validate_phone(value) -> str:
+    def validate_phone(self, value) -> str:
         """Проверяет корректность и уникальность номера телефона.
 
         Проводит валидацию номера телефона в международном формате
@@ -32,7 +31,14 @@ class PhoneRegistrationMixin:
             raise serializers.ValidationError(
                 'Введите номер в международном формате.',
             )
-        if User.objects.filter(phone=value).exists():
+        queryset = User.objects.filter(phone=value)
+        if self.instance is not None:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        else:
+            request = self.context.get('request')
+            if request and request.user.is_authenticated:
+                queryset = queryset.exclude(pk=request.user.pk)
+        if queryset.exists():
             raise serializers.ValidationError(
                 'Пользователь с таким номером уже существует.',
             )

@@ -8,6 +8,7 @@ from users.views import (
     MeView,
     ResendVerificationEmailView,
 )
+from users.views.account import ChangePhoneView
 
 urlpatterns = [
     path('me/', MeView.as_view(), name='me'),
@@ -15,6 +16,11 @@ urlpatterns = [
         'me/change-password/',
         ChangePasswordView.as_view(),
         name='change_password',
+    ),
+    path(
+        'me/change-phone/',
+        ChangePhoneView.as_view(),
+        name='change_phone',
     ),
     path(
         'me/resend-email/',

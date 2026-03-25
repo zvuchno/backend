@@ -17,6 +17,8 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
+from users.serializers.jwt import LogoutSerializer
+
 
 @extend_schema(tags=['Auth'])
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -75,6 +77,8 @@ class CustomTokenVerifyView(TokenVerifyView):
 @extend_schema(
     tags=['Auth'],
     auth=[],
+    request=LogoutSerializer,
+    responses={204: None, 400: None},
 )
 class CustomLogoutView(APIView):
     """Инвалидирует refresh токен пользователя."""
