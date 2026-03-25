@@ -71,6 +71,10 @@ jobs:
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
         script: |
+          # Определяем ID пользователя
+          CUR_UID=$(id -u)
+          # Указываем путь к сокету Докера
+          export DOCKER_HOST=unix:///run/user/$CUR_UID/docker.sock
           cd zvuchno
           # Проверяем наличие UID/GID в .env, если их нет — записываем
           grep -qq "^UID=" .env || echo "UID=$(id -u)" >> .env
