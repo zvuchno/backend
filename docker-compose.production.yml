@@ -14,16 +14,16 @@ services:
     env_file: .env
     user: "${UID}:${GID}"
     volumes:
-      - static:/app/staticfiles
-      - media:/app/media/
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
     depends_on:
       - db
   gateway:
     image: inswty/zvuchno_gateway:latest
     env_file: .env
     volumes:
-      - static:/staticfiles
-      - media:/media/
+      - ./staticfiles:/staticfiles:ro
+      - ./media:/media:ro
     depends_on:
       - backend
     ports:
