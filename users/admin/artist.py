@@ -1,17 +1,19 @@
-"""
-Модуль админки профиля артиста.
+"""Модуль админки профиля артиста.
 
 Добавлены inlines контактов и соцсетей, превью обложки.
 """
 
 from django.contrib import admin
+from django.urls import reverse
+from django.utils.html import format_html
 
 from users.admin.mixins import ImagePreviewMixin
-from users.models import ArtistContact, ArtistSocial, ArtistProfile
+from users.models import ArtistContact, ArtistProfile, ArtistSocial
 
 
 class ArtistContactInline(admin.TabularInline):
     """Связанные контакты."""
+
     model = ArtistContact
     can_delete = True
     fk_name = 'artist'
@@ -20,6 +22,7 @@ class ArtistContactInline(admin.TabularInline):
 
 class ArtistSocialInline(admin.TabularInline):
     """Связанные ссылки на соцсети."""
+
     model = ArtistSocial
     can_delete = True
     fk_name = 'artist'
@@ -36,7 +39,7 @@ class ArtistContactAdmin(admin.ModelAdmin):
         'label',
         'value',
     )
-    list_display_links = ('id', 'label',)
+    list_display_links = ('id', 'label')
     search_fields = (
         'artist__user__email',
         'artist__user__username',
@@ -54,7 +57,7 @@ class ArtistSocialAdmin(admin.ModelAdmin):
         'label',
         'value',
     )
-    list_display_links = ('id', 'label',)
+    list_display_links = ('id', 'label')
     search_fields = (
         'artist__user__email',
         'artist__user__username',
@@ -69,7 +72,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     inlines = (ArtistContactInline, ArtistSocialInline)
     list_display = (
         'id',
-        'owner',
+        'user',
         'name',
         'city',
         'url',
@@ -82,57 +85,83 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'created_at',
     )
     readonly_fields = (
+        'account_phone',
+        'user_link',
         'image_preview',
         'created_at',
         'updated_at',
     )
     search_fields = (
         'name',
-        'phone',
         'city',
-        'owner__username',
-        'owner__email',
+        'user__phone',
+        'user__username',
+        'user__email',
     )
     ordering = ('-created_at',)
-    autocomplete_fields = ('owner',)
+    autocomplete_fields = ('user',)
+
+    @admin.display(description='Учетная запись')
+    def user_link(self, obj):
+        url = reverse('admin:users_coreuser_change', args=[obj.user_id])
+        return format_html('<a href="{}">{}</a>', url, obj.user.email)
+
+    @admin.display(description='Телефон учетной записи')
+    def account_phone(self, obj):
+        return obj.user.phone or '—'
 
     def get_fieldsets(self, request, obj=None):
         """В интерфейсе добавления артиста скрывает created_at, updated_at."""
         fieldsets = [
-            ('Пользователь', {
-                'fields': ('owner',)
-            }),
-            ('Основная информация', {
-                'fields': (
-                    'name',
-                    'description',
-                    'city',
-                )
-            }),
-            ('Обложка', {
-                'fields': (
-                    'cover',
-                    'image_preview',
-                )
-            }),
-            ('Контакты и ссылки', {
-                'fields': (
-                    'phone',
-                    'url',
-                )
-            }),
-            ('Статус', {
-                'fields': ('is_active',)
-            }),
+            (
+                'Пользователь',
+                {
+                    'fields': ('user', 'user_link'),
+                },
+            ),
+            (
+                'Основная информация',
+                {
+                    'fields': (
+                        'name',
+                        'description',
+                        'city',
+                    ),
+                },
+            ),
+            (
+                'Обложка',
+                {
+                    'fields': (
+                        'cover',
+                        'image_preview',
+                    ),
+                },
+            ),
+            (
+                'Контакты и ссылки',
+                {
+                    'fields': ('url', 'account_phone'),
+                },
+            ),
+            (
+                'Статус',
+                {
+                    'fields': ('is_active',),
+                },
+            ),
         ]
 
         if obj:
             fieldsets.append(
-                ('Системная информация', {
-                    'fields': (
-                        'created_at',
-                        'updated_at',
-                    )
-                })
+                (
+                    'Системная информация',
+                    {
+                        'fields': (
+                            'created_at',
+                            'updated_at',
+                        ),
+                    },
+                ),
             )
         return fieldsets

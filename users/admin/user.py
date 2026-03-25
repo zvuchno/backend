@@ -1,5 +1,4 @@
-"""
-Модуль админки учетной записи.
+"""Модуль админки учетной записи.
 
 Содержит класс админки пользователя,
 inlines для слушателя и артиста.
@@ -20,16 +19,21 @@ User = get_user_model()
 
 
 class ListenerProfileInline(admin.StackedInline):
+    """Инлайн для профиля слушателя."""
+
     model = ListenerProfile
     can_delete = False
     fk_name = 'user'
     extra = 0
+    fields = ('full_name',)
 
 
 class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
+    """Инлайн для профиля артиста."""
+
     model = ArtistProfile
     can_delete = False
-    fk_name = 'owner'
+    fk_name = 'user'
     extra = 0
     readonly_fields = ('image_preview',)
     fields = (
@@ -38,7 +42,6 @@ class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
         'cover',
         'image_preview',
         'city',
-        'phone',
         'url',
         'is_active',
     )
@@ -47,6 +50,7 @@ class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
 @admin.register(User)
 class CoreUserAdmin(UserAdmin):
     """Админка для кастомной модели пользователя."""
+
     inlines = (ListenerProfileInline, ArtistProfileInline)
     list_display = (
         'id',
@@ -73,34 +77,53 @@ class CoreUserAdmin(UserAdmin):
     )
     ordering = ('-date_joined',)
     fieldsets = (
-        ('Данные для аутентификации', {
-            'fields': ('email', 'username', 'password')
-        }),
-        ('Права доступа', {
-            'fields': (
-                'is_active',
-                'is_staff',
-                'is_superuser',
-                'groups',
-                'user_permissions',
-            )
-        }),
-        ('Важные даты', {
-            'fields': ('last_login', 'date_joined')
-        }),
+        (
+            'Данные для аутентификации',
+            {
+                'fields': ('email', 'username', 'phone', 'password'),
+            },
+        ),
+        (
+            'Подтверждение контактов',
+            {
+                'fields': ('is_email_verified', 'is_phone_verified'),
+            },
+        ),
+        (
+            'Права доступа',
+            {
+                'fields': (
+                    'is_active',
+                    'is_staff',
+                    'is_superuser',
+                    'groups',
+                    'user_permissions',
+                ),
+            },
+        ),
+        (
+            'Важные даты',
+            {
+                'fields': ('last_login', 'date_joined'),
+            },
+        ),
     )
     add_fieldsets = (
-        (None, {
-            'classes': ('wide',),
-            'fields': (
-                'email',
-                'username',
-                'password1',
-                'password2',
-                'is_active',
-                'is_staff',
-            ),
-        }),
+        (
+            None,
+            {
+                'classes': ('wide',),
+                'fields': (
+                    'email',
+                    'username',
+                    'phone',
+                    'password1',
+                    'password2',
+                    'is_active',
+                    'is_staff',
+                ),
+            },
+        ),
     )
 
     @admin.display(description='Слушатель', boolean=True)
