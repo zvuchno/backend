@@ -5,12 +5,16 @@ from django.db import transaction
 from rest_framework import serializers
 
 from .base_registration import BaseRegistrationSerializer
-from users.models import ArtistProfile
+from .mixins import PhoneRegistrationMixin
+from users.models import ArtistProfile, ListenerProfile
 
 User = get_user_model()
 
 
-class ArtistRegistrationSerializer(BaseRegistrationSerializer):
+class ArtistRegistrationSerializer(
+    PhoneRegistrationMixin,
+    BaseRegistrationSerializer,
+):
     """Сериализатор регистрации артиста.
 
     Создает пользователя, а затем связанный с ним профиль артиста.
@@ -30,13 +34,14 @@ class ArtistRegistrationSerializer(BaseRegistrationSerializer):
         """Создает пользователя и профиль артиста.
 
         Сначала создает объект пользователя средствами базового
-        сериализатора, затем создает связанный профиль артиста
+        сериализатора, затем создает связанный профиль слушателя и артиста
         с переданным именем. Операция выполняется атомарно.
         """
         name = validated_data.pop('name', None)
         user = super().create(validated_data)
+        ListenerProfile.objects.create(user=user)
         ArtistProfile.objects.create(
-            owner=user,
+            user=user,
             name=name,
         )
         return user
@@ -55,4 +60,4 @@ class ArtistRegistrationSerializer(BaseRegistrationSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'name', 'password')
+        fields = ('id', 'username', 'email', 'phone', 'name', 'password')

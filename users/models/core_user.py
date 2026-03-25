@@ -2,6 +2,7 @@
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 class CoreUser(AbstractUser):
@@ -14,12 +15,23 @@ class CoreUser(AbstractUser):
     """
 
     email = models.EmailField(unique=True)
+    phone = PhoneNumberField(
+        'Номер телефона',
+        help_text='Номер телефона',
+        unique=True,
+        null=True,
+        blank=True,
+    )
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = ['username', 'phone']
 
     is_email_verified = models.BooleanField(
         'Email подтвержден',
+        default=False,
+    )
+    is_phone_verified = models.BooleanField(
+        'Телефон подтвержден',
         default=False,
     )
 

@@ -6,7 +6,16 @@
 from django.contrib import admin
 
 from .mixins import AutoOwnerAdminMixin
-from store.models import Track
+from store.models import Product, Track
+
+
+class ProductInline(admin.StackedInline):
+    """Инлайн для редактирования полей продукта, связанных с треком."""
+
+    model = Product
+    fields = ('price', 'allow_overpay')
+    can_delete = False
+    verbose_name = 'Торговые настройки трека'
 
 
 @admin.register(Track)
@@ -16,31 +25,26 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
     list_display = (
         'name',
         'album',
-        'track_number',
         'is_active',
-        'individual_price',
-        'allow_fans_overpay',
+        'get_price',
+        'get_allow_overpay',
+        'position',
     )
-    search_fields = ('album', 'lyrics', 'name')
+
+    search_fields = ('album__name', 'lyrics', 'name')
     list_filter = (
         'is_active',
-        'allow_fans_overpay',
         'created_at',
         'updated_at',
     )
-    ordering = ('track_number', 'name')
+    ordering = ('album', 'position')
     readonly_fields = (
         'formatted_duration',
         'created_at',
         'updated_at',
         'owner',
     )
-    list_editable = (
-        'individual_price',
-        'allow_fans_overpay',
-        'is_active',
-        'track_number',
-    )
+    list_editable = ('is_active',)
     fieldsets = (
         (
             'Основные данные',
@@ -49,7 +53,6 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
                     'name',
                     'album',
                     'is_active',
-                    'track_number',
                     'audio_file',
                     'formatted_duration',
                     'lyrics',
@@ -59,13 +62,22 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
                 ),
             },
         ),
-        (
-            'Цены и оплата',
-            {
-                'fields': ('individual_price', 'allow_fans_overpay'),
-            },
-        ),
     )
+    inlines = (ProductInline,)
+
+    @admin.display(description='Цена')
+    def get_price(self, obj):
+        """Геттер для отображения поля price из связанного Product."""
+        if hasattr(obj, 'product') and obj.product:
+            return obj.product.price
+        return '-'
+
+    @admin.display(description='Переплата')
+    def get_allow_overpay(self, obj):
+        """Геттер для отображения поля allow_overpay из связанного Product."""
+        if hasattr(obj, 'product') and obj.product:
+            return 'Да' if obj.product.allow_overpay else 'Нет'
+        return '-'
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):
