@@ -9,7 +9,7 @@ from store.models import MerchKind
 
 
 @admin.register(MerchKind)
-class KindAdmin(admin.ModelAdmin):
+class MerchKindAdmin(admin.ModelAdmin):
     """Админка типов мерча."""
 
     list_display = (

@@ -7,13 +7,13 @@
 from .album import AlbumAdmin
 from .genre import GenreAdmin
 from .merch import MerchAdmin
-from .merch_kind import KindAdmin
+from .merch_kind import MerchKindAdmin
 from .track import TrackAdmin
 
 __all__ = [
     'AlbumAdmin',
     'GenreAdmin',
-    'KindAdmin',
+    'MerchKindAdmin',
     'MerchAdmin',
     'TrackAdmin',
 ]

@@ -19,7 +19,6 @@ class Merch(BaseContent, VisibilityModel):
         related_name='merch',
         null=True,
     )
-
     album = models.ManyToManyField(
         Album,
         blank=True,
@@ -27,6 +26,8 @@ class Merch(BaseContent, VisibilityModel):
         verbose_name='Альбом',
         related_name='merch',
     )
+
+    is_carrier = models.BooleanField('Носитель', default=False)
 
     class Meta:
         verbose_name = 'мерч'
