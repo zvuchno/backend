@@ -1,7 +1,6 @@
 """Сериализаторы профиля артиста."""
 
 from django.db import transaction
-from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from users.models import ArtistContact, ArtistProfile, ArtistSocial
@@ -9,8 +8,6 @@ from users.models import ArtistContact, ArtistProfile, ArtistSocial
 
 class ArtistCoverUpdateSerializer(serializers.ModelSerializer):
     """Сериализатор обновления обложки артиста."""
-
-    id = serializers.IntegerField(required=False)
 
     class Meta:
         model = ArtistProfile
@@ -29,6 +26,8 @@ class ArtistContactSerializer(serializers.ModelSerializer):
 
 class ArtistSocialSerializer(serializers.ModelSerializer):
     """Сериализатор ссылок на соцсети артиста."""
+
+    id = serializers.IntegerField(required=False)
 
     class Meta:
         model = ArtistSocial
@@ -66,27 +65,8 @@ class ArtistPublicSerializer(ArtistPublicShortSerializer):
 class ArtistMeSerializer(ArtistPublicSerializer):
     """Сериализатор профиля текущего артиста."""
 
-    phone = PhoneNumberField(
-        label='Телефон',
-        source='user.phone',
-        read_only=True,
-    )
-
-    username = serializers.ReadOnlyField(
-        label='Имя пользователя',
-        source='user.username',
-    )
-    email = serializers.ReadOnlyField(
-        label='Email',
-        source='user.email',
-    )
-
     class Meta(ArtistPublicSerializer.Meta):
-        fields = (
-            'username',
-            'email',
-            'phone',
-        ) + ArtistPublicSerializer.Meta.fields
+        fields = ArtistPublicSerializer.Meta.fields
 
 
 class ArtistMeUpdateSerializer(serializers.ModelSerializer):
@@ -105,6 +85,7 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
         existing_items = {item.id: item for item in manager.all()}
         received_ids = set()
         new_items = []
+        items_to_update = []
 
         for item_data in items_data:
             item_id = item_data.get('id')
@@ -120,9 +101,16 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
                         'или не принадлежит артисту.'
                     ),
                 })
+            for attr, value in item_data.items():
+                if attr != 'id':
+                    setattr(item, attr, value)
+            items_to_update.append(item)
             received_ids.add(item_id)
         if new_items:
             model.objects.bulk_create(new_items)
+        if items_to_update:
+            model.objects.bulk_update(items_to_update, ['label', 'value'])
+
         ids_for_delete = set(existing_items.keys()) - received_ids
         if ids_for_delete:
             manager.filter(id__in=ids_for_delete).delete()

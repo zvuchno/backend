@@ -42,7 +42,6 @@ class ArtistCoverUpdateView(UpdateAPIView):
 class ArtistMeView(RetrieveUpdateAPIView):
     """Просмотр и редактирование профиля текущего артиста."""
 
-    # TODO добавить пермишн на владельца
     permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'patch']
 
@@ -60,7 +59,7 @@ class ArtistMeView(RetrieveUpdateAPIView):
 
     def get_serializer_class(self):
         """Возвращает сериализатор в зависимости от метода запроса."""
-        if self.request.method in ('PUT', 'PATCH'):
+        if self.request.method == 'PATCH':
             return ArtistMeUpdateSerializer
         return ArtistMeSerializer
 

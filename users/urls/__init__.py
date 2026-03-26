@@ -9,4 +9,5 @@ urlpatterns = [
     path('auth/register/', include('users.urls.registration')),
     path('auth/account/', include('users.urls.account')),
     path('artists/', include('users.urls.artist_profile')),
+    path('listener/', include('users.urls.listener_profile')),
 ]
