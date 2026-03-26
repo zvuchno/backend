@@ -4,9 +4,16 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from users.serializers.mixins import PhoneRegistrationMixin
 from users.services import get_user_from_uid, verify_email_token
 
 User = get_user_model()
+
+
+class EmptySerializer(serializers.Serializer):
+    """Пустой сериализатор для ручек без тела запроса."""
+
+    pass
 
 
 class MeSerializer(serializers.ModelSerializer):
@@ -14,6 +21,19 @@ class MeSerializer(serializers.ModelSerializer):
 
     is_listener = serializers.SerializerMethodField()
     is_artist = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'username',
+            'email',
+            'phone',
+            'is_phone_verified',
+            'is_email_verified',
+            'is_listener',
+            'is_artist',
+        )
 
     @staticmethod
     def get_is_listener(obj) -> bool:
@@ -26,17 +46,6 @@ class MeSerializer(serializers.ModelSerializer):
         """Определяет, есть ли активный профиль артиста."""
         profile = getattr(obj, 'artist_profile', None)
         return bool(profile and profile.is_active)
-
-    class Meta:
-        model = User
-        fields = (
-            'id',
-            'username',
-            'email',
-            'is_email_verified',
-            'is_listener',
-            'is_artist',
-        )
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -118,3 +127,24 @@ class EmailVerificationSerializer(serializers.Serializer):
             user.is_email_verified = True
             user.save(update_fields=['is_email_verified'])
         return user
+
+
+class PhoneChangeSerializer(
+    PhoneRegistrationMixin,
+    serializers.ModelSerializer,
+):
+    """Сериализатор для изменения телефона аккаунта."""
+
+    class Meta:
+        model = User
+        fields = ('phone',)
+
+    def update(self, instance, validated_data):
+        """Сохраняет телефон и меняет его флаг на не подтвержденный."""
+        new_phone = validated_data.get('phone')
+        if instance.phone == new_phone:
+            return instance
+        instance.phone = new_phone
+        instance.is_phone_verified = False
+        instance.save(update_fields=['is_phone_verified', 'phone'])
+        return instance
