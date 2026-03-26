@@ -9,7 +9,7 @@ from users.models import ListenerProfile
 from users.serializers.listener_profile import ListenerMeSerializer
 
 
-@extend_schema(tags=['Профиль слушателя'])
+@extend_schema(tags=['Profile: listener'])
 class ListenerMeView(RetrieveUpdateAPIView):
     """Просмотр и редактирование профиля текущего слушателя."""
 
