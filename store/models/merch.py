@@ -1,46 +1,17 @@
-from decimal import Decimal
-
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
 from django.db import models
 
-from store.constants import (
-    DEFAULT_QUANTITY,
-    DESCRIPTION_MERCH_MAX_LENGTH,
-    MAX_CHAR_LENGTH,
-    MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
-)
+from store.models.abstract.base_content import BaseContent
 from store.models.abstract.visibility_model import VisibilityModel
 from store.models.album import Album
 from store.models.merch_kind import MerchKind
-from users.models.abstract import ActivatableModel, TimestampModel
 
 User = get_user_model()
 
 
-class Merch(ActivatableModel, TimestampModel, VisibilityModel):
+class Merch(BaseContent, VisibilityModel):
     """Модель мерча."""
 
-    name = models.CharField(
-        'Название',
-        max_length=MAX_CHAR_LENGTH,
-    )
-    price = models.DecimalField(
-        'Цена',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        validators=[MinValueValidator(Decimal('0.00'))],
-        default=Decimal('0.00'),
-    )
-    allow_fans_overpay = models.BooleanField(
-        'Разрешение платить больше',
-        default=False,
-    )
-    quantity = models.PositiveIntegerField(
-        'Количество',
-        default=DEFAULT_QUANTITY,
-    )
     kind = models.ForeignKey(
         MerchKind,
         on_delete=models.SET_NULL,
@@ -48,22 +19,7 @@ class Merch(ActivatableModel, TimestampModel, VisibilityModel):
         related_name='merch',
         null=True,
     )
-    description = models.TextField(
-        'Описание',
-        max_length=DESCRIPTION_MERCH_MAX_LENGTH,
-        null=True,
-        blank=True,
-    )
-    owner = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        verbose_name='Автор',
-    )
-    characteristic = models.JSONField(
-        default=dict,
-        blank=True,
-        verbose_name='Свойства',
-    )
+
     album = models.ManyToManyField(
         Album,
         blank=True,

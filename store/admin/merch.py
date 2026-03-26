@@ -3,14 +3,20 @@
 Содержит настройку интерфейса Django Admin для модели мерча.
 """
 
+
 from django.contrib import admin
 from django.utils.html import format_html
+from nested_admin import (
+    NestedModelAdmin,
+    NestedTabularInline,
+)
 
-from store.constants import MAX_IMAGE_FOR_MERCH
+from store.admin.inlines import ProductInline
+from store.admin.mixins import AutoOwnerAdminMixin
 from store.models import AlbumMerch, Image, Merch
 
 
-class PhotoInline(admin.TabularInline):
+class PhotoInline(NestedTabularInline):
     """Отображение фото в модели мерча."""
 
     model = Image
@@ -28,7 +34,7 @@ class PhotoInline(admin.TabularInline):
         return '-'
 
 
-class AlbumMerchInline(admin.TabularInline):
+class AlbumMerchInline(NestedTabularInline):
     """Отображение обложки альбома в админке мерча."""
 
     model = AlbumMerch
@@ -46,23 +52,25 @@ class AlbumMerchInline(admin.TabularInline):
 
 
 @admin.register(Merch)
-class MerchAdmin(admin.ModelAdmin):
+class MerchAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
     """Админка мерча."""
 
-    inlines = (PhotoInline, AlbumMerchInline)
+    inlines = (PhotoInline, AlbumMerchInline, ProductInline)
+    list_select_related = ('product', 'kind')
     list_display = (
         'name',
-        'price',
-        'quantity',
+        'get_price',
         'kind',
         'owner',
         'created_at',
+        'is_active',
+        'is_published',
+        'visibility',
+        'get_allow_overpay',
         'image_preview',
     )
     list_editable = (
-        'price',
-        'quantity',
-        'kind',
+        'is_active', 'is_published', 'visibility',
     )
     list_filter = (
         'created_at',
@@ -75,37 +83,46 @@ class MerchAdmin(admin.ModelAdmin):
         'owner__username',
     )
     search_help_text = 'Поиск по названию, категории, типу и владельцу'
-    readonly_fields = ('image_preview', 'created_at')
+    readonly_fields = ('image_preview', 'created_at', 'updated_at', 'owner')
 
-    fieldsets = [
+    fieldsets = (
         (
             'Основная информация',
             {
                 'fields': (
                     'name',
-                    'quantity',
                     'kind',
                     'owner',
                     'description',
                     'visibility',
-                    'characteristic',
+                    'image_preview',
+                    'is_published',
+                    'created_at',
+                    'updated_at',
+                    'is_active',
                 ),
             },
         ),
-        (
-            'Финансы',
-            {
-                'fields': ('price', 'allow_fans_overpay'),
-            },
-        ),
-    ]
+    )
 
-    @admin.display(description='Главная картинка')
-    def image_preview(self, image):
-        for image_obj in image.images_merch.all()[:MAX_IMAGE_FOR_MERCH]:
-            if image_obj.image:
-                return format_html(
-                    '<img src="{}" width="200" height="150" />',
-                    image_obj.image.url,
-                )
+    @admin.display(description='Цена')
+    def get_price(self, obj):
+        if hasattr(obj, 'product') and obj.product:
+            return obj.product.price
+        return '-'
+
+    @admin.display(description='Переплата')
+    def get_allow_overpay(self, obj):
+        if hasattr(obj, 'product') and obj.product:
+            return 'Да' if obj.product.allow_overpay else 'Нет'
+        return '-'
+
+    @admin.display(description='Главное фото')
+    def image_preview(self, obj):
+        image_obj = obj.images_merch.filter(image__isnull=False).first()
+        if image_obj:
+            return format_html(
+                '<img src="{}" width="200" height="150" />',
+                image_obj.image.url,
+            )
         return '-'
