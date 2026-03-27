@@ -19,10 +19,11 @@ class Merch(BaseContent, VisibilityModel):
         related_name='merch',
         null=True,
     )
-    album = models.ManyToManyField(
+    album = models.ForeignKey(
         Album,
+        on_delete=models.CASCADE,
+        null=True,
         blank=True,
-        through='AlbumMerch',
         verbose_name='Альбом',
         related_name='merch',
     )

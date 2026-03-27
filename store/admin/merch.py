@@ -13,7 +13,7 @@ from nested_admin import (
 
 from store.admin.inlines import ProductInline
 from store.admin.mixins import AutoOwnerAdminMixin
-from store.models import AlbumMerch, Image, Merch
+from store.models import Image, Merch
 
 
 class PhotoInline(NestedTabularInline):
@@ -34,39 +34,18 @@ class PhotoInline(NestedTabularInline):
         return '-'
 
 
-class AlbumMerchInline(NestedTabularInline):
-    """Отображение обложки альбома в админке мерча."""
-
-    model = AlbumMerch
-    extra = 1
-    fields = ('album', 'preview')
-    readonly_fields = ('preview',)
-
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs.select_related('album')
-
-    @admin.display(description='Фото альбома')
-    def preview(self, album):
-        if album.album:
-            return format_html(
-                '<img src="{}" style="height:75px; border-radius:4px"/>',
-                album.album.cover_image.url,
-            )
-        return '-'
-
-
 @admin.register(Merch)
 class MerchAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
     """Админка мерча."""
 
-    inlines = (PhotoInline, AlbumMerchInline, ProductInline)
+    inlines = (PhotoInline, ProductInline)
     list_display = (
         'name',
         'kind',
         'owner',
         'created_at',
         'image_preview',
+        'album',
         'is_published',
         'get_price',
         'get_allow_overpay',
@@ -87,9 +66,10 @@ class MerchAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
         'name',
         'kind__name',
         'owner__username',
+        'album__name',
     )
     ordering = ('-created_at',)
-    search_help_text = 'Поиск по названию, категории, типу и владельцу'
+    search_help_text = 'Поиск по названию, типу, названию альбома и владельцу'
     readonly_fields = ('image_preview', 'created_at', 'updated_at', 'owner')
 
     fieldsets = (
@@ -101,6 +81,7 @@ class MerchAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
                     'name',
                     'description',
                     'image_preview',
+                    'album',
                     'is_published',
                     'is_carrier',
                     'visibility',
