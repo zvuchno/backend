@@ -1,15 +1,15 @@
 """Представления профиля слушателя."""
 
 from django.http import Http404
-from drf_spectacular.utils import extend_schema
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 
 from users.models import ListenerProfile
+from users.schemas import listener_me_schema
 from users.serializers.listener_profile import ListenerMeSerializer
 
 
-@extend_schema(tags=['Profile: listener'])
+@listener_me_schema
 class ListenerMeView(RetrieveUpdateAPIView):
     """Просмотр и редактирование профиля текущего слушателя."""
 

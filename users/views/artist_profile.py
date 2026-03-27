@@ -1,6 +1,5 @@
 """Представления профиля артиста."""
 
-from drf_spectacular.utils import extend_schema
 from rest_framework.generics import (
     ListAPIView,
     RetrieveAPIView,
@@ -11,6 +10,12 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from users.models import ArtistProfile
+from users.schemas import (
+    artist_cover_update_schema,
+    artist_list_schema,
+    artist_me_schema,
+    artist_public_schema,
+)
 from users.serializers.artist_profile import (
     ArtistCoverUpdateSerializer,
     ArtistMeSerializer,
@@ -21,7 +26,7 @@ from users.serializers.artist_profile import (
 from users.views.mixins import CurrentArtistProfileMixin
 
 
-@extend_schema(tags=['Profile: artist'])
+@artist_cover_update_schema
 class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
     """Обновление обложки артиста."""
 
@@ -35,7 +40,7 @@ class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
         return self.get_artist_profile()
 
 
-@extend_schema(tags=['Profile: artist'])
+@artist_me_schema
 class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
     """Просмотр и редактирование профиля текущего артиста."""
 
@@ -55,7 +60,7 @@ class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
         return ArtistMeSerializer
 
 
-@extend_schema(tags=['Profile: artist'], auth=[])
+@artist_public_schema
 class ArtistPublicView(RetrieveAPIView):
     """Публичный просмотр профиля артиста."""
 
@@ -69,7 +74,7 @@ class ArtistPublicView(RetrieveAPIView):
 
 
 # TODO пагинация, фильтрация.
-@extend_schema(tags=['Profile: artist'], auth=[])
+@artist_list_schema
 class ArtistListView(ListAPIView):
     """Публичный список артистов."""
 
