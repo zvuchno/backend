@@ -5,7 +5,6 @@
 и обновления JWT-токенов.
 """
 
-from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -17,10 +16,15 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from users.serializers.jwt import LogoutSerializer
+from users.schemas import (
+    logout_schema,
+    token_obtain_schema,
+    token_refresh_schema,
+    token_verify_schema,
+)
 
 
-@extend_schema(tags=['Auth'])
+@token_obtain_schema
 class CustomTokenObtainPairView(TokenObtainPairView):
     """Выдача пары JWT токенов (access + refresh).
 
@@ -38,7 +42,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     throttle_scope = 'login'
 
 
-@extend_schema(tags=['Auth'])
+@token_refresh_schema
 class CustomTokenRefreshView(TokenRefreshView):
     """Обновление access токена по refresh токену.
 
@@ -56,7 +60,7 @@ class CustomTokenRefreshView(TokenRefreshView):
     throttle_scope = 'refresh'
 
 
-@extend_schema(tags=['Auth'])
+@token_verify_schema
 class CustomTokenVerifyView(TokenVerifyView):
     """Верификация access токена.
 
@@ -74,12 +78,7 @@ class CustomTokenVerifyView(TokenVerifyView):
     throttle_scope = 'verify'
 
 
-@extend_schema(
-    tags=['Auth'],
-    auth=[],
-    request=LogoutSerializer,
-    responses={204: None, 400: None},
-)
+@logout_schema
 class CustomLogoutView(APIView):
     """Инвалидирует refresh токен пользователя."""
 

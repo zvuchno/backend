@@ -1,16 +1,13 @@
 """Представление для регистрации слушателя."""
 
-from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny
 
 from .base_registration import BaseRegistrationView
+from users.schemas import listener_registration_schema
 from users.serializers import ListenerRegistrationSerializer
 
 
-@extend_schema(
-    tags=['Регистрация'],
-    auth=[],
-)
+@listener_registration_schema
 class ListenerRegistrationView(BaseRegistrationView):
     """Представление для регистрации слушателя."""
 
