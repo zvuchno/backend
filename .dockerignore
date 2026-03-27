@@ -6,4 +6,5 @@ nginx
 .env
 .env.prod
 .git
+.github
 README.md

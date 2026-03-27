@@ -1,3 +1,6 @@
+[![Main Zvuchno workflow](https://github.com/zvuchno/backend/actions/workflows/main.yml/badge.svg)](https://github.com/zvuchno/backend/actions/workflows/main.yml)
+[![Website](https://img.shields.io/badge/Visit-Live%20Site-brightgreen)](https://zvuchno-dev.duckdns.org/)
+
 # Звучно — Backend
 
 Backend API проекта **Звучно**.
@@ -15,7 +18,10 @@ Backend API проекта **Звучно**.
 * SQLite (для локальной разработки)
 * PostgreSQL
 * Docker / Docker Compose
+* Nginx
 * Gunicorn
+* GitHub Actions (CI/CD)
+
 
 
 Основные зависимости:
@@ -121,17 +127,10 @@ http://127.0.0.1:8000/admin
 
 Этот метод запускает полную связку: Django + PostgreSQL + Gunicorn + Nginx.
 
-Подготовьте окружение:
-Создайте файл .env в корневой папке проекта на основе примера:
-```
-DEBUG=False
-USE_SQLITE=False
-POSTGRES_DB=zvuchno_db
-POSTGRES_USER=admin
-POSTGRES_PASSWORD=db%77&htc85
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-```
+**Подготовьте окружение:**
+
+Создайте файл .env в корневой папке проекта на основе примера: env.example
+
 Соберите и запустите контейнеры:
 ```
 docker compose up --build
@@ -241,3 +240,31 @@ ruff check --diff .
 ```
 ruff format .
 ```
+
+
+# Продакшен / Деплой:
+1. Создайте файл .env с переменными окружения и скопируйте его на сервер в директорию проекта - 'zvuchno'
+2. Добавьте Secrets в GitHub Actions (Settings → Secrets and variables → Actions → New repository secret):
+```
+DOCKER_USERNAME  # Логин Docker Hub
+DOCKER_PASSWORD  # Пароль или access token Docker Hub
+SSH_HOST  # IP или домен сервера
+SSH_USER  # Пользователь на сервере
+SSH_KEY  # Приватный SSH ключ
+SSH_PASSPHRASE  # Пароль от ключа (если он есть)
+```
+
+## Как запустить деплой через GitHub Actions
+
+> [!NOTE]
+> При пуше в ветку 'main' и 'develop' деплой запусается автоматически
+
+### Вручную:
+- Перейдите во вкладку Actions в репозитории
+- В списке workflows выберите Main Zvuchno workflow
+- Нажмите кнопку Run workflow
+
+После этого GitHub запустит pipeline, который:
+- соберёт Docker-образы
+- отправит образы в Docker Hub
+- выполнит деплой на сервер через SSH

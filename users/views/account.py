@@ -3,24 +3,35 @@
 import logging
 
 from django.conf import settings
-from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.generics import GenericAPIView, RetrieveAPIView
+from rest_framework.generics import (
+    GenericAPIView,
+    RetrieveAPIView,
+    UpdateAPIView,
+)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
+from users.schemas import (
+    change_password_schema,
+    change_phone_schema,
+    email_verification_schema,
+    me_schema,
+    resend_verification_email_schema,
+)
 from users.serializers import (
     ChangePasswordSerializer,
     EmailVerificationSerializer,
     MeSerializer,
 )
+from users.serializers.account import EmptySerializer, PhoneChangeSerializer
 from users.services import build_email_verification_url
 
 logger = logging.getLogger(__name__)
 
 
-@extend_schema(tags=['Account'])
+@me_schema
 class MeView(RetrieveAPIView):
     """Возвращает данные текущего пользователя."""
 
@@ -32,7 +43,22 @@ class MeView(RetrieveAPIView):
         return self.request.user
 
 
-@extend_schema(tags=['Account'])
+@change_phone_schema
+class ChangePhoneView(UpdateAPIView):
+    """Представление смены телефона аккаунта."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = PhoneChangeSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'change_phone'
+    http_method_names = ['patch']
+
+    def get_object(self):
+        """Возвращает текущего пользователя."""
+        return self.request.user
+
+
+@change_password_schema
 class ChangePasswordView(GenericAPIView):
     """Обрабатывает смену пароля пользователя."""
 
@@ -52,7 +78,7 @@ class ChangePasswordView(GenericAPIView):
         )
 
 
-@extend_schema(tags=['Account'], auth=[])
+@email_verification_schema
 class EmailVerificationView(GenericAPIView):
     """Подтверждает email пользователя по uid и токену."""
 
@@ -72,11 +98,12 @@ class EmailVerificationView(GenericAPIView):
         )
 
 
-@extend_schema(tags=['Account'])
+@resend_verification_email_schema
 class ResendVerificationEmailView(GenericAPIView):
     """Повторно инициирует отправку письма подтверждения email."""
 
     permission_classes = [IsAuthenticated]
+    serializer_class = EmptySerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'resend_verification_email'
 
