@@ -5,6 +5,7 @@ django-nested-admin==4.1.6
 django-phonenumber-field==8.4.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
+djoser==2.3.3
 drf-spectacular==0.29.0
 djoser==2.3.3
 gunicorn==25.1.0
