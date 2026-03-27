@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import Q
 
 from store.models.merch import Merch
+from store.validators import validate_file_size
 from users.models.abstract import ActivatableModel, TimestampModel
 
 
@@ -14,7 +15,11 @@ class Image(ActivatableModel, TimestampModel):
         related_name='images_merch',
         verbose_name='Мерч',
     )
-    image = models.ImageField('Фото', upload_to='photos_merch/')
+    image = models.ImageField(
+        'Фото',
+        upload_to='photos_merch/',
+        validators=(validate_file_size,)
+    )
     is_main = models.BooleanField('Главное фото', default=False)
 
     class Meta:
