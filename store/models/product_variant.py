@@ -2,7 +2,7 @@
 
 import uuid
 
-from django.db import models
+from django.db import models, transaction
 
 from store.constants import (
     MAX_CHAR_LENGTH,
@@ -34,6 +34,8 @@ class ProductVariant(models.Model):
     stock = models.PositiveIntegerField(
         'Доступно',
         default=0,
+        null=True,
+        blank=True,
         help_text='Наличие на складе',
     )
     characteristic = models.JSONField(
@@ -63,11 +65,12 @@ class ProductVariant(models.Model):
 
     def save(self, *args, **kwargs):
         """Сохраняет вариант и вызывет generate_sku после получения ID."""
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
-        if is_new and not self.sku:
-            self.sku = self.generate_sku()
-            super().save(update_fields=['sku'])
+        is_new = self._state.adding
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if is_new and not self.sku:
+                self.sku = self.generate_sku()
+                super().save(update_fields=['sku'])
 
     class Meta:
         verbose_name = 'вариант продукта'
