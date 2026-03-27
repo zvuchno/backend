@@ -5,7 +5,7 @@ from store.constants import MAX_CHAR_LENGTH, MAX_SLUG_LENGTH
 from users.models.abstract import ActivatableModel, TimestampModel
 
 
-class Kind(ActivatableModel, TimestampModel):
+class MerchKind(ActivatableModel, TimestampModel):
     """Тип мерча."""
 
     name = models.CharField(
@@ -25,7 +25,7 @@ class Kind(ActivatableModel, TimestampModel):
             new_slug = slug
             counter = 1
             while (
-                Kind.objects
+                MerchKind.objects
                 .filter(
                     slug=new_slug,
                 )
