@@ -10,22 +10,21 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
   backend:
-    build: .
+    image: inswty/zvuchno_backend:latest
     env_file: .env
-    command: python manage.py runserver 0.0.0.0:8000
+    user: "${UID}:${GID}"
     volumes:
-      - .:/app
-      - static:/app/staticfiles
-      - media:/app/media/
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
     depends_on:
       - db
   gateway:
-    build: ./nginx/
+    image: inswty/zvuchno_gateway:latest
     env_file: .env
     volumes:
-      - static:/staticfiles
-      - media:/media/
+      - ./staticfiles:/staticfiles:ro
+      - ./media:/media:ro
     depends_on:
       - backend
     ports:
-      - 8000:80
+      - "127.0.0.1:8000:80"
