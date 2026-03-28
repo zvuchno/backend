@@ -85,5 +85,10 @@ jobs:
           docker compose -f docker-compose.production.yml down
           docker compose -f docker-compose.production.yml up -d --wait
           docker image prune -a -f
+          echo "Исправляем владельца волюмов на $CUR_UID:$CUR_GID..."
+          docker run --rm \
+            -v zvuchno_static:/fix_static \
+            -v zvuchno_media:/fix_media \
+            alpine chown -R $CUR_UID:$CUR_GID /fix_static /fix_media
           docker compose -f docker-compose.production.yml exec backend python manage.py migrate --noinput
           docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --noinput
