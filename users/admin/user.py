@@ -24,8 +24,11 @@ class ListenerProfileInline(admin.StackedInline):
     model = ListenerProfile
     can_delete = False
     fk_name = 'user'
-    extra = 0
-    fields = ('full_name',)
+    extra = 1
+    min_num = 1
+    validate_min = True
+    max_num = 1
+    fields = ('full_name', 'is_active')
 
 
 class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
@@ -51,7 +54,33 @@ class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
 class CoreUserAdmin(UserAdmin):
     """Админка для кастомной модели пользователя."""
 
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает удаление объектов через админку."""
+        return False
+
+    def get_actions(self, request):
+        """Убирает массовое удаление из списка действий."""
+        actions = super().get_actions(request)
+        actions.pop('delete_selected', None)
+        return actions
+
     inlines = (ListenerProfileInline, ArtistProfileInline)
+
+    @admin.display(description='Слушатель', boolean=True)
+    def is_listener(self, obj):
+        """Есть ли профиль слушателя."""
+        return hasattr(obj, 'listener_profile')
+
+    @admin.display(description='Артист', boolean=True)
+    def is_artist(self, obj):
+        """Есть ли профиль артиста."""
+        return hasattr(obj, 'artist_profile')
+
+    def save_related(self, request, form, formsets, change):
+        """Сохраняет inlines и гарантирует наличие профиля слушателя."""
+        super().save_related(request, form, formsets, change)
+        ListenerProfile.objects.get_or_create(user=form.instance)
+
     list_display = (
         'id',
         'email',
@@ -90,6 +119,12 @@ class CoreUserAdmin(UserAdmin):
             },
         ),
         (
+            'Системная информация',
+            {
+                'fields': ('last_login', 'date_joined'),
+            },
+        ),
+        (
             'Права доступа',
             {
                 'fields': (
@@ -99,15 +134,11 @@ class CoreUserAdmin(UserAdmin):
                     'groups',
                     'user_permissions',
                 ),
-            },
-        ),
-        (
-            'Важные даты',
-            {
-                'fields': ('last_login', 'date_joined'),
+                'classes': ('collapse',),
             },
         ),
     )
+    readonly_fields = ('last_login', 'date_joined')
     add_fieldsets = (
         (
             None,
@@ -125,13 +156,3 @@ class CoreUserAdmin(UserAdmin):
             },
         ),
     )
-
-    @admin.display(description='Слушатель', boolean=True)
-    def is_listener(self, obj):
-        """Есть ли профиль слушателя."""
-        return hasattr(obj, 'listener_profile')
-
-    @admin.display(description='Артист', boolean=True)
-    def is_artist(self, obj):
-        """Есть ли профиль артиста."""
-        return hasattr(obj, 'artist_profile')

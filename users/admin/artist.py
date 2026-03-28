@@ -1,7 +1,4 @@
-"""Модуль админки профиля артиста.
-
-Добавлены inlines контактов и соцсетей, превью обложки.
-"""
+"""Модуль админки профиля артиста."""
 
 from django.contrib import admin
 from django.urls import reverse
@@ -29,42 +26,6 @@ class ArtistSocialInline(admin.TabularInline):
     extra = 0
 
 
-@admin.register(ArtistContact)
-class ArtistContactAdmin(admin.ModelAdmin):
-    """Для контактов артиста."""
-
-    list_display = (
-        'id',
-        'artist',
-        'label',
-        'value',
-    )
-    list_display_links = ('id', 'label')
-    search_fields = (
-        'artist__user__email',
-        'artist__user__username',
-        'value',
-    )
-
-
-@admin.register(ArtistSocial)
-class ArtistSocialAdmin(admin.ModelAdmin):
-    """Для ссылок на соцсети артиста."""
-
-    list_display = (
-        'id',
-        'artist',
-        'label',
-        'value',
-    )
-    list_display_links = ('id', 'label')
-    search_fields = (
-        'artist__user__email',
-        'artist__user__username',
-        'value',
-    )
-
-
 @admin.register(ArtistProfile)
 class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     """Админка профиля артиста."""
@@ -75,17 +36,17 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'user',
         'name',
         'city',
-        'url',
         'is_active',
         'created_at',
     )
-    list_display_links = ('id', 'name')
+    list_display_links = ('id', 'name', 'user')
     list_filter = (
         'is_active',
         'created_at',
     )
     readonly_fields = (
         'account_phone',
+        'account_username',
         'user_link',
         'image_preview',
         'created_at',
@@ -101,6 +62,16 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     ordering = ('-created_at',)
     autocomplete_fields = ('user',)
 
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает удаление объектов через админку."""
+        return False
+
+    def get_actions(self, request):
+        """Убирает массовое удаление из списка действий."""
+        actions = super().get_actions(request)
+        actions.pop('delete_selected', None)
+        return actions
+
     @admin.display(description='Учетная запись')
     def user_link(self, obj):
         url = reverse('admin:users_coreuser_change', args=[obj.user_id])
@@ -108,17 +79,17 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
 
     @admin.display(description='Телефон учетной записи')
     def account_phone(self, obj):
+        if not obj or not obj.user_id:
+            return '—'
         return obj.user.phone or '—'
 
+    @admin.display(description='Имя пользователя')
+    def account_username(self, obj):
+        return obj.user.username or '—'
+
     def get_fieldsets(self, request, obj=None):
-        """В интерфейсе добавления артиста скрывает created_at, updated_at."""
+        """Возвращает набор полей для создания и редактирования артиста."""
         fieldsets = [
-            (
-                'Пользователь',
-                {
-                    'fields': ('user', 'user_link'),
-                },
-            ),
             (
                 'Основная информация',
                 {
@@ -139,12 +110,6 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                 },
             ),
             (
-                'Контакты и ссылки',
-                {
-                    'fields': ('url', 'account_phone'),
-                },
-            ),
-            (
                 'Статус',
                 {
                     'fields': ('is_active',),
@@ -152,7 +117,46 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             ),
         ]
 
-        if obj:
+        if obj is None:
+            fieldsets.insert(
+                0,
+                (
+                    'Пользователь',
+                    {
+                        'fields': ('user',),
+                    },
+                ),
+            )
+            fieldsets.append(
+                (
+                    'Ссылки',
+                    {
+                        'fields': ('url',),
+                    },
+                ),
+            )
+        else:
+            fieldsets.insert(
+                0,
+                (
+                    'Пользователь',
+                    {
+                        'fields': (
+                            'user_link',
+                            'account_username',
+                            'account_phone',
+                        ),
+                    },
+                ),
+            )
+            fieldsets.append(
+                (
+                    'Ссылки',
+                    {
+                        'fields': ('url',),
+                    },
+                ),
+            )
             fieldsets.append(
                 (
                     'Системная информация',
@@ -164,4 +168,5 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                     },
                 ),
             )
+
         return fieldsets
