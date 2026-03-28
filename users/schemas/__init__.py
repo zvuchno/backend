@@ -5,6 +5,9 @@ from .account import (
     change_phone_schema,
     email_verification_schema,
     me_schema,
+    password_reset_confirm_schema,
+    password_reset_request_schema,
+    password_reset_verify_schema,
     resend_verification_email_schema,
 )
 from .artist_profile import (
@@ -38,6 +41,9 @@ __all__ = [
     'listener_registration_schema',
     'logout_schema',
     'me_schema',
+    'password_reset_confirm_schema',
+    'password_reset_request_schema',
+    'password_reset_verify_schema',
     'resend_verification_email_schema',
     'token_obtain_schema',
     'token_refresh_schema',

@@ -3,6 +3,9 @@ from .account import (
     ChangePhoneView,
     EmailVerificationView,
     MeView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
+    PasswordResetVerifyView,
     ResendVerificationEmailView,
 )
 from .artist_profile import (
@@ -39,5 +42,8 @@ __all__ = [
     'ChangePhoneView',
     'ChangePasswordView',
     'EmailVerificationView',
+    'PasswordResetConfirmView',
+    'PasswordResetRequestView',
+    'PasswordResetVerifyView',
     'ResendVerificationEmailView',
 ]

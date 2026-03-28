@@ -5,7 +5,12 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from users.serializers.mixins import PhoneRegistrationMixin
-from users.services import get_user_from_uid, verify_email_token
+from users.services import (
+    get_user_from_uid,
+    set_user_password,
+    verify_email_token,
+    verify_password_reset_token,
+)
 
 User = get_user_model()
 
@@ -87,8 +92,7 @@ class ChangePasswordSerializer(serializers.Serializer):
     def save(self, **kwargs):
         """Устанавливает новый пароль пользователю."""
         user = self.context['request'].user
-        user.set_password(self.validated_data['new_password'])
-        user.save(update_fields=['password'])
+        set_user_password(user, self.validated_data['new_password'])
         return user
 
 
@@ -140,7 +144,7 @@ class PhoneChangeSerializer(
         fields = ('phone',)
 
     def update(self, instance, validated_data):
-        """Сохраняет телефон и меняет его флаг на не подтвержденный."""
+        """Сохраняет телефон и меняет его флаг на неподтвержденный."""
         new_phone = validated_data.get('phone')
         if instance.phone == new_phone:
             return instance
@@ -148,3 +152,75 @@ class PhoneChangeSerializer(
         instance.is_phone_verified = False
         instance.save(update_fields=['is_phone_verified', 'phone'])
         return instance
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Сериализатор запроса на восстановление пароля."""
+
+    email = serializers.EmailField(
+        label='Email',
+        write_only=True,
+    )
+
+
+class PasswordResetVerifySerializer(serializers.Serializer):
+    """Сериализатор проверки ссылки восстановления пароля."""
+
+    uid = serializers.CharField(
+        label='Идентификатор пользователя',
+        write_only=True,
+    )
+    token = serializers.CharField(
+        label='Токен восстановления пароля',
+        write_only=True,
+    )
+
+    def validate(self, attrs):
+        """Проверка токена."""
+        user = get_user_from_uid(attrs.get('uid'), User)
+        if not user:
+            raise serializers.ValidationError({
+                'uid': 'Пользователь не найден.',
+            })
+
+        token = attrs.get('token')
+        if not verify_password_reset_token(user, token):
+            raise serializers.ValidationError({
+                'token': 'Ссылка недействительна.',
+            })
+
+        attrs['user'] = user
+        return attrs
+
+
+class PasswordResetConfirmSerializer(PasswordResetVerifySerializer):
+    """Сериализатор установки нового пароля."""
+
+    new_password = serializers.CharField(
+        label='Новый пароль',
+        write_only=True,
+    )
+    retype_new_password = serializers.CharField(
+        label='Повторный ввод пароля',
+        write_only=True,
+    )
+
+    def validate(self, attrs):
+        """Проверка токена, пользователя и нового пароля."""
+        attrs = super().validate(attrs)
+        new_password = attrs.get('new_password')
+        retype_new_password = attrs.get('retype_new_password')
+        user = attrs['user']
+
+        if new_password != retype_new_password:
+            raise serializers.ValidationError({
+                'retype_new_password': 'Пароли не совпадают.',
+            })
+        validate_password(new_password, user)
+        return attrs
+
+    def save(self, **kwargs):
+        """Устанавливает новый пароль пользователю."""
+        user = self.validated_data['user']
+        set_user_password(user, self.validated_data['new_password'])
+        return user

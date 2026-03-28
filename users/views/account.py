@@ -3,6 +3,7 @@
 import logging
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.generics import (
     GenericAPIView,
@@ -18,16 +19,27 @@ from users.schemas import (
     change_phone_schema,
     email_verification_schema,
     me_schema,
+    password_reset_confirm_schema,
+    password_reset_request_schema,
+    password_reset_verify_schema,
     resend_verification_email_schema,
 )
 from users.serializers import (
     ChangePasswordSerializer,
     EmailVerificationSerializer,
+    EmptySerializer,
     MeSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetVerifySerializer,
+    PhoneChangeSerializer,
 )
-from users.serializers.account import EmptySerializer, PhoneChangeSerializer
-from users.services import build_email_verification_url
+from users.services import (
+    build_email_verification_url,
+    build_password_reset_url,
+)
 
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
@@ -132,5 +144,85 @@ class ResendVerificationEmailView(GenericAPIView):
 
         return Response(
             {'detail': 'Запрос на подтверждение Email принят.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+@password_reset_request_schema
+class PasswordResetRequestView(GenericAPIView):
+    """Представление запроса на сброс пароля."""
+
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetRequestSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'reset_password_request'
+
+    def post(self, request, *args, **kwargs):
+        """Генерирует ссылку восстановления и логирует ее."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+        user = User.objects.filter(email=email).first()
+
+        if user:
+            frontend_base_url = settings.FRONTEND_RESET_PASSWORD_URL
+            reset_url = build_password_reset_url(user, frontend_base_url)
+            logger.info(
+                'Password reset link for %s: %s',
+                user.email,
+                reset_url,
+            )
+        return Response(
+            {
+                'detail': (
+                    'Если учетная запись с таким email существует, '
+                    'инструкция по восстановлению будет на него отправлена.'
+                ),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@password_reset_verify_schema
+class PasswordResetVerifyView(GenericAPIView):
+    """Представление подтверждения токена для восстановления пароля."""
+
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetVerifySerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'reset_password_verify'
+
+    def post(self, request, *args, **kwargs):
+        """Проверяет uid и токен восстановления."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        return Response(
+            {
+                'detail': 'Ссылка действительна.',
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@password_reset_confirm_schema
+class PasswordResetConfirmView(GenericAPIView):
+    """Представление установки нового пароля."""
+
+    permission_classes = [AllowAny]
+    serializer_class = PasswordResetConfirmSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'reset_password_confirm'
+
+    def post(self, request, *args, **kwargs):
+        """Проверяет данные и устанавливает новый пароль."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {
+                'detail': 'Новый пароль сохранен.',
+            },
             status=status.HTTP_200_OK,
         )
