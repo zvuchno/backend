@@ -7,6 +7,9 @@ from users.views import (
     ChangePhoneView,
     EmailVerificationView,
     MeView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
+    PasswordResetVerifyView,
     ResendVerificationEmailView,
 )
 
@@ -31,5 +34,20 @@ urlpatterns = [
         'verify-email/',
         EmailVerificationView.as_view(),
         name='verify_email',
+    ),
+    path(
+        'reset-password/',
+        PasswordResetRequestView.as_view(),
+        name='reset_password',
+    ),
+    path(
+        'reset-password-verify/',
+        PasswordResetVerifyView.as_view(),
+        name='reset_password_verify',
+    ),
+    path(
+        'reset-password-confirm/',
+        PasswordResetConfirmView.as_view(),
+        name='reset_password_confirm',
     ),
 ]
