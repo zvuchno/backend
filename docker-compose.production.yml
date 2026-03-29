@@ -9,22 +9,31 @@ services:
     env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   backend:
     image: inswty/zvuchno_backend:latest
     env_file: .env
     user: "${UID}:${GID}"
     volumes:
-      - ./staticfiles:/app/staticfiles
-      - ./media:/app/media
+      - static:/app/staticfiles
+      - media:/app/media
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
   gateway:
     image: inswty/zvuchno_gateway:latest
     env_file: .env
     volumes:
-      - ./staticfiles:/staticfiles:ro
-      - ./media:/media:ro
+      - static:/staticfiles:ro
+      - media:/media:ro
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     ports:
       - "127.0.0.1:8000:80"

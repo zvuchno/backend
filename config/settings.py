@@ -170,6 +170,7 @@ AUTH_USER_MODEL = 'users.CoreUser'
 PHONENUMBER_DEFAULT_REGION = 'RU'
 
 FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://localhost:3000/verify-email')
+FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://localhost:3000/reset-password-confirm')
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -181,6 +182,9 @@ REST_FRAMEWORK = {
         'verify': '20/minute',
         'change_phone': '5/min',
         'change_password': '5/min',
+        'reset_password_verify': '5/min',
+        'reset_password_request': '5/min',
+        'reset_password_confirm': '5/min',
         'verify_email': '10/min',
         'resend_verification_email': '3/min',
     },

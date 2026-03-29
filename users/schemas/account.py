@@ -26,6 +26,38 @@ change_password_schema = extend_schema(
     description=('Изменяет пароль текущего пользователя по старому паролю.'),
 )
 
+password_reset_request_schema = extend_schema(
+    tags=['Аккаунт'],
+    auth=[],
+    summary='Запросить восстановление пароля',
+    description=(
+        'Принимает email пользователя и инициирует процесс '
+        'восстановления пароля. '
+        'Если учетная запись существует, для нее формируется ссылка '
+        'восстановления.'
+    ),
+)
+
+password_reset_verify_schema = extend_schema(
+    tags=['Аккаунт'],
+    auth=[],
+    summary='Проверить ссылку восстановления пароля',
+    description=(
+        'Проверяет корректность uid и токена из ссылки восстановления '
+        'пароля и сообщает, действительна ли ссылка.'
+    ),
+)
+
+password_reset_confirm_schema = extend_schema(
+    tags=['Аккаунт'],
+    auth=[],
+    summary='Подтвердить восстановление пароля',
+    description=(
+        'Повторно проверяет uid и токен восстановления пароля, '
+        'а затем устанавливает новый пароль пользователя.'
+    ),
+)
+
 email_verification_schema = extend_schema(
     tags=['Аккаунт'],
     auth=[],
