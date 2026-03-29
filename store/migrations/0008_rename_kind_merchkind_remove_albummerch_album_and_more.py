@@ -18,14 +18,14 @@ class Migration(migrations.Migration):
             old_name='Kind',
             new_name='MerchKind',
         ),
-        migrations.RemoveField(
-            model_name='albummerch',
-            name='album',
-        ),
-        migrations.RemoveField(
-            model_name='albummerch',
-            name='merch',
-        ),
+        # migrations.RemoveField(
+        #     model_name='albummerch',
+        #     name='album',
+        # ),
+        # migrations.RemoveField(
+        #     model_name='albummerch',
+        #     name='merch',
+        # ),
         migrations.RemoveField(
             model_name='merch',
             name='album',
@@ -88,6 +88,11 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name='image',
             constraint=models.UniqueConstraint(condition=models.Q(('is_main', True)), fields=('merch',), name='unique_main_image_per_merch'),
+        ),
+        # уделение констрейта
+        migrations.RemoveConstraint(
+            model_name='albummerch',
+            name='unique_album_merch',
         ),
         migrations.DeleteModel(
             name='AlbumMerch',
