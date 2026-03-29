@@ -135,12 +135,12 @@ class ResendVerificationEmailView(GenericAPIView):
             user=user,
             frontend_base_url=frontend_base_url,
         )
-
-        logger.info(
-            'Email verification link for %s: %s',
-            user.email,
-            verification_url,
-        )
+        if settings.DEBUG:
+            logger.info(
+                'Запрос на подтверждение Email %s: %s',
+                user.email,
+                verification_url,
+            )
 
         return Response(
             {'detail': 'Запрос на подтверждение Email принят.'},
@@ -168,10 +168,16 @@ class PasswordResetRequestView(GenericAPIView):
         if user:
             frontend_base_url = settings.FRONTEND_RESET_PASSWORD_URL
             reset_url = build_password_reset_url(user, frontend_base_url)
+            if settings.DEBUG:
+                logger.info(
+                    'Ссылка для восстановления пароля аккаунта %s: %s',
+                    user.email,
+                    reset_url,
+                )
+        else:
             logger.info(
-                'Password reset link for %s: %s',
-                user.email,
-                reset_url,
+                'Попытка сброса пароля для несуществующего email: %s',
+                email,
             )
         return Response(
             {
