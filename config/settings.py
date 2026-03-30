@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'djoser',
     'phonenumber_field',
+    'admin_reorder',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
 ]
@@ -59,6 +60,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -203,6 +205,38 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# Настройка группировки моделей в админ-панели
+# Используется форк django-modeladmin-reorder
+ADMIN_REORDER = (
+    # Группа 1: Витрина
+    {
+        'app': 'store',
+        'label': 'Витрина',
+        'models': (
+            'store.Album',
+            'store.Track',
+            'store.Merch',
+            'store.Genre',
+            'store.Kind',
+        ),
+    },
+
+    # Группа 2: Продажи и логистика
+    {
+        'app': 'store',
+        'label': 'Заказы',
+        'models': (
+            'store.ShoppingCart',
+        ),
+    },
+
+    # Оставляем стандартные настройки для приложения 'users'
+    'users',
+
+    # Стандартный блок прав доступа
+    'auth',
+)
 
 LOGGING = {
     'version': 1,
