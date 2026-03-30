@@ -4,63 +4,75 @@
 """
 
 from django.contrib import admin
-from django.utils.html import format_html
 
-from store.models import CartItem, ShoppingCart
+from store.models import CartItem, ProductVariant, ShoppingCart
+
+
+@admin.register(ProductVariant)
+class ProductVariantAdmin(admin.ModelAdmin):
+    """Регистрация CartItem для autocomplete_fields."""
+
+    search_fields = (
+        'sku',
+        'characteristic',
+        # Если продукт — это трек:
+        'product__track__name',
+        # Если продукт — это альбом:
+        'product__album__name',
+        # Если продукт — это мерч:
+        'product__merch__name',
+    )
+
+    def has_module_permission(self, request):
+        """Скрываем из главного меню админки."""
+        return False
 
 
 class CartItemInline(admin.TabularInline):
-    """Fff."""
+    """Инлайн отображения позиций в корзине."""
 
     model = CartItem
-    extra = 1
-    fields = ('product', 'quantity', 'get_price')
+    extra = 0
+    fields = ('product_variant', 'quantity', 'get_price')
+    autocomplete_fields = ('product_variant',)
     readonly_fields = ('get_price',)
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('product')
+        """Оптимизирует запрос, подтягивая всю цепочку связей."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'product_variant__product',  # Достаем вариант и продукт
+                'product_variant__product__track',  # Достаем трек
+                'product_variant__product__album',  # Достаем альбом
+                'product_variant__product__merch',  # Достаем мерч
+            )
+        )
 
-    @admin.display(description='Цена (ед.)')
+    @admin.display(description='Цена (руб.)')
     def get_price(self, obj):
         """Проходим цепочку: CartItem -> ProductVariant -> Product -> price."""
-        try:
-            # 1. Проверяем связь с Вариантом
-            variant = obj.product
-            # 2. Проверяем связь Варианта с основным Продуктом
-            product_main = variant.product
-            return f'{product_main.price} руб.'
-        except AttributeError:
-            # Если какая-то из связей еще не выбрана или пуста
-            return '—'
+        if obj.product_variant and obj.product_variant.product:
+            return obj.product_variant.product.price
+        return None
 
 
 @admin.register(ShoppingCart)
 class ShoppingCartAdmin(admin.ModelAdmin):
-    """Ffff."""
+    """Админка модели ShoppingCart с вложенными позициями."""
 
-    list_display = ('user',)
-    search_fields = ('user', 'user__email')
-    fields = ('user', 'total_sum_display')
-    readonly_fields = ('total_sum_display',)
+    list_display = ('user', 'get_total_sum')
+    search_fields = ('user__username', 'user__email')
+    fields = ('user', 'get_total_sum')
     autocomplete_fields = ('user',)
-    actions = ('create_order_from_cart',)
+    readonly_fields = ('get_total_sum',)
     inlines = (CartItemInline,)
 
-    def total_sum_display(self, obj):
-        """Отображает общую сумму корзины."""
-        if obj is None or not obj.pk:
-            return format_html(
-                '<div id="id_items_total" class="readonly">0,00</div>',
-            )
+    @admin.display(description='Сумма (руб.)')
+    def get_total_sum(self, obj):
+        return f'{obj.subtotal:,.2f}'.replace(',', ' ')
 
-        total = sum(
-            (item.product.price if item.product else 0) * item.quantity
-            for item in obj.items.all()
-        )
-        formatted = f'{total:,.2f}'.replace(',', ' ')
-        return format_html(
-            '<div id="id_items_total" class="readonly">{}</div>',
-            formatted,
-        )
-
-    total_sum_display.short_description = 'Сумма (руб.)'
+    def get_queryset(self, request):
+        # Подгружаем юзера сразу для всего списка
+        return super().get_queryset(request).select_related('user')
