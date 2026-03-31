@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_filters',
     'drf_spectacular',
     'nested_admin',
     'rest_framework_simplejwt',
@@ -189,6 +190,7 @@ REST_FRAMEWORK = {
         'resend_verification_email': '3/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
 }
 
 # TODO: настроить периодический запуск flushexpiredtokens
