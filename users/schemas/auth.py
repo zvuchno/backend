@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema
 from users.serializers.jwt import LogoutSerializer
 
 token_obtain_schema = extend_schema(
-    tags=['Аутентификация'],
+    tags=['Auth'],
     auth=[],
     summary='Вход в систему',
     description='Аутентифицирует пользователя и возвращает access- и '
@@ -13,7 +13,7 @@ token_obtain_schema = extend_schema(
 )
 
 token_refresh_schema = extend_schema(
-    tags=['Аутентификация'],
+    tags=['Auth'],
     auth=[],
     summary='Обновление access-токена',
     description='Возвращает новый access-токен '
@@ -21,14 +21,14 @@ token_refresh_schema = extend_schema(
 )
 
 token_verify_schema = extend_schema(
-    tags=['Аутентификация'],
+    tags=['Auth'],
     auth=[],
     summary='Проверка токена',
     description='Проверяет корректность и срок действия переданного токена.',
 )
 
 logout_schema = extend_schema(
-    tags=['Аутентификация'],
+    tags=['Auth'],
     auth=[],
     request=LogoutSerializer,
     responses={204: None, 400: None},

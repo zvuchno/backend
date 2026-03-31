@@ -4,7 +4,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 
 listener_me_schema = extend_schema_view(
     get=extend_schema(
-        tags=['Профиль слушателя'],
+        tags=['Listener'],
         summary='Получить свой профиль слушателя',
         description=(
             'Возвращает профиль слушателя, связанный с текущей '
@@ -12,7 +12,7 @@ listener_me_schema = extend_schema_view(
         ),
     ),
     patch=extend_schema(
-        tags=['Профиль слушателя'],
+        tags=['Listener'],
         summary='Обновить свой профиль слушателя',
         description=(
             'Частично обновляет профиль слушателя, связанный с текущей '
