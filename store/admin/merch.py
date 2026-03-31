@@ -3,7 +3,6 @@
 Содержит настройку интерфейса Django Admin для модели мерча.
 """
 
-
 from django.contrib import admin
 from django.utils.html import format_html
 from nested_admin import (
@@ -12,7 +11,7 @@ from nested_admin import (
 )
 
 from store.admin.inlines import ProductInline
-from store.admin.mixins import AutoOwnerAdminMixin
+from store.admin.mixins import AutoOwnerAdminMixin, CommerceMixin
 from store.models import Image, Merch
 
 
@@ -35,7 +34,7 @@ class PhotoInline(NestedTabularInline):
 
 
 @admin.register(Merch)
-class MerchAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
+class MerchAdmin(AutoOwnerAdminMixin, CommerceMixin, NestedModelAdmin):
     """Админка мерча."""
 
     inlines = (PhotoInline, ProductInline)
@@ -53,7 +52,9 @@ class MerchAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
         'is_active',
     )
     list_editable = (
-        'is_active', 'is_published', 'visibility',
+        'is_active',
+        'is_published',
+        'visibility',
     )
     list_filter = (
         'is_active',
@@ -97,7 +98,8 @@ class MerchAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.select_related(
-            'product', 'kind'
+            'product',
+            'kind',
         ).prefetch_related('images_merch')
 
     @admin.display(description='Цена')
@@ -106,11 +108,11 @@ class MerchAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
             return obj.product.price
         return '-'
 
-    @admin.display(description='Переплата')
+    @admin.display(description='Переплата', boolean=True)
     def get_allow_overpay(self, obj):
         if hasattr(obj, 'product') and obj.product:
-            return 'Да' if obj.product.allow_overpay else 'Нет'
-        return '-'
+            return obj.product.allow_overpay
+        return None
 
     @admin.display(description='Главное фото')
     def image_preview(self, obj):

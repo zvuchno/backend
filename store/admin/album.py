@@ -17,7 +17,7 @@ from nested_admin import (
     NestedTabularInline,
 )
 
-from .mixins import AutoOwnerAdminMixin
+from .mixins import AutoOwnerAdminMixin, CommerceMixin
 from store.constants import (
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
@@ -136,7 +136,17 @@ class ProductVariantInline(NestedTabularInline):
     model = ProductVariant
     fields = ('sku', 'stock', 'characteristic')
     extra = 0
-    readonly_fields = ('sku',)
+    readonly_fields = ('sku', 'stock', 'characteristic')
+    extra = 0
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        """Запрещает ручное добавление вариантов через админку."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает удаление вариантов через админку."""
+        return False
 
 
 class ProductInline(NestedStackedInline):
@@ -152,7 +162,7 @@ class ProductInline(NestedStackedInline):
 
 
 @admin.register(Album)
-class AlbumAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
+class AlbumAdmin(AutoOwnerAdminMixin, CommerceMixin, NestedModelAdmin):
     """Админка модели Album с поддержкой вложенных inline.
 
     Отображает:
@@ -221,19 +231,19 @@ class AlbumAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
             return obj.product.price
         return '-'
 
-    @admin.display(description='Переплата')
+    @admin.display(description='Переплата', boolean=True)
     def get_allow_overpay(self, obj):
         """Геттер для отображения поля allow_overpay из связанного Product."""
         if hasattr(obj, 'product') and obj.product:
-            return 'Да' if obj.product.allow_overpay else 'Нет'
-        return '-'
+            return obj.product.allow_overpay
+        return None
 
     @admin.display(description='Изображение')
     def image_preview(self, obj):
         """Возвращает HTML-превью обложки альбома в списке админки."""
         if obj.cover_image:
             return format_html(
-                '<img src="{}" style="height:80px;border-radius:4px;">',
+                '<img src="{}" style="height:100px;border-radius:4px;">',
                 obj.cover_image.url,
             )
         return '-'

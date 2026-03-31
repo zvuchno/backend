@@ -5,7 +5,7 @@
 
 from django.contrib import admin
 
-from .mixins import AutoOwnerAdminMixin
+from .mixins import AutoOwnerAdminMixin, CommerceMixin
 from store.models import Product, Track
 
 
@@ -19,16 +19,16 @@ class ProductInline(admin.StackedInline):
 
 
 @admin.register(Track)
-class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
+class TrackAdmin(AutoOwnerAdminMixin, CommerceMixin, admin.ModelAdmin):
     """Админка для модели Track."""
 
     list_display = (
         'name',
         'album',
-        'is_active',
+        'position',
         'get_price',
         'get_allow_overpay',
-        'position',
+        'is_active',
     )
 
     search_fields = ('album__name', 'lyrics', 'name')
@@ -72,12 +72,12 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
             return obj.product.price
         return '-'
 
-    @admin.display(description='Переплата')
+    @admin.display(description='Переплата', boolean=True)
     def get_allow_overpay(self, obj):
         """Геттер для отображения поля allow_overpay из связанного Product."""
         if hasattr(obj, 'product') and obj.product:
-            return 'Да' if obj.product.allow_overpay else 'Нет'
-        return '-'
+            return obj.product.allow_overpay
+        return None
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):
