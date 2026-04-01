@@ -1,12 +1,9 @@
-from django.contrib.auth import get_user_model
 from django.db import models
 
 from store.models.abstract.base_content import BaseContent
 from store.models.abstract.visibility_model import VisibilityModel
 from store.models.album import Album
 from store.models.merch_kind import MerchKind
-
-User = get_user_model()
 
 
 class Merch(BaseContent, VisibilityModel):

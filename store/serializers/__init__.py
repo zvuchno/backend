@@ -4,6 +4,12 @@ from .album import (
     AlbumWriteSerializer,
 )
 from .genre import GenreSerializer
+from .image import ImageSerializer
+from .merch import (
+    MerchDetailSerializer,
+    MerchReadSerializer,
+    MerchWriteSerializer,
+)
 from .track import (
     TrackReadDetailSerializer,
     TrackReadSerializer,
@@ -15,6 +21,10 @@ __all__ = [
     'AlbumWriteSerializer',
     'AlbumReadDetailSerializer',
     'GenreSerializer',
+    'ImageSerializer',
+    'MerchDetailSerializer',
+    'MerchReadSerializer',
+    'MerchWriteSerializer',
     'TrackReadSerializer',
     'TrackReadDetailSerializer',
     'TrackWriteSerializer',
