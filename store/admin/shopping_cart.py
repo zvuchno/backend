@@ -4,6 +4,8 @@
 """
 
 from django.contrib import admin
+from django.db import models
+from django.forms import Textarea
 
 from store.models import CartItem, ProductVariant, ShoppingCart
 
@@ -15,11 +17,8 @@ class ProductVariantAdmin(admin.ModelAdmin):
     search_fields = (
         'sku',
         'characteristic',
-        # Если продукт — это трек:
         'product__track__name',
-        # Если продукт — это альбом:
         'product__album__name',
-        # Если продукт — это мерч:
         'product__merch__name',
     )
 
@@ -33,9 +32,27 @@ class CartItemInline(admin.TabularInline):
 
     model = CartItem
     extra = 0
-    fields = ('product_variant', 'quantity', 'get_price')
+    fields = (
+        'product_variant',
+        'get_allow_overpay',
+        'quantity',
+        'get_price',
+        'custom_price',
+        'get_item_sum',
+        'comment',
+    )
     autocomplete_fields = ('product_variant',)
-    readonly_fields = ('get_price',)
+    readonly_fields = ('get_allow_overpay', 'get_price', 'get_item_sum')
+    formfield_overrides = {
+        models.TextField: {'widget': Textarea(attrs={'rows': 2, 'cols': 30})},
+    }
+
+    @admin.display(description='Сумма, руб.')
+    def get_item_sum(self, obj):
+        """Отображает результат property item_sum."""
+        if obj and obj.pk:
+            return obj.item_sum
+        return '-'
 
     def get_queryset(self, request):
         """Оптимизирует запрос, подтягивая всю цепочку связей."""
@@ -43,10 +60,10 @@ class CartItemInline(admin.TabularInline):
             super()
             .get_queryset(request)
             .select_related(
-                'product_variant__product',  # Достаем вариант и продукт
-                'product_variant__product__track',  # Достаем трек
-                'product_variant__product__album',  # Достаем альбом
-                'product_variant__product__merch',  # Достаем мерч
+                'product_variant__product',
+                'product_variant__product__track',
+                'product_variant__product__album',
+                'product_variant__product__merch',
             )
         )
 
@@ -55,6 +72,13 @@ class CartItemInline(admin.TabularInline):
         """Проходим цепочку: CartItem -> ProductVariant -> Product -> price."""
         if obj.product_variant and obj.product_variant.product:
             return obj.product_variant.product.price
+        return None
+
+    @admin.display(description='Разрешена переплата', boolean=True)
+    def get_allow_overpay(self, obj):
+        """Возвращает флаг разрешения переплаты из связанного продукта."""
+        if obj.product_variant and obj.product_variant.product:
+            return obj.product_variant.product.allow_overpay
         return None
 
 
@@ -69,7 +93,7 @@ class ShoppingCartAdmin(admin.ModelAdmin):
     readonly_fields = ('get_total_sum',)
     inlines = (CartItemInline,)
 
-    @admin.display(description='Сумма (руб.)')
+    @admin.display(description='Итого (руб.)')
     def get_total_sum(self, obj):
         return f'{obj.subtotal:,.2f}'.replace(',', ' ')
 

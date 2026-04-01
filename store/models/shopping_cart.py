@@ -1,11 +1,21 @@
-"""Модель корзины покупателя."""
+"""Модели корзины покупок."""
+
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import F, Sum
+from django.db.models import Case, F, Sum, When
+from django.db.models.functions import Coalesce
 
+from store.constants import (
+    MAX_COMMENT_LENGTH,
+    MAX_PRICE_DIGITS,
+    PRICE_DECIMAL_PLACES,
+)
 from store.models import ProductVariant
+from store.validators import validate_custom_price
 
 User = get_user_model()
 
@@ -28,20 +38,39 @@ class ShoppingCart(models.Model):
 
     @property
     def subtotal(self):
-        """Считает сумму товаров без учета скидки.
+        """Считает сумму всей корзины одним SQL-запросом.
 
-        Выполняет агрегацию на стороне базы данных: перемножает количество
-        каждого товара на его актуальную цену и суммирует результаты.
+        Если переплата разрешена: берем custom_price
+        или базовую, если custom_price — NULL.
+        Если переплата запрещена: базовая цена.
         """
-        result = self.items.aggregate(
-            total=Sum(F('quantity') * F('product_variant__product__price')),
-        )
-        return result['total'] or 0
+        return self.items.aggregate(
+            total=Sum(
+                F('quantity')
+                * Case(
+                    # Если переплата разрешена
+                    When(
+                        product_variant__product__allow_overpay=True,
+                        then=Coalesce(
+                            F('custom_price'),
+                            F('product_variant__product__price'),
+                        ),
+                    ),
+                    # Если переплата запрещена
+                    default=F('product_variant__product__price'),
+                    output_field=models.DecimalField(),
+                ),
+                output_field=models.DecimalField(
+                    max_digits=MAX_PRICE_DIGITS,
+                    decimal_places=PRICE_DECIMAL_PLACES,
+                ),
+            ),
+        )['total'] or Decimal('0.00')
 
     @property
     def discounted_subtotal(self):
         """Сумма корзины с учетом промокода."""
-        pass
+        return self.subtotal  # Пока не реализованы промокоды TODO: доделать
 
     class Meta:
         verbose_name = 'корзина'
@@ -62,6 +91,7 @@ class CartItem(models.Model):
     product_variant = models.ForeignKey(
         ProductVariant,
         on_delete=models.CASCADE,
+        related_name='cart_items',
         verbose_name='Продукт',
     )
     quantity = models.PositiveIntegerField(
@@ -69,6 +99,46 @@ class CartItem(models.Model):
         default=1,
         validators=[MinValueValidator(1)],
     )
+    custom_price = models.DecimalField(
+        'Хочет заплатить, руб.',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=PRICE_DECIMAL_PLACES,
+        null=True,
+        blank=True,
+        default=None,
+        help_text='Цена с донатом, руб.',
+    )
+    comment = models.TextField(
+        'Комментарий к заказу',
+        max_length=MAX_COMMENT_LENGTH,
+        blank=True,
+        null=True,
+        help_text='Сообщение для артиста',
+    )
+
+    def clean(self):
+        super().clean()
+        errors = validate_custom_price(
+            self.product_variant.product,
+            self.custom_price,
+        )
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def item_sum(self):
+        """Считает сумму строки.
+
+        Кастомная цена или цена продукта * количество.
+        Если переплата разрешена и введена кастомная цена — берем её.
+        В противном случае — номинал из продукта.
+        """
+        product = self.product_variant.product
+        if product.allow_overpay and self.custom_price:
+            price = self.custom_price
+        else:
+            price = product.price
+        return price * self.quantity
 
     class Meta:
         verbose_name = 'позиция в корзине'

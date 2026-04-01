@@ -56,7 +56,6 @@ class TrackInlineForm(forms.ModelForm):
             # Пытаемся получить связанный Product
             product = self.instance.product
         except ObjectDoesNotExist:
-            # Если Product нет в базе, просто оставляем поле пустым
             product = None
 
         if product:
@@ -75,7 +74,6 @@ class TrackInlineForm(forms.ModelForm):
         """
         # Сохраняем Track (может быть commit=False)
         instance = super().save(commit=commit)
-        # Берём цену из формы, 0.00 если поле пустое
         price = self.cleaned_data.get('price') or Decimal('0.00')
 
         @transaction.atomic
@@ -84,7 +82,6 @@ class TrackInlineForm(forms.ModelForm):
             product, _ = Product.objects.get_or_create(track=instance)
             if price is not None and product.price != price:
                 product.price = price
-                # Сохраняем только поле price
                 product.save(update_fields=['price'])
 
         if commit:
@@ -165,7 +162,7 @@ class AlbumAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
       прямо в форме альбома.
     """
 
-    list_select_related = ('product', 'genre')  # Подтянуть одним запросом в БД
+    list_select_related = ('product', 'genre')
     list_display = (
         'name',
         'genre',
@@ -221,12 +218,12 @@ class AlbumAdmin(AutoOwnerAdminMixin, NestedModelAdmin):
             return obj.product.price
         return '-'
 
-    @admin.display(description='Переплата')
+    @admin.display(description='Переплата', boolean=True)
     def get_allow_overpay(self, obj):
         """Геттер для отображения поля allow_overpay из связанного Product."""
         if hasattr(obj, 'product') and obj.product:
-            return 'Да' if obj.product.allow_overpay else 'Нет'
-        return '-'
+            return obj.product.allow_overpay
+        return None
 
     @admin.display(description='Изображение')
     def image_preview(self, obj):

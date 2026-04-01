@@ -72,12 +72,12 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
             return obj.product.price
         return '-'
 
-    @admin.display(description='Переплата')
+    @admin.display(description='Переплата', boolean=True)
     def get_allow_overpay(self, obj):
         """Геттер для отображения поля allow_overpay из связанного Product."""
         if hasattr(obj, 'product') and obj.product:
-            return 'Да' if obj.product.allow_overpay else 'Нет'
-        return '-'
+            return obj.product.allow_overpay
+        return None
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):
