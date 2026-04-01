@@ -220,6 +220,12 @@ python manage.py shell
 python manage.py check
 ```
 
+Импорт тестовых музыкальных фикстур (через API-слой, идемпотентно):
+
+```
+python manage.py import_test_server_music
+```
+
 ---
 
 # Команды для ruff

@@ -1,0 +1,214 @@
+{
+  "genres": [
+    {"name": "Stoner Rock", "slug": "stoner-rock"},
+    {"name": "Desert Rock", "slug": "desert-rock"},
+    {"name": "Doom Metal", "slug": "doom-metal"},
+    {"name": "Alternative Rock", "slug": "alternative-rock"},
+    {"name": "Indie Pop", "slug": "indie-pop"},
+    {"name": "Russian Pop", "slug": "russian-pop"},
+    {"name": "Phonk", "slug": "phonk"},
+    {"name": "Drift Phonk", "slug": "drift-phonk"}
+  ],
+  "artists": [
+    {
+      "name": "Kyuss",
+      "slug": "kyuss",
+      "city": "Palm Desert",
+      "genre_slug": "stoner-rock",
+      "albums": [
+        {
+          "name": "Blues for the Red Sun",
+          "release_date": "1992-06-30",
+          "genre_slug": "desert-rock",
+          "tracks": ["Thumb", "Green Machine", "Molten Universe"]
+        },
+        {
+          "name": "Welcome to Sky Valley",
+          "release_date": "1994-06-28",
+          "genre_slug": "stoner-rock",
+          "tracks": ["Gardenia", "Asteroid", "Whitewater"]
+        }
+      ]
+    },
+    {
+      "name": "Queens of the Stone Age",
+      "slug": "queens-of-the-stone-age",
+      "city": "Palm Desert",
+      "genre_slug": "alternative-rock",
+      "albums": [
+        {
+          "name": "Rated R",
+          "release_date": "2000-06-06",
+          "genre_slug": "alternative-rock",
+          "tracks": ["Feel Good Hit of the Summer", "The Lost Art of Keeping a Secret", "In the Fade"]
+        },
+        {
+          "name": "Songs for the Deaf",
+          "release_date": "2002-08-27",
+          "genre_slug": "desert-rock",
+          "tracks": ["No One Knows", "Go with the Flow", "Song for the Dead"]
+        }
+      ]
+    },
+    {
+      "name": "Sleep",
+      "slug": "sleep",
+      "city": "San Jose",
+      "genre_slug": "doom-metal",
+      "albums": [
+        {
+          "name": "Holy Mountain",
+          "release_date": "1992-11-03",
+          "genre_slug": "doom-metal",
+          "tracks": ["Dragonaut", "The Druid", "Holy Mountain"]
+        },
+        {
+          "name": "The Sciences",
+          "release_date": "2018-04-20",
+          "genre_slug": "stoner-rock",
+          "tracks": ["The Sciences", "Marijuanaut's Theme", "Sonic Titan"]
+        }
+      ]
+    },
+    {
+      "name": "Fu Manchu",
+      "slug": "fu-manchu",
+      "city": "San Clemente",
+      "genre_slug": "stoner-rock",
+      "albums": [
+        {
+          "name": "In Search Of...",
+          "release_date": "1996-10-08",
+          "genre_slug": "stoner-rock",
+          "tracks": ["Regal Begal", "The Falcon Has Landed", "Cyclone Launch"]
+        },
+        {
+          "name": "The Action Is Go",
+          "release_date": "1997-10-07",
+          "genre_slug": "stoner-rock",
+          "tracks": ["Evil Eye", "Urethane", "Shift Kicker"]
+        }
+      ]
+    },
+    {
+      "name": "Red Fang",
+      "slug": "red-fang",
+      "city": "Portland",
+      "genre_slug": "stoner-rock",
+      "albums": [
+        {
+          "name": "Murder the Mountains",
+          "release_date": "2011-04-12",
+          "genre_slug": "stoner-rock",
+          "tracks": ["Wires", "Hank Is Dead", "Throw Up"]
+        },
+        {
+          "name": "Only Ghosts",
+          "release_date": "2016-10-14",
+          "genre_slug": "alternative-rock",
+          "tracks": ["Cut It Short", "Shadows", "Flies"]
+        }
+      ]
+    },
+    {
+      "name": "Truckfighters",
+      "slug": "truckfighters",
+      "city": "Orebro",
+      "genre_slug": "stoner-rock",
+      "albums": [
+        {
+          "name": "Gravity X",
+          "release_date": "2005-08-01",
+          "genre_slug": "stoner-rock",
+          "tracks": ["Desert Cruiser", "Gargarismo", "Superfunk"]
+        },
+        {
+          "name": "Mania",
+          "release_date": "2009-09-30",
+          "genre_slug": "desert-rock",
+          "tracks": ["Last Curfew", "Monte Gargano", "Majestic"]
+        }
+      ]
+    },
+    {
+      "name": "Дора",
+      "slug": "dora",
+      "city": "Moscow",
+      "genre_slug": "russian-pop",
+      "albums": [
+        {
+          "name": "Младшая сестра",
+          "release_date": "2019-11-08",
+          "genre_slug": "russian-pop",
+          "tracks": ["Втюрилась", "Дорадура", "Любовь в интернете"]
+        },
+        {
+          "name": "Miss",
+          "release_date": "2020-11-20",
+          "genre_slug": "indie-pop",
+          "tracks": ["Сан Ларан", "Если хочешь", "Ночи"]
+        }
+      ]
+    },
+    {
+      "name": "Нексюша",
+      "slug": "neksyusha",
+      "city": "Saint Petersburg",
+      "genre_slug": "indie-pop",
+      "albums": [
+        {
+          "name": "Когда я вырасту",
+          "release_date": "2021-04-16",
+          "genre_slug": "indie-pop",
+          "tracks": ["Когда я вырасту", "Станция", "Слишком рано"]
+        },
+        {
+          "name": "Холодный воздух",
+          "release_date": "2023-09-15",
+          "genre_slug": "indie-pop",
+          "tracks": ["Холодный воздух", "Призраки", "Обещай"]
+        }
+      ]
+    },
+    {
+      "name": "DVRST",
+      "slug": "dvrst",
+      "city": "Moscow",
+      "genre_slug": "drift-phonk",
+      "albums": [
+        {
+          "name": "Night Drive",
+          "release_date": "2021-07-30",
+          "genre_slug": "drift-phonk",
+          "tracks": ["Close Eyes", "Skyline", "Midnight Drift"]
+        },
+        {
+          "name": "Street Echoes",
+          "release_date": "2022-10-21",
+          "genre_slug": "phonk",
+          "tracks": ["Nightcrawler", "Grim Avenue", "Turbo Memory"]
+        }
+      ]
+    },
+    {
+      "name": "Kordhell",
+      "slug": "kordhell",
+      "city": "Los Angeles",
+      "genre_slug": "drift-phonk",
+      "albums": [
+        {
+          "name": "Phantom Drift",
+          "release_date": "2021-11-26",
+          "genre_slug": "drift-phonk",
+          "tracks": ["Murder In My Mind", "Fatality", "Ghostline"]
+        },
+        {
+          "name": "Neon Hell",
+          "release_date": "2023-04-14",
+          "genre_slug": "phonk",
+          "tracks": ["Scopin", "Bleed", "Engine Roar"]
+        }
+      ]
+    }
+  ]
+}
