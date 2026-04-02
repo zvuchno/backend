@@ -1,13 +1,41 @@
 {
   "genres": [
-    {"name": "Stoner Rock", "slug": "stoner-rock"},
-    {"name": "Desert Rock", "slug": "desert-rock"},
-    {"name": "Doom Metal", "slug": "doom-metal"},
-    {"name": "Alternative Rock", "slug": "alternative-rock"},
-    {"name": "Indie Pop", "slug": "indie-pop"},
-    {"name": "Russian Pop", "slug": "russian-pop"},
-    {"name": "Phonk", "slug": "phonk"},
-    {"name": "Drift Phonk", "slug": "drift-phonk"}
+    {
+      "name": "Stoner Rock",
+      "slug": "stoner-rock"
+    },
+    {
+      "name": "Desert Rock",
+      "slug": "desert-rock"
+    },
+    {
+      "name": "Doom Metal",
+      "slug": "doom-metal"
+    },
+    {
+      "name": "Alternative Rock",
+      "slug": "alternative-rock"
+    },
+    {
+      "name": "Indie Pop",
+      "slug": "indie-pop"
+    },
+    {
+      "name": "Russian Pop",
+      "slug": "russian-pop"
+    },
+    {
+      "name": "Phonk",
+      "slug": "phonk"
+    },
+    {
+      "name": "Drift Phonk",
+      "slug": "drift-phonk"
+    },
+    {
+      "name": "Russian Punk Rock",
+      "slug": "russian-punk-rock"
+    }
   ],
   "artists": [
     {
@@ -20,13 +48,21 @@
           "name": "Blues for the Red Sun",
           "release_date": "1992-06-30",
           "genre_slug": "desert-rock",
-          "tracks": ["Thumb", "Green Machine", "Molten Universe"]
+          "tracks": [
+            "Thumb",
+            "Green Machine",
+            "Molten Universe"
+          ]
         },
         {
           "name": "Welcome to Sky Valley",
           "release_date": "1994-06-28",
           "genre_slug": "stoner-rock",
-          "tracks": ["Gardenia", "Asteroid", "Whitewater"]
+          "tracks": [
+            "Gardenia",
+            "Asteroid",
+            "Whitewater"
+          ]
         }
       ]
     },
@@ -40,13 +76,21 @@
           "name": "Rated R",
           "release_date": "2000-06-06",
           "genre_slug": "alternative-rock",
-          "tracks": ["Feel Good Hit of the Summer", "The Lost Art of Keeping a Secret", "In the Fade"]
+          "tracks": [
+            "Feel Good Hit of the Summer",
+            "The Lost Art of Keeping a Secret",
+            "In the Fade"
+          ]
         },
         {
           "name": "Songs for the Deaf",
           "release_date": "2002-08-27",
           "genre_slug": "desert-rock",
-          "tracks": ["No One Knows", "Go with the Flow", "Song for the Dead"]
+          "tracks": [
+            "No One Knows",
+            "Go with the Flow",
+            "Song for the Dead"
+          ]
         }
       ]
     },
@@ -60,13 +104,21 @@
           "name": "Holy Mountain",
           "release_date": "1992-11-03",
           "genre_slug": "doom-metal",
-          "tracks": ["Dragonaut", "The Druid", "Holy Mountain"]
+          "tracks": [
+            "Dragonaut",
+            "The Druid",
+            "Holy Mountain"
+          ]
         },
         {
           "name": "The Sciences",
           "release_date": "2018-04-20",
           "genre_slug": "stoner-rock",
-          "tracks": ["The Sciences", "Marijuanaut's Theme", "Sonic Titan"]
+          "tracks": [
+            "The Sciences",
+            "Marijuanaut's Theme",
+            "Sonic Titan"
+          ]
         }
       ]
     },
@@ -80,13 +132,21 @@
           "name": "In Search Of...",
           "release_date": "1996-10-08",
           "genre_slug": "stoner-rock",
-          "tracks": ["Regal Begal", "The Falcon Has Landed", "Cyclone Launch"]
+          "tracks": [
+            "Regal Begal",
+            "The Falcon Has Landed",
+            "Cyclone Launch"
+          ]
         },
         {
           "name": "The Action Is Go",
           "release_date": "1997-10-07",
           "genre_slug": "stoner-rock",
-          "tracks": ["Evil Eye", "Urethane", "Shift Kicker"]
+          "tracks": [
+            "Evil Eye",
+            "Urethane",
+            "Shift Kicker"
+          ]
         }
       ]
     },
@@ -100,13 +160,21 @@
           "name": "Murder the Mountains",
           "release_date": "2011-04-12",
           "genre_slug": "stoner-rock",
-          "tracks": ["Wires", "Hank Is Dead", "Throw Up"]
+          "tracks": [
+            "Wires",
+            "Hank Is Dead",
+            "Throw Up"
+          ]
         },
         {
           "name": "Only Ghosts",
           "release_date": "2016-10-14",
           "genre_slug": "alternative-rock",
-          "tracks": ["Cut It Short", "Shadows", "Flies"]
+          "tracks": [
+            "Cut It Short",
+            "Shadows",
+            "Flies"
+          ]
         }
       ]
     },
@@ -120,13 +188,21 @@
           "name": "Gravity X",
           "release_date": "2005-08-01",
           "genre_slug": "stoner-rock",
-          "tracks": ["Desert Cruiser", "Gargarismo", "Superfunk"]
+          "tracks": [
+            "Desert Cruiser",
+            "Gargarismo",
+            "Superfunk"
+          ]
         },
         {
           "name": "Mania",
           "release_date": "2009-09-30",
           "genre_slug": "desert-rock",
-          "tracks": ["Last Curfew", "Monte Gargano", "Majestic"]
+          "tracks": [
+            "Last Curfew",
+            "Monte Gargano",
+            "Majestic"
+          ]
         }
       ]
     },
@@ -140,33 +216,21 @@
           "name": "Младшая сестра",
           "release_date": "2019-11-08",
           "genre_slug": "russian-pop",
-          "tracks": ["Втюрилась", "Дорадура", "Любовь в интернете"]
+          "tracks": [
+            "Втюрилась",
+            "Дорадура",
+            "Любовь в интернете"
+          ]
         },
         {
           "name": "Miss",
           "release_date": "2020-11-20",
           "genre_slug": "indie-pop",
-          "tracks": ["Сан Ларан", "Если хочешь", "Ночи"]
-        }
-      ]
-    },
-    {
-      "name": "Нексюша",
-      "slug": "neksyusha",
-      "city": "Saint Petersburg",
-      "genre_slug": "indie-pop",
-      "albums": [
-        {
-          "name": "Когда я вырасту",
-          "release_date": "2021-04-16",
-          "genre_slug": "indie-pop",
-          "tracks": ["Когда я вырасту", "Станция", "Слишком рано"]
-        },
-        {
-          "name": "Холодный воздух",
-          "release_date": "2023-09-15",
-          "genre_slug": "indie-pop",
-          "tracks": ["Холодный воздух", "Призраки", "Обещай"]
+          "tracks": [
+            "Сан Ларан",
+            "Если хочешь",
+            "Ночи"
+          ]
         }
       ]
     },
@@ -180,13 +244,21 @@
           "name": "Night Drive",
           "release_date": "2021-07-30",
           "genre_slug": "drift-phonk",
-          "tracks": ["Close Eyes", "Skyline", "Midnight Drift"]
+          "tracks": [
+            "Close Eyes",
+            "Skyline",
+            "Midnight Drift"
+          ]
         },
         {
           "name": "Street Echoes",
           "release_date": "2022-10-21",
           "genre_slug": "phonk",
-          "tracks": ["Nightcrawler", "Grim Avenue", "Turbo Memory"]
+          "tracks": [
+            "Nightcrawler",
+            "Grim Avenue",
+            "Turbo Memory"
+          ]
         }
       ]
     },
@@ -200,13 +272,329 @@
           "name": "Phantom Drift",
           "release_date": "2021-11-26",
           "genre_slug": "drift-phonk",
-          "tracks": ["Murder In My Mind", "Fatality", "Ghostline"]
+          "tracks": [
+            "Murder In My Mind",
+            "Fatality",
+            "Ghostline"
+          ]
         },
         {
           "name": "Neon Hell",
           "release_date": "2023-04-14",
           "genre_slug": "phonk",
-          "tracks": ["Scopin", "Bleed", "Engine Roar"]
+          "tracks": [
+            "Scopin",
+            "Bleed",
+            "Engine Roar"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Элизиум",
+      "slug": "elysium",
+      "city": "Nizhny Novgorod",
+      "genre_slug": "russian-punk-rock",
+      "albums": [
+        {
+          "name": "Космос",
+          "release_date": "2005-03-10",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "Острова",
+            "Романтика",
+            "Космос"
+          ]
+        },
+        {
+          "name": "13",
+          "release_date": "2013-09-01",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "Инопланетяне",
+            "Точка невозврата",
+            "Снег"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Порнофильмы",
+      "slug": "pornofilmy",
+      "city": "Dubna",
+      "genre_slug": "russian-punk-rock",
+      "albums": [
+        {
+          "name": "Это пройдёт",
+          "release_date": "2020-01-24",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "Россия для грустных",
+            "Прости. Прощай. Привет",
+            "Это пройдёт"
+          ]
+        },
+        {
+          "name": "В диапазоне между отчаянием и надеждой",
+          "release_date": "2017-10-01",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "Ритуалы",
+            "Кто все эти люди?",
+            "Молодость"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Тараканы!",
+      "slug": "tarakany",
+      "city": "Moscow",
+      "genre_slug": "russian-punk-rock",
+      "albums": [
+        {
+          "name": "Улица Свободы",
+          "release_date": "2018-05-11",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "Письмо к Бритни",
+            "Собачье сердце",
+            "Мешки с костями"
+          ]
+        },
+        {
+          "name": "MaximumHappy",
+          "release_date": "2013-04-01",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "5 слов",
+            "То, что не убивает тебя",
+            "Жизнь слишком коротка"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Йорш",
+      "slug": "yorsh",
+      "city": "Moscow",
+      "genre_slug": "russian-punk-rock",
+      "albums": [
+        {
+          "name": "Счастье, ч.1",
+          "release_date": "2021-02-19",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "2007",
+            "Счастье",
+            "Половинки"
+          ]
+        },
+        {
+          "name": "Мечта",
+          "release_date": "2019-10-04",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "Мечта",
+            "Андеграунд",
+            "Музыка сильных"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "План Ломоносова",
+      "slug": "plan-lomonosova",
+      "city": "Moscow",
+      "genre_slug": "russian-punk-rock",
+      "albums": [
+        {
+          "name": "Облако в штанах",
+          "release_date": "2018-09-14",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "Мосты",
+            "Танцы",
+            "Государство"
+          ]
+        },
+        {
+          "name": "Панки на Арбате",
+          "release_date": "2022-06-10",
+          "genre_slug": "russian-punk-rock",
+          "tracks": [
+            "Панки на Арбате",
+            "Маяк",
+            "Супергерой"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Electric Wizard",
+      "slug": "electric-wizard",
+      "city": "Dorset",
+      "genre_slug": "doom-metal",
+      "albums": [
+        {
+          "name": "Dopethrone",
+          "release_date": "2000-11-06",
+          "genre_slug": "doom-metal",
+          "tracks": [
+            "Vinum Sabbathi",
+            "Funeralopolis",
+            "We Hate You"
+          ]
+        },
+        {
+          "name": "Wizard Bloody Wizard",
+          "release_date": "2017-11-10",
+          "genre_slug": "doom-metal",
+          "tracks": [
+            "See You in Hell",
+            "Necromania",
+            "Mourning of the Magicians"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Uncle Acid & the Deadbeats",
+      "slug": "uncle-acid",
+      "city": "Cambridge",
+      "genre_slug": "doom-metal",
+      "albums": [
+        {
+          "name": "Blood Lust",
+          "release_date": "2011-11-01",
+          "genre_slug": "doom-metal",
+          "tracks": [
+            "I'll Cut You Down",
+            "Death's Door",
+            "Ritual Knife"
+          ]
+        },
+        {
+          "name": "Mind Control",
+          "release_date": "2013-04-15",
+          "genre_slug": "doom-metal",
+          "tracks": [
+            "Mt. Abraxas",
+            "Mind Crawler",
+            "Poison Apple"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Clutch",
+      "slug": "clutch",
+      "city": "Germantown",
+      "genre_slug": "alternative-rock",
+      "albums": [
+        {
+          "name": "Blast Tyrant",
+          "release_date": "2004-03-15",
+          "genre_slug": "alternative-rock",
+          "tracks": [
+            "The Mob Goes Wild",
+            "Cypress Grove",
+            "Promoter"
+          ]
+        },
+        {
+          "name": "Earth Rocker",
+          "release_date": "2013-03-19",
+          "genre_slug": "stoner-rock",
+          "tracks": [
+            "Earth Rocker",
+            "Crucial Velocity",
+            "D.C. Sound Attack!"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Brant Bjork",
+      "slug": "brant-bjork",
+      "city": "Palm Desert",
+      "genre_slug": "desert-rock",
+      "albums": [
+        {
+          "name": "Jalamanta",
+          "release_date": "1999-09-28",
+          "genre_slug": "desert-rock",
+          "tracks": [
+            "Too Many Chiefs",
+            "Low Desert Punk",
+            "Automatic Fantastic"
+          ]
+        },
+        {
+          "name": "Bougainvillea Suite",
+          "release_date": "2019-09-27",
+          "genre_slug": "desert-rock",
+          "tracks": [
+            "Trip on the Wine",
+            "Shine",
+            "Ocean of Sound"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Molchat Doma",
+      "slug": "molchat-doma",
+      "city": "Minsk",
+      "genre_slug": "indie-pop",
+      "albums": [
+        {
+          "name": "Этажи",
+          "release_date": "2018-09-07",
+          "genre_slug": "indie-pop",
+          "tracks": [
+            "Судно",
+            "На дне",
+            "Тоска"
+          ]
+        },
+        {
+          "name": "Монумент",
+          "release_date": "2020-11-13",
+          "genre_slug": "indie-pop",
+          "tracks": [
+            "Утонуть",
+            "Дискотека",
+            "Ответа нет"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shortparis",
+      "slug": "shortparis",
+      "city": "Saint Petersburg",
+      "genre_slug": "indie-pop",
+      "albums": [
+        {
+          "name": "Так закалялась сталь",
+          "release_date": "2019-11-01",
+          "genre_slug": "indie-pop",
+          "tracks": [
+            "Страшно",
+            "Новая жизнь",
+            "КоКоКо / Структуры не выходят на улицы"
+          ]
+        },
+        {
+          "name": "Яблонный сад",
+          "release_date": "2021-11-12",
+          "genre_slug": "indie-pop",
+          "tracks": [
+            "Яблонный сад",
+            "Гетто в озере",
+            "О, как хотела мать"
+          ]
         }
       ]
     }

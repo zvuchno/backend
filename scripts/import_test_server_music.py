@@ -14,6 +14,7 @@ import argparse
 import hashlib
 import json
 import tempfile
+import time
 from pathlib import Path
 
 import requests
@@ -56,6 +57,31 @@ def parse_args() -> argparse.Namespace:
 def api_url(base_url: str, path: str) -> str:
     """Todo: docstring."""
     return f'{base_url.rstrip("/")}/{path.lstrip("/")}'
+
+
+def post_with_retry(
+    session: requests.Session,
+    url: str,
+    timeout: int,
+    max_attempts: int = 5,
+    **kwargs,
+) -> requests.Response:
+    """POST с retry на 429 Too Many Requests."""
+    response = None
+    for attempt in range(max_attempts):
+        response = session.post(url, timeout=timeout, **kwargs)
+        if response.status_code != 429:
+            return response
+
+        retry_after = response.headers.get('Retry-After')
+        if retry_after and retry_after.isdigit():
+            sleep_seconds = int(retry_after)
+        else:
+            sleep_seconds = min(2**attempt, 10)
+
+        time.sleep(sleep_seconds)
+
+    return response
 
 
 def ensure_response_ok(response: requests.Response, context: str) -> dict:
@@ -107,8 +133,9 @@ def register_or_login_artist(
         'name': artist['name'],
         'password': password,
     }
-    register_response = session.post(
-        api_url(base_url, '/auth/register/artist/'),
+    register_response = post_with_retry(
+        session=session,
+        url=api_url(base_url, '/auth/register/artist/'),
         json=register_payload,
         timeout=timeout,
     )
@@ -118,8 +145,9 @@ def register_or_login_artist(
             f'HTTP {register_response.status_code} {register_response.text}',
         )
 
-    token_response = session.post(
-        api_url(base_url, '/auth/token/create/'),
+    token_response = post_with_retry(
+        session=session,
+        url=api_url(base_url, '/auth/token/create/'),
         json={'email': email, 'password': password},
         timeout=timeout,
     )
