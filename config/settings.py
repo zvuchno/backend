@@ -219,6 +219,13 @@ AUTHENTICATION_BACKENDS = (
 )
 SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
 SOCIALACCOUNT_AUTO_SIGNUP = False
+SOCIALACCOUNT_PROVIDERS = {
+    'vk': {
+        'SCOPE': [
+            'email',
+        ],
+    }
+}
 
 LOGGING = {
     'version': 1,

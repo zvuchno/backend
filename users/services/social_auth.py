@@ -60,11 +60,20 @@ def create_temp_signup_token(*, provider: str, provider_uid: str) -> str:
 
 def parse_temp_signup_token(signup_token: str) -> dict:
     """Разбирает временный токен регистрации."""
-    return signing.loads(
-        signup_token,
-        salt=SOCIAL_SIGNUP_TOKEN_SALT,
-        max_age=SOCIAL_SIGNUP_TOKEN_MAX_AGE,
-    )
+    try:
+        return signing.loads(
+            signup_token,
+            salt=SOCIAL_SIGNUP_TOKEN_SALT,
+            max_age=SOCIAL_SIGNUP_TOKEN_MAX_AGE,
+        )
+    except signing.SignatureExpired as exc:
+        raise serializers.ValidationError(
+            {'signup_token': 'Срок действия токена истек.'},
+        ) from exc
+    except signing.BadSignature as exc:
+        raise serializers.ValidationError(
+            {'signup_token': 'Некорректный токен.'},
+        ) from exc
 
 
 def ensure_listener_profile(user) -> None:
@@ -110,15 +119,15 @@ def link_social_account(*, user, provider: str, provider_uid: str) -> None:
 
 
 @transaction.atomic
-def create_account_from_social(*, email, is_email_verified: bool) -> User:
+def create_account_from_social(*, email: str, is_email_verified: bool) -> User:
     """Создаем аккаунт пользователя."""
     user = User.objects.create(
         email=email,
         username=generate_username(email),
         is_email_verified=is_email_verified,
     )
-    ensure_listener_profile(user)
     set_unusable_password(user)
+    ensure_listener_profile(user)
     return user
 
 
@@ -165,13 +174,14 @@ def login_with_vk(*, code: str, redirect_uri: str) -> dict:
         provider_uid=provider_uid,
     )
     return {
-        'code': 'email_required',
+        'result': 'profile_completion_required',
+        'missing_fields': ['email'],
         'signup_token': signup_token,
     }
 
 
 def complete_social_signup(*, signup_token: str, email: str) -> dict:
-    """Завершить регистрацию или аутентификацию через соцсеть."""
+    """Завершить регистрацию через соцсеть."""
     data = parse_temp_signup_token(signup_token)
     provider = data['provider']
     provider_uid = data['provider_uid']
