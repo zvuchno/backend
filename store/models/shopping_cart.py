@@ -16,11 +16,12 @@ from store.constants import (
 )
 from store.models import ProductVariant
 from store.validators import validate_custom_price
+from users.models.abstract import TimestampModel
 
 User = get_user_model()
 
 
-class ShoppingCart(models.Model):
+class ShoppingCart(TimestampModel):
     """Корзина пользователя."""
 
     user = models.OneToOneField(
@@ -28,12 +29,6 @@ class ShoppingCart(models.Model):
         on_delete=models.CASCADE,
         related_name='cart',
         verbose_name='Покупатель',
-    )
-    product_variant = models.ManyToManyField(
-        ProductVariant,
-        through='CartItem',
-        related_name='carts',
-        verbose_name='Варианты продукта',
     )
 
     @property
