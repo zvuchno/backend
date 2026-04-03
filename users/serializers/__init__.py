@@ -17,10 +17,6 @@ from .artist_registration import ArtistRegistrationSerializer
 from .base_registration import BaseRegistrationSerializer
 from .listener_profile import ListenerMeSerializer
 from .listener_registration import ListenerRegistrationSerializer
-from .social_auth import (
-    SocialCompleteSignupSerializer,
-    SocialVkLoginSerializer,
-)
 
 __all__ = [
     'ArtistRegistrationSerializer',
@@ -37,7 +33,5 @@ __all__ = [
     'PasswordResetConfirmSerializer',
     'PasswordResetRequestSerializer',
     'PhoneChangeSerializer',
-    'SocialCompleteSignupSerializer',
-    'SocialVkLoginSerializer',
     'EmptySerializer',
 ]

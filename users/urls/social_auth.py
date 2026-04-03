@@ -1,15 +1,7 @@
 from django.urls import path
 
-from users.views import (
-    SocialCompleteSignupView,
-    SocialVkLoginView,
-)
+from users.views import SocialLoginView
 
 urlpatterns = [
-    path('vk/', SocialVkLoginView.as_view(), name='social_vk_login'),
-    path(
-        'complete-signup/',
-        SocialCompleteSignupView.as_view(),
-        name='social_complete_signup',
-    ),
+    path('get_tokens/', SocialLoginView.as_view(), name='social_login'),
 ]

@@ -218,14 +218,23 @@ AUTHENTICATION_BACKENDS = (
     'allauth.account.auth_backends.AuthenticationBackend',
 )
 SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
-SOCIALACCOUNT_AUTO_SIGNUP = False
+SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {
     'vk': {
-        'SCOPE': [
-            'email',
-        ],
+        'SCOPE': ['email'],
+        'VERIFIED_EMAIL': True,
+    },
+    'yandex': {
+        'SCOPE': ['login:email', 'login:info'],
+        'VERIFIED_EMAIL': True,
     }
 }
+SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
+SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True # автоматически связывать
+LOGIN_REDIRECT_URL = '/'
+# SESSION_COOKIE_AGE = 86400
 
 LOGGING = {
     'version': 1,
