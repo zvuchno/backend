@@ -7,6 +7,7 @@ from users.views import (
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
+    BecomeArtistView,
 )
 
 urlpatterns = [
@@ -29,5 +30,10 @@ urlpatterns = [
         'profile/<slug:slug>/',
         ArtistPublicView.as_view(),
         name='artist_public',
+    ),
+    path(
+        'become_artist/',
+        BecomeArtistView.as_view(),
+        name='become_artist',
     ),
 ]

@@ -15,6 +15,7 @@ from rest_framework.response import Response
 
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
+from users.permissions import IsNotArtist
 from users.schemas import (
     artist_cover_update_schema,
     artist_list_schema,
@@ -105,7 +106,7 @@ class BecomeArtistView(GenericAPIView):
     """Представление для создания профиля артиста существующим слушателем."""
 
     serializer_class = BecomeArtistSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsNotArtist]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
