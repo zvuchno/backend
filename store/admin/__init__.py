@@ -7,6 +7,7 @@
 from .album import AlbumAdmin
 from .genre import GenreAdmin
 from .merch import MerchAdmin
+from .merch_kind import MerchKindAdmin
 from .shopping_cart import ShoppingCartAdmin
 from .track import TrackAdmin
 

@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -10,6 +10,7 @@ from django.db.models import Case, F, Sum, When
 from django.db.models.functions import Coalesce
 
 from store.constants import (
+    MAX_CHAR_LENGTH,
     MAX_COMMENT_LENGTH,
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
@@ -18,17 +19,23 @@ from store.models import ProductVariant
 from store.validators import validate_custom_price
 from users.models.abstract import TimestampModel
 
-User = get_user_model()
-
 
 class ShoppingCart(TimestampModel):
     """Корзина пользователя."""
 
     user = models.OneToOneField(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='cart',
         verbose_name='Покупатель',
+    )
+    session_key = models.CharField(
+        'Ключ сессии',
+        max_length=MAX_CHAR_LENGTH,
+        null=True,
+        blank=True,
     )
 
     @property
@@ -70,6 +77,13 @@ class ShoppingCart(TimestampModel):
     class Meta:
         verbose_name = 'корзина'
         verbose_name_plural = 'корзины'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['session_key'],
+                name='unique_session_cart',
+                condition=models.Q(session_key__isnull=False),
+            ),
+        ]
 
     def __str__(self):
         return f'Корзина {self.user}'
