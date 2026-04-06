@@ -1,8 +1,9 @@
 """Представления профиля артиста."""
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
+from rest_framework import filters, status
 from rest_framework.generics import (
+    GenericAPIView,
     ListAPIView,
     RetrieveAPIView,
     RetrieveUpdateAPIView,
@@ -10,6 +11,7 @@ from rest_framework.generics import (
 )
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
@@ -18,6 +20,7 @@ from users.schemas import (
     artist_list_schema,
     artist_me_schema,
     artist_public_schema,
+    become_artist_schema,
 )
 from users.serializers.artist_profile import (
     ArtistCoverUpdateSerializer,
@@ -25,6 +28,7 @@ from users.serializers.artist_profile import (
     ArtistMeUpdateSerializer,
     ArtistPublicSerializer,
     ArtistPublicShortSerializer,
+    BecomeArtistSerializer,
 )
 from users.views.mixins import CurrentArtistProfileMixin
 
@@ -76,7 +80,6 @@ class ArtistPublicView(RetrieveAPIView):
     lookup_field = 'slug'
 
 
-# TODO пагинация, фильтрация.
 @artist_list_schema
 class ArtistListView(ListAPIView):
     """Публичный список артистов."""
@@ -95,3 +98,21 @@ class ArtistListView(ListAPIView):
     search_fields = ['name', 'slug', 'city']
     ordering_fields = ['name', 'created_at']
     ordering = ['name', '-created_at']
+
+
+@become_artist_schema
+class BecomeArtistView(GenericAPIView):
+    """Представление для создания профиля артиста существующим слушателем."""
+
+    serializer_class = BecomeArtistSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        artist = serializer.save(user=request.user)
+        response_serializer = self.get_serializer(artist)
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+        )

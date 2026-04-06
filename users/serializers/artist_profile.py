@@ -151,3 +151,30 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
             'socials',
             'contacts',
         )
+
+
+class BecomeArtistSerializer(serializers.ModelSerializer):
+    """Сериализатор для реализации возможности стать артистом слушателю."""
+
+    class Meta:
+        model = ArtistProfile
+        fields = ('name',)
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        if hasattr(user, 'artist_profile'):
+            raise serializers.ValidationError(
+                {'detail': 'У пользователя уже есть профиль артиста.'},
+            )
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """Создает профиль артиста, если его нет."""
+        artist_profile, _ = ArtistProfile.objects.get_or_create(
+            user=self.context['request'].user,
+            defaults=validated_data,
+        )
+        # todo после PR 117
+        # ensure_listener_profile(user)
+        return artist_profile
