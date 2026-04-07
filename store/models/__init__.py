@@ -6,6 +6,7 @@ from .merch_kind import MerchKind
 from .product import Product
 from .product_variant import ProductVariant
 from .track import Track
+from .favorite import Favorite
 
 __all__ = [
     'Album',
@@ -16,4 +17,5 @@ __all__ = [
     'Product',
     'ProductVariant',
     'Track',
+    'Favorite',
 ]
