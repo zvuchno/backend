@@ -24,6 +24,7 @@ from .jwt import (
 )
 from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
+from .social_auth import SocialLoginView
 
 __all__ = [
     'ArtistCoverUpdateView',
@@ -46,4 +47,5 @@ __all__ = [
     'PasswordResetRequestView',
     'PasswordResetVerifyView',
     'ResendVerificationEmailView',
+    'SocialLoginView',
 ]

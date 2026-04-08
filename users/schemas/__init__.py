@@ -27,6 +27,7 @@ from .registration import (
     artist_registration_schema,
     listener_registration_schema,
 )
+from .social_auth import social_token_exchange_schema
 
 __all__ = [
     'artist_cover_update_schema',
@@ -48,4 +49,5 @@ __all__ = [
     'token_obtain_schema',
     'token_refresh_schema',
     'token_verify_schema',
+    'social_token_exchange_schema',
 ]
