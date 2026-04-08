@@ -4,8 +4,9 @@ from drf_spectacular.utils import extend_schema
 
 social_token_exchange_schema = extend_schema(
     tags=['Auth'],
-    auth=[],
-    summary='Получение токенов после аутентификации через соцсеть.',
-    description='Подхватывает allauth сессию пользователя и выдает'
-    ' access и refresh токены',
+    summary='Обмен social session на JWT токены',
+    description='После успешной аутентификации через allauth и установки '
+    'session cookie выполняет обмен текущей серверной сессии '
+    'на access и refresh JWT токены. '
+    'Требует активной session cookie и CSRF токена.',
 )

@@ -2,9 +2,11 @@
 
 from allauth.socialaccount.models import SocialAccount
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from users.constants import MAX_USER_CREATE_ATTEMPTS
 from users.models import ListenerProfile
 
 User = get_user_model()
@@ -20,15 +22,10 @@ def issue_tokens_for_user(user) -> dict:
     }
 
 
-def generate_username(email: str) -> str:
+def generate_username(email: str, attempt: int) -> str:
     """Сгенерировать username из email."""
-    username = email.split('@')[0]
-    new_username = username
-    counter = 1
-    while User.objects.filter(username=new_username).exists():
-        new_username = f'{username}_{counter}'
-        counter += 1
-    return new_username
+    username = normalize_email(email).split('@')[0] or 'user'
+    return username if attempt == 0 else f'{username}_{attempt}'
 
 
 def ensure_listener_profile(user) -> None:
@@ -62,15 +59,27 @@ def create_account_from_social(
     email: str,
     is_email_verified: bool,
 ) -> User:
-    """Создаем аккаунт пользователя."""
-    user = User.objects.create(
-        email=email,
-        username=generate_username(email),
-        is_email_verified=is_email_verified,
+    """Создает пользователя из соцсети с retry при конфликте username."""
+    for attempt in range(MAX_USER_CREATE_ATTEMPTS):
+        try:
+            with transaction.atomic():
+                user = User.objects.create(
+                    email=email,
+                    username=generate_username(email, attempt),
+                    is_email_verified=is_email_verified,
+                )
+                set_unusable_password(user)
+                ensure_listener_profile(user)
+                return user
+
+        except IntegrityError:
+            existing_user = User.objects.filter(email=email).first()
+            if existing_user:
+                return existing_user
+            continue
+    raise serializers.ValidationError(
+        {'username': 'Не удалось подобрать уникальный username.'},
     )
-    set_unusable_password(user)
-    ensure_listener_profile(user)
-    return user
 
 
 def login_with_social_data(
@@ -91,6 +100,7 @@ def login_with_social_data(
 
     if not email:
         raise serializers.ValidationError({'email': 'Отсутствует email.'})
+    email = normalize_email(email)
 
     existing_user = User.objects.filter(email=email).first()
     if existing_user:
@@ -104,3 +114,8 @@ def login_with_social_data(
         email=email,
         is_email_verified=is_email_verified,
     )
+
+
+def normalize_email(email: str) -> str:
+    """Нормализация email."""
+    return email.strip().lower()
