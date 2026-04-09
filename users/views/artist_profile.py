@@ -106,12 +106,12 @@ class BecomeArtistView(GenericAPIView):
     """Представление для создания профиля артиста существующим слушателем."""
 
     serializer_class = BecomeArtistSerializer
-    permission_classes = [IsNotArtist]
+    permission_classes = [IsAuthenticated, IsNotArtist]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        artist = serializer.save(user=request.user)
+        artist = serializer.save()
         response_serializer = self.get_serializer(artist)
         return Response(
             response_serializer.data,

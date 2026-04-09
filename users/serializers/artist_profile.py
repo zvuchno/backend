@@ -1,9 +1,10 @@
 """Сериализаторы профиля артиста."""
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from users.models import ArtistContact, ArtistProfile, ArtistSocial
+from users.services import ensure_listener_profile
 
 
 class ArtistCoverUpdateSerializer(serializers.ModelSerializer):
@@ -170,11 +171,17 @@ class BecomeArtistSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        """Создает профиль артиста, если его нет."""
-        artist_profile, _ = ArtistProfile.objects.get_or_create(
-            user=self.context['request'].user,
-            defaults=validated_data,
-        )
-        # todo после PR 117
-        # ensure_listener_profile(user)
-        return artist_profile
+        """Создает профиль артиста для текущего пользователя."""
+        user = self.context['request'].user
+        ensure_listener_profile(user)
+        try:
+            return ArtistProfile.objects.create(
+                user=user,
+                **validated_data,
+            )
+        except IntegrityError:
+            if ArtistProfile.objects.filter(user=user).exists():
+                raise serializers.ValidationError(
+                    {'detail': 'У пользователя уже есть профиль артиста.'},
+                )
+            raise
