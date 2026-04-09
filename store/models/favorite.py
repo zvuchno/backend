@@ -3,20 +3,18 @@
 Позволяет пользователю отслеживать товары, которые он помечает как избранные.
 """
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 
 from users.models.abstract.activatable_model import ActivatableModel
 from users.models.abstract.timestamp_model import TimestampModel
-
-User = get_user_model()
 
 
 class Favorite(ActivatableModel, TimestampModel):
     """Модель избранного"""
 
     user = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='favorites',
         verbose_name='Пользователь',
