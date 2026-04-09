@@ -52,6 +52,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/docs/', include((docs_urlpatterns, 'api-docs'))),
     path('api/v1/', include((api_v1_urlpatterns, 'api'))),
+    path('accounts/', include('allauth.urls')),
 ]
 
 if settings.DEBUG:

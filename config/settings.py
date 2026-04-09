@@ -40,6 +40,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.vk',
+    'allauth.socialaccount.providers.yandex',
     'rest_framework',
     'django_filters',
     'drf_spectacular',
@@ -60,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -205,6 +212,29 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_PROVIDERS = {
+    'vk': {
+        'SCOPE': ['email'],
+        'VERIFIED_EMAIL': True,
+    },
+    'yandex': {
+        'SCOPE': ['login:email', 'login:info'],
+        'VERIFIED_EMAIL': True,
+    }
+}
+SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
+SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True # автоматически связывать
+LOGIN_REDIRECT_URL = '/'
+# SESSION_COOKIE_AGE = 86400
 
 LOGGING = {
     'version': 1,
