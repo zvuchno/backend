@@ -38,24 +38,25 @@ class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
         if user.is_authenticated and user.is_staff:
             queryset = Album.objects.all()
         else:
-            base_filters = Q(is_active=True, is_published=True)
             if self.action == 'list':
                 # Общая выдача: только публичные или свои
-                visibility_filter = Q(visibility='public')
-                if user.is_authenticated:
-                    visibility_filter |= Q(owner=user)
                 queryset = Album.objects.filter(
-                    base_filters & visibility_filter,
+                    Q(is_active=True, is_published=True, visibility='public')
+                    | Q(owner=user),
                 )
             else:
                 # Прямой retrieve/update: публичные, по ссылке или свои
-                access_filter = Q(visibility__in=['public', 'link_only'])
-                if user.is_authenticated:
-                    access_filter |= Q(owner=user)
-                queryset = Album.objects.filter(base_filters & access_filter)
-
+                queryset = Album.objects.filter(
+                    Q(
+                        is_active=True,
+                        is_published=True,
+                        visibility__in=['public', 'link_only'],
+                    )
+                    | Q(owner=user),
+                )
         if self.action in ('list', 'retrieve'):
             queryset = queryset.select_related('product', 'genre')
+
         return queryset
 
     def create(self, request, *args, **kwargs):
