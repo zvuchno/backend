@@ -13,6 +13,7 @@ from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
+from .mixins import ProductActionMixin
 from store.models import Track
 from store.schema import track_schema
 from store.serializers import (
@@ -23,7 +24,7 @@ from store.serializers import (
 
 
 @track_schema
-class TrackViewSet(viewsets.ModelViewSet):
+class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
     """API для работы с треками."""
 
     permission_classes = (IsAuthenticatedOrReadOnly,)
@@ -39,7 +40,7 @@ class TrackViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        # Если это администратор — отдаем всё
+        # Админам отдаем всё без фильтров
         if user.is_authenticated and user.is_staff:
             queryset = Track.objects.all()
         else:
@@ -60,13 +61,10 @@ class TrackViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         instance = serializer.instance
-
-        # Используем другой сериализатор для ответа
         read_serializer = TrackReadDetailSerializer(
             instance,
             context=self.get_serializer_context(),
         )
-
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
@@ -78,12 +76,9 @@ class TrackViewSet(viewsets.ModelViewSet):
             partial=partial,
         )
         serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
+        self.perform_update(serializer)
         read_serializer = TrackReadDetailSerializer(
             instance,
             context=self.get_serializer_context(),
         )
         return Response(read_serializer.data)
-
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)

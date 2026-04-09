@@ -1,6 +1,7 @@
 """Модуль админки для модели ShoppingCart.
 
 Содержит настройку интерфейса Django Admin для модели корзины пользователя.
+TODO: Устранить N+1 в геттерах @property сумм
 """
 
 from django.contrib import admin
@@ -12,7 +13,7 @@ from store.models import CartItem, ProductVariant, ShoppingCart
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):
-    """Регистрация CartItem для autocomplete_fields."""
+    """Регистрация ProductVariant для autocomplete_fields."""
 
     search_fields = (
         'sku',
@@ -86,16 +87,20 @@ class CartItemInline(admin.TabularInline):
 class ShoppingCartAdmin(admin.ModelAdmin):
     """Админка модели ShoppingCart с вложенными позициями."""
 
-    list_display = ('user', 'get_total_sum')
+    list_display = ('user', 'get_subtotal_sum', 'get_discounted_subtotal')
     search_fields = ('user__username', 'user__email')
-    fields = ('user', 'get_total_sum')
+    fields = ('user', 'get_subtotal_sum', 'get_discounted_subtotal')
     autocomplete_fields = ('user',)
-    readonly_fields = ('get_total_sum',)
+    readonly_fields = ('get_subtotal_sum', 'get_discounted_subtotal')
     inlines = (CartItemInline,)
 
-    @admin.display(description='Итого (руб.)')
-    def get_total_sum(self, obj):
+    @admin.display(description='Сумма (руб.)')
+    def get_subtotal_sum(self, obj):
         return f'{obj.subtotal:,.2f}'.replace(',', ' ')
+
+    @admin.display(description='Итого (руб.)')
+    def get_discounted_subtotal(self, obj):
+        return f'{obj.discounted_subtotal:,.2f}'.replace(',', ' ')
 
     def get_queryset(self, request):
         # Подгружаем юзера сразу для всего списка
