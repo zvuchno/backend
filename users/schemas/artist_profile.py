@@ -87,13 +87,3 @@ artist_list_schema = extend_schema(
         ),
     ],
 )
-
-become_artist_schema = extend_schema(
-    tags=['Artists'],
-    summary='Стать артистом',
-    description=(
-        'Создает профиль артиста для текущего авторизованного '
-        'пользователя. '
-        'Если профиль артиста уже существует, возвращает ошибку.'
-    ),
-)
