@@ -13,6 +13,7 @@ from .artist_profile import (
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
+    BecomeArtistView,
 )
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
@@ -32,6 +33,7 @@ __all__ = [
     'ArtistMeView',
     'ArtistPublicView',
     'ArtistRegistrationView',
+    'BecomeArtistView',
     'BaseRegistrationView',
     'CustomLogoutView',
     'CustomTokenObtainPairView',

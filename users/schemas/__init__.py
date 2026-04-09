@@ -1,6 +1,7 @@
 """OpenAPI схемы для API приложения users."""
 
 from .account import (
+    become_artist_schema,
     change_password_schema,
     change_phone_schema,
     email_verification_schema,
@@ -35,6 +36,7 @@ __all__ = [
     'artist_me_schema',
     'artist_public_schema',
     'artist_registration_schema',
+    'become_artist_schema',
     'change_password_schema',
     'change_phone_schema',
     'email_verification_schema',

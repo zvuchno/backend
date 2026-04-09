@@ -73,3 +73,12 @@ resend_verification_email_schema = extend_schema(
         'текущего пользователя.'
     ),
 )
+become_artist_schema = extend_schema(
+    tags=['Account'],
+    summary='Стать артистом',
+    description=(
+        'Создает профиль артиста для текущего авторизованного '
+        'пользователя. '
+        'Если профиль артиста уже существует, возвращает ошибку.'
+    ),
+)
