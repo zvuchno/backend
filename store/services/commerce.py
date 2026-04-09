@@ -3,6 +3,8 @@
 from django.apps import apps
 from django.db import transaction
 
+from store.models import Product
+
 
 class ProductService:
     """Сервис для управления коммерческой логикой контента.
@@ -13,7 +15,7 @@ class ProductService:
 
     @staticmethod
     @transaction.atomic()
-    def ensure_commerce(content_instance) -> None:
+    def ensure_commerce(content_instance) -> Product:
         """Гарантирует наличие связанных объектов Product и ProductVariant.
 
         Не изменяет существующие объекты.

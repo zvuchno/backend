@@ -83,3 +83,7 @@ class TrackAdmin(
         minutes = obj.duration // 60
         seconds = obj.duration % 60
         return f'{minutes}:{seconds:02}'
+
+    def get_queryset(self, request):
+        """Родительский метод миксина + select_related('album', 'owner')."""
+        return super().get_queryset(request).select_related('album', 'owner')

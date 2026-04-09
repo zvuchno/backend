@@ -11,7 +11,11 @@ from nested_admin import (
 )
 
 from store.admin.inlines import ProductInline
-from store.admin.mixins import AutoOwnerAdminMixin, CommerceBaseMixin
+from store.admin.mixins import (
+    AutoOwnerAdminMixin,
+    CommerceBaseMixin,
+    CommerceDisplayMixin,
+)
 from store.models import Image, Merch
 
 
@@ -34,7 +38,12 @@ class PhotoInline(NestedTabularInline):
 
 
 @admin.register(Merch)
-class MerchAdmin(AutoOwnerAdminMixin, CommerceBaseMixin, NestedModelAdmin):
+class MerchAdmin(
+    AutoOwnerAdminMixin,
+    CommerceBaseMixin,
+    CommerceDisplayMixin,
+    NestedModelAdmin,
+):
     """Админка мерча."""
 
     inlines = (PhotoInline, ProductInline)
@@ -96,23 +105,13 @@ class MerchAdmin(AutoOwnerAdminMixin, CommerceBaseMixin, NestedModelAdmin):
     )
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
+        qs = super(NestedModelAdmin, self).get_queryset(request)
         return qs.select_related(
             'product',
             'kind',
+            'owner',
+            'album',
         ).prefetch_related('images_merch')
-
-    @admin.display(description='Цена')
-    def get_price(self, obj):
-        if hasattr(obj, 'product') and obj.product:
-            return obj.product.price
-        return '-'
-
-    @admin.display(description='Переплата', boolean=True)
-    def get_allow_overpay(self, obj):
-        if hasattr(obj, 'product') and obj.product:
-            return obj.product.allow_overpay
-        return None
 
     @admin.display(description='Главное фото')
     def image_preview(self, obj):

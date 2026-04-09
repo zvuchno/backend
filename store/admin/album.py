@@ -159,6 +159,7 @@ class AlbumAdmin(
     list_display = (
         'name',
         'genre',
+        'owner',
         'is_single',
         'is_published',
         'get_price',
@@ -218,5 +219,5 @@ class AlbumAdmin(
         return '-'
 
     def get_queryset(self, request):
-        """Родительский метод миксина + select_related('genre')."""
-        return super().get_queryset(request).select_related('genre')
+        """Родительский метод миксина + select_related('genre', 'owner')."""
+        return super().get_queryset(request).select_related('genre', 'owner')
