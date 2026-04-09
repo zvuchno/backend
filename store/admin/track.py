@@ -5,7 +5,11 @@
 
 from django.contrib import admin
 
-from .mixins import AutoOwnerAdminMixin, CommerceMixin
+from .mixins import (
+    AutoOwnerAdminMixin,
+    CommerceBaseMixin,
+    CommerceDisplayMixin,
+)
 from store.models import Product, Track
 
 
@@ -19,18 +23,22 @@ class ProductInline(admin.StackedInline):
 
 
 @admin.register(Track)
-class TrackAdmin(AutoOwnerAdminMixin, CommerceMixin, admin.ModelAdmin):
+class TrackAdmin(
+    AutoOwnerAdminMixin,
+    CommerceBaseMixin,
+    CommerceDisplayMixin,
+    admin.ModelAdmin,
+):
     """Админка для модели Track."""
 
     list_display = (
         'name',
         'album',
-        'position',
+        'owner',
         'get_price',
         'get_allow_overpay',
         'is_active',
     )
-
     search_fields = ('album__name', 'lyrics', 'name')
     list_filter = (
         'is_active',
@@ -42,6 +50,7 @@ class TrackAdmin(AutoOwnerAdminMixin, CommerceMixin, admin.ModelAdmin):
         'formatted_duration',
         'created_at',
         'updated_at',
+        'get_sku',
         'owner',
     )
     list_editable = ('is_active',)
@@ -56,6 +65,7 @@ class TrackAdmin(AutoOwnerAdminMixin, CommerceMixin, admin.ModelAdmin):
                     'audio_file',
                     'formatted_duration',
                     'lyrics',
+                    'get_sku',
                     'owner',
                     'created_at',
                     'updated_at',
@@ -64,20 +74,6 @@ class TrackAdmin(AutoOwnerAdminMixin, CommerceMixin, admin.ModelAdmin):
         ),
     )
     inlines = (ProductInline,)
-
-    @admin.display(description='Цена')
-    def get_price(self, obj):
-        """Геттер для отображения поля price из связанного Product."""
-        if hasattr(obj, 'product') and obj.product:
-            return obj.product.price
-        return '-'
-
-    @admin.display(description='Переплата', boolean=True)
-    def get_allow_overpay(self, obj):
-        """Геттер для отображения поля allow_overpay из связанного Product."""
-        if hasattr(obj, 'product') and obj.product:
-            return obj.product.allow_overpay
-        return None
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):

@@ -7,7 +7,6 @@ from decimal import Decimal
 
 from django import forms
 from django.contrib import admin
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.utils.html import format_html
@@ -17,12 +16,16 @@ from nested_admin import (
     NestedTabularInline,
 )
 
-from .mixins import AutoOwnerAdminMixin, CommerceMixin
+from .mixins import (
+    AutoOwnerAdminMixin,
+    CommerceBaseMixin,
+    CommerceDisplayMixin,
+)
 from store.constants import (
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
 )
-from store.models import Album, Product, ProductVariant, Track
+from store.models import Album, Product, Track
 
 
 class TrackInlineForm(forms.ModelForm):
@@ -52,12 +55,7 @@ class TrackInlineForm(forms.ModelForm):
         """Инициализация формы с подстановкой цены из связанного Product."""
         super().__init__(*args, **kwargs)
 
-        try:
-            # Пытаемся получить связанный Product
-            product = self.instance.product
-        except ObjectDoesNotExist:
-            # Если Product нет в базе, просто оставляем поле пустым
-            product = None
+        product = getattr(self.instance, 'product', None)
 
         if product:
             # Если Product существует, подставляем его цену в initial
@@ -130,39 +128,22 @@ class TrackInline(NestedTabularInline):
         return qs.select_related('product')
 
 
-class ProductVariantInline(NestedTabularInline):
-    """Инлайн для редактирования вариантов продукта в админке."""
-
-    model = ProductVariant
-    fields = ('sku', 'stock', 'characteristic')
-    extra = 0
-    readonly_fields = ('sku', 'stock', 'characteristic')
-    extra = 0
-    can_delete = False
-
-    def has_add_permission(self, request, obj=None):
-        """Запрещает ручное добавление вариантов через админку."""
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        """Запрещает удаление вариантов через админку."""
-        return False
-
-
 class ProductInline(NestedStackedInline):
     """Инлайн продукта с вложенными вариантами."""
 
     model = Product
-    inlines = (ProductVariantInline,)
     fields = ('price', 'allow_overpay')
     can_delete = False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
+    verbose_name = 'Торговые настройки альбома'
 
 
 @admin.register(Album)
-class AlbumAdmin(AutoOwnerAdminMixin, CommerceMixin, NestedModelAdmin):
+class AlbumAdmin(
+    AutoOwnerAdminMixin,
+    CommerceBaseMixin,
+    CommerceDisplayMixin,
+    NestedModelAdmin,
+):
     """Админка модели Album с поддержкой вложенных inline.
 
     Отображает:
@@ -175,30 +156,31 @@ class AlbumAdmin(AutoOwnerAdminMixin, CommerceMixin, NestedModelAdmin):
       прямо в форме альбома.
     """
 
-    list_select_related = ('product', 'genre')  # Подтянуть одним запросом в БД
     list_display = (
         'name',
         'genre',
         'is_single',
-        'release_date',
         'is_published',
         'get_price',
         'get_allow_overpay',
         'visibility',
         'is_active',
     )
-
     search_fields = ('genre__name', 'name')
-
     list_filter = (
         'is_active',
         'created_at',
         'updated_at',
         'visibility',
     )
-
     ordering = ('-created_at', 'is_active', 'name')
-    readonly_fields = ('image_preview', 'created_at', 'updated_at', 'owner')
+    readonly_fields = (
+        'image_preview',
+        'created_at',
+        'updated_at',
+        'get_sku',
+        'owner',
+    )
     list_editable = ('is_active', 'is_published', 'visibility')
     fieldsets = (
         (
@@ -214,6 +196,7 @@ class AlbumAdmin(AutoOwnerAdminMixin, CommerceMixin, NestedModelAdmin):
                     'image_preview',
                     'is_published',
                     'visibility',
+                    'get_sku',
                     'owner',
                     'created_at',
                     'updated_at',
@@ -224,20 +207,6 @@ class AlbumAdmin(AutoOwnerAdminMixin, CommerceMixin, NestedModelAdmin):
     )
     inlines = (ProductInline, TrackInline)
 
-    @admin.display(description='Цена')
-    def get_price(self, obj):
-        """Геттер для отображения поля price из связанного Product."""
-        if hasattr(obj, 'product') and obj.product:
-            return obj.product.price
-        return '-'
-
-    @admin.display(description='Переплата', boolean=True)
-    def get_allow_overpay(self, obj):
-        """Геттер для отображения поля allow_overpay из связанного Product."""
-        if hasattr(obj, 'product') and obj.product:
-            return obj.product.allow_overpay
-        return None
-
     @admin.display(description='Изображение')
     def image_preview(self, obj):
         """Возвращает HTML-превью обложки альбома в списке админки."""
@@ -247,3 +216,7 @@ class AlbumAdmin(AutoOwnerAdminMixin, CommerceMixin, NestedModelAdmin):
                 obj.cover_image.url,
             )
         return '-'
+
+    def get_queryset(self, request):
+        """Родительский метод миксина + select_related('genre')."""
+        return super().get_queryset(request).select_related('genre')

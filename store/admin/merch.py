@@ -11,7 +11,7 @@ from nested_admin import (
 )
 
 from store.admin.inlines import ProductInline
-from store.admin.mixins import AutoOwnerAdminMixin, CommerceMixin
+from store.admin.mixins import AutoOwnerAdminMixin, CommerceBaseMixin
 from store.models import Image, Merch
 
 
@@ -34,7 +34,7 @@ class PhotoInline(NestedTabularInline):
 
 
 @admin.register(Merch)
-class MerchAdmin(AutoOwnerAdminMixin, CommerceMixin, NestedModelAdmin):
+class MerchAdmin(AutoOwnerAdminMixin, CommerceBaseMixin, NestedModelAdmin):
     """Админка мерча."""
 
     inlines = (PhotoInline, ProductInline)
