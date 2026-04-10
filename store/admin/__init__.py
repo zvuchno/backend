@@ -5,6 +5,7 @@
 """
 
 from .album import AlbumAdmin
+from .delivery import Delivery
 from .genre import GenreAdmin
 from .merch import MerchAdmin
 from .merch_kind import MerchKindAdmin
@@ -13,6 +14,7 @@ from .track import TrackAdmin
 
 __all__ = [
     'AlbumAdmin',
+    'Delivery',
     'GenreAdmin',
     'MerchKindAdmin',
     'MerchAdmin',
