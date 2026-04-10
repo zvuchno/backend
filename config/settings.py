@@ -40,7 +40,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.vk',
+    'allauth.socialaccount.providers.yandex',
     'rest_framework',
+    'django_filters',
     'drf_spectacular',
     'nested_admin',
     'rest_framework_simplejwt',
@@ -61,6 +68,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'admin_reorder.middleware.ModelAdminReorder',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -191,6 +199,7 @@ REST_FRAMEWORK = {
         'resend_verification_email': '3/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
 }
 
 # TODO: настроить периодический запуск flushexpiredtokens
@@ -206,6 +215,29 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_PROVIDERS = {
+    'vk': {
+        'SCOPE': ['email'],
+        'VERIFIED_EMAIL': True,
+    },
+    'yandex': {
+        'SCOPE': ['login:email', 'login:info'],
+        'VERIFIED_EMAIL': True,
+    }
+}
+SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
+SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True # автоматически связывать
+LOGIN_REDIRECT_URL = '/'
+# SESSION_COOKIE_AGE = 86400
+
 # Настройка группировки моделей в админ-панели
 # Используется форк django-modeladmin-reorder
 ADMIN_REORDER = (
@@ -218,7 +250,7 @@ ADMIN_REORDER = (
             'store.Track',
             'store.Merch',
             'store.Genre',
-            'store.Kind',
+            'store.MerchKind',
         ),
     },
 

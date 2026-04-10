@@ -1,6 +1,7 @@
 """OpenAPI схемы для API приложения users."""
 
 from .account import (
+    become_artist_schema,
     change_password_schema,
     change_phone_schema,
     email_verification_schema,
@@ -27,6 +28,7 @@ from .registration import (
     artist_registration_schema,
     listener_registration_schema,
 )
+from .social_auth import social_token_exchange_schema
 
 __all__ = [
     'artist_cover_update_schema',
@@ -34,6 +36,7 @@ __all__ = [
     'artist_me_schema',
     'artist_public_schema',
     'artist_registration_schema',
+    'become_artist_schema',
     'change_password_schema',
     'change_phone_schema',
     'email_verification_schema',
@@ -48,4 +51,5 @@ __all__ = [
     'token_obtain_schema',
     'token_refresh_schema',
     'token_verify_schema',
+    'social_token_exchange_schema',
 ]

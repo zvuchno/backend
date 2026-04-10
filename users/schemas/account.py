@@ -3,7 +3,7 @@
 from drf_spectacular.utils import extend_schema
 
 me_schema = extend_schema(
-    tags=['Аккаунт'],
+    tags=['Account'],
     summary='Текущая учетная запись',
     description=(
         'Возвращает данные текущего авторизованного пользователя, '
@@ -12,7 +12,7 @@ me_schema = extend_schema(
 )
 
 change_phone_schema = extend_schema(
-    tags=['Аккаунт'],
+    tags=['Account'],
     summary='Изменить номер телефона',
     description=(
         'Обновляет номер телефона текущего пользователя. '
@@ -21,13 +21,13 @@ change_phone_schema = extend_schema(
 )
 
 change_password_schema = extend_schema(
-    tags=['Аккаунт'],
+    tags=['Account'],
     summary='Изменить пароль',
     description=('Изменяет пароль текущего пользователя по старому паролю.'),
 )
 
 password_reset_request_schema = extend_schema(
-    tags=['Аккаунт'],
+    tags=['Account'],
     auth=[],
     summary='Запросить восстановление пароля',
     description=(
@@ -39,7 +39,7 @@ password_reset_request_schema = extend_schema(
 )
 
 password_reset_verify_schema = extend_schema(
-    tags=['Аккаунт'],
+    tags=['Account'],
     auth=[],
     summary='Проверить ссылку восстановления пароля',
     description=(
@@ -49,7 +49,7 @@ password_reset_verify_schema = extend_schema(
 )
 
 password_reset_confirm_schema = extend_schema(
-    tags=['Аккаунт'],
+    tags=['Account'],
     auth=[],
     summary='Подтвердить восстановление пароля',
     description=(
@@ -59,17 +59,26 @@ password_reset_confirm_schema = extend_schema(
 )
 
 email_verification_schema = extend_schema(
-    tags=['Аккаунт'],
+    tags=['Account'],
     auth=[],
     summary='Подтвердить email',
     description='Подтверждает email пользователя по uid и токену.',
 )
 
 resend_verification_email_schema = extend_schema(
-    tags=['Аккаунт'],
+    tags=['Account'],
     summary='Повторно отправить письмо подтверждения',
     description=(
         'Повторно инициирует отправку ссылки для подтверждения email '
         'текущего пользователя.'
+    ),
+)
+become_artist_schema = extend_schema(
+    tags=['Account'],
+    summary='Стать артистом',
+    description=(
+        'Создает профиль артиста для текущего авторизованного '
+        'пользователя. '
+        'Если профиль артиста уже существует, возвращает ошибку.'
     ),
 )
