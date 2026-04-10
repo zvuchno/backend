@@ -43,29 +43,3 @@ class IsNotArtist(BasePermission):
             user,
             'artist_profile',
         )
-
-
-class IsStoreObjectOwner(BasePermission):
-    """Пермишен владельца объекта витрины."""
-
-    message = 'Вы не владелец.'
-
-    def has_object_permission(self, request, view, obj):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and obj.owner == request.user,
-        )
-
-
-class IsUserObjectOwner(BasePermission):
-    """Пермишен для владельца аккаунта, профиля или заказа."""
-
-    message = 'Вы не владелец.'
-
-    def has_object_permission(self, request, view, obj):
-        return bool(
-            request.user
-            and request.user.is_authenticated
-            and obj.user == request.user,
-        )
