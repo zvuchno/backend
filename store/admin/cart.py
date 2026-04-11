@@ -1,14 +1,14 @@
-"""Модуль админки для модели ShoppingCart.
+"""Модуль админки для модели Cart.
 
 Содержит настройку интерфейса Django Admin для модели корзины пользователя.
-TODO: Устранить N+1 в геттерах @property сумм
 """
 
 from django.contrib import admin
 from django.db import models
 from django.forms import Textarea
+from django.utils.html import format_html
 
-from store.models import CartItem, ProductVariant, ShoppingCart
+from store.models import Cart, CartItem, ProductVariant
 
 
 @admin.register(ProductVariant)
@@ -39,20 +39,20 @@ class CartItemInline(admin.TabularInline):
         'quantity',
         'get_price',
         'custom_price',
-        'get_item_sum',
+        'get_line_total',
         'comment',
     )
     autocomplete_fields = ('product_variant',)
-    readonly_fields = ('get_allow_overpay', 'get_price', 'get_item_sum')
+    readonly_fields = ('get_allow_overpay', 'get_price', 'get_line_total')
     formfield_overrides = {
         models.TextField: {'widget': Textarea(attrs={'rows': 2, 'cols': 30})},
     }
 
     @admin.display(description='Сумма, руб.')
-    def get_item_sum(self, obj):
-        """Отображает результат property item_sum."""
+    def get_line_total(self, obj):
+        """Отображает результат property line_total."""
         if obj and obj.pk:
-            return obj.item_sum
+            return obj.line_total
         return '-'
 
     def get_queryset(self, request):
@@ -60,6 +60,7 @@ class CartItemInline(admin.TabularInline):
         return (
             super()
             .get_queryset(request)
+            .with_prices()
             .select_related(
                 'product_variant__product',
                 'product_variant__product__track',
@@ -83,18 +84,28 @@ class CartItemInline(admin.TabularInline):
         return None
 
 
-@admin.register(ShoppingCart)
-class ShoppingCartAdmin(admin.ModelAdmin):
-    """Админка модели ShoppingCart с вложенными позициями."""
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    """Админка модели Cart с вложенными позициями."""
 
-    list_display = ('user', 'get_subtotal_sum', 'get_discounted_subtotal')
+    list_display = ('get_user', 'get_subtotal_sum', 'get_discounted_subtotal')
     search_fields = ('user__username', 'user__email')
     fields = ('user', 'get_subtotal_sum', 'get_discounted_subtotal')
     autocomplete_fields = ('user',)
     readonly_fields = ('get_subtotal_sum', 'get_discounted_subtotal')
     inlines = (CartItemInline,)
 
-    @admin.display(description='Сумма (руб.)')
+    @admin.display(description='Покупатель', ordering='user')
+    def get_user(self, obj):
+        if obj.user:
+            return obj.user
+        return format_html(
+            '<span style="color: #C0C0C0; '
+            'font-style: italic;">Сессия:</span> {}...',
+            str(obj.session_key)[:8] if obj.session_key else 'неизвестно',
+        )
+
+    @admin.display(description='Сумма (руб.)', ordering='_subtotal')
     def get_subtotal_sum(self, obj):
         return f'{obj.subtotal:,.2f}'.replace(',', ' ')
 
@@ -103,5 +114,9 @@ class ShoppingCartAdmin(admin.ModelAdmin):
         return f'{obj.discounted_subtotal:,.2f}'.replace(',', ' ')
 
     def get_queryset(self, request):
-        # Подгружаем юзера сразу для всего списка
-        return super().get_queryset(request).select_related('user')
+        return (
+            super()
+            .get_queryset(request)
+            .select_related('user')
+            .with_subtotal()
+        )
