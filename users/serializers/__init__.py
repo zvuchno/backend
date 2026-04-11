@@ -12,6 +12,7 @@ from .artist_profile import (
     ArtistMeSerializer,
     ArtistMeUpdateSerializer,
     ArtistPublicSerializer,
+    BecomeArtistSerializer,
 )
 from .artist_registration import ArtistRegistrationSerializer
 from .base_registration import BaseRegistrationSerializer
@@ -34,4 +35,5 @@ __all__ = [
     'PasswordResetRequestSerializer',
     'PhoneChangeSerializer',
     'EmptySerializer',
+    'BecomeArtistSerializer',
 ]

@@ -10,4 +10,5 @@ urlpatterns = [
     path('auth/account/', include('users.urls.account')),
     path('listener/', include('users.urls.listener_profile')),
     path('artists/', include('users.urls.artist_profile')),
+    path('auth/social/', include('users.urls.social_auth')),
 ]

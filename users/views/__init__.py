@@ -13,6 +13,7 @@ from .artist_profile import (
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
+    BecomeArtistView,
 )
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
@@ -24,6 +25,7 @@ from .jwt import (
 )
 from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
+from .social_auth import SocialLoginView
 
 __all__ = [
     'ArtistCoverUpdateView',
@@ -31,6 +33,7 @@ __all__ = [
     'ArtistMeView',
     'ArtistPublicView',
     'ArtistRegistrationView',
+    'BecomeArtistView',
     'BaseRegistrationView',
     'CustomLogoutView',
     'CustomTokenObtainPairView',
@@ -46,4 +49,5 @@ __all__ = [
     'PasswordResetRequestView',
     'PasswordResetVerifyView',
     'ResendVerificationEmailView',
+    'SocialLoginView',
 ]
