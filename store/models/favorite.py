@@ -1,17 +1,16 @@
-"""
-Модуль модели Избранного.
+"""Модуль модели Избранного.
+
 Позволяет пользователю отслеживать товары, которые он помечает как избранные.
 """
 
 from django.conf import settings
 from django.db import models
 
-from users.models.abstract.activatable_model import ActivatableModel
 from users.models.abstract.timestamp_model import TimestampModel
 
 
-class Favorite(ActivatableModel, TimestampModel):
-    """Модель избранного"""
+class Favorite(TimestampModel):
+    """Модель избранного."""
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -28,14 +27,14 @@ class Favorite(ActivatableModel, TimestampModel):
 
     class Meta:
         verbose_name = 'избранное'
-        verbose_name_plural = 'избранные'
+        verbose_name_plural = 'избранное'
         ordering = ('-created_at',)
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'product_variant'],
                 name='unique_favorite_per_user',
-            )
+            ),
         ]
 
     def __str__(self):
-        return f'{self.product_variant}'
+        return f'{self.user.username} → {self.product_variant}'
