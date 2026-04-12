@@ -37,31 +37,38 @@ class CartItemQuerySet(models.QuerySet):
             QuerySet: кверисет с аннотированными полями '_unit_price'
             и '_line_total' (тип Decimal).
         """
-        return self.annotate(
-            # _unit_price — цена за единицу с учётом allow_overpay
-            _unit_price=Case(
-                When(
-                    product_variant__product__allow_overpay=True,
-                    then=Coalesce(
-                        F('custom_price'),
-                        F('product_variant__product__price'),
+        return (
+            self
+            .select_related(
+                'product_variant__product',
+            )
+            .annotate(
+                # _unit_price — цена за единицу с учётом allow_overpay
+                _unit_price=Case(
+                    When(
+                        product_variant__product__allow_overpay=True,
+                        then=Coalesce(
+                            F('custom_price'),
+                            F('product_variant__product__price'),
+                        ),
+                    ),
+                    default=F('product_variant__product__price'),
+                    output_field=DecimalField(
+                        max_digits=MAX_PRICE_DIGITS,
+                        decimal_places=PRICE_DECIMAL_PLACES,
                     ),
                 ),
-                default=F('product_variant__product__price'),
-                output_field=DecimalField(
-                    max_digits=MAX_PRICE_DIGITS,
-                    decimal_places=PRICE_DECIMAL_PLACES,
+            )
+            .annotate(
+                # _line_total — итог по строке (для агрегации и свойства)
+                _line_total=ExpressionWrapper(
+                    F('_unit_price') * F('quantity'),
+                    output_field=DecimalField(
+                        max_digits=MAX_PRICE_DIGITS,
+                        decimal_places=PRICE_DECIMAL_PLACES,
+                    ),
                 ),
-            ),
-        ).annotate(
-            # _line_total — итог по строке (для агрегации и свойства)
-            _line_total=ExpressionWrapper(
-                F('_unit_price') * F('quantity'),
-                output_field=DecimalField(
-                    max_digits=MAX_PRICE_DIGITS,
-                    decimal_places=PRICE_DECIMAL_PLACES,
-                ),
-            ),
+            )
         )
 
 
@@ -129,6 +136,15 @@ class CartItem(models.Model):
         )
         if errors:
             raise ValidationError(errors)
+
+        product = self.product_variant.product
+        if product.product_type in ['album', 'track'] and self.quantity > 1:
+            raise ValidationError(
+                {
+                    'quantity': 'Ненормально покупать цифровые товары '
+                    'в количестве больше одного. Одумайтесь.',
+                },
+            )
 
     def save(self, *args, **kwargs):
         self.full_clean()

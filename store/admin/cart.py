@@ -101,8 +101,8 @@ class CartAdmin(admin.ModelAdmin):
             return obj.user
         return format_html(
             '<span style="color: #C0C0C0; '
-            'font-style: italic;">Сессия:</span> {}...',
-            str(obj.session_key)[:8] if obj.session_key else 'неизвестно',
+            'font-style: italic;">Сессия:</span> [...{}]',
+            str(obj.session_key)[:16],
         )
 
     @admin.display(description='Сумма (руб.)', ordering='_subtotal')
@@ -114,9 +114,4 @@ class CartAdmin(admin.ModelAdmin):
         return f'{obj.discounted_subtotal:,.2f}'.replace(',', ' ')
 
     def get_queryset(self, request):
-        return (
-            super()
-            .get_queryset(request)
-            .select_related('user')
-            .with_subtotal()
-        )
+        return super().get_queryset(request).with_subtotal()

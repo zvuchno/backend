@@ -72,7 +72,7 @@ class CartQuerySet(models.QuerySet):
                     decimal_places=PRICE_DECIMAL_PLACES,
                 ),
             ),
-        )
+        ).select_related('user')
 
 
 class Cart(TimestampModel):
@@ -142,5 +142,4 @@ class Cart(TimestampModel):
     def __str__(self):
         if self.user:
             return f'Корзина {self.user}'
-        session_id = str(self.session_key)[:8] if self.session_key else '???'
-        return f'Анонимная корзина [id: ..{session_id}]'
+        return f'Анонимная корзина [id: ...{str(self.session_key)[:16]}]'
