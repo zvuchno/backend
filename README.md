@@ -21,6 +21,7 @@ Backend API проекта **Звучно**.
 * Nginx
 * Gunicorn
 * GitHub Actions (CI/CD)
+* pytest
 
 
 
@@ -241,8 +242,17 @@ ruff check --diff .
 ruff format .
 ```
 
+# Тестирование
 
-# Продакшен / Деплой:
+В проекте используется 'pytest' с плагином 'pytest-django'.
+
+## Запуск всех тестов:
+```
+cd backend
+pytest
+```
+
+# Продакшен / Деплой
 1. Создайте файл .env с переменными окружения и скопируйте его на сервер в директорию проекта - 'zvuchno'
 2. Добавьте Secrets в GitHub Actions (Settings → Secrets and variables → Actions → New repository secret):
 ```
