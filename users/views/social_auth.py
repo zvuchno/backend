@@ -6,11 +6,11 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from users.helpers import issue_tokens_for_user
 from users.schemas import (
     social_token_exchange_schema,
 )
 from users.serializers import EmptySerializer
-from users.services import issue_tokens_for_user
 
 
 @social_token_exchange_schema
