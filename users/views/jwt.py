@@ -5,6 +5,8 @@
 и обновления JWT-токенов.
 """
 
+import logging
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -16,12 +18,15 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
+from store.services.cart_service import CartService
 from users.schemas import (
     logout_schema,
     token_obtain_schema,
     token_refresh_schema,
     token_verify_schema,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @token_obtain_schema
@@ -40,6 +45,28 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
+
+    def post(self, request, *args, **kwargs):
+        """Аутентификация пользователя с объединением корзин.
+
+        После успешной валидации учетных данных выполняется merge
+        гостевой корзины (session_key) с корзиной пользователя.
+        Ошибки объединения не влияют на выдачу токенов.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.user
+
+        try:
+            CartService.merge_carts(user, request)
+        except Exception as e:
+            logger.error(
+                f'Не удалось объединить корзину для пользователя: '
+                f'{user.id}: {e}',
+            )
+
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 @token_refresh_schema
