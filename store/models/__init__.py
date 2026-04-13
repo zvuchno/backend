@@ -1,5 +1,6 @@
 from .album import Album
 from .delivery import Delivery
+from .favorite import Favorite
 from .genre import Genre
 from .image import Image
 from .merch import Merch
@@ -11,6 +12,7 @@ from .track import Track
 
 __all__ = [
     'Album',
+    'Favorite',
     'CartItem',
     'Delivery',
     'Genre',
