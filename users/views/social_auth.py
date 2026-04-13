@@ -13,7 +13,7 @@ from users.helpers import (
 from users.schemas import (
     social_token_exchange_schema,
 )
-from users.serializers import EmptySerializer
+from users.serializers import TokenPairSerializer
 
 
 @social_token_exchange_schema
@@ -22,7 +22,7 @@ class SocialLoginView(GenericAPIView):
 
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
-    serializer_class = EmptySerializer
+    serializer_class = TokenPairSerializer
 
     def post(self, request):
         user = request.user

@@ -15,8 +15,8 @@ class LogoutSerializer(serializers.Serializer):
 class TokenPairSerializer(serializers.Serializer):
     """Пара JWT токенов."""
 
-    access = serializers.CharField()
-    refresh = serializers.CharField()
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
