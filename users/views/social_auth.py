@@ -6,7 +6,10 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from users.helpers import issue_tokens_for_user
+from users.helpers import (
+    issue_tokens_for_user,
+    run_actions_after_authentication,
+)
 from users.schemas import (
     social_token_exchange_schema,
 )
@@ -23,6 +26,9 @@ class SocialLoginView(GenericAPIView):
 
     def post(self, request):
         user = request.user
+
+        run_actions_after_authentication(user, request)
+
         tokens = issue_tokens_for_user(user)
         logout(request)
         response = Response(tokens)

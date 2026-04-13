@@ -16,7 +16,11 @@ from .artist_profile import (
 )
 from .artist_registration import ArtistRegistrationSerializer
 from .base_registration import BaseRegistrationSerializer
-from .jwt import LogoutSerializer, TokenPairSerializer
+from .jwt import (
+    CustomTokenObtainPairSerializer,
+    LogoutSerializer,
+    TokenPairSerializer,
+)
 from .listener_profile import ListenerMeSerializer
 from .listener_registration import ListenerRegistrationSerializer
 
@@ -26,6 +30,7 @@ __all__ = [
     'ArtistPublicSerializer',
     'ArtistMeUpdateSerializer',
     'BaseRegistrationSerializer',
+    'CustomTokenObtainPairSerializer',
     'ListenerMeSerializer',
     'ListenerRegistrationSerializer',
     'MeSerializer',

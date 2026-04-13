@@ -28,3 +28,7 @@ def set_unusable_password(user) -> None:
     """Задаем неиспользуемый пароль."""
     user.set_unusable_password()
     user.save(update_fields=['password'])
+
+
+def run_actions_after_authentication(user, request) -> None:
+    """Выполнить действия после аутентификации."""
