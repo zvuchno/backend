@@ -27,22 +27,20 @@
 import os
 from pathlib import Path
 
-from django.conf import settings
-
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+BASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR_NAME = 'logs'
 LOG_FILENAME = 'log.log'
-LOG_DIR = settings.BASE_DIR / LOG_DIR_NAME
+LOG_DIR = BASE_DIR / LOG_DIR_NAME
 LOG_FILE = LOG_DIR / LOG_FILENAME
 LOG_FORMAT = '%(asctime)s | %(levelname)s | %(name)s | %(message)s'
-LOG_LEVEL = 'DEBUG' if settings.DEBUG else 'INFO'
+LOG_LEVEL = 'DEBUG' if DEBUG else 'INFO'
 ROOT_HANDLERS = ['console']
-if settings.DEBUG:
+if DEBUG:
     ROOT_HANDLERS.append('file')
 
 try:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    # Устанавливаем права доступа для записи
-    os.chmod(LOG_DIR, 0o755)
 except Exception as e:
     print(f'Warning: Could not create log directory {LOG_DIR}: {e}')
     # Fallback к /tmp если не можем создать
