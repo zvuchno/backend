@@ -184,6 +184,7 @@ FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://local
 FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://localhost:3000/reset-password-confirm')
 
 REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
