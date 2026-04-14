@@ -1,14 +1,11 @@
-"""ViewSet для управления альбомами.
-
-TODO: пермишены.
-"""
+"""ViewSet для управления альбомами."""
 
 from rest_framework import status, viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from .mixins import ProductActionMixin
 from store.models import Album
+from store.permissions import IsStoreObjectOwnerOrReadOnly
 from store.schema import album_schema
 from store.serializers import (
     AlbumReadDetailSerializer,
@@ -35,7 +32,7 @@ class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
 
     queryset = Album.objects.all()
     http_method_names = ('get', 'post', 'patch', 'delete')
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsStoreObjectOwnerOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):

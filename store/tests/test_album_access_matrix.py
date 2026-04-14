@@ -54,15 +54,8 @@ ROLE_CLIENTS = {
 )
 # fmt: on
 def test_album_visibility_matrix(
-    role,
-    visibility,
-    action,
-    can_see,
-    expected_status,
-    comment,
-    request,
-    variant_factory,
-    album_list_url,
+    role, visibility, action, can_see, expected_status, comment,
+    request, variant_factory, album_list_url,
 ):
     """Тест доступа к альбомам (roles × visibility × actions)."""
     client = request.getfixturevalue(ROLE_CLIENTS[role])
@@ -78,17 +71,17 @@ def test_album_visibility_matrix(
     if action == 'list':
         response = client.get(album_list_url)
 
-        assert response.status_code == expected_status, comment
+        assert response.status_code == expected_status, f'Failed on: {comment}'
 
         ids = [item['id'] for item in response.data['results']]
-        assert (album_id in ids) == can_see, comment
+        assert (album_id in ids) == can_see, f'Failed on: {comment}'
         return
 
     # ================= RETRIEVE =================
     url = reverse('api:store:albums-detail', args=[album_id])
     response = client.get(url)
 
-    assert response.status_code == expected_status, comment
+    assert response.status_code == expected_status, f'Failed on: {comment}'
 
     if can_see:
         assert response.data['id'] == album_id
@@ -135,4 +128,46 @@ def test_album_status_logic(
     # ================= RETRIEVE =================
     url = reverse('api:store:albums-detail', args=[album_id])
     response = client.get(url)
+    assert response.status_code == expected_status, f'Failed on: {comment}'
+
+
+# fmt: off
+@pytest.mark.parametrize(
+    'role, method, expected_status, comment',
+    [
+        # --- Чтение (Safe Methods) ---
+        ('anon',  'get',    200, 'anon can read'),
+        ('other', 'get',    200, 'other user can read'),
+        ('user',  'get',    200, 'owner can read'),
+
+        # --- Изменение (Unsafe Methods) ---
+        ('anon',  'patch',  401, 'anon cannot edit'),
+        ('other', 'patch',  403, 'other user cannot edit'),
+        ('user',  'patch',  200, 'owner can edit'),
+        ('staff', 'patch',  403, 'staff cannot edit too'),
+
+        # --- Удаление ---
+        ('other', 'delete', 403, 'other user cannot delete'),
+        ('user',  'delete', 204, 'owner can delete'),
+    ],
+)
+# fmt: on
+def test_album_permissions_logic(
+    role, method, expected_status, comment,
+    request, variant_factory,
+):
+    """Тест прав доступа: Role × Method (Owner or Read-Only)."""
+    client = request.getfixturevalue(ROLE_CLIENTS[role])
+
+    variant = variant_factory(product_type='album', visibility='public')
+    album_id = variant.product.album.id
+    url = reverse('api:store:albums-detail', args=[album_id])
+
+    if method == 'get':
+        response = client.get(url)
+    elif method == 'patch':
+        response = client.patch(url, data={'title': 'New Title'})
+    elif method == 'delete':
+        response = client.delete(url)
+
     assert response.status_code == expected_status, f'Failed on: {comment}'
