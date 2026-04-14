@@ -4,6 +4,7 @@ from .account import (
     become_artist_schema,
     change_password_schema,
     change_phone_schema,
+    change_username_schema,
     email_verification_schema,
     me_schema,
     password_reset_confirm_schema,
@@ -52,4 +53,5 @@ __all__ = [
     'token_refresh_schema',
     'token_verify_schema',
     'social_token_exchange_schema',
+    'change_username_schema',
 ]

@@ -7,6 +7,7 @@ from .account import (
     PasswordResetRequestSerializer,
     PasswordResetVerifySerializer,
     PhoneChangeSerializer,
+    UsernameChangeSerializer,
 )
 from .artist_profile import (
     ArtistMeSerializer,
@@ -42,6 +43,7 @@ __all__ = [
     'PhoneChangeSerializer',
     'EmptySerializer',
     'BecomeArtistSerializer',
+    'UsernameChangeSerializer',
     'LogoutSerializer',
     'TokenPairSerializer',
 ]

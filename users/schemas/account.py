@@ -82,3 +82,8 @@ become_artist_schema = extend_schema(
         'Если профиль артиста уже существует, возвращает ошибку.'
     ),
 )
+change_username_schema = extend_schema(
+    tags=['Account'],
+    summary='Изменить имя пользователя (username)',
+    description='Меняет имя пользователя, проверяет уникальность.',
+)
