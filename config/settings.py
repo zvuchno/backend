@@ -190,6 +190,7 @@ REST_FRAMEWORK = {
         'refresh': '10/min',
         'verify': '20/minute',
         'change_phone': '5/min',
+        'change_username': '5/min',
         'change_password': '5/min',
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',

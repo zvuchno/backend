@@ -2,6 +2,7 @@
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.db import IntegrityError
 from rest_framework import serializers
 
 from users.serializers.mixins import PhoneRegistrationMixin
@@ -224,3 +225,47 @@ class PasswordResetConfirmSerializer(PasswordResetVerifySerializer):
         user = self.validated_data['user']
         set_user_password(user, self.validated_data['new_password'])
         return user
+
+
+class UsernameChangeSerializer(serializers.ModelSerializer):
+    """Меняет username."""
+
+    def validate_username(self, value):
+        current_user = self.instance
+        value = value.strip()
+        if current_user.username == value:
+            raise serializers.ValidationError('Username совпадает с текущим.')
+        if (
+            User.objects
+            .filter(
+                username=value,
+            )
+            .exclude(pk=current_user.pk)
+            .exists()
+        ):
+            raise serializers.ValidationError('Username занят.')
+        return value
+
+    def update(self, instance, validated_data):
+        current_user = self.instance
+        instance.username = validated_data['username']
+        try:
+            instance.save(update_fields=['username'])
+        except IntegrityError:
+            if (
+                User.objects
+                .filter(
+                    username=validated_data['username'],
+                )
+                .exclude(pk=current_user.pk)
+                .exists()
+            ):
+                raise serializers.ValidationError(
+                    {'username': 'Username занят.'},
+                )
+            raise
+        return instance
+
+    class Meta:
+        model = User
+        fields = ('username',)

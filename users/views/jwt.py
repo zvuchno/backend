@@ -22,6 +22,7 @@ from users.schemas import (
     token_refresh_schema,
     token_verify_schema,
 )
+from users.serializers import CustomTokenObtainPairSerializer
 
 
 @token_obtain_schema
@@ -38,6 +39,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         POST /auth/token/create/
     """
 
+    serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
 

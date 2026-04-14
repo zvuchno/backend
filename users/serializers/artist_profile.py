@@ -3,8 +3,8 @@
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
+from users.helpers import ensure_listener_profile
 from users.models import ArtistContact, ArtistProfile, ArtistSocial
-from users.services import ensure_listener_profile
 
 
 class ArtistCoverUpdateSerializer(serializers.ModelSerializer):
