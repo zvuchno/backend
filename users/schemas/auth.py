@@ -2,7 +2,10 @@
 
 from drf_spectacular.utils import extend_schema
 
-from users.serializers.jwt import LogoutSerializer
+from users.serializers import (
+    LogoutSerializer,
+    TokenPairSerializer,
+)
 
 token_obtain_schema = extend_schema(
     tags=['Auth'],
@@ -10,6 +13,7 @@ token_obtain_schema = extend_schema(
     summary='Вход в систему',
     description='Аутентифицирует пользователя и возвращает access- и '
     'refresh-токены.',
+    responses={200: TokenPairSerializer},
 )
 
 token_refresh_schema = extend_schema(

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -189,6 +190,7 @@ REST_FRAMEWORK = {
         'refresh': '10/min',
         'verify': '20/minute',
         'change_phone': '5/min',
+        'change_username': '5/min',
         'change_password': '5/min',
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',
@@ -252,3 +254,9 @@ LOGGING = {
         },
     },
 }
+
+# Если запущен pytest, используем быстрый хешер паролей
+if 'pytest' in sys.modules or 'test' in sys.argv:
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.MD5PasswordHasher',
+    ]

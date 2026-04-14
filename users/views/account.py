@@ -17,6 +17,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from users.schemas import (
     change_password_schema,
     change_phone_schema,
+    change_username_schema,
     email_verification_schema,
     me_schema,
     password_reset_confirm_schema,
@@ -33,6 +34,7 @@ from users.serializers import (
     PasswordResetRequestSerializer,
     PasswordResetVerifySerializer,
     PhoneChangeSerializer,
+    UsernameChangeSerializer,
 )
 from users.services import (
     build_email_verification_url,
@@ -232,3 +234,17 @@ class PasswordResetConfirmView(GenericAPIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+@change_username_schema
+class UsernameChangeView(UpdateAPIView):
+    """Представление изменения username."""
+
+    serializer_class = UsernameChangeSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['patch']
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'change_username'
+
+    def get_object(self):
+        return self.request.user
