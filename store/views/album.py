@@ -1,9 +1,8 @@
 """ViewSet для управления альбомами.
 
-TODO: Пагинация, фильтрация, пермишены.
+TODO: пермишены.
 """
 
-from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
@@ -20,10 +19,23 @@ from store.serializers import (
 
 @album_schema
 class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
-    """API для работы с альбомами."""
+    """API для работы с альбомами.
 
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    Особенности:
+    - Обеспечение коммерческой обвязки через ProductActionMixin.
+    - Поддержка правил доступа и видимости объектов.
+
+    При create/update:
+    - данные альбома сохраняются через сериализатор
+    - далее ProductActionMixin:
+        * вызывает ProductService.ensure_commerce(), который гарантирует
+        наличие связанного Product и ProductVariant
+        * синхронизирует коммерческие поля (price, allow_overpay)
+    """
+
+    queryset = Album.objects.all()
     http_method_names = ('get', 'post', 'patch', 'delete')
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
@@ -33,30 +45,17 @@ class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
         return AlbumReadSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        # Админам отдаем всё без фильтров
-        if user.is_authenticated and user.is_staff:
-            queryset = Album.objects.all()
-        else:
-            if self.action == 'list':
-                # Общая выдача: только публичные или свои
-                queryset = Album.objects.filter(
-                    Q(is_active=True, is_published=True, visibility='public')
-                    | Q(owner=user),
-                )
-            else:
-                # Прямой retrieve/update: публичные, по ссылке или свои
-                queryset = Album.objects.filter(
-                    Q(
-                        is_active=True,
-                        is_published=True,
-                        visibility__in=['public', 'link_only'],
-                    )
-                    | Q(owner=user),
-                )
+        # Вызываем базовый QS с фильтрацией
+        queryset = (
+            super()
+            .get_queryset()
+            .visible_for(
+                user=self.request.user,
+                action=self.action,
+            )
+        )
         if self.action in ('list', 'retrieve'):
             queryset = queryset.select_related('product', 'genre')
-
         return queryset
 
     def create(self, request, *args, **kwargs):
