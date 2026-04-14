@@ -1,4 +1,4 @@
-"""Перехват исключений."""
+"""Глобальный обработчик исключений для API проекта."""
 
 import logging
 
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def custom_exception_handler(exception, context):
-    """Централизованная обработка ошибок API."""
+    """Обрабатывает исключения DRF и логирует неожиданные ошибки API."""
     response = exception_handler(exception, context)
     view = context.get('view')
     request = context.get('request')
