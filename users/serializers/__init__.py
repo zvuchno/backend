@@ -7,6 +7,7 @@ from .account import (
     PasswordResetRequestSerializer,
     PasswordResetVerifySerializer,
     PhoneChangeSerializer,
+    UsernameChangeSerializer,
 )
 from .artist_profile import (
     ArtistMeSerializer,
@@ -16,6 +17,11 @@ from .artist_profile import (
 )
 from .artist_registration import ArtistRegistrationSerializer
 from .base_registration import BaseRegistrationSerializer
+from .jwt import (
+    CustomTokenObtainPairSerializer,
+    LogoutSerializer,
+    TokenPairSerializer,
+)
 from .listener_profile import ListenerMeSerializer
 from .listener_registration import ListenerRegistrationSerializer
 
@@ -25,6 +31,7 @@ __all__ = [
     'ArtistPublicSerializer',
     'ArtistMeUpdateSerializer',
     'BaseRegistrationSerializer',
+    'CustomTokenObtainPairSerializer',
     'ListenerMeSerializer',
     'ListenerRegistrationSerializer',
     'MeSerializer',
@@ -36,4 +43,7 @@ __all__ = [
     'PhoneChangeSerializer',
     'EmptySerializer',
     'BecomeArtistSerializer',
+    'UsernameChangeSerializer',
+    'LogoutSerializer',
+    'TokenPairSerializer',
 ]

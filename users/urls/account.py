@@ -13,6 +13,7 @@ from users.views import (
     PasswordResetVerifyView,
     ResendVerificationEmailView,
 )
+from users.views.account import UsernameChangeView
 
 urlpatterns = [
     path('me/', MeView.as_view(), name='me'),
@@ -55,5 +56,10 @@ urlpatterns = [
         'reset-password-confirm/',
         PasswordResetConfirmView.as_view(),
         name='reset_password_confirm',
+    ),
+    path(
+        'me/change-username/',
+        UsernameChangeView.as_view(),
+        name='change_username',
     ),
 ]

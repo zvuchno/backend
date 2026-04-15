@@ -2,6 +2,8 @@
 
 from drf_spectacular.utils import extend_schema
 
+from users.serializers import TokenPairSerializer
+
 social_token_exchange_schema = extend_schema(
     tags=['Auth'],
     summary='Обмен social session на JWT токены',
@@ -9,4 +11,5 @@ social_token_exchange_schema = extend_schema(
     'session cookie выполняет обмен текущей серверной сессии '
     'на access и refresh JWT токены. '
     'Требует активной session cookie и CSRF токена.',
+    responses={200: TokenPairSerializer},
 )
