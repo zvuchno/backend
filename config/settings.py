@@ -230,7 +230,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'VERIFIED_EMAIL': True,
     },
     'yandex': {
-        'SCOPE': ['login:email', 'login:info'],
+        'SCOPE': ['login:email'],
         'VERIFIED_EMAIL': True,
     }
 }
