@@ -16,6 +16,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from .admin_reorder_config import ADMIN_REORDER  # noqa
 from config import logging as logging_config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -35,7 +36,6 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -242,38 +242,6 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по em
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True # автоматически связывать
 LOGIN_REDIRECT_URL = '/'
 # SESSION_COOKIE_AGE = 86400
-
-# Настройка группировки моделей в админ-панели
-# Используется форк django-modeladmin-reorder
-ADMIN_REORDER = (
-    # Группа 1: Витрина
-    {
-        'app': 'store',
-        'label': 'Витрина',
-        'models': (
-            'store.Album',
-            'store.Track',
-            'store.Merch',
-            'store.Genre',
-            'store.MerchKind',
-        ),
-    },
-
-    # Группа 2: Продажи и логистика
-    {
-        'app': 'store',
-        'label': 'Заказы',
-        'models': (
-            'store.ShoppingCart',
-        ),
-    },
-
-    # Оставляем стандартные настройки для приложения 'users'
-    'users',
-
-    # Стандартный блок прав доступа
-    'auth',
-)
 
 LOGGING = logging_config.LOGGING
 
