@@ -26,6 +26,7 @@
 
 import os
 from pathlib import Path
+from typing import Any
 
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,17 +37,32 @@ LOG_FILE = LOG_DIR / LOG_FILENAME
 LOG_FORMAT = '%(asctime)s | %(levelname)s | %(name)s | %(message)s'
 LOG_LEVEL = 'DEBUG' if DEBUG else 'INFO'
 ROOT_HANDLERS = ['console']
+
+handlers: dict[str, dict[str, Any]] = {
+    'console': {
+        'class': 'logging.StreamHandler',
+        'formatter': 'verbose',
+    },
+}
+
 if DEBUG:
     ROOT_HANDLERS.append('file')
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f'Warning: Could not create log directory {LOG_DIR}: {e}')
+        # Fallback к /tmp если не можем создать
+        LOG_DIR = Path('/tmp/logs')
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        LOG_FILE = LOG_DIR / LOG_FILENAME
 
-try:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-except Exception as e:
-    print(f'Warning: Could not create log directory {LOG_DIR}: {e}')
-    # Fallback к /tmp если не можем создать
-    LOG_DIR = Path('/tmp/logs')
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    LOG_FILE = LOG_DIR / LOG_FILENAME
+    handlers['file'] = {
+        'class': 'logging.handlers.RotatingFileHandler',
+        'filename': str(LOG_FILE),
+        'maxBytes': 1024 * 1024 * 5,
+        'backupCount': 5,
+        'formatter': 'verbose',
+    }
 
 LOGGING = {
     'version': 1,
@@ -56,19 +72,7 @@ LOGGING = {
             'format': LOG_FORMAT,
         },
     },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': str(LOG_FILE),
-            'maxBytes': 1024 * 1024 * 5,
-            'backupCount': 5,
-            'formatter': 'verbose',
-        },
-    },
+    'handlers': handlers,
     'root': {
         'handlers': ROOT_HANDLERS,
         'level': LOG_LEVEL,
