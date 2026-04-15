@@ -1,9 +1,11 @@
 """ViewSet для управления альбомами."""
 
-from rest_framework import status, viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
 from .mixins import ProductActionMixin
+from store.filters import AlbumFilter
 from store.models import Album
 from store.permissions import IsStoreObjectOwnerOrReadOnly
 from store.schema import album_schema
@@ -33,6 +35,15 @@ class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
     queryset = Album.objects.all()
     http_method_names = ('get', 'post', 'patch', 'delete')
     permission_classes = (IsStoreObjectOwnerOrReadOnly,)
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    )
+    filterset_class = AlbumFilter
+    search_fields = ('name', 'description', 'genre__name')
+    ordering_fields = ('name', 'created_at', 'release_date')
+    ordering = ('-created_at', 'name')
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
@@ -52,7 +63,11 @@ class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
             )
         )
         if self.action in ('list', 'retrieve'):
-            queryset = queryset.select_related('product', 'genre')
+            queryset = queryset.select_related(
+                'product',
+                'genre',
+                'owner__artist_profile',
+            )
         return queryset
 
     def create(self, request, *args, **kwargs):
