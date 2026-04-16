@@ -171,9 +171,11 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         extra_context=None,
     ):
         """Редирект на фронт в случае ошибки."""
-        raise self._frontend_error_redirect(
-            'Ошибка аутентификации через Oauth.',
-            provider_id,
+        raise ImmediateHttpResponse(
+            self._frontend_error_redirect(
+                'Ошибка аутентификации через OAuth.',
+                provider_id,
+            ),
         )
 
     @staticmethod

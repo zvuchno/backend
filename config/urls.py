@@ -16,11 +16,9 @@ Including another URLconf
 
 """
 
-from allauth.socialaccount import providers
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.shortcuts import redirect
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -47,42 +45,15 @@ docs_urlpatterns = [
 # Список эндпоинтов бизнес-логики (Store, Users и т.д.)
 api_v1_urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
-    path('', include('users.urls', namespace='users')),
+    path('', include('users.urls.api', namespace='users')),
 ]
-
-
-def redirect_social_auth_to_frontend(request):
-    """Редирект на указанную страницу фронта."""
-    target_url = getattr(settings, 'FRONTEND_SOCIAL_AUTH_URL', '/')
-    return redirect(f'{target_url}?status=cancelled')
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/docs/', include((docs_urlpatterns, 'api-docs'))),
     path('api/v1/', include((api_v1_urlpatterns, 'api'))),
-    *[
-        path(
-            f'accounts/{provider.id}/',
-            include(f'allauth.socialaccount.providers.{provider.id}.urls'),
-        )
-        for provider in providers.registry.get_class_list()
-    ],
-    path(
-        'accounts/social/login/cancelled/',
-        redirect_social_auth_to_frontend,
-        name='socialaccount_login_cancelled',
-    ),
-    path(
-        'accounts/social/login/error/',
-        redirect_social_auth_to_frontend,
-        name='socialaccount_login_error',
-    ),
-    path(
-        'accounts/social/signup/',
-        redirect_social_auth_to_frontend,
-        name='socialaccount_signup',
-    ),
+    path('oauth/', include('users.urls.social_auth', namespace='oauth')),
 ]
 
 if settings.DEBUG:

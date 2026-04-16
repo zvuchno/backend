@@ -25,7 +25,12 @@ from .jwt import (
 )
 from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
-from .social_auth import SocialLoginView
+from .social_auth import (
+    SocialLoginView,
+    redirect_social_auth_cancelled,
+    redirect_social_auth_error,
+    redirect_social_auth_signup,
+)
 
 __all__ = [
     'ArtistCoverUpdateView',
@@ -48,6 +53,9 @@ __all__ = [
     'PasswordResetConfirmView',
     'PasswordResetRequestView',
     'PasswordResetVerifyView',
+    'redirect_social_auth_cancelled',
+    'redirect_social_auth_error',
+    'redirect_social_auth_signup',
     'ResendVerificationEmailView',
     'SocialLoginView',
 ]
