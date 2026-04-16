@@ -1,6 +1,5 @@
 """Модель позиций в заказе покупателя."""
 
-from django.core.validators import MinValueValidator
 from django.db import models
 
 from store.constants import (
@@ -49,7 +48,6 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(
         'Количество',
         default=1,
-        validators=[MinValueValidator(1)],
     )
 
     # Snapshot {name, variant_name, artist..}

@@ -9,7 +9,7 @@ from store.models import Order, OrderItem
 
 
 class OrderItemInline(admin.TabularInline):
-    """Инлайн отображения позиций в корзине."""
+    """Инлайн отображения позиций в заказе."""
 
     model = OrderItem
     extra = 0
