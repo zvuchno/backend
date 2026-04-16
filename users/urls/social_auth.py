@@ -7,12 +7,10 @@ from users.views import (
     redirect_social_auth_signup,
 )
 
-app_name = 'social_auth'
-
 urlpatterns = [
     *[
         path(
-            f'{provider.id}/',
+            '',
             include(f'allauth.socialaccount.providers.{provider.id}.urls'),
         )
         for provider in providers.registry.get_class_list()

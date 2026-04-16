@@ -53,7 +53,7 @@ urlpatterns = [
     path('api/v1/', include((api_v1_urlpatterns, 'api'))),
     path(
         'accounts/',
-        include('users.urls.social_auth', namespace='social_auth'),
+        include('users.urls.social_auth'),
     ),
 ]
 
