@@ -60,10 +60,10 @@ def redirect_social_auth_cancelled(request):
 
 
 def redirect_social_auth_error(request):
-    """Редирект при отмене social auth."""
+    """Редирект при ошибке social auth."""
     return _redirect_social_auth_to_frontend('error')
 
 
 def redirect_social_auth_signup(request):
-    """Редирект при отмене social auth."""
+    """Редирект fallback signup social auth на фронт."""
     return _redirect_social_auth_to_frontend('signup')

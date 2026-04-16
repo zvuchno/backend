@@ -7,7 +7,7 @@ from users.views import (
     redirect_social_auth_signup,
 )
 
-app_name = 'oauth'
+app_name = 'social_auth'
 
 urlpatterns = [
     *[

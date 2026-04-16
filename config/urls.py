@@ -41,19 +41,20 @@ docs_urlpatterns = [
     ),
 ]
 
-
 # Список эндпоинтов бизнес-логики (Store, Users и т.д.)
 api_v1_urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
     path('', include('users.urls.api', namespace='users')),
 ]
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/docs/', include((docs_urlpatterns, 'api-docs'))),
     path('api/v1/', include((api_v1_urlpatterns, 'api'))),
-    path('oauth/', include('users.urls.social_auth', namespace='oauth')),
+    path(
+        'accounts/',
+        include('users.urls.social_auth', namespace='social_auth'),
+    ),
 ]
 
 if settings.DEBUG:

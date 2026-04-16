@@ -119,6 +119,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 existing_user = User.objects.filter(email=email).first()
                 if existing_user:
                     self._ensure_user_is_active(existing_user)
+                    ensure_listener_profile(existing_user)
                     return existing_user
                 continue
         raise SocialAuthException(
