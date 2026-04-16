@@ -16,6 +16,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from .admin_reorder_config import ADMIN_REORDER  # noqa
 from config import logging as logging_config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -35,7 +36,6 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'djoser',
     'phonenumber_field',
+    'admin_reorder',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
 ]
@@ -69,6 +70,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder',
     'allauth.account.middleware.AccountMiddleware',
 ]
 
