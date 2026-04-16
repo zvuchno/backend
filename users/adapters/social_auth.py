@@ -1,5 +1,6 @@
 """Адаптеры для интеграции входа с соцсетями."""
 
+import logging
 from urllib.parse import urlencode
 
 from allauth.core.exceptions import ImmediateHttpResponse
@@ -21,6 +22,7 @@ from users.helpers import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):
@@ -32,6 +34,12 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         if user is None:
             return
         if not user.is_active:
+            if not user.is_active:
+                logger.warning(
+                    'Попытка заблокированного аккаунта: user_id=%s email=%s',
+                    user.pk,
+                    user.email,
+                )
             raise SocialAuthException('Учетная запись заблокирована.')
 
     def pre_social_login(self, request, sociallogin):
@@ -74,6 +82,11 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 is_email_verified=is_email_verified,
             )
         except SocialAuthException as exc:
+            logger.warning(
+                'Social auth failed: provider=%s reason=%s',
+                provider,
+                str(exc),
+            )
             raise ImmediateHttpResponse(
                 self._frontend_error_redirect(str(exc), provider),
             )
@@ -172,6 +185,12 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         extra_context=None,
     ):
         """Редирект на фронт в случае ошибки."""
+        logger.warning(
+            'OAuth provider auth error: provider=%s error=%s exception=%s',
+            provider_id,
+            error,
+            exception,
+        )
         raise ImmediateHttpResponse(
             self._frontend_error_redirect(
                 'Ошибка аутентификации через OAuth.',
