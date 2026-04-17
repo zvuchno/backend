@@ -230,10 +230,12 @@ SOCIALACCOUNT_PROVIDERS = {
     'vk': {
         'SCOPE': ['email'],
         'VERIFIED_EMAIL': True,
+        'AUTH_PARAMS': {'prompt': 'login'},
     },
     'yandex': {
         'SCOPE': ['login:email'],
         'VERIFIED_EMAIL': True,
+        'AUTH_PARAMS': {'force_confirm': 'yes'},
     }
 }
 SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
