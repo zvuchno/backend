@@ -4,10 +4,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
+from common.permissions import IsStoreObjectOwnerOrReadOnly
+
 from .mixins import ProductActionMixin
 from store.filters import AlbumFilter
 from store.models import Album
-from store.permissions import IsStoreObjectOwnerOrReadOnly
 from store.schema import album_schema
 from store.serializers import (
     AlbumReadDetailSerializer,

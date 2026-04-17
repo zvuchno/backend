@@ -16,6 +16,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from .admin_reorder_config import ADMIN_REORDER  # noqa
+from config import logging as logging_config
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
@@ -33,7 +36,6 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -55,6 +57,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'djoser',
     'phonenumber_field',
+    'admin_reorder',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
 ]
@@ -67,6 +70,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder',
     'allauth.account.middleware.AccountMiddleware',
 ]
 
@@ -182,6 +186,7 @@ FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://local
 FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://localhost:3000/reset-password-confirm')
 
 REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -234,26 +239,14 @@ SOCIALACCOUNT_PROVIDERS = {
 SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
 SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
-SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True # автоматически связывать
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # автоматически связывать
+SOCIALACCOUNT_LOGIN_ON_GET = True  # сразу редиректить вход без промежуточной страницы
 LOGIN_REDIRECT_URL = '/'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
 # SESSION_COOKIE_AGE = 86400
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'users': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}
+LOGGING = logging_config.LOGGING
 
 # Если запущен pytest, используем быстрый хешер паролей
 if 'pytest' in sys.modules or 'test' in sys.argv:
