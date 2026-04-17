@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
+from .admin_reorder_config import ADMIN_REORDER  # noqa
 from config import logging as logging_config
 from config.glitchtip import init_glitchtip
 
@@ -40,7 +41,6 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'djoser',
     'phonenumber_field',
+    'admin_reorder',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
 ]
@@ -74,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder',
     'allauth.account.middleware.AccountMiddleware',
 ]
 
@@ -235,7 +237,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'VERIFIED_EMAIL': True,
     },
     'yandex': {
-        'SCOPE': ['login:email', 'login:info'],
+        'SCOPE': ['login:email'],
         'VERIFIED_EMAIL': True,
     }
 }
@@ -244,7 +246,11 @@ SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провай
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # автоматически связывать
 SOCIALACCOUNT_LOGIN_ON_GET = True  # сразу редиректить вход без промежуточной страницы
-LOGIN_REDIRECT_URL = '/'
+FRONTEND_SOCIAL_AUTH_URL = os.getenv(
+    'FRONTEND_SOCIAL_AUTH_URL',
+    'http://localhost:3000/auth/callback'
+)
+LOGIN_REDIRECT_URL = FRONTEND_SOCIAL_AUTH_URL  # Для успешных входов по умолчанию
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 # SESSION_COOKIE_AGE = 86400
