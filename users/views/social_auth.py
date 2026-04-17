@@ -67,3 +67,8 @@ def redirect_social_auth_error(request):
 def redirect_social_auth_signup(request):
     """Редирект fallback signup social auth на фронт."""
     return _redirect_social_auth_to_frontend('signup')
+
+
+def redirect_social_auth_confirm_email(request):
+    """Редирект fallback confirm-email social auth на фронт."""
+    return _redirect_social_auth_to_frontend('confirm-email')

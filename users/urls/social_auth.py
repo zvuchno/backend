@@ -3,6 +3,7 @@ from django.urls import include, path
 
 from users.views import (
     redirect_social_auth_cancelled,
+    redirect_social_auth_confirm_email,
     redirect_social_auth_error,
     redirect_social_auth_signup,
 )
@@ -18,16 +19,22 @@ urlpatterns = [
     path(
         'social/login/cancelled/',
         redirect_social_auth_cancelled,
-        name='socialaccount_login_cancelled',
+        name='account_login_cancelled',
     ),
     path(
         'social/login/error/',
         redirect_social_auth_error,
-        name='socialaccount_login_error',
+        name='account_login_error',
     ),
     path(
         'social/signup/',
         redirect_social_auth_signup,
-        name='socialaccount_signup',
+        name='account_signup',
+    ),
+    # Fallback заглушка для allauth.
+    path(
+        '',
+        redirect_social_auth_confirm_email,
+        name='account_confirm_email',
     ),
 ]
