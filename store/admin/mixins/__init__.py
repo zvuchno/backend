@@ -6,7 +6,10 @@
 """
 
 from .auto_owner_mixin import AutoOwnerAdminMixin
+from .commerce import CommerceBaseMixin, CommerceDisplayMixin
 
 __all__ = [
     'AutoOwnerAdminMixin',
+    'CommerceBaseMixin',
+    'CommerceDisplayMixin',
 ]

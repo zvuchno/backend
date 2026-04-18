@@ -10,10 +10,14 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+from .admin_reorder_config import ADMIN_REORDER  # noqa
+from config import logging as logging_config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +36,6 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -40,7 +43,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.vk',
+    'allauth.socialaccount.providers.yandex',
     'rest_framework',
+    'django_filters',
     'drf_spectacular',
     'nested_admin',
     'rest_framework_simplejwt',
@@ -48,6 +58,7 @@ INSTALLED_APPS = [
     'djoser',
     'phonenumber_field',
     'django_cleanup.apps.CleanupConfig',
+    'admin_reorder',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
 ]
@@ -60,6 +71,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -174,6 +187,7 @@ FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://local
 FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://localhost:3000/reset-password-confirm')
 
 REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -182,6 +196,7 @@ REST_FRAMEWORK = {
         'refresh': '10/min',
         'verify': '20/minute',
         'change_phone': '5/min',
+        'change_username': '5/min',
         'change_password': '5/min',
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',
@@ -190,6 +205,7 @@ REST_FRAMEWORK = {
         'resend_verification_email': '3/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
 }
 
 # TODO: настроить периодический запуск flushexpiredtokens
@@ -205,19 +221,43 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_PROVIDERS = {
+    'vk': {
+        'SCOPE': ['email'],
+        'VERIFIED_EMAIL': True,
+        'AUTH_PARAMS': {'prompt': 'login'},
     },
-    'loggers': {
-        'users': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
+    'yandex': {
+        'SCOPE': ['login:email'],
+        'VERIFIED_EMAIL': True,
+        'AUTH_PARAMS': {'force_confirm': 'yes'},
+    }
 }
+SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
+SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # автоматически связывать
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_LOGIN_ON_GET = True  # сразу редиректить вход без промежуточной страницы
+FRONTEND_SOCIAL_AUTH_URL = os.getenv(
+    'FRONTEND_SOCIAL_AUTH_URL',
+    '/'
+)
+LOGIN_REDIRECT_URL = FRONTEND_SOCIAL_AUTH_URL  # Для успешных входов по умолчанию
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+# SESSION_COOKIE_AGE = 86400
+
+LOGGING = logging_config.LOGGING
+
+# Если запущен pytest, используем быстрый хешер паролей
+if 'pytest' in sys.modules or 'test' in sys.argv:
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.MD5PasswordHasher',
+    ]

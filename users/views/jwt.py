@@ -6,6 +6,7 @@
 """
 
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -22,6 +23,7 @@ from users.schemas import (
     token_refresh_schema,
     token_verify_schema,
 )
+from users.serializers import CustomTokenObtainPairSerializer
 
 
 @token_obtain_schema
@@ -38,6 +40,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         POST /auth/token/create/
     """
 
+    serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
 
@@ -85,10 +88,16 @@ class CustomLogoutView(APIView):
     @staticmethod
     def post(request) -> Response:
         """Добавляет refresh token в blacklist."""
+        token = request.data.get('refresh')
+        if not token:
+            raise ValidationError(
+                {'refresh': 'Токен не предоставлен.'},
+            )
         try:
-            token = request.data.get('refresh')
             refresh_token = RefreshToken(token)
             refresh_token.blacklist()
-            return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError(
+                {'refresh': 'Некорректный refresh токен.'},
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)

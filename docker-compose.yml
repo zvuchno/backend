@@ -19,6 +19,11 @@ services:
       - media:/app/media/
     depends_on:
       - db
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
   gateway:
     build: ./nginx/
     env_file: .env

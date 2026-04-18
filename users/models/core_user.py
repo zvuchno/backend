@@ -35,6 +35,11 @@ class CoreUser(AbstractUser):
         default=False,
     )
 
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
     class Meta:
         verbose_name = 'учетная запись'
         verbose_name_plural = 'учетные записи'
