@@ -4,7 +4,9 @@
 """
 
 from .album import AlbumFilter
+from .merch import MerchFilter
 
 __all__ = [
     'AlbumFilter',
+    'MerchFilter',
 ]

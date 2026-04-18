@@ -9,11 +9,13 @@
 from .album import album_schema
 from .cart import cart_schema
 from .genre import genre_schema
+from .merch import merch_schema
 from .track import track_schema
 
 __all__ = [
     'album_schema',
     'cart_schema',
     'genre_schema',
+    'merch_schema',
     'track_schema',
 ]
