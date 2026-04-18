@@ -11,7 +11,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
 )
-from store.validators import validate_custom_price
+from store.validators import validate_price_with_donation
 
 
 class CartItemQuerySet(models.QuerySet):
@@ -21,7 +21,7 @@ class CartItemQuerySet(models.QuerySet):
         """Аннотирует каждый CartItem актуальной ценой и суммой строки.
 
         Рассчитывает цену за единицу (_unit_price) с учетом 'allow_overpay':
-           - Если переплата разрешена, приоритет у 'custom_price' (донат),
+           - Если переплата разрешена, приоритет у 'price_with_donation',
              иначе — базовая цена продукта.
            - Если переплата запрещена — всегда базовая цена.
         Рассчитывает итог строки (_line_total) как (_unit_price * quantity).
@@ -48,7 +48,7 @@ class CartItemQuerySet(models.QuerySet):
                     When(
                         product_variant__product__allow_overpay=True,
                         then=Coalesce(
-                            F('custom_price'),
+                            F('price_with_donation'),
                             F('product_variant__product__price'),
                         ),
                     ),
@@ -91,7 +91,7 @@ class CartItem(models.Model):
         default=1,
         validators=[MinValueValidator(1)],
     )
-    custom_price = models.DecimalField(
+    price_with_donation = models.DecimalField(
         'Хочет заплатить, руб.',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
@@ -116,8 +116,8 @@ class CartItem(models.Model):
             return self._unit_price
         # Fallback логика
         product = self.product_variant.product
-        if product.allow_overpay and self.custom_price is not None:
-            return self.custom_price
+        if product.allow_overpay and self.price_with_donation is not None:
+            return self.price_with_donation
         return product.price
 
     @property
@@ -130,9 +130,9 @@ class CartItem(models.Model):
 
     def clean(self):
         super().clean()
-        errors = validate_custom_price(
+        errors = validate_price_with_donation(
             self.product_variant.product,
-            self.custom_price,
+            self.price_with_donation,
         )
         if errors:
             raise ValidationError(errors)
