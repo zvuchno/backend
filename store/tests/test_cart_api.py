@@ -67,7 +67,7 @@ class TestCartAPI:
                 {
                     'product_variant': variant.id,
                     'quantity': 10,
-                    'custom_price': '3000',
+                    'price_with_donation': Decimal('3000.00'),
                     'comment': 'Thank you!',
                 },
             ],
@@ -77,7 +77,7 @@ class TestCartAPI:
 
         item = CartItem.objects.get(cart=cart, product_variant=variant)
         assert item.quantity == 10
-        assert item.custom_price == 3000
+        assert item.price_with_donation == Decimal('3000.00')
         assert item.comment == 'Thank you!'
 
     def test_sync_cart_with_put(
@@ -343,7 +343,7 @@ class TestCartAPI:
         assert 'quantity' in response.data
         assert f'Доступно {stock_limit} шт.' in str(response.data['quantity'])
 
-    def test_cart_custom_price_calculations(
+    def test_cart_price_with_donation_calculations(
         self,
         api_client,
         cart_add_url,
@@ -356,23 +356,23 @@ class TestCartAPI:
         line_total и total корзины.
         """
         base_price = Decimal('1000.00')
-        custom_price = Decimal('1500.00')
+        price_with_donation = Decimal('1500.00')
         quantity = 2
         variant = variant_factory(product_type='merch', price=base_price)
 
         payload = {
             'product_variant': variant.id,
             'quantity': quantity,
-            'custom_price': custom_price,
+            'price_with_donation': price_with_donation,
         }
 
         response = api_client.post(cart_add_url, data=payload, format='json')
         assert response.status_code == status.HTTP_201_CREATED
 
         item_data = response.data['items'][0]
-        assert Decimal(item_data['price_with_donation']) == custom_price
+        assert Decimal(item_data['price']) == price_with_donation
         # Сумма строки: 1500 * 2 = 3000
-        expected_line_total = custom_price * quantity
+        expected_line_total = price_with_donation * quantity
         assert Decimal(item_data['line_total']) == expected_line_total
         # Сумма корзины (subtotal)
         # Добавим еще один обычный товар без доната для чистоты эксперимента

@@ -106,7 +106,9 @@ class CartViewSet(viewsets.GenericViewSet):
             cart=cart,
             variant=serializer.validated_data['product_variant'],
             quantity=serializer.validated_data['quantity'],
-            custom_price=serializer.validated_data.get('custom_price'),
+            price_with_donation=serializer.validated_data.get(
+                'price_with_donation',
+            ),
             comment=serializer.validated_data.get('comment'),
         )
 

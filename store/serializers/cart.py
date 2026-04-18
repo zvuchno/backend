@@ -8,7 +8,7 @@ from rest_framework import serializers
 from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
 from store.models import Cart, CartItem, ProductVariant
 from store.services.cart_service import CartService
-from store.validators import validate_custom_price
+from store.validators import validate_price_with_donation
 
 
 class CartItemReadSerializer(serializers.ModelSerializer):
@@ -22,7 +22,7 @@ class CartItemReadSerializer(serializers.ModelSerializer):
         source='product_variant.variant_name',
         read_only=True,
     )
-    price_with_donation = serializers.DecimalField(
+    price = serializers.DecimalField(
         source='unit_price',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
@@ -40,7 +40,7 @@ class CartItemReadSerializer(serializers.ModelSerializer):
         fields = (
             'product_variant',
             'name',
-            'price_with_donation',
+            'price',
             'quantity',
             'line_total',
             'comment',
@@ -53,14 +53,6 @@ class CartItemReadSerializer(serializers.ModelSerializer):
         if variant.product.product_type != 'merch':
             return 1
         return variant.stock
-
-    def to_representation(self, instance):
-        """Динамически скрывает custom_price, если переплата запрещена."""
-        representation = super().to_representation(instance)
-        # Проверяем флаг через связанный продукт
-        if not instance.product_variant.product.allow_overpay:
-            representation.pop('custom_price', None)
-        return representation
 
 
 class CartReadSerializer(serializers.ModelSerializer):
@@ -75,7 +67,12 @@ class CartReadSerializer(serializers.ModelSerializer):
         decimal_places=PRICE_DECIMAL_PLACES,
         read_only=True,
     )
-    discounted_subtotal = serializers.DecimalField(
+    discount_promocode = serializers.DecimalField(
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=PRICE_DECIMAL_PLACES,
+        read_only=True,
+    )
+    total = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
         read_only=True,
@@ -83,7 +80,7 @@ class CartReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ('items', 'subtotal', 'discounted_subtotal')
+        fields = ('items', 'subtotal', 'discount_promocode', 'total')
 
 
 class CartItemWriteSerializer(serializers.ModelSerializer):
@@ -96,7 +93,12 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ('product_variant', 'quantity', 'custom_price', 'comment')
+        fields = (
+            'product_variant',
+            'quantity',
+            'price_with_donation',
+            'comment',
+        )
 
     def validate(self, attrs):
         cart = self.context.get('cart')
@@ -124,9 +126,9 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
                 'quantity': 'Цифровой товар можно купить '
                 'только в 1 экземпляре.',
             })
-        # Проверка custom_price
-        custom_price = attrs.get('custom_price')
-        errors = validate_custom_price(product, custom_price)
+        # Проверка price_with_donation
+        price_with_donation = attrs.get('price_with_donation')
+        errors = validate_price_with_donation(product, price_with_donation)
         if errors:
             raise serializers.ValidationError(errors)
 

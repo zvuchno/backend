@@ -20,7 +20,7 @@ class CartService:
         cart: Cart,
         variant: ProductVariant,
         quantity: int,
-        custom_price: Decimal = None,
+        price_with_donation: Decimal = None,
         comment: str = '',
     ) -> CartItem:
         """Идемпотентное добавление товара в корзину.
@@ -33,7 +33,7 @@ class CartService:
             product_variant=variant,
             defaults={
                 'quantity': quantity,
-                'custom_price': custom_price,
+                'price_with_donation': price_with_donation,
                 'comment': comment,
             },
         )
@@ -41,9 +41,9 @@ class CartService:
             item.quantity += quantity
             update_fields = ['quantity']
 
-            if custom_price is not None:
-                item.custom_price = custom_price
-                update_fields.append('custom_price')
+            if price_with_donation is not None:
+                item.price_with_donation = price_with_donation
+                update_fields.append('price_with_donation')
 
             if comment is not None:
                 item.comment = comment
@@ -86,18 +86,18 @@ class CartService:
         for item_data in items_data:
             variant = item_data['product_variant']
             quantity = item_data['quantity']
-            custom_price = item_data.get('custom_price')
+            price_with_donation = item_data.get('price_with_donation')
             comment = item_data.get('comment')
 
             if variant.id in current_items:
                 item = current_items[variant.id]
                 if (
                     item.quantity != quantity
-                    or item.custom_price != custom_price
+                    or item.price_with_donation != price_with_donation
                     or item.comment != comment
                 ):
                     item.quantity = quantity
-                    item.custom_price = custom_price
+                    item.price_with_donation = price_with_donation
                     item.comment = comment
                     updated_items.append(item)
             else:
@@ -106,7 +106,7 @@ class CartService:
                         cart=cart,
                         product_variant=variant,
                         quantity=quantity,
-                        custom_price=custom_price,
+                        price_with_donation=price_with_donation,
                         comment=comment,
                     ),
                 )
@@ -114,7 +114,7 @@ class CartService:
         if updated_items:
             CartItem.objects.bulk_update(
                 updated_items,
-                ['quantity', 'custom_price', 'comment'],
+                ['quantity', 'price_with_donation', 'comment'],
             )
 
         if new_items:
@@ -176,7 +176,7 @@ class CartService:
                 product_variant=variant,
                 defaults={
                     'quantity': guest_item.quantity,
-                    'custom_price': guest_item.custom_price,
+                    'price_with_donation': guest_item.price_with_donation,
                     'comment': guest_item.comment,
                 },
             )
