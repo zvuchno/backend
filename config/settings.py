@@ -229,12 +229,12 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {
     'vk': {
         'SCOPE': ['email'],
-        'VERIFIED_EMAIL': True,
+        'VERIFIED_EMAIL': True,  # доверяем почте из Вк.
         'AUTH_PARAMS': {'prompt': 'login'},
     },
     'yandex': {
         'SCOPE': ['login:email'],
-        'VERIFIED_EMAIL': True,
+        'VERIFIED_EMAIL': True,  # доверяем почте из Я.
         'AUTH_PARAMS': {'force_confirm': 'yes'},
     }
 }
