@@ -1,5 +1,7 @@
 """Тесты корзины покупок."""
 
+from decimal import Decimal
+
 import pytest
 from django.urls import reverse
 from rest_framework import status
@@ -340,3 +342,51 @@ class TestCartAPI:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'quantity' in response.data
         assert f'Доступно {stock_limit} шт.' in str(response.data['quantity'])
+
+    def test_cart_custom_price_calculations(
+        self,
+        api_client,
+        cart_add_url,
+        cart_url,
+        variant_factory,
+    ):
+        """Проверка: донат учитывается в расчетах.
+
+        Донат корреткно отражается на price_with_donation,
+        line_total и total корзины.
+        """
+        base_price = Decimal('1000.00')
+        custom_price = Decimal('1500.00')
+        quantity = 2
+        variant = variant_factory(product_type='merch', price=base_price)
+
+        payload = {
+            'product_variant': variant.id,
+            'quantity': quantity,
+            'custom_price': custom_price,
+        }
+
+        response = api_client.post(cart_add_url, data=payload, format='json')
+        assert response.status_code == status.HTTP_201_CREATED
+
+        item_data = response.data['items'][0]
+        assert Decimal(item_data['price_with_donation']) == custom_price
+        # Сумма строки: 1500 * 2 = 3000
+        expected_line_total = custom_price * quantity
+        assert Decimal(item_data['line_total']) == expected_line_total
+        # Сумма корзины (subtotal)
+        # Добавим еще один обычный товар без доната для чистоты эксперимента
+        other_variant = variant_factory(
+            product_type='album',
+            price=Decimal('500.00'),
+        )
+        api_client.post(
+            cart_add_url,
+            data={'product_variant': other_variant.id, 'quantity': 1},
+            format='json',
+        )
+        final_response = api_client.get(cart_url)
+        # subtotal: 3000 (первый товар) + 500 (второй товар) = 3500
+        assert Decimal(final_response.data['subtotal']) == (
+            expected_line_total + Decimal('500.00')
+        )

@@ -22,19 +22,13 @@ class CartItemReadSerializer(serializers.ModelSerializer):
         source='product_variant.variant_name',
         read_only=True,
     )
-    price = serializers.DecimalField(
-        source='product_variant.product.price',
+    price_with_donation = serializers.DecimalField(
+        source='unit_price',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
         read_only=True,
     )
     stock = serializers.SerializerMethodField()
-    custom_price = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        required=False,
-        allow_null=True,
-    )
     line_total = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
@@ -46,8 +40,7 @@ class CartItemReadSerializer(serializers.ModelSerializer):
         fields = (
             'product_variant',
             'name',
-            'price',
-            'custom_price',
+            'price_with_donation',
             'quantity',
             'line_total',
             'comment',
