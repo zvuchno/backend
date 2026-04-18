@@ -2,7 +2,6 @@ from allauth.socialaccount import providers
 from django.urls import include, path
 
 from users.views import (
-    SocialAuthErrorCodesView,
     redirect_social_auth_cancelled,
     redirect_social_auth_confirm_email,
     redirect_social_auth_error,
@@ -37,10 +36,5 @@ urlpatterns = [
         '',
         redirect_social_auth_confirm_email,
         name='account_confirm_email',
-    ),
-    path(
-        'social/error-codes/',
-        SocialAuthErrorCodesView.as_view(),
-        name='social_error_codes',
     ),
 ]
