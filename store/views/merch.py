@@ -3,9 +3,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
-
-from common.permissions import IsStoreObjectOwnerOrReadOnly
 
 from store.filters.merch import MerchFilter
 from store.models import Image, Merch
@@ -24,7 +23,7 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
     """API для работы с мерчем."""
 
     queryset = Merch.objects.all()
-    permission_classes = (IsStoreObjectOwnerOrReadOnly,)
+    permission_classes = (IsAuthenticatedOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
         DjangoFilterBackend,
@@ -50,6 +49,12 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
             .select_related('product', 'kind', 'album', 'owner')
             .prefetch_related('images_merch')
         )
+
+    # TODO
+    # def get_permissions(self):
+    #     if self.action == 'create':
+    #         return [IsAuthenticatedOrReadOnly()]
+    #     return [IsStoreObjectOwnerOrReadOnly()]
 
     @extend_schema(
         summary='Добавить картинку',

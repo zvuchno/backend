@@ -4,6 +4,7 @@ from store.models.abstract.base_content import BaseContent
 from store.models.abstract.visibility_model import VisibilityModel
 from store.models.album import Album
 from store.models.merch_kind import MerchKind
+from store.querysets.visibility import VisibilityQuerySet
 
 
 class Merch(BaseContent, VisibilityModel):
@@ -26,6 +27,8 @@ class Merch(BaseContent, VisibilityModel):
     )
 
     is_carrier = models.BooleanField('Носитель', default=False)
+
+    objects = VisibilityQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'мерч'
