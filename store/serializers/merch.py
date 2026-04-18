@@ -75,7 +75,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
     )
     allow_overpay = serializers.BooleanField(required=False)
     stock = serializers.IntegerField(required=False)
-    images = ImageSerializer(many=True, write_only=True)
+    images = ImageSerializer(many=True, write_only=True, required=True)
 
     class Meta:
         model = Merch
@@ -109,7 +109,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         price = validated_data.pop('price', None)
         allow_overpay = validated_data.pop('allow_overpay', False)
         stock = validated_data.pop('stock', 0)
-        images = validated_data.pop('images')
+        images = validated_data.pop('images', [])
 
         with transaction.atomic():
             merch = Merch.objects.create(**validated_data)
@@ -136,28 +136,33 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         return merch
 
     def update(self, instance, validated_data):
-
         price = validated_data.pop('price', None)
         allow_overpay = validated_data.pop('allow_overpay', None)
-        stock = validated_data.pop('stock',  None)
-        validated_data.pop('images', None)
+        stock = validated_data.pop('stock', None)
+        images = validated_data.pop('images', None)
 
         with transaction.atomic():
-
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
             instance.save(update_fields=[*validated_data.keys(), 'updated_at'])
 
             product, _ = Product.objects.get_or_create(merch=instance)
-
             if price is not None:
                 product.price = price
             if allow_overpay is not None:
                 product.allow_overpay = allow_overpay
-
             product.save()
 
             if stock is not None:
                 ProductVariant.objects.filter(product=product).update(stock=stock)
+
+            if images is not None:
+                instance.images.all().delete()
+                for image in images:
+                    Image.objects.create(
+                        merch=instance,
+                        image=image['image'],
+                        is_main=image.get('is_main', False),
+                    )
 
         return instance

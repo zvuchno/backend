@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'djoser',
     'phonenumber_field',
+    'django_cleanup.apps.CleanupConfig',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
 ]

@@ -26,38 +26,3 @@ class MerchViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return MerchDetailSerializer
         return MerchWriteSerializer
-
-    @action(detail=True, methods=['post'], url_path='images')
-    def add_image(self, request, pk=None):
-        merch = self.get_object()
-        serializer = ImageSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(merch=merch)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    @action(
-        detail=True,
-        methods=['patch'],
-        url_path='images/(?P<image_id>[0-9]+)'
-    )
-    def update_image(self, request, pk=None, image_id=None):
-        merch = self.get_object()
-        image = get_object_or_404(Image, id=image_id, merch=merch)
-        serializer = ImageSerializer(image, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
-
-    @action(
-            detail=True,
-            methods=['delete'],
-            url_path='images/(?P<image_id>[0-9]+)'
-        )
-    def delete_image(self, request, pk=None, image_id=None):
-        merch = self.get_object()
-        image = get_object_or_404(Image, id=image_id, merch=merch)
-        image.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
