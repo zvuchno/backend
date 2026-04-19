@@ -13,7 +13,7 @@ from django.db.models import Q
 
 from store.constants import (
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
 )
 
 
@@ -39,7 +39,7 @@ class Product(models.Model):
     price = models.DecimalField(
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_INTERNAL_PRECISION,
         validators=[MinValueValidator(Decimal('0.00'))],
         default=Decimal('0.00'),
         help_text='Цена, руб.',
