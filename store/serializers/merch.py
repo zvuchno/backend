@@ -1,10 +1,8 @@
-from django.db import transaction
 from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
 from store.models import Image, Merch
 from store.serializers import ImageSerializer
-from store.services.commerce import ProductService
 
 
 class MerchReadSerializer(serializers.ModelSerializer):
@@ -108,75 +106,56 @@ class MerchWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
-        stock = validated_data.pop('stock', 0)
+        validated_data.pop('stock', None)
+        validated_data.pop('characteristic', None)
         images = validated_data.pop('images', [])
-        characteristic = validated_data.pop(
-            'characteristic', {'format': 'physical'}
-        )
 
-        with transaction.atomic():
-            merch = Merch.objects.create(**validated_data)
+        merch = super().create(validated_data)
 
-            for image in images:
-                Image.objects.create(
-                    merch=merch,
-                    image=image['image'],
-                    is_main=image.get('is_main', False),
-                )
-
-            product = ProductService.ensure_commerce(merch)
-            product.variants.update(stock=stock, characteristic=characteristic)
+        for image in images:
+            Image.objects.create(
+                merch=merch,
+                image=image['image'],
+                is_main=image.get('is_main', False),
+            )
 
         return merch
 
     def update(self, instance, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
-        stock = validated_data.pop('stock', None)
+        validated_data.pop('stock', None)
+        validated_data.pop('characteristic', None)
         images = validated_data.pop('images', None)
-        characteristic = validated_data.pop('characteristic', None)
 
-        with transaction.atomic():
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save(update_fields=[*validated_data.keys(), 'updated_at'])
+        instance = super().update(instance, validated_data)
 
-            if stock is not None or characteristic is not None:
-                product = ProductService.ensure_commerce(instance)
-                update_kwargs = {}
-                if stock is not None:
-                    update_kwargs['stock'] = stock
-                if characteristic is not None:
-                    update_kwargs['characteristic'] = characteristic
-                product.variants.update(**update_kwargs)
+        if images is not None:
+            existing = {img.id: img for img in instance.images_merch.all()}
+            incoming_ids = {img['id'] for img in images if img.get('id')}
 
-            if images is not None:
-                existing = {img.id: img for img in instance.images_merch.all()}
-                incoming_ids = {img['id'] for img in images if img.get('id')}
+            for img_id, img in existing.items():
+                if img_id not in incoming_ids:
+                    img.delete()
 
-                for img_id, img in existing.items():
-                    if img_id not in incoming_ids:
-                        img.delete()
-
-                for image in images:
-                    img_id = image.get('id')
-                    if img_id and img_id in existing:
-                        obj = existing[img_id]
-                        changed = False
-                        if ('is_main' in image
-                            and obj.is_main != image['is_main']):
-                            obj.is_main = image['is_main']
-                            changed = True
-                        if 'image' in image and obj.image != image['image']:
-                            obj.image = image['image']
-                            changed = True
-                        if changed:
-                            obj.save()
-                    else:
-                        Image.objects.create(
-                            merch=instance,
-                            image=image['image'],
-                            is_main=image.get('is_main', False),
-                        )
+            for image in images:
+                img_id = image.get('id')
+                if img_id and img_id in existing:
+                    obj = existing[img_id]
+                    changed = False
+                    if 'is_main' in image and obj.is_main != image['is_main']:
+                        obj.is_main = image['is_main']
+                        changed = True
+                    if 'image' in image and obj.image != image['image']:
+                        obj.image = image['image']
+                        changed = True
+                    if changed:
+                        obj.save()
+                else:
+                    Image.objects.create(
+                        merch=instance,
+                        image=image['image'],
+                        is_main=image.get('is_main', False),
+                    )
 
         return instance

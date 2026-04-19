@@ -94,7 +94,7 @@ merch_schema = extend_schema_view(
         summary='Частично обновить мерч',
         tags=['Merch'],
         description='Обновляет поля мерча. '
-        'Картинки обновляются через отдельные эндпоинты.',
+        'Изображения обновляются через отдельные эндпоинты.',
         request=MerchWriteSerializer,
         responses={200: MerchDetailSerializer},
     ),
