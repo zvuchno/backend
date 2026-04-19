@@ -56,7 +56,7 @@ class OrderItem(models.Model):
     @property
     def donation(self):
         """Разница между уплаченным и номиналом."""
-        return self.unit_price - self.price_at_purchase
+        return (self.unit_price - self.price_at_purchase) * self.quantity
 
     @property
     def line_total(self):

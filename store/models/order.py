@@ -38,7 +38,7 @@ class Order(TimestampModel):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='orders',
@@ -87,12 +87,15 @@ class Order(TimestampModel):
         related_name='orders',
         verbose_name='Способ доставки',
     )
-    items_total = models.DecimalField(
+    subtotal = models.DecimalField(
         'Сумма товаров (руб.)',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
         default=Decimal('0.00'),
     )
+
+    # TODO: Промокоды
+
     delivery_price = models.DecimalField(
         'Стоимость доставки (руб.)',
         max_digits=MAX_PRICE_DIGITS,
@@ -100,7 +103,7 @@ class Order(TimestampModel):
         default=Decimal('0.00'),
         validators=[MinValueValidator(Decimal('0.00'))],
     )
-    grand_total = models.DecimalField(
+    total = models.DecimalField(
         'Итого (руб.)',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=PRICE_DECIMAL_PLACES,
@@ -146,8 +149,8 @@ class Order(TimestampModel):
             super().save(*args, **kwargs)
 
     class Meta:
-        verbose_name = 'Заказ'
-        verbose_name_plural = 'Заказы'
+        verbose_name = 'заказ'
+        verbose_name_plural = 'заказы'
         default_related_name = 'orders'
         ordering = ('-created_at',)
 
