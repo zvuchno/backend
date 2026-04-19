@@ -13,9 +13,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from common.permissions import IsNotArtist
+
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
-from users.permissions import IsNotArtist
 from users.schemas import (
     artist_cover_update_schema,
     artist_list_schema,
