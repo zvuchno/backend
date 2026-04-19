@@ -10,7 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
-import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -254,9 +253,3 @@ USE_X_FORWARDED_HOST = True
 # SESSION_COOKIE_AGE = 86400
 
 LOGGING = logging_config.LOGGING
-
-# Если запущен pytest, используем быстрый хешер паролей
-if 'pytest' in sys.modules or 'test' in sys.argv:
-    PASSWORD_HASHERS = [
-        'django.contrib.auth.hashers.MD5PasswordHasher',
-    ]
