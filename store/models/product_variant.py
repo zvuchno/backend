@@ -8,9 +8,10 @@ from store.constants import (
     MAX_CHAR_LENGTH,
 )
 from store.models import Product
+from users.models.abstract import ActivatableModel
 
 
-class ProductVariant(models.Model):
+class ProductVariant(ActivatableModel):
     """Конкретная единица товара (SKU), доступная для покупки.
 
     Представляет конкретную конфигурацию продукта с ценой,

@@ -15,6 +15,7 @@
 from typing import Callable
 
 import pytest
+from django.core.files.base import ContentFile
 from django.urls import reverse
 
 from store.models import Album, Merch, Product, ProductVariant, Track
@@ -65,6 +66,10 @@ def variant_factory(user):
                 name=kwargs.get('name', 'Track'),
                 owner=user,
                 album=album,
+                audio_file=ContentFile(
+                    b'fake mp3 content',
+                    name='test_track.mp3',
+                ),
             )
             product = Product.objects.create(
                 track=item,
