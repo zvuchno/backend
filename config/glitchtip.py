@@ -2,6 +2,7 @@ import logging
 import os
 
 import sentry_sdk
+from django.core.exceptions import DisallowedHost
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
@@ -21,6 +22,8 @@ SENSITIVE_KEYS = {
     'phone',
     'email',
 }
+
+IGNORED_EXCEPTIONS = (DisallowedHost,)
 
 
 def scrub_sensitive_data(value):
@@ -42,6 +45,12 @@ def scrub_sensitive_data(value):
 
 def before_send(event, hint):
     """Очищает чувствительные данные перед отправкой события в GlitchTip."""
+    exc_info = hint.get('exc_info')
+    if exc_info:
+        _, exc_value, _ = exc_info
+        if isinstance(exc_value, IGNORED_EXCEPTIONS):
+            return None
+
     request = event.get('request', {})
 
     if request.get('query_string'):
