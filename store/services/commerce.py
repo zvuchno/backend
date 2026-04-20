@@ -3,6 +3,7 @@
 from django.apps import apps
 from django.db import transaction
 
+from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
 from store.models import Product
 
 
@@ -23,7 +24,6 @@ class ProductService:
         model_name = content_instance.__class__.__name__.lower()
         # Импорт через apps, чтобы избежать циклической зависимости
         Product = apps.get_model('store', 'Product')
-        ProductVariant = apps.get_model('store', 'ProductVariant')
 
         try:
             product = content_instance.product
@@ -32,9 +32,9 @@ class ProductService:
 
         if not product.variants.exists():
             if model_name in ['album', 'track']:
-                ProductVariant.objects.create(
+                product.variants.create(
                     product=product,
-                    characteristic={'format': 'digital'},
+                    characteristic=CHAR_PRESET_DIGITAL,
                     stock=None,  # Для цифры склад не нужен
                     is_active=True,
                 )
@@ -46,18 +46,17 @@ class ProductService:
         """Синхронизирует варианты мерча на основе переданных данных."""
         if not variants_data:
             # Сценарий 1: Свойств нет -> один вариант с общим стоком
-            characteristic = {'type': 'simple'}
+
             # Ищем базовый вариант (даже неактивный)
             variant = product.variants.filter(
-                characteristic=characteristic,
+                characteristic=CHAR_PRESET_SIMPLE,
             ).first()
 
             if not variant:
                 # Создаем новый, если такого типа никогда не было
-                ProductVariant = apps.get_model('store', 'ProductVariant')
-                variant = ProductVariant.objects.create(
+                variant = product.variants.create(
                     product=product,
-                    characteristic=characteristic,
+                    characteristic=CHAR_PRESET_SIMPLE,
                     stock=stock,
                     is_active=True,
                 )
@@ -72,7 +71,6 @@ class ProductService:
             product.variants.exclude(id=variant.id).update(is_active=False)
         else:
             # Сценарий 2: Есть свойства -> создаем по варианту на каждое
-            ProductVariant = apps.get_model('store', 'ProductVariant')
             incoming_ids = []
 
             for opt in variants_data:
@@ -80,7 +78,7 @@ class ProductService:
 
                 if v_id:
                     # Если ID пришел, обновляем существующий вариант
-                    ProductVariant.objects.filter(
+                    product.variants.filter(
                         id=v_id,
                         product=product,
                     ).update(
@@ -91,7 +89,7 @@ class ProductService:
                     incoming_ids.append(v_id)
                 else:
                     # Если ID нет, создаем новый
-                    new_v = ProductVariant.objects.create(
+                    new_v = product.variants.create(
                         product=product,
                         stock=opt.get('stock', 0),
                         characteristic=opt.get('characteristic', {}),

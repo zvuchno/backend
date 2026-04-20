@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 
+from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
 from store.models import Album, Merch, Product, ProductVariant
 from store.services import ProductService
 from store.views.mixins import ProductActionMixin
@@ -36,7 +37,7 @@ class TestProductService:
         assert variant is not None
         assert isinstance(variant, ProductVariant)
 
-        assert variant.characteristic == {'format': 'digital'}
+        assert variant.characteristic == CHAR_PRESET_DIGITAL
         assert variant.stock is None
 
     def test_ensure_commerce_idempotency(self, variant_factory):
@@ -66,7 +67,7 @@ class TestProductService:
 
         variant = product.variants.get(is_active=True)
         assert variant.stock == 50
-        assert variant.characteristic == {'type': 'simple'}
+        assert variant.characteristic == CHAR_PRESET_SIMPLE
         assert product.variants.count() == 1
 
     def test_sync_merch_with_options(self, variant_factory):
@@ -76,17 +77,17 @@ class TestProductService:
 
         options = [
             {
-                'characteristic': [
-                    {'name': 'Размер', 'value': 'S'},
-                    {'name': 'Цвет', 'value': 'Серый'},
-                ],
+                'characteristic': {
+                    'Размер': 'S',
+                    'Цвет': 'Серый',
+                },
                 'stock': 10,
             },
             {
-                'characteristic': [
-                    {'name': 'Размер', 'value': 'L'},
-                    {'name': 'Цвет', 'value': 'Серый'},
-                ],
+                'characteristic': {
+                    'Размер': 'L',
+                    'Цвет': 'Серый',
+                },
                 'stock': 5,
             },
         ]
@@ -102,11 +103,11 @@ class TestProductService:
 
         variant_s = active_variants.filter(stock=10).first()
         assert variant_s is not None
-        assert variant_s.characteristic[0]['value'] == 'S'
+        assert variant_s.characteristic['Размер'] == 'S'
 
         variant_l = active_variants.filter(stock=5).first()
         assert variant_l is not None
-        assert variant_l.characteristic[0]['value'] == 'L'
+        assert variant_l.characteristic['Размер'] == 'L'
 
     def test_transition_from_complex_to_simple(self, user):
         """Тест: деактивация старых вариантов при переходе к простому мерчу."""
@@ -116,11 +117,11 @@ class TestProductService:
         # Сначала делаем сложный товар
         options = [
             {
-                'characteristic': [{'name': 'Размер', 'value': 'S'}],
+                'characteristic': {'Размер': 'S'},
                 'stock': 10,
             },
             {
-                'characteristic': [{'name': 'Размер', 'value': 'M'}],
+                'characteristic': {'Размер': 'M'},
                 'stock': 20,
             },
         ]
@@ -152,7 +153,7 @@ class TestProductService:
         # Создаем начальный вариант
         initial_options = [
             {
-                'characteristic': [{'name': 'Цвет', 'value': 'Синий'}],
+                'characteristic': {'Цвет': 'Синий'},
                 'stock': 5,
             },
         ]
@@ -169,7 +170,7 @@ class TestProductService:
         update_options = [
             {
                 'id': variant_id,
-                'characteristic': [{'name': 'Цвет', 'value': 'Красный'}],
+                'characteristic': {'Цвет': 'Красный'},
                 'stock': 15,
             },
         ]
@@ -183,7 +184,7 @@ class TestProductService:
         updated_variant = product.variants.get(is_active=True)
         assert updated_variant.id == variant_id
         assert updated_variant.stock == 15
-        assert updated_variant.characteristic[0]['value'] == 'Красный'
+        assert updated_variant.characteristic['Цвет'] == 'Красный'
 
     def test_partial_sync_deactivates_omitted_variants(self, user):
         """Проверяет, что варианты, не переданные в списке, деактивируются."""
@@ -194,8 +195,8 @@ class TestProductService:
             product,
             stock=0,
             variants_data=[
-                {'characteristic': [{'n': '1'}], 'stock': 1},
-                {'characteristic': [{'n': '2'}], 'stock': 2},
+                {'characteristic': {'n': '1'}, 'stock': 1},
+                {'characteristic': {'n': '2'}, 'stock': 2},
             ],
         )
         assert product.variants.count() == 2
@@ -205,7 +206,7 @@ class TestProductService:
             product,
             stock=0,
             variants_data=[
-                {'characteristic': [{'n': '3'}], 'stock': 3},
+                {'characteristic': {'n': '3'}, 'stock': 3},
             ],
         )
 
@@ -240,11 +241,11 @@ class TestProductService:
         # Сначала создаем S и M
         old_data = [
             {
-                'characteristic': [{'name': 'Размер', 'value': 'S'}],
+                'characteristic': {'Размер': 'S'},
                 'stock': 10,
             },
             {
-                'characteristic': [{'name': 'Размер', 'value': 'M'}],
+                'characteristic': {'Размер': 'M'},
                 'stock': 20,
             },
         ]
@@ -254,19 +255,19 @@ class TestProductService:
             variants_data=old_data,
         )
         variant_s = product.variants.get(
-            characteristic__0__value='S',
+            characteristic__Размер='S',
         )
-        variant_m_id = product.variants.get(characteristic__0__value='M').id
+        variant_m_id = product.variants.get(characteristic__Размер='M').id
 
         # Присылаем обновление: S (с ID) и L (новый, без ID)
         new_data = [
             {
                 'id': variant_s.id,
-                'characteristic': [{'name': 'Размер', 'value': 'S'}],
+                'characteristic': {'Размер': 'S'},
                 'stock': 5,
             },
             {
-                'characteristic': [{'name': 'Размер', 'value': 'L'}],
+                'characteristic': {'Размер': 'L'},
                 'stock': 15,
             },
         ]
@@ -284,6 +285,6 @@ class TestProductService:
         assert not ProductVariant.objects.get(id=variant_m_id).is_active
         # L создался
         assert product.variants.filter(
-            characteristic__0__value='L',
+            characteristic__Размер='L',
             is_active=True,
         ).exists()
