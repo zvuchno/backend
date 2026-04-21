@@ -93,8 +93,10 @@ merch_schema = extend_schema_view(
     partial_update=extend_schema(
         summary='Частично обновить мерч',
         tags=['Merch'],
-        description='Обновляет поля мерча. '
-        'Изображения обновляются через отдельные эндпоинты.',
+        description=(
+            'Обновляет поля мерча. '
+            'Изображения обновляются через отдельные эндпоинты.'
+        ),
         request=MerchWriteSerializer,
         responses={200: MerchDetailSerializer},
     ),

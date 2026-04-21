@@ -47,7 +47,10 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
             Merch.objects
             .visible_for(self.request.user, self.action)
             .select_related('product', 'kind', 'album', 'owner')
-            .prefetch_related('images_merch')
+            .prefetch_related(
+                'images_merch',
+                'product__variants'
+            )
         )
 
     def get_permissions(self):

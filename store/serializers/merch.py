@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
-from store.models import Image, Merch
+from store.models import Image, Merch, ProductVariant
 from store.serializers import ImageSerializer
 
 
@@ -34,6 +34,19 @@ class MerchReadSerializer(serializers.ModelSerializer):
         return None
 
 
+class VariantReadSerializer(serializers.ModelSerializer):
+    """Сериализатор для чтения варианта мерча."""
+
+    characteristics = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductVariant
+        fields = ('id', 'sku', 'stock', 'characteristics')
+
+    def get_characteristics(self, obj):
+        return obj.characteristic or {}
+
+
 class MerchDetailSerializer(MerchReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Merch."""
 
@@ -41,9 +54,9 @@ class MerchDetailSerializer(MerchReadSerializer):
     images_merch = ImageSerializer(many=True, read_only=True)
     kind = serializers.StringRelatedField()
     album = serializers.StringRelatedField()
+    variants = serializers.SerializerMethodField()
 
     class Meta(MerchReadSerializer.Meta):
-        model = Merch
         fields = MerchReadSerializer.Meta.fields + (
             'allow_overpay',
             'images_merch',
@@ -52,6 +65,7 @@ class MerchDetailSerializer(MerchReadSerializer):
             'visibility',
             'is_published',
             'is_active',
+            'variants',
         )
 
     def get_allow_overpay(self, obj):
@@ -59,6 +73,26 @@ class MerchDetailSerializer(MerchReadSerializer):
         if product:
             return product.allow_overpay
         return False
+
+    def get_variants(self, obj):
+        product = getattr(obj, 'product', None)
+        if not product:
+            return []
+        qs = product.variants.all().order_by('id')
+        return VariantReadSerializer(qs, many=True).data
+
+
+class VariantWriteSerializer(serializers.Serializer):
+    """Сериализатор для записи варианта мерча."""
+
+    id = serializers.IntegerField(required=False)
+    sku = serializers.CharField(required=False, allow_blank=True)
+    stock = serializers.IntegerField(min_value=0, required=True)
+    characteristics = serializers.DictField(
+        child=serializers.CharField(allow_blank=True),
+        required=True,
+        help_text='JSON',
+    )
 
 
 class MerchWriteSerializer(serializers.ModelSerializer):
@@ -71,8 +105,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     allow_overpay = serializers.BooleanField(required=False)
-    stock = serializers.IntegerField(required=False)
-    characteristic = serializers.DictField(required=False)
+    variants = VariantWriteSerializer(many=True, required=False)
     images = ImageSerializer(many=True, write_only=True, required=False)
 
     class Meta:
@@ -81,8 +114,6 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'name',
             'kind',
             'price',
-            'stock',
-            'characteristic',
             'album',
             'description',
             'images',
@@ -90,6 +121,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'visibility',
             'is_published',
             'is_active',
+            'variants',
         )
 
     def validate_images(self, images):
@@ -106,8 +138,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
-        validated_data.pop('stock', None)
-        validated_data.pop('characteristic', None)
+        validated_data.pop('variants', None)
         images = validated_data.pop('images', [])
 
         merch = super().create(validated_data)
@@ -124,8 +155,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
-        validated_data.pop('stock', None)
-        validated_data.pop('characteristic', None)
+        validated_data.pop('variants', None)
         images = validated_data.pop('images', None)
 
         instance = super().update(instance, validated_data)
