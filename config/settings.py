@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import logging
 import os
-import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -78,6 +77,12 @@ MIDDLEWARE = [
     'admin_reorder.middleware.ModelAdminReorder',
     'allauth.account.middleware.AccountMiddleware',
 ]
+
+# Настройки для debug_toolbar
+if DEBUG:
+    INSTALLED_APPS += ['debug_toolbar']
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+    INTERNAL_IPS = ['127.0.0.1']
 
 ROOT_URLCONF = 'config.urls'
 
@@ -259,12 +264,6 @@ USE_X_FORWARDED_HOST = True
 # SESSION_COOKIE_AGE = 86400
 
 LOGGING = logging_config.LOGGING
-
-# Если запущен pytest, используем быстрый хешер паролей
-if 'pytest' in sys.modules or 'test' in sys.argv:
-    PASSWORD_HASHERS = [
-        'django.contrib.auth.hashers.MD5PasswordHasher',
-    ]
 
 # Настройка отправки ошибок проекта в GlitchTip
 init_glitchtip()

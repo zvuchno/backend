@@ -61,6 +61,9 @@ def variant_factory(user):
             album = kwargs.get('album') or Album.objects.create(
                 name='Track Album',
                 owner=user,
+                is_active=is_active,
+                is_published=is_published,
+                visibility=visibility,
             )
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
@@ -110,6 +113,12 @@ def variant_factory(user):
 def album_list_url():
     """Возвращает URL-адрес эндпоинта для списка альбомов."""
     return reverse('api:store:albums-list')
+
+
+@pytest.fixture
+def track_list_url():
+    """Возвращает URL-адрес эндпоинта для списка треков."""
+    return reverse('api:store:tracks-list')
 
 
 @pytest.fixture
