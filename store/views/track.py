@@ -1,19 +1,13 @@
-"""ViewSet для работы с моделью track.
-
-Todo:
-    - фильтрация
-    - поиск
-    - permissions
-    - пагинация
-
-"""
+"""ViewSet для работы с моделью track."""
 
 from django.db.models import Q
-from rest_framework import status, viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, status, viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from .mixins import ProductActionMixin
+from store.filters import TrackFilter
 from store.models import Track
 from store.schema import track_schema
 from store.serializers import (
@@ -27,8 +21,19 @@ from store.serializers import (
 class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
     """API для работы с треками."""
 
+    queryset = Track.objects.all()
     permission_classes = (IsAuthenticatedOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    )
+
+    filterset_class = TrackFilter
+    search_fields = ('name',)
+    ordering_fields = ('name', 'position')
+    ordering = ('album', 'position')
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
