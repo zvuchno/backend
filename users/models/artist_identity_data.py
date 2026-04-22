@@ -83,6 +83,7 @@ class ArtistIdentityData(TimestampModel):
 
     def clean(self):
         """Проверяет формат паспортных данных."""
+        super().clean()
         errors = {}
 
         if self.passport_series and not self.passport_series.isdigit():

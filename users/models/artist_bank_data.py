@@ -63,6 +63,7 @@ class ArtistBankData(TimestampModel):
 
     def clean(self):
         """Проверяет формат банковских реквизитов."""
+        super().clean()
         errors = {}
 
         if self.inn and not self.inn.isdigit():

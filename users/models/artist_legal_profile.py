@@ -6,6 +6,7 @@ from django.db import models
 from .abstract import TimestampModel
 from users.constants import (
     COMMENT_MAX_LENGTH,
+    NAME_FIELD_MAX_LENGTH,
     RECIPIENT_TYPE_MAX_LENGTH,
     TAXATION_SYSTEM_MAX_LENGTH,
 )
@@ -49,6 +50,11 @@ class ArtistLegalProfile(TimestampModel):
         max_length=RECIPIENT_TYPE_MAX_LENGTH,
         choices=RecipientType.choices,
     )
+    recipient_name = models.CharField(
+        'Наименование получателя',
+        max_length=NAME_FIELD_MAX_LENGTH,
+    )
+
     taxation_system = models.CharField(
         'Система налогообложения',
         max_length=TAXATION_SYSTEM_MAX_LENGTH,
@@ -76,4 +82,4 @@ class ArtistLegalProfile(TimestampModel):
         ordering = ('-updated_at',)
 
     def __str__(self):
-        return f':Юридический профиль {self.user.username}'
+        return f'Юридический профиль: {self.user.username}'
