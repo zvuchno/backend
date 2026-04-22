@@ -1,17 +1,9 @@
-"""ViewSet для работы с моделью track.
+"""ViewSet для работы с моделью track."""
 
-Todo:
-    - фильтрация
-    - поиск
-    - permissions
-    - пагинация
-
-"""
-
-from django.db.models import Q
 from rest_framework import status, viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
+
+from common.permissions import IsStoreObjectOwnerOrReadOnly
 
 from .mixins import ProductActionMixin
 from store.models import Track
@@ -27,7 +19,8 @@ from store.serializers import (
 class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
     """API для работы с треками."""
 
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    queryset = Track.objects.all()
+    permission_classes = (IsStoreObjectOwnerOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_serializer_class(self):
@@ -38,23 +31,19 @@ class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
         return TrackReadSerializer
 
     def get_queryset(self):
-        user = self.request.user
-
-        # Админам отдаем всё без фильтров
-        if user.is_authenticated and user.is_staff:
-            queryset = Track.objects.all()
-        else:
-            # Базовый фильтр: активные
-            filters = Q(is_active=True)
-            # Если юзер залогинен, добавляем к фильтру 'или это моё'
-            if user.is_authenticated:
-                filters |= Q(owner=user)
-            queryset = Track.objects.filter(filters)
-
-        if self.action in ('list', 'retrieve'):
-            queryset = queryset.select_related('product')
-
-        return queryset
+        queryset = (
+            super()
+            .get_queryset()
+            .visible_for(
+                user=self.request.user,
+                action=self.action,
+            )
+        )
+        return queryset.select_related(
+            'album',
+            'album__genre',
+            'album__owner__artist_profile',
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
