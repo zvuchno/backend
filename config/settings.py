@@ -9,15 +9,19 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+import logging
 import os
-import sys
 from datetime import timedelta
 from pathlib import Path
 
+import sentry_sdk
 from dotenv import load_dotenv
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from .admin_reorder_config import ADMIN_REORDER  # noqa
 from config import logging as logging_config
+from config.glitchtip import init_glitchtip
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -256,8 +260,5 @@ USE_X_FORWARDED_HOST = True
 
 LOGGING = logging_config.LOGGING
 
-# Если запущен pytest, используем быстрый хешер паролей
-if 'pytest' in sys.modules or 'test' in sys.argv:
-    PASSWORD_HASHERS = [
-        'django.contrib.auth.hashers.MD5PasswordHasher',
-    ]
+# Настройка отправки ошибок проекта в GlitchTip
+init_glitchtip()

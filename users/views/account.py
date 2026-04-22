@@ -137,15 +137,14 @@ class ResendVerificationEmailView(GenericAPIView):
             user=user,
             frontend_base_url=frontend_base_url,
         )
+        response_data = {
+            'detail': 'Запрос на подтверждение Email принят.',
+        }
         if settings.DEBUG:
-            logger.info(
-                'Запрос на подтверждение Email %s: %s',
-                user.email,
-                verification_url,
-            )
+            response_data['debug_verification_url'] = verification_url
 
         return Response(
-            {'detail': 'Запрос на подтверждение Email принят.'},
+            response_data,
             status=status.HTTP_200_OK,
         )
 
@@ -167,27 +166,29 @@ class PasswordResetRequestView(GenericAPIView):
         email = serializer.validated_data['email']
         user = User.objects.filter(email=email).first()
 
+        response_data = {
+            'detail': (
+                'Если учетная запись с таким email существует, '
+                'инструкция по восстановлению будет на него отправлена.'
+            ),
+        }
+
         if user:
             frontend_base_url = settings.FRONTEND_RESET_PASSWORD_URL
             reset_url = build_password_reset_url(user, frontend_base_url)
+
             if settings.DEBUG:
-                logger.info(
-                    'Ссылка для восстановления пароля аккаунта %s: %s',
-                    user.email,
-                    reset_url,
-                )
-        else:
-            logger.info(
-                'Попытка сброса пароля для несуществующего email: %s',
-                email,
+                response_data['debug_reset_url'] = reset_url
+            return Response(
+                response_data,
+                status=status.HTTP_200_OK,
             )
+        logger.info(
+            'Попытка сброса пароля для несуществующего email: %s',
+            email,
+        )
         return Response(
-            {
-                'detail': (
-                    'Если учетная запись с таким email существует, '
-                    'инструкция по восстановлению будет на него отправлена.'
-                ),
-            },
+            response_data,
             status=status.HTTP_200_OK,
         )
 
