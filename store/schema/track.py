@@ -28,8 +28,8 @@ track_schema = extend_schema_view(
             ),
             OpenApiParameter(
                 name='genre',
-                type=OpenApiTypes.INT,
-                description='Фильтр по ID жанра',
+                type=OpenApiTypes.STR,
+                description='Фильтр по slug жанра',
             ),
             OpenApiParameter(
                 name='album',
@@ -37,14 +37,9 @@ track_schema = extend_schema_view(
                 description='Фильтр по ID альбома',
             ),
             OpenApiParameter(
-                name='artist_id',
-                type=OpenApiTypes.INT,
-                description='Фильтр по ID артиста',
-            ),
-            OpenApiParameter(
-                name='artist_name',
+                name='artist',
                 type=OpenApiTypes.STR,
-                description='Фильтр по имени артиста (icontains)',
+                description='Фильтр по slug артиста',
             ),
             OpenApiParameter(
                 name='search',
