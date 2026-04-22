@@ -16,10 +16,12 @@ from store.serializers import (
     AlbumWriteSerializer,
 )
 
+ALBUMS_TAGS = ['Albums']
+
 album_schema = extend_schema_view(
     list=extend_schema(
         summary='Список альбомов',
-        tags=['Album'],
+        tags=ALBUMS_TAGS,
         description='Возвращает список альбомов.',
         parameters=[
             OpenApiParameter(
@@ -74,24 +76,24 @@ album_schema = extend_schema_view(
     ),
     retrieve=extend_schema(
         summary='Получить альбом',
-        tags=['Album'],
+        tags=ALBUMS_TAGS,
         description='Возвращает альбом по id.',
     ),
     create=extend_schema(
         summary='Создать альбом',
-        tags=['Album'],
+        tags=ALBUMS_TAGS,
         description='Создаёт новый альбом.',
         responses={201: AlbumReadDetailSerializer},
     ),
     partial_update=extend_schema(
         summary='Частично обновить альбом',
-        tags=['Album'],
+        tags=ALBUMS_TAGS,
         request=AlbumWriteSerializer,
         responses={200: AlbumReadDetailSerializer},
     ),
     destroy=extend_schema(
         summary='Удалить альбом',
-        tags=['Album'],
+        tags=ALBUMS_TAGS,
         description='Удаляет альбом пользователя.',
     ),
 )
