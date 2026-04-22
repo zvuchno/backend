@@ -8,6 +8,7 @@ from store.constants import (
     MAX_STR_LENGTH,
 )
 from store.models.abstract import BaseContent
+from store.querysets.track_visibility import TrackQuerySet
 
 
 class Track(BaseContent):
@@ -45,6 +46,8 @@ class Track(BaseContent):
         help_text='Порядковый номер трека в альбоме',
     )
     lyrics = models.TextField('Текст трека', blank=True, default='')
+
+    objects = TrackQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'трек'
