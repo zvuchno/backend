@@ -63,10 +63,10 @@ class TestTrackFilters:
         }
 
     def test_filter_by_genre(self, tracks, track_list_url, api_client):
-        """Фильтр по жанру (через album)."""
+        """Фильтр по жанру (slug)."""
         response = api_client.get(
             track_list_url,
-            {'genre': tracks['rock'].id},
+            {'genre': tracks['rock'].slug},
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -75,11 +75,11 @@ class TestTrackFilters:
         assert len(results) == 1
         assert results[0]['name'] == tracks['track_1'].name
 
-    def test_filter_by_artist_name(self, tracks, track_list_url, api_client):
-        """Фильтр по имени артиста."""
+    def test_filter_by_artist(self, tracks, track_list_url, api_client):
+        """Фильтр по slug артиста."""
         response = api_client.get(
             track_list_url,
-            {'artist_name': 'viktor'},
+            {'artist': tracks['track_1'].album.owner.artist_profile.slug},
         )
 
         assert response.status_code == status.HTTP_200_OK
