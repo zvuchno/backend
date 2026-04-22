@@ -15,6 +15,8 @@ from .merch import (
     MerchDetailSerializer,
     MerchReadSerializer,
     MerchWriteSerializer,
+    VariantReadSerializer,
+    VariantWriteSerializer,
 )
 from .track import (
     TrackReadDetailSerializer,
@@ -33,6 +35,8 @@ __all__ = [
     'MerchDetailSerializer',
     'MerchReadSerializer',
     'MerchWriteSerializer',
+    'VariantReadSerializer',
+    'VariantWriteSerializer',
     'CartReadSerializer',
     'CartWriteSerializer',
     'CartReadSerializer',
