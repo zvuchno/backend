@@ -3,6 +3,7 @@
 from django.urls import path
 
 from users.views import (
+    BecomeArtistView,
     ChangePasswordView,
     ChangePhoneView,
     EmailVerificationView,
@@ -12,6 +13,7 @@ from users.views import (
     PasswordResetVerifyView,
     ResendVerificationEmailView,
 )
+from users.views.account import UsernameChangeView
 
 urlpatterns = [
     path('me/', MeView.as_view(), name='me'),
@@ -29,6 +31,11 @@ urlpatterns = [
         'me/resend-email/',
         ResendVerificationEmailView.as_view(),
         name='resend_verification_email',
+    ),
+    path(
+        'me/become_artist/',
+        BecomeArtistView.as_view(),
+        name='become_artist',
     ),
     path(
         'verify-email/',
@@ -49,5 +56,10 @@ urlpatterns = [
         'reset-password-confirm/',
         PasswordResetConfirmView.as_view(),
         name='reset_password_confirm',
+    ),
+    path(
+        'me/change-username/',
+        UsernameChangeView.as_view(),
+        name='change_username',
     ),
 ]

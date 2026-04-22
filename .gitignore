@@ -143,5 +143,6 @@ media/
 backend/user_media
 user_media
 dump.json
+logs/
 
 *:Zone.Identifier

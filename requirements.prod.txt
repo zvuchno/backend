@@ -1,6 +1,7 @@
 Django==5.2.12
 django-allauth==65.14.3
 django-filter==25.2
+django-modeladmin-reorder @ git+https://github.com/nicolochiellini/django-modeladmin-reorder@2fe2bf5ea17ab21a588682c9c20fe038a4dd4ac5
 django-nested-admin==4.1.6
 django-phonenumber-field==8.4.0
 djangorestframework==3.16.1
@@ -14,3 +15,4 @@ pillow==12.1.1
 psycopg2-binary==2.9.11
 python-dotenv==1.2.2
 python-slugify==8.0.4
+sentry-sdk==2.58.0

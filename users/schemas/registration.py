@@ -3,7 +3,7 @@
 from drf_spectacular.utils import extend_schema
 
 listener_registration_schema = extend_schema(
-    tags=['Регистрация'],
+    tags=['Registration'],
     auth=[],
     summary='Регистрация слушателя',
     description=(
@@ -12,7 +12,7 @@ listener_registration_schema = extend_schema(
 )
 
 artist_registration_schema = extend_schema(
-    tags=['Регистрация'],
+    tags=['Registration'],
     auth=[],
     summary='Регистрация артиста',
     description=(

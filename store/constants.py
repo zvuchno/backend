@@ -1,13 +1,13 @@
 """Константы, используемые в приложении store."""
 
 ALLOWED_AUDIO_EXTENSIONS = ('mp3', 'wav', 'flac')
-MAX_CHAR_LENGTH = 256
+MAX_CHAR_LENGTH = 255
 MAX_IMAGE_SIZE_MB = 10
 MAX_PRICE_DIGITS = 10
 MAX_SLUG_LENGTH = 50
 MAX_STR_LENGTH = 40
+MAX_COMMENT_LENGTH = 200
 PRICE_DECIMAL_PLACES = 2  # Количество цифр после запятой
-
 
 # Константы для мерча
 DESCRIPTION_MERCH_MAX_LENGTH = 1000
