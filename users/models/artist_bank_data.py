@@ -10,6 +10,7 @@ from users.constants import (
     BIK_MAX_LENGTH,
     INN_MAX_LENGTH,
 )
+from users.querysets import LegalDataQuerySet
 
 
 class ArtistBankData(TimestampModel):
@@ -18,6 +19,8 @@ class ArtistBankData(TimestampModel):
     Хранит ИНН и реквизиты банковского счета, используемые
     для выплат артисту.
     """
+
+    objects = LegalDataQuerySet.as_manager()
 
     legal_profile = models.OneToOneField(
         'users.ArtistLegalProfile',

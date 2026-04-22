@@ -11,6 +11,7 @@ from users.constants import (
     PASSPORT_NUMBER_MAX_LENGTH,
     PASSPORT_SERIES_MAX_LENGTH,
 )
+from users.querysets import LegalDataQuerySet
 
 
 class ArtistIdentityData(TimestampModel):
@@ -20,6 +21,8 @@ class ArtistIdentityData(TimestampModel):
     документа, удостоверяющего личность. Используется для выплат,
     отчетности и юридической идентификации артиста.
     """
+
+    objects = LegalDataQuerySet.as_manager()
 
     legal_profile = models.OneToOneField(
         'users.ArtistLegalProfile',

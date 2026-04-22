@@ -9,6 +9,7 @@ from users.constants import (
     RECIPIENT_TYPE_MAX_LENGTH,
     TAXATION_SYSTEM_MAX_LENGTH,
 )
+from users.querysets import ArtistLegalProfileQuerySet
 
 
 class ArtistLegalProfile(TimestampModel):
@@ -20,6 +21,8 @@ class ArtistLegalProfile(TimestampModel):
 
     Не предназначен для публичного отображения.
     """
+
+    objects = ArtistLegalProfileQuerySet.as_manager()
 
     class TaxationSystem(models.TextChoices):
         EMPTY = '', 'Не указано'
