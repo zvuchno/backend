@@ -42,12 +42,10 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         try:
             service.ensure_user_is_active(user)
         except SocialAuthException as exc:
-            raise ImmediateHttpResponse(
-                self._handle_auth_error(
-                    request,
-                    exc.error_code,
-                    provider,
-                ),
+            self._handle_auth_error(
+                request,
+                exc.error_code,
+                provider,
             )
 
     @transaction.atomic
@@ -72,12 +70,10 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 provider,
                 exc.error_code,
             )
-            raise ImmediateHttpResponse(
-                self._handle_auth_error(
-                    request,
-                    exc.error_code,
-                    provider,
-                ),
+            self._handle_auth_error(
+                request,
+                exc.error_code,
+                provider,
             )
 
         sociallogin.user = user
@@ -91,12 +87,10 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 uid,
                 user.pk,
             )
-            raise ImmediateHttpResponse(
-                self._handle_auth_error(
-                    request,
-                    SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
-                    provider,
-                ),
+            self._handle_auth_error(
+                request,
+                SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
+                provider,
             )
         return user
 
@@ -115,12 +109,10 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             error,
             exception,
         )
-        raise ImmediateHttpResponse(
-            self._handle_auth_error(
-                request,
-                SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
-                provider_id,
-            ),
+        self._handle_auth_error(
+            request,
+            SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
+            provider_id,
         )
 
     def _frontend_error_redirect(

@@ -29,7 +29,7 @@ from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
 from .social_auth import (
     SocialAuthErrorCodesView,
-    SocialLoginView,
+    SocialSessionExchangeView,
     redirect_social_auth_cancelled,
     redirect_social_auth_confirm_email,
     redirect_social_auth_error,
@@ -63,7 +63,7 @@ __all__ = [
     'redirect_social_auth_confirm_email',
     'ResendVerificationEmailView',
     'SocialAuthErrorCodesView',
-    'SocialLoginView',
+    'SocialSessionExchangeView',
     'VKLogin',
     'YandexLogin',
 ]

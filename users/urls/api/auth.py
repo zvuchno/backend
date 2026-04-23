@@ -11,7 +11,7 @@ from users.views import (
     CustomTokenRefreshView,
     CustomTokenVerifyView,
     SocialAuthErrorCodesView,
-    SocialLoginView,
+    SocialSessionExchangeView,
     VKLogin,
     YandexLogin,
 )
@@ -35,7 +35,7 @@ urlpatterns = [
     ),
     path(
         'social/fallback/get_tokens/',
-        SocialLoginView.as_view(),
+        SocialSessionExchangeView.as_view(),
         name='social_login',
     ),
     path(
