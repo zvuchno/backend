@@ -9,14 +9,13 @@ class MerchFilter(filters.FilterSet):
     """Набор фильтров для модели Мерча."""
 
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
-    kind = filters.NumberFilter(field_name='kind_id')
+    kind = filters.CharFilter(field_name='kind__slug', lookup_expr='icontains')
     album = filters.NumberFilter(field_name='album_id')
-    artist_id = filters.NumberFilter(field_name='owner__artist_profile__id')
-    artist_name = filters.CharFilter(
-        field_name='owner__artist_profile__name',
+    artist = filters.CharFilter(
+        field_name='owner__artist_profile__slug',
         lookup_expr='icontains',
     )
 
     class Meta:
         model = Merch
-        fields = ('name', 'kind', 'album', 'artist_id', 'artist_name')
+        fields = ('name', 'kind', 'album', 'artist')
