@@ -34,7 +34,7 @@ class ProductService:
             if model_name in ['album', 'track']:
                 product.variants.create(
                     product=product,
-                    characteristic=CHAR_PRESET_DIGITAL,
+                    property_value=CHAR_PRESET_DIGITAL,
                     stock=None,  # Для цифры склад не нужен
                     is_active=True,
                 )
@@ -46,58 +46,43 @@ class ProductService:
         """Синхронизирует варианты мерча на основе переданных данных."""
         if not variants_data:
             # Сценарий 1: Свойств нет -> один вариант с общим стоком
-
-            # Ищем базовый вариант (даже неактивный)
-            variant = product.variants.filter(
-                characteristic=CHAR_PRESET_SIMPLE,
-            ).first()
-
-            if not variant:
-                # Создаем новый, если такого типа никогда не было
-                variant = product.variants.create(
-                    product=product,
-                    characteristic=CHAR_PRESET_SIMPLE,
-                    stock=stock,
-                    is_active=True,
-                )
-            else:
-                # Если нашли старый — реанимируем и обновляем сток
-                variant.stock = stock
-                variant.is_active = True
-                variant.save(
-                    update_fields=['stock', 'is_active', 'characteristic'],
-                )
-            # Выключаем все остальные варианты этого продукта
+            variant, _ = product.variants.update_or_create(
+                property_value=CHAR_PRESET_SIMPLE,
+                defaults={
+                    'stock': stock,
+                    'is_active': True,
+                },
+            )
+            # Выключаем всё остальное
             product.variants.exclude(id=variant.id).update(is_active=False)
         else:
             # Сценарий 2: Есть свойства -> создаем по варианту на каждое
+            ProductVariant = apps.get_model('store', 'ProductVariant')
             incoming_ids = []
 
-            for opt in variants_data:
-                v_id = opt.get('id')
+            for variant_data in variants_data:
+                variant_id = variant_data.get('id')
+                variant_value = variant_data.get('property_value')
 
-                if v_id:
-                    # Если ID пришел, обновляем существующий вариант
-                    product.variants.filter(
-                        id=v_id,
-                        product=product,
-                    ).update(
-                        stock=opt.get('stock', 0),
-                        characteristic=opt.get('characteristic', {}),
-                        is_active=True,
-                    )
-                    incoming_ids.append(v_id)
-                else:
-                    # Если ID нет, создаем новый
-                    new_v = product.variants.create(
-                        product=product,
-                        stock=opt.get('stock', 0),
-                        characteristic=opt.get('characteristic', {}),
-                        is_active=True,
-                    )
-                    incoming_ids.append(new_v.id)
+                # Если ID пришел — ищем по нему (приоритет).
+                # Если нет — по значению (защита от дублей).
+                lookup = (
+                    {'id': variant_id}
+                    if variant_id
+                    else {'property_value': variant_value, 'product': product}
+                )
 
-            # Деактивируем все варианты, которые не пришли в запросе
-            product.variants.exclude(id__in=incoming_ids).update(
-                is_active=False,
-            )
+                variant, _ = ProductVariant.objects.update_or_create(
+                    **lookup,
+                    defaults={
+                        'property_value': variant_value,
+                        'stock': variant_data.get('stock', 0),
+                        'is_active': True,
+                    },
+                )
+                incoming_ids.append(variant.id)
+
+            # Деактивируем варианты, которых нет в новом списке
+            product.variants.exclude(
+                id__in=incoming_ids,
+            ).update(is_active=False)

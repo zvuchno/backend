@@ -12,9 +12,9 @@ class ProductVariantInline(NestedTabularInline):
     """Инлайн для редактирования вариантов продукта в админке."""
 
     model = ProductVariant
-    fields = ('sku', 'stock', 'characteristic')
+    fields = ('sku', 'property_value', 'stock', 'updated_at')
     extra = 0
-    readonly_fields = ('sku',)
+    readonly_fields = ('sku', 'updated_at')
 
 
 class ProductInline(NestedStackedInline):

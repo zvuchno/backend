@@ -37,7 +37,7 @@ class TestProductService:
         assert variant is not None
         assert isinstance(variant, ProductVariant)
 
-        assert variant.characteristic == CHAR_PRESET_DIGITAL
+        assert variant.property_value == CHAR_PRESET_DIGITAL
         assert variant.stock is None
 
     def test_ensure_commerce_idempotency(self, variant_factory):
@@ -67,7 +67,7 @@ class TestProductService:
 
         variant = product.variants.get(is_active=True)
         assert variant.stock == 50
-        assert variant.characteristic == CHAR_PRESET_SIMPLE
+        assert variant.property_value == CHAR_PRESET_SIMPLE
         assert product.variants.count() == 1
 
     def test_sync_merch_with_options(self, variant_factory):
@@ -77,17 +77,11 @@ class TestProductService:
 
         options = [
             {
-                'characteristic': {
-                    'Размер': 'S',
-                    'Цвет': 'Серый',
-                },
+                'property_value': 'S',
                 'stock': 10,
             },
             {
-                'characteristic': {
-                    'Размер': 'L',
-                    'Цвет': 'Серый',
-                },
+                'property_value': 'L',
                 'stock': 5,
             },
         ]
@@ -101,13 +95,13 @@ class TestProductService:
         active_variants = product.variants.filter(is_active=True)
         assert active_variants.count() == 2
 
-        variant_s = active_variants.filter(stock=10).first()
+        variant_s = active_variants.filter(property_value='S').first()
         assert variant_s is not None
-        assert variant_s.characteristic['Размер'] == 'S'
+        assert variant_s.stock == 10
 
-        variant_l = active_variants.filter(stock=5).first()
+        variant_l = active_variants.filter(property_value='L').first()
         assert variant_l is not None
-        assert variant_l.characteristic['Размер'] == 'L'
+        assert variant_l.stock == 5
 
     def test_transition_from_complex_to_simple(self, user):
         """Тест: деактивация старых вариантов при переходе к простому мерчу."""
@@ -117,11 +111,11 @@ class TestProductService:
         # Сначала делаем сложный товар
         options = [
             {
-                'characteristic': {'Размер': 'S'},
+                'property_value': 'S',
                 'stock': 10,
             },
             {
-                'characteristic': {'Размер': 'M'},
+                'property_value': 'M',
                 'stock': 20,
             },
         ]
@@ -153,7 +147,7 @@ class TestProductService:
         # Создаем начальный вариант
         initial_options = [
             {
-                'characteristic': {'Цвет': 'Синий'},
+                'property_value': 'Синий',
                 'stock': 5,
             },
         ]
@@ -163,14 +157,13 @@ class TestProductService:
             variants_data=initial_options,
         )
 
-        variant = product.variants.get(is_active=True)
-        variant_id = variant.id
+        variant_id = product.variants.get(is_active=True).id
 
         # Обновляем тот же вариант по ID
         update_options = [
             {
                 'id': variant_id,
-                'characteristic': {'Цвет': 'Красный'},
+                'property_value': 'Красный',
                 'stock': 15,
             },
         ]
@@ -184,7 +177,7 @@ class TestProductService:
         updated_variant = product.variants.get(is_active=True)
         assert updated_variant.id == variant_id
         assert updated_variant.stock == 15
-        assert updated_variant.characteristic['Цвет'] == 'Красный'
+        assert updated_variant.property_value == 'Красный'
 
     def test_partial_sync_deactivates_omitted_variants(self, user):
         """Проверяет, что варианты, не переданные в списке, деактивируются."""
@@ -195,8 +188,8 @@ class TestProductService:
             product,
             stock=0,
             variants_data=[
-                {'characteristic': {'n': '1'}, 'stock': 1},
-                {'characteristic': {'n': '2'}, 'stock': 2},
+                {'property_value': '1', 'stock': 1},
+                {'property_value': '2', 'stock': 2},
             ],
         )
         assert product.variants.count() == 2
@@ -206,7 +199,7 @@ class TestProductService:
             product,
             stock=0,
             variants_data=[
-                {'characteristic': {'n': '3'}, 'stock': 3},
+                {'property_value': '3', 'stock': 3},
             ],
         )
 
@@ -220,6 +213,7 @@ class TestProductService:
         validated_data = {
             'price': 1700.00,
             'allow_overpay': True,
+            'property_name': 'Size',
             'stock': 10,
             'variants': None,
         }
@@ -230,6 +224,7 @@ class TestProductService:
         product = merch.product
         assert Decimal(product.price) == Decimal('1700.00')
         assert product.allow_overpay is True
+        assert product.property_name == 'Size'
 
     def test_sync_complex_merch_partial_update(self, user):
         """Проверяет умное обновление.
@@ -241,11 +236,11 @@ class TestProductService:
         # Сначала создаем S и M
         old_data = [
             {
-                'characteristic': {'Размер': 'S'},
+                'property_value': 'S',
                 'stock': 10,
             },
             {
-                'characteristic': {'Размер': 'M'},
+                'property_value': 'M',
                 'stock': 20,
             },
         ]
@@ -255,19 +250,19 @@ class TestProductService:
             variants_data=old_data,
         )
         variant_s = product.variants.get(
-            characteristic__Размер='S',
+            property_value='S',
         )
-        variant_m_id = product.variants.get(characteristic__Размер='M').id
+        variant_m_id = product.variants.get(property_value='M').id
 
         # Присылаем обновление: S (с ID) и L (новый, без ID)
         new_data = [
             {
                 'id': variant_s.id,
-                'characteristic': {'Размер': 'S'},
+                'property_value': 'S',
                 'stock': 5,
             },
             {
-                'characteristic': {'Размер': 'L'},
+                'property_value': 'L',
                 'stock': 15,
             },
         ]
@@ -285,6 +280,77 @@ class TestProductService:
         assert not ProductVariant.objects.get(id=variant_m_id).is_active
         # L создался
         assert product.variants.filter(
-            characteristic__Размер='L',
+            property_value='L',
             is_active=True,
         ).exists()
+
+    def test_sync_duplicate_property_values(self, user):
+        """Тест: при передаче дублей новые объекты не плодятся."""
+        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        product = ProductService.ensure_commerce(merch)
+
+        options = [
+            {'property_value': 'S', 'stock': 10},
+            {'property_value': 'S', 'stock': 20},  # Дубликат значения
+        ]
+        ProductService.sync_merch_variants(
+            product,
+            stock=0,
+            variants_data=options,
+        )
+        # Должен быть 1 активный вариант "S" с последним стоком
+        assert product.variants.filter(is_active=True).count() == 1
+        assert product.variants.get(property_value='S').stock == 20
+
+    def test_rename_variant_via_id(self, variant_factory):
+        merch = variant_factory(product_type='merch')
+        product = merch.product
+
+        # Берем ID, который уже создала фабрика
+        existing_variant = product.variants.first()
+        v_id = existing_variant.id
+
+        # Обновляем его по ID
+        ProductService.sync_merch_variants(
+            product,
+            0,
+            [{'id': v_id, 'property_value': 'Old', 'stock': 1}],
+        )
+
+        # Переименовываем из 'Old' в 'New'
+        ProductService.sync_merch_variants(
+            product,
+            0,
+            [{'id': v_id, 'property_value': 'New', 'stock': 1}],
+        )
+
+        assert product.variants.count() == 1
+        assert product.variants.get().property_value == 'New'
+        assert product.variants.get().id == v_id
+
+    def test_reactivate_deleted_variant(self, user):
+        """Тест: старый вариант активируется при повторном добавлении."""
+        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        product = ProductService.ensure_commerce(merch)
+
+        ProductService.sync_merch_variants(
+            product,
+            0,
+            [{'property_value': 'L', 'stock': 10}],
+        )
+        ProductService.sync_merch_variants(product, 0, [])  # Удаляем всё
+
+        assert product.variants.get(property_value='L').is_active is False
+
+        # Снова добавляем "L"
+        ProductService.sync_merch_variants(
+            product,
+            0,
+            [{'property_value': 'L', 'stock': 50}],
+        )
+
+        variant = product.variants.get(property_value='L')
+        assert variant.is_active is True
+        assert variant.stock == 50
+        # Проверяем, что в базе не появилось второго объекта "L"
+        assert product.variants.filter(property_value='L').count() == 1

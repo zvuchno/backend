@@ -35,13 +35,11 @@ def variant_factory(user):
         is_published=True,
         visibility='public',
         stock=10,
-        characteristic=None,
+        property_value='',
         allow_overpay=True,
         price=None,
         **kwargs,
     ) -> Callable[..., ProductVariant]:
-        if characteristic is None:
-            characteristic = {}
         # --- ITEM ---
         if product_type == 'album':
             item = Album.objects.create(
@@ -100,7 +98,7 @@ def variant_factory(user):
         return ProductVariant.objects.create(
             product=product,
             stock=stock_value,
-            characteristic=characteristic,
+            property_value=property_value,
         )
 
     return create_variant
