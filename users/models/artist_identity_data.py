@@ -12,6 +12,13 @@ from users.constants import (
     PASSPORT_SERIES_MAX_LENGTH,
 )
 from users.querysets import LegalDataQuerySet
+from users.validators import (
+    normalize_digits,
+    validate_birth_date,
+    validate_passport_issue_date,
+    validate_passport_number,
+    validate_passport_series,
+)
 
 
 class ArtistIdentityData(TimestampModel):
@@ -49,6 +56,7 @@ class ArtistIdentityData(TimestampModel):
         'Дата рождения',
         blank=True,
         null=True,
+        validators=[validate_birth_date],
     )
     registration_address = models.CharField(
         'Адрес регистрации',
@@ -62,12 +70,14 @@ class ArtistIdentityData(TimestampModel):
         max_length=PASSPORT_SERIES_MAX_LENGTH,
         blank=True,
         default='',
+        validators=[validate_passport_series],
     )
     passport_number = models.CharField(
         'Номер паспорта',
         max_length=PASSPORT_NUMBER_MAX_LENGTH,
         blank=True,
         default='',
+        validators=[validate_passport_number],
     )
     passport_issued_by = models.CharField(
         'Кем выдан паспорт',
@@ -79,25 +89,37 @@ class ArtistIdentityData(TimestampModel):
         'Дата выдачи паспорта',
         blank=True,
         null=True,
+        validators=[validate_passport_issue_date],
     )
 
+    def save(self, *args, **kwargs):
+        """Сохраняет объект после полной валидации модели."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
-        """Проверяет формат паспортных данных."""
+        """Проверяет согласованность паспортных данных."""
         super().clean()
-        errors = {}
 
-        if self.passport_series and not self.passport_series.isdigit():
-            errors['passport_series'] = (
-                'Серия паспорта должна содержать цифры.'
+        if self.passport_series:
+            self.passport_series = normalize_digits(self.passport_series)
+
+        if self.passport_number:
+            self.passport_number = normalize_digits(self.passport_number)
+
+        if (
+            self.birth_date
+            and self.passport_issue_date
+            and self.birth_date > self.passport_issue_date
+        ):
+            raise ValidationError(
+                {
+                    'passport_issue_date': (
+                        'Дата выдачи паспорта не '
+                        'может быть раньше даты рождения.'
+                    ),
+                },
             )
-
-        if self.passport_number and not self.passport_number.isdigit():
-            errors['passport_number'] = (
-                'Номер паспорта должен содержать цифры.'
-            )
-
-        if errors:
-            raise ValidationError(errors)
 
     class Meta:
         verbose_name = 'паспортные данные'
