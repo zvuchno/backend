@@ -34,12 +34,12 @@ urlpatterns = [
         name='token_verify',
     ),
     path(
-        'social/fallback/get_tokens/',
+        'social/get_tokens/',
         SocialSessionExchangeView.as_view(),
         name='social_login',
     ),
     path(
-        'social/fallback/error-codes/',
+        'social/error-codes/',
         SocialAuthErrorCodesView.as_view(),
         name='social_error_codes',
     ),

@@ -239,7 +239,7 @@ REST_AUTH = {
     'USE_JWT': True,
     'TOKEN_MODEL': None,
     'JWT_AUTH_HTTPONLY': False,
-    'USER_DETAILS_SERIALIZER': 'users.serializers.MeSerializer',
+    'JWT_SERIALIZER': 'users.serializers.TokenPairSerializer',
 }
 SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
 SOCIALACCOUNT_AUTO_SIGNUP = True
