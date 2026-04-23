@@ -41,16 +41,17 @@ class ArtistIdentityData(TimestampModel):
     last_name = models.CharField(
         'Фамилия',
         max_length=NAME_FIELD_MAX_LENGTH,
+        blank=True,
     )
     first_name = models.CharField(
         'Имя',
         max_length=NAME_FIELD_MAX_LENGTH,
+        blank=True,
     )
     middle_name = models.CharField(
         'Отчество',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
-        default='',
     )
     birth_date = models.DateField(
         'Дата рождения',
@@ -62,28 +63,24 @@ class ArtistIdentityData(TimestampModel):
         'Адрес регистрации',
         max_length=ADDRESS_FIELD_MAX_LENGTH,
         blank=True,
-        default='',
     )
 
     passport_series = models.CharField(
         'Серия паспорта',
         max_length=PASSPORT_SERIES_MAX_LENGTH,
         blank=True,
-        default='',
         validators=[validate_passport_series],
     )
     passport_number = models.CharField(
         'Номер паспорта',
         max_length=PASSPORT_NUMBER_MAX_LENGTH,
         blank=True,
-        default='',
         validators=[validate_passport_number],
     )
     passport_issued_by = models.CharField(
         'Кем выдан паспорт',
         max_length=PASSPORT_ISSUED_BY_MAX_LENGTH,
         blank=True,
-        default='',
     )
     passport_issue_date = models.DateField(
         'Дата выдачи паспорта',

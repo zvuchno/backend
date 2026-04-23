@@ -5,7 +5,6 @@ from django.db import models
 
 from .abstract import TimestampModel
 from users.constants import (
-    COMMENT_MAX_LENGTH,
     NAME_FIELD_MAX_LENGTH,
     RECIPIENT_TYPE_MAX_LENGTH,
     TAXATION_SYSTEM_MAX_LENGTH,
@@ -53,6 +52,7 @@ class ArtistLegalProfile(TimestampModel):
     recipient_name = models.CharField(
         'Наименование получателя',
         max_length=NAME_FIELD_MAX_LENGTH,
+        blank=True,
     )
 
     taxation_system = models.CharField(
@@ -69,11 +69,9 @@ class ArtistLegalProfile(TimestampModel):
         help_text='Данные проверены вручную.',
     )
 
-    comment = models.CharField(
+    comment = models.TextField(
         'Комментарий модератора',
-        max_length=COMMENT_MAX_LENGTH,
         blank=True,
-        default='',
     )
 
     class Meta:

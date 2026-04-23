@@ -5,6 +5,8 @@ from datetime import date
 from django.core.exceptions import ValidationError
 
 from users.constants import (
+    ACCOUNT_NUMBER_MAX_LENGTH,
+    BIK_MAX_LENGTH,
     PASSPORT_NUMBER_MAX_LENGTH,
     PASSPORT_SERIES_MAX_LENGTH,
 )
@@ -12,6 +14,8 @@ from users.constants import (
 
 def normalize_digits(value: str) -> str:
     """Нормализация числового поля."""
+    if not value:
+        return ''
     return ''.join(d for d in str(value) if d.isdigit())
 
 
@@ -83,4 +87,49 @@ def validate_passport_issue_date(value: date) -> None:
     _validate_not_future_or_distant_past_date(
         value,
         'Дата выдачи паспорта',
+    )
+
+
+def validate_bik(value: str) -> None:
+    """Проверяет БИК банка РФ."""
+    _validate_digits_number(
+        value,
+        BIK_MAX_LENGTH,
+        'БИК',
+    )
+
+
+def validate_inn(value: str) -> None:
+    """Проверяет ИНН (10 или 12 цифр)."""
+    if not value:
+        return
+
+    normalized_value = normalize_digits(value)
+
+    if not normalized_value:
+        raise ValidationError(
+            'ИНН должен содержать только цифры.',
+        )
+
+    if len(normalized_value) not in (10, 12):
+        raise ValidationError(
+            'ИНН должен содержать 10 или 12 цифр.',
+        )
+
+
+def validate_checking_account(value: str) -> None:
+    """Проверяет расчетный счет."""
+    _validate_digits_number(
+        value,
+        ACCOUNT_NUMBER_MAX_LENGTH,
+        'Расчетный счет',
+    )
+
+
+def validate_correspondent_account(value: str) -> None:
+    """Проверяет корреспондентский счет."""
+    _validate_digits_number(
+        value,
+        ACCOUNT_NUMBER_MAX_LENGTH,
+        'Корреспондентский счет',
     )

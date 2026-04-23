@@ -1,6 +1,5 @@
 """Модель банковских данных артиста."""
 
-from django.core.exceptions import ValidationError
 from django.db import models
 
 from .abstract import TimestampModel
@@ -11,6 +10,13 @@ from users.constants import (
     INN_MAX_LENGTH,
 )
 from users.querysets import LegalDataQuerySet
+from users.validators import (
+    normalize_digits,
+    validate_bik,
+    validate_checking_account,
+    validate_correspondent_account,
+    validate_inn,
+)
 
 
 class ArtistBankData(TimestampModel):
@@ -33,66 +39,52 @@ class ArtistBankData(TimestampModel):
         'ИНН',
         max_length=INN_MAX_LENGTH,
         blank=True,
-        default='',
+        validators=[validate_inn],
     )
 
     bank_name = models.CharField(
         'Название банка',
         max_length=BANK_NAME_MAX_LENGTH,
         blank=True,
-        default='',
     )
     bik = models.CharField(
         'БИК',
         max_length=BIK_MAX_LENGTH,
         blank=True,
-        default='',
+        validators=[validate_bik],
     )
     correspondent_account = models.CharField(
         'Корреспондентский счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
-        default='',
+        validators=[validate_correspondent_account],
     )
     checking_account = models.CharField(
         'Расчетный счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
-        default='',
+        validators=[validate_checking_account],
     )
 
+    def save(self, *args, **kwargs):
+        """Сохраняет объект после полной валидации модели."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     def clean(self):
-        """Проверяет формат банковских реквизитов."""
+        """Нормализует поля банковских реквизитов."""
         super().clean()
-        errors = {}
 
-        if self.inn and not self.inn.isdigit():
-            errors['inn'] = 'ИНН должен содержать только цифры.'
-
-        if self.inn and len(self.inn) not in (10, 12):
-            errors['inn'] = 'ИНН должен содержать 10 или 12 цифр.'
-
-        if self.bik and (not self.bik.isdigit() or len(self.bik) != 9):
-            errors['bik'] = 'БИК должен содержать 9 цифр.'
-
-        if self.correspondent_account and (
-            not self.correspondent_account.isdigit()
-            or len(self.correspondent_account) != 20
-        ):
-            errors['correspondent_account'] = (
-                'Корреспондентский счет должен содержать 20 цифр.'
+        if self.bik:
+            self.bik = normalize_digits(self.bik)
+        if self.inn:
+            self.inn = normalize_digits(self.inn)
+        if self.correspondent_account:
+            self.correspondent_account = normalize_digits(
+                self.correspondent_account,
             )
-
-        if self.checking_account and (
-            not self.checking_account.isdigit()
-            or len(self.checking_account) != 20
-        ):
-            errors['checking_account'] = (
-                'Расчетный счет должен содержать 20 цифр.'
-            )
-
-        if errors:
-            raise ValidationError(errors)
+        if self.checking_account:
+            self.checking_account = normalize_digits(self.checking_account)
 
     class Meta:
         verbose_name = 'банковские данные'
