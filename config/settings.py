@@ -9,15 +9,19 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+import logging
 import os
-import sys
 from datetime import timedelta
 from pathlib import Path
 
+import sentry_sdk
 from dotenv import load_dotenv
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from .admin_reorder_config import ADMIN_REORDER  # noqa
 from config import logging as logging_config
+from config.glitchtip import init_glitchtip
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -73,6 +77,12 @@ MIDDLEWARE = [
     'admin_reorder.middleware.ModelAdminReorder',
     'allauth.account.middleware.AccountMiddleware',
 ]
+
+# Настройки для debug_toolbar
+if DEBUG:
+    INSTALLED_APPS += ['debug_toolbar']
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+    INTERNAL_IPS = ['127.0.0.1']
 
 ROOT_URLCONF = 'config.urls'
 
@@ -229,11 +239,13 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {
     'vk': {
         'SCOPE': ['email'],
-        'VERIFIED_EMAIL': True,
+        'VERIFIED_EMAIL': True,  # доверяем почте из Вк.
+        'AUTH_PARAMS': {'prompt': 'login'},
     },
     'yandex': {
         'SCOPE': ['login:email'],
-        'VERIFIED_EMAIL': True,
+        'VERIFIED_EMAIL': True,  # доверяем почте из Я.
+        'AUTH_PARAMS': {'force_confirm': 'yes'},
     }
 }
 SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
@@ -253,8 +265,5 @@ USE_X_FORWARDED_HOST = True
 
 LOGGING = logging_config.LOGGING
 
-# Если запущен pytest, используем быстрый хешер паролей
-if 'pytest' in sys.modules or 'test' in sys.argv:
-    PASSWORD_HASHERS = [
-        'django.contrib.auth.hashers.MD5PasswordHasher',
-    ]
+# Настройка отправки ошибок проекта в GlitchTip
+init_glitchtip()
