@@ -303,6 +303,7 @@ class TestProductService:
         assert product.variants.get(property_value='S').stock == 20
 
     def test_rename_variant_via_id(self, variant_factory):
+        """Тест: переименование варианта по ID."""
         merch = variant_factory(product_type='merch')
         product = merch.product
 

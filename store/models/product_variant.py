@@ -78,6 +78,12 @@ class ProductVariant(ActivatableModel, TimestampModel):
         verbose_name = 'вариант продукта'
         verbose_name_plural = 'варианты продукта'
         ordering = ('id',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['product', 'property_value'],
+                name='unique_variant_value_per_product',
+            ),
+        ]
 
     @property
     def variant_name(self):
