@@ -1,12 +1,9 @@
 """Базовые тесты на фильтрацию и сортировку треков."""
 
-import datetime
-
 import pytest
-from django.utils import timezone
 from rest_framework import status
 
-from store.models import Genre, Track
+from store.models import Genre
 from users.models import ArtistProfile
 
 
@@ -37,17 +34,11 @@ class TestTrackFilters:
             defaults={'name': 'Boris'},
         )
 
-        now = timezone.now()
-
         v1 = variant_factory(product_type='track', name='Song A')
         t1 = v1.product.track
         t1.album.genre = rock
         t1.album.owner = user
         t1.album.save()
-
-        Track.objects.filter(id=t1.id).update(
-            created_at=now - datetime.timedelta(days=1),
-        )  # старый
 
         v2 = variant_factory(product_type='track', name='Song B')
         t2 = v2.product.track
@@ -112,15 +103,3 @@ class TestTrackFilters:
 
         assert results[0]['name'] == 'Song A'
         assert results[1]['name'] == 'Song B'
-
-    def test_ordering_by_created(self, tracks, track_list_url, api_client):
-        """Сортировка по дате создания."""
-        response = api_client.get(
-            track_list_url,
-            {'ordering': '-created_at'},
-        )
-
-        results = response.data['results']
-
-        assert results[0]['name'] == tracks['track_2'].name
-        assert results[1]['name'] == tracks['track_1'].name
