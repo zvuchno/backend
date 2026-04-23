@@ -11,6 +11,7 @@ from django.shortcuts import redirect
 
 from config import settings
 from users.constants import (
+    SOCIAL_AUTH_ERRORS,
     SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
 )
@@ -33,15 +34,20 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         """Вызывается сразу после аутентификации у провайдера."""
         provider = sociallogin.account.provider
         uid = sociallogin.account.uid
-        user = self.get_service().find_user_by_social_account(
+        service = self.get_service()
+        user = service.find_user_by_social_account(
             provider=provider,
             provider_uid=uid,
         )
         try:
-            self.get_service().ensure_user_is_active(user)
+            service.ensure_user_is_active(user)
         except SocialAuthException as exc:
             raise ImmediateHttpResponse(
-                self._frontend_error_redirect(exc.error_code, provider),
+                self._handle_auth_error(
+                    request,
+                    exc.error_code,
+                    provider,
+                ),
             )
 
     @transaction.atomic
@@ -52,9 +58,9 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         email = sociallogin.user.email
         provider_obj = sociallogin.account.get_provider()
         is_email_verified = self.is_email_verified(provider_obj, email)
-
+        service = self.get_service()
         try:
-            user = self.get_service().resolve_user(
+            user = service.resolve_user(
                 provider=provider,
                 provider_uid=uid,
                 email=email,
@@ -67,7 +73,11 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 exc.error_code,
             )
             raise ImmediateHttpResponse(
-                self._frontend_error_redirect(exc.error_code, provider),
+                self._handle_auth_error(
+                    request,
+                    exc.error_code,
+                    provider,
+                ),
             )
 
         sociallogin.user = user
@@ -82,7 +92,8 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 user.pk,
             )
             raise ImmediateHttpResponse(
-                self._frontend_error_redirect(
+                self._handle_auth_error(
+                    request,
                     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
                     provider,
                 ),
@@ -105,14 +116,15 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             exception,
         )
         raise ImmediateHttpResponse(
-            self._frontend_error_redirect(
+            self._handle_auth_error(
+                request,
                 SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
                 provider_id,
             ),
         )
 
-    @staticmethod
     def _frontend_error_redirect(
+        self,
         error_code: str,
         provider: str = 'unknown',
     ) -> HttpResponseRedirect:
@@ -124,3 +136,24 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             'provider': provider,
         })
         return redirect(f'{base_url}?{params}')
+
+    def _is_api_request(self, request) -> bool:
+        """Проверяет, что запрос относится к API social auth."""
+        return request.path.startswith('/api/')
+
+    def _handle_auth_error(
+        self,
+        request,
+        error_code: str,
+        provider: str = 'unknown',
+    ) -> HttpResponseRedirect:
+        """Отдает ошибку в формате, подходящем для текущего flow."""
+        if self._is_api_request(request):
+            raise SocialAuthException(
+                error_code,
+                SOCIAL_AUTH_ERRORS.get(error_code, 'Ошибка аутентификации.'),
+            )
+
+        raise ImmediateHttpResponse(
+            self._frontend_error_redirect(error_code, provider),
+        )

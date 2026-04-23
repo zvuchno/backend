@@ -22,6 +22,8 @@ from .jwt import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
+    VKLogin,
+    YandexLogin,
 )
 from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
@@ -62,4 +64,6 @@ __all__ = [
     'ResendVerificationEmailView',
     'SocialAuthErrorCodesView',
     'SocialLoginView',
+    'VKLogin',
+    'YandexLogin',
 ]

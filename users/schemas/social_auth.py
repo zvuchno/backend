@@ -2,7 +2,7 @@
 
 from drf_spectacular.utils import extend_schema
 
-from users.serializers import TokenPairSerializer
+from users.serializers import SocialAuthInputSerializer, TokenPairSerializer
 
 social_token_exchange_schema = extend_schema(
     tags=['Auth'],
@@ -33,4 +33,18 @@ social_error_codes_schema = extend_schema(
         'Фронтенд может использовать коды как контракт, а тексты — '
         'как fallback или для отладки.'
     ),
+)
+
+social_auth_schema = extend_schema(
+    tags=['Auth'],
+    auth=[],
+    summary='Аутентификация через внешнего провайдера',
+    description=(
+        'Принимает код (code) от провайдера и обменивает его на '
+        'пару JWT-токенов. Если профиль соцсети ранее не был привязан '
+        'к аккаунту, выполняется поиск по email '
+        'или создание нового пользователя.'
+    ),
+    request=SocialAuthInputSerializer,
+    responses={200: TokenPairSerializer},
 )

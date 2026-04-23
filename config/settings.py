@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'nested_admin',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'dj_rest_auth',
     'djoser',
     'phonenumber_field',
     'admin_reorder',
@@ -234,6 +235,12 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 )
+REST_AUTH = {
+    'USE_JWT': True,
+    'TOKEN_MODEL': None,
+    'JWT_AUTH_HTTPONLY': False,
+    'USER_DETAILS_SERIALIZER': 'users.serializers.MeSerializer',
+}
 SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {

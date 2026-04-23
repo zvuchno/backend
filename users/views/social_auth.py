@@ -24,7 +24,7 @@ from users.schemas import (
     social_error_codes_schema,
     social_token_exchange_schema,
 )
-from users.serializers import TokenPairSerializer
+from users.serializers import EmptySerializer, TokenPairSerializer
 
 
 @social_token_exchange_schema
@@ -85,6 +85,7 @@ class SocialAuthErrorCodesView(APIView):
     """Справочник кодов ошибок social auth."""
 
     permission_classes = (AllowAny,)
+    serializer_class = EmptySerializer
 
     def get(self, request):
         return Response(SOCIAL_AUTH_ERRORS)
