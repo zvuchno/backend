@@ -1,5 +1,6 @@
 """Сериализаторы юр профиля."""
 
+from django.db import transaction
 from rest_framework import serializers
 
 from users.models import (
@@ -10,7 +11,7 @@ from users.models import (
 
 
 class ArtistIdentityDataSerializer(serializers.ModelSerializer):
-    """TODO."""
+    """Сериализатор паспортных данных артиста."""
 
     class Meta:
         model = ArtistIdentityData
@@ -29,7 +30,7 @@ class ArtistIdentityDataSerializer(serializers.ModelSerializer):
 
 
 class ArtistBankDataSerializer(serializers.ModelSerializer):
-    """TODO."""
+    """Сериализатор банковских данных артиста."""
 
     class Meta:
         model = ArtistBankData
@@ -44,7 +45,7 @@ class ArtistBankDataSerializer(serializers.ModelSerializer):
 
 
 class ArtistLegalProfileSerializer(serializers.ModelSerializer):
-    """TODO."""
+    """Сериализатор юридического профиля артиста."""
 
     is_verified = serializers.BooleanField(read_only=True)
     comment = serializers.CharField(read_only=True)
@@ -53,7 +54,6 @@ class ArtistLegalProfileSerializer(serializers.ModelSerializer):
         model = ArtistLegalProfile
         fields = (
             'id',
-            'user',
             'recipient_type',
             'recipient_name',
             'taxation_system',
@@ -63,10 +63,10 @@ class ArtistLegalProfileSerializer(serializers.ModelSerializer):
 
 
 class ArtistLegalSerializer(serializers.Serializer):
-    """TODO."""
+    """Агрегирующий сериализатор юридических данных артиста."""
 
     legal_profile = ArtistLegalProfileSerializer(
-        required=True,
+        required=False,
     )
     identity_data = ArtistIdentityDataSerializer(
         required=False,
@@ -91,3 +91,36 @@ class ArtistLegalSerializer(serializers.Serializer):
                 ArtistBankDataSerializer(bank_data).data if bank_data else None
             ),
         }
+
+    @staticmethod
+    def _update_items(instance, data) -> None:
+        """Заполняет значения полей модели."""
+        for key, value in data.items():
+            setattr(instance, key, value)
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        """Обновляет юридический профиль и связанные блоки данных."""
+        legal_profile = validated_data.pop('legal_profile', None)
+        identity_data = validated_data.pop('identity_data', None)
+        bank_data = validated_data.pop('bank_data', None)
+
+        if legal_profile:
+            self._update_items(instance, legal_profile)
+            instance.save()
+        if identity_data:
+            identity_data_instance, _ = (
+                ArtistIdentityData.objects.get_or_create(
+                    legal_profile=instance,
+                )
+            )
+            self._update_items(identity_data_instance, identity_data)
+            identity_data_instance.save()
+        if bank_data:
+            bank_data_instance, _ = ArtistBankData.objects.get_or_create(
+                legal_profile=instance,
+            )
+            self._update_items(bank_data_instance, bank_data)
+            bank_data_instance.save()
+
+        return instance

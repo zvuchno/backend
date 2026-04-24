@@ -1,5 +1,7 @@
 """Представления для юр профиля артиста."""
 
+from http import HTTPStatus
+
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -27,22 +29,28 @@ class ArtistLegalProfileView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'artist_legal_profile'
 
-    def get(self, request):
+    def _get_legal_profile(self) -> ArtistLegalProfile:
+        """Возвращает юридический профиль текущего пользователя.
+
+        Если профиль отсутствует, создаёт его.
+        """
         legal_profile, _ = ArtistLegalProfile.objects.get_or_create(
-            user=request.user,
+            user=self.request.user,
         )
-        serializer = ArtistLegalSerializer(legal_profile)
+        return legal_profile
+
+    def get(self, request):
+        """Возвращает агрегированные юридические данные артиста."""
+        serializer = ArtistLegalSerializer(self._get_legal_profile())
         return Response(serializer.data)
 
     def patch(self, request):
-        legal_profile, _ = ArtistLegalProfile.objects.get_or_create(
-            user=request.user,
-        )
+        """Частично обновляет юридические данные артиста."""
         serializer = ArtistLegalSerializer(
-            legal_profile,
+            self._get_legal_profile(),
             data=request.data,
             partial=True,
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return Response(serializer.data, status=HTTPStatus.OK)
