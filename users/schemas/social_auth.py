@@ -6,8 +6,10 @@ from users.serializers import SocialAuthInputSerializer, TokenPairSerializer
 
 social_token_exchange_schema = extend_schema(
     tags=['Auth'],
-    summary='LEGACY: fallback обмен social session на JWT токены',
+    summary='LEGACY: обмен server session на JWT токены',
     description=(
+        'Старый session-based flow. '
+        'Не стоит использовать для новой интеграции фронтенда.\n\n'
         'Устаревший fallback endpoint для старого сценария social auth. '
         'Не использовать для новой интеграции фронтенда.\n\n'
         'Работает только после успешной аутентификации через allauth '
@@ -41,18 +43,17 @@ social_error_codes_schema = extend_schema(
 social_auth_schema = extend_schema(
     tags=['Auth'],
     auth=[],
-    summary=(
-        'Основной API endpoint для аутентификации через внешнего провайдера'
-    ),
+    summary=('Основной API endpoint для social auth через провайдера'),
     description=(
         'Основной способ social auth для новой интеграции фронтенда. '
-        'Принимает code от провайдера и возвращает пару JWT-токенов.\n\n'
+        'Использовать эти endpoints вместо старого session exchange flow.\n\n'
+        'Принимает code от провайдера и возвращает пару JWT-токенов. '
         'Если профиль соцсети ранее не был привязан к аккаунту, '
         'выполняется поиск по email или создание нового пользователя.\n\n'
         'VK OAuth может требовать альтернативный host из-за ограничений '
         'провайдера по разрешенным доменам. '
-        'Yandex работает на основном dev-домене.'
-        'Требует проверки.'
+        'Yandex работает на основном dev-домене.\n\n'
+        'Требует совместной проверки с фронтом и реальным OAuth flow.'
     ),
     request=SocialAuthInputSerializer,
     responses={200: TokenPairSerializer},

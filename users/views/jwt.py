@@ -5,6 +5,7 @@
 и обновления JWT-токенов.
 """
 
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from allauth.socialaccount.providers.vk.views import VKOAuth2Adapter
 from allauth.socialaccount.providers.yandex.views import YandexOAuth2Adapter
 from dj_rest_auth.registration.views import SocialLoginView
@@ -117,6 +118,7 @@ class VKLogin(SocialAuthMixin, SocialLoginView):
 
     adapter_class = VKOAuth2Adapter
     serializer_class = SocialAuthInputSerializer
+    client_class = OAuth2Client
 
 
 @social_auth_schema
@@ -125,3 +127,4 @@ class YandexLogin(SocialAuthMixin, SocialLoginView):
 
     adapter_class = YandexOAuth2Adapter
     serializer_class = SocialAuthInputSerializer
+    client_class = OAuth2Client
