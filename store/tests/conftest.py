@@ -12,8 +12,6 @@
 Файл не требует явного импорта — pytest находит его автоматически.
 """
 
-from typing import Callable
-
 import pytest
 from django.core.files.base import ContentFile
 from django.urls import reverse
@@ -35,35 +33,31 @@ def variant_factory(user):
         is_published=True,
         visibility='public',
         stock=10,
-        characteristic=None,
+        property_value='',
         allow_overpay=True,
         price=None,
         **kwargs,
-    ) -> Callable[..., ProductVariant]:
-        if characteristic is None:
-            characteristic = {}
-        # --- ITEM ---
+    ) -> ProductVariant:
+
+        common_fields = {
+            'owner': user,
+            'is_active': is_active,
+            'is_published': is_published,
+            'visibility': visibility,
+        }
+
         if product_type == 'album':
             item = Album.objects.create(
                 name=kwargs.get('name', 'Album'),
-                owner=user,
-                is_active=is_active,
-                is_published=is_published,
-                visibility=visibility,
+                **common_fields,
             )
-            product = Product.objects.create(
-                album=item,
-                price=price or 1000,
-            )
+            product = Product.objects.create(album=item, price=price or 1000)
             stock_value = None
 
         elif product_type == 'track':
             album = kwargs.get('album') or Album.objects.create(
                 name='Track Album',
-                owner=user,
-                is_active=is_active,
-                is_published=is_published,
-                visibility=visibility,
+                **common_fields,
             )
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
@@ -73,21 +67,14 @@ def variant_factory(user):
                     b'fake mp3 content',
                     name='test_track.mp3',
                 ),
-                is_active=is_active,
             )
-            product = Product.objects.create(
-                track=item,
-                price=price or 500,
-            )
+            product = Product.objects.create(track=item, price=price or 500)
             stock_value = None
 
         elif product_type == 'merch':
             item = Merch.objects.create(
                 name=kwargs.get('name', 'T-Shirt'),
-                owner=user,
-                is_active=is_active,
-                is_published=is_published,
-                visibility=visibility,
+                **common_fields,
             )
             product = Product.objects.create(
                 merch=item,
@@ -101,7 +88,7 @@ def variant_factory(user):
         return ProductVariant.objects.create(
             product=product,
             stock=stock_value,
-            characteristic=characteristic,
+            property_value=property_value,
         )
 
     return create_variant

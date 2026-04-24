@@ -12,6 +12,7 @@ from django.db import models
 from django.db.models import Q
 
 from store.constants import (
+    MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
 )
@@ -48,6 +49,12 @@ class Product(models.Model):
         'Разрешить платить больше',
         default=False,
         help_text='Если включено, фанаты смогут заплатить больше стоимости.',
+    )
+    property_name = models.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name='Название свойства',
     )
     album = models.OneToOneField(
         'store.Album',

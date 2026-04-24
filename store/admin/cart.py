@@ -17,7 +17,7 @@ class ProductVariantAdmin(admin.ModelAdmin):
 
     search_fields = (
         'sku',
-        'characteristic',
+        'property_value',
         'product__track__name',
         'product__album__name',
         'product__merch__name',
