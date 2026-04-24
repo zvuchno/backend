@@ -40,10 +40,10 @@ class ProductVariant(ActivatableModel, TimestampModel):
         help_text='Наличие на складе',
     )
     property_value = models.CharField(
+        'Значение свойства',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
-        verbose_name='Значение свойства',
     )
 
     def generate_sku(self):
