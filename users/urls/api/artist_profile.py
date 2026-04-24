@@ -17,7 +17,7 @@ urlpatterns = [
         name='artist_me',
     ),
     path(
-        'legal/me/',
+        'me/legal/',
         ArtistLegalProfileView.as_view(),
         name='artist_legal_profile',
     ),
