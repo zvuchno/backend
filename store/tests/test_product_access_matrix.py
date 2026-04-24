@@ -11,6 +11,17 @@ ROLE_CLIENTS = {
 }
 
 
+@pytest.fixture(params=['album', 'track', 'merch'])
+def product_meta(request):
+    """Фикстура, которая переключает контекст теста между типами продукта."""
+    ptype = request.param
+    return {
+        'type': ptype,
+        'list_url': reverse(f'api:store:{ptype}s-list'),
+        'detail_url_name': f'api:store:{ptype}s-detail',
+    }
+
+
 # fmt: off
 @pytest.mark.parametrize(
     'role,visibility,action,can_see,expected_status,comment',
@@ -53,38 +64,32 @@ ROLE_CLIENTS = {
     ],
 )
 # fmt: on
-def test_album_visibility_matrix(
+def test_product_visibility_matrix(
     role, visibility, action, can_see, expected_status, comment,
-    request, variant_factory, album_list_url,
+    request, variant_factory, product_meta,
 ):
-    """Тест доступа к альбомам (roles × visibility × actions)."""
+    """Тест доступа к продукту (roles × visibility × actions)."""
     client = request.getfixturevalue(ROLE_CLIENTS[role])
 
     variant = variant_factory(
-        product_type='album',
+        product_type=product_meta['type'],
         visibility=visibility,
     )
+    obj = getattr(variant.product, product_meta['type'])
 
-    album_id = variant.product.album.id
-
-    # ================= LIST =================
     if action == 'list':
-        response = client.get(album_list_url)
-
-        assert response.status_code == expected_status, f'Failed on: {comment}'
+        # ================= LIST =================
+        response = client.get(product_meta['list_url'])
 
         ids = [item['id'] for item in response.data['results']]
-        assert (album_id in ids) == can_see, f'Failed on: {comment}'
-        return
-
-    # ================= RETRIEVE =================
-    url = reverse('api:store:albums-detail', args=[album_id])
-    response = client.get(url)
-
+        assert (obj.id in ids) == can_see, f'Failed on: {comment}'
+    else:
+        # ================= RETRIEVE =================
+        url = reverse(product_meta['detail_url_name'], args=[obj.id])
+        response = client.get(url)
+        if can_see:
+            assert response.data['id'] == obj.id
     assert response.status_code == expected_status, f'Failed on: {comment}'
-
-    if can_see:
-        assert response.data['id'] == album_id
 
 
 # fmt: off
@@ -105,28 +110,28 @@ def test_album_visibility_matrix(
     ],
 )
 # fmt: on
-def test_album_status_logic(
+def test_product_status_logic(
     role, is_published, is_active, expected_status, can_see_in_list, comment,
-    request, variant_factory, album_list_url,
+    request, variant_factory, product_meta,
 ):
     """Тест базовых флагов жизненного цикла: публикация и активность."""
     client = request.getfixturevalue(ROLE_CLIENTS[role])
 
     variant = variant_factory(
-        product_type='album',
+        product_type=product_meta['type'],
         visibility='public',
         is_published=is_published,
         is_active=is_active,
     )
-    album_id = variant.product.album.id
+    obj = getattr(variant.product, product_meta['type'])
 
     # ================= LIST =================
-    list_response = client.get(album_list_url)
+    list_response = client.get(product_meta['list_url'])
     ids = [item['id'] for item in list_response.data['results']]
-    assert (album_id in ids) == can_see_in_list, f'Failed on: {comment}'
+    assert (obj.id in ids) == can_see_in_list, f'Failed on: {comment}'
 
     # ================= RETRIEVE =================
-    url = reverse('api:store:albums-detail', args=[album_id])
+    url = reverse(product_meta['detail_url_name'], args=[obj.id])
     response = client.get(url)
     assert response.status_code == expected_status, f'Failed on: {comment}'
 
@@ -152,21 +157,25 @@ def test_album_status_logic(
     ],
 )
 # fmt: on
-def test_album_permissions_logic(
+def test_product_permissions_logic(
     role, method, expected_status, comment,
-    request, variant_factory,
+    request, variant_factory, product_meta,
 ):
     """Тест прав доступа: Role × Method (Owner or Read-Only)."""
     client = request.getfixturevalue(ROLE_CLIENTS[role])
 
-    variant = variant_factory(product_type='album', visibility='public')
-    album_id = variant.product.album.id
-    url = reverse('api:store:albums-detail', args=[album_id])
+    variant = variant_factory(
+        product_type=product_meta['type'],
+        visibility='public',
+    )
+    obj = getattr(variant.product, product_meta['type'])
+
+    url = reverse(product_meta['detail_url_name'], args=[obj.id])
 
     if method == 'get':
         response = client.get(url)
     elif method == 'patch':
-        response = client.patch(url, data={'title': 'New Title'})
+        response = client.patch(url, data={'name': 'new name'})
     elif method == 'delete':
         response = client.delete(url)
 

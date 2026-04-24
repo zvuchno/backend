@@ -15,6 +15,7 @@
 from typing import Callable
 
 import pytest
+from django.core.files.base import ContentFile
 from django.urls import reverse
 
 from store.models import Album, Merch, Product, ProductVariant, Track
@@ -60,11 +61,19 @@ def variant_factory(user):
             album = kwargs.get('album') or Album.objects.create(
                 name='Track Album',
                 owner=user,
+                is_active=is_active,
+                is_published=is_published,
+                visibility=visibility,
             )
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
                 owner=user,
                 album=album,
+                audio_file=ContentFile(
+                    b'fake mp3 content',
+                    name='test_track.mp3',
+                ),
+                is_active=is_active,
             )
             product = Product.objects.create(
                 track=item,
@@ -105,6 +114,12 @@ def variant_factory(user):
 def album_list_url():
     """Возвращает URL-адрес эндпоинта для списка альбомов."""
     return reverse('api:store:albums-list')
+
+
+@pytest.fixture
+def track_list_url():
+    """Возвращает URL-адрес эндпоинта для списка треков."""
+    return reverse('api:store:tracks-list')
 
 
 @pytest.fixture
