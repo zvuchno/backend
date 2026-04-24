@@ -12,6 +12,7 @@ from .account import (
     password_reset_verify_schema,
     resend_verification_email_schema,
 )
+from .artist_legal_profile import artist_legal_data_schema
 from .artist_profile import (
     artist_cover_update_schema,
     artist_list_schema,
@@ -58,4 +59,5 @@ __all__ = [
     'social_error_codes_schema',
     'social_token_exchange_schema',
     'change_username_schema',
+    'artist_legal_data_schema',
 ]

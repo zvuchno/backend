@@ -9,6 +9,12 @@ from .account import (
     PhoneChangeSerializer,
     UsernameChangeSerializer,
 )
+from .artist_legal_profile import (
+    ArtistBankDataSerializer,
+    ArtistIdentityDataSerializer,
+    ArtistLegalProfileSerializer,
+    ArtistLegalSerializer,
+)
 from .artist_profile import (
     ArtistMeSerializer,
     ArtistMeUpdateSerializer,
@@ -46,4 +52,8 @@ __all__ = [
     'UsernameChangeSerializer',
     'LogoutSerializer',
     'TokenPairSerializer',
+    'ArtistIdentityDataSerializer',
+    'ArtistBankDataSerializer',
+    'ArtistLegalProfileSerializer',
+    'ArtistLegalSerializer',
 ]
