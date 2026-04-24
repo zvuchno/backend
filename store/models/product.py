@@ -36,7 +36,11 @@ class Product(models.Model):
         ALBUM = 'album', 'Album'
         MERCH = 'merch', 'Merch'
 
-    product_type = models.CharField(max_length=20, choices=ProductType.choices)
+    product_type = models.CharField(
+        'Тип продукта',
+        max_length=20,
+        choices=ProductType.choices,
+    )
     price = models.DecimalField(
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
@@ -51,10 +55,10 @@ class Product(models.Model):
         help_text='Если включено, фанаты смогут заплатить больше стоимости.',
     )
     property_name = models.CharField(
+        'Название свойства',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
-        verbose_name='Название свойства',
     )
     album = models.OneToOneField(
         'store.Album',
