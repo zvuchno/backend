@@ -12,7 +12,16 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 
 from config import settings
-from users.constants import MAX_USER_CREATE_ATTEMPTS
+from users.constants import (
+    MAX_USER_CREATE_ATTEMPTS,
+    SOCIAL_AUTH_ERRORS,
+    SOCIAL_AUTH_ERROR_BLOCKED_USER,
+    SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
+    SOCIAL_AUTH_ERROR_MISSING_EMAIL,
+    SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
+    SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
+    SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED,
+)
 from users.exceptions import SocialAuthException
 from users.helpers import (
     ensure_listener_profile,
@@ -34,13 +43,15 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         if user is None:
             return
         if not user.is_active:
-            if not user.is_active:
-                logger.warning(
-                    'Попытка заблокированного аккаунта: user_id=%s email=%s',
-                    user.pk,
-                    user.email,
-                )
-            raise SocialAuthException('Учетная запись заблокирована.')
+            logger.warning(
+                'Попытка заблокированного аккаунта: user_id=%s email=%s',
+                user.pk,
+                user.email,
+            )
+            raise SocialAuthException(
+                SOCIAL_AUTH_ERROR_BLOCKED_USER,
+                SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_BLOCKED_USER],
+            )
 
     def pre_social_login(self, request, sociallogin):
         """Вызывается сразу после аутентификации у провайдера."""
@@ -54,27 +65,19 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             self._ensure_user_is_active(user)
         except SocialAuthException as exc:
             raise ImmediateHttpResponse(
-                self._frontend_error_redirect(str(exc), provider),
+                self._frontend_error_redirect(exc.error_code, provider),
             )
 
     @transaction.atomic
     def save_user(self, request, sociallogin, form=None):
-        """Переопределим создание учетки."""
+        """Создает или находит пользователя после входа через соцсеть."""
         provider = sociallogin.account.provider
         uid = sociallogin.account.uid
         email = sociallogin.user.email
-        is_email_verified = True  # Доверяем email от провайдера.
+        provider_obj = sociallogin.account.get_provider()
+        is_email_verified = self.is_email_verified(provider_obj, email)
 
-        # TODO в зависимости от фронта убедится есть ли request.user
-        # TODO Скорее всего надо будет делать ручку для привязки
         try:
-            if request and request.user.is_authenticated:
-                user = request.user
-                self._ensure_user_is_active(user)
-                sociallogin.user = user
-                ensure_listener_profile(user)
-                return user
-
             user = self._login_with_social_data(
                 provider=provider,
                 provider_uid=uid,
@@ -83,15 +86,31 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             )
         except SocialAuthException as exc:
             logger.warning(
-                'Social auth failed: provider=%s reason=%s',
+                'Social auth failed: provider=%s code=%s',
                 provider,
-                str(exc),
+                exc.error_code,
             )
             raise ImmediateHttpResponse(
-                self._frontend_error_redirect(str(exc), provider),
+                self._frontend_error_redirect(exc.error_code, provider),
             )
 
         sociallogin.user = user
+        try:
+            sociallogin.save(request)
+        except IntegrityError:
+            logger.exception(
+                'Не удалось сохранить соц аккаунт: '
+                'provider=%s uid=%s user_id=%s',
+                provider,
+                uid,
+                user.pk,
+            )
+            raise ImmediateHttpResponse(
+                self._frontend_error_redirect(
+                    SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
+                    provider,
+                ),
+            )
         return user
 
     @staticmethod
@@ -133,10 +152,18 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 if existing_user:
                     self._ensure_user_is_active(existing_user)
                     ensure_listener_profile(existing_user)
+                    if not existing_user.is_email_verified:
+                        raise SocialAuthException(
+                            SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
+                            SOCIAL_AUTH_ERRORS[
+                                SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED
+                            ],
+                        )
                     return existing_user
                 continue
         raise SocialAuthException(
-            'Не удалось подобрать уникальный username.',
+            SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED,
+            SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED],
         )
 
     def _login_with_social_data(
@@ -158,7 +185,10 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             return user
 
         if not email:
-            raise SocialAuthException('Не передан email.')
+            raise SocialAuthException(
+                SOCIAL_AUTH_ERROR_MISSING_EMAIL,
+                SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_MISSING_EMAIL],
+            )
 
         email = normalize_email(email)
 
@@ -166,9 +196,11 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         if existing_user:
             self._ensure_user_is_active(existing_user)
             ensure_listener_profile(existing_user)
-            if is_email_verified and not existing_user.is_email_verified:
-                existing_user.is_email_verified = True
-                existing_user.save(update_fields=['is_email_verified'])
+            if not existing_user.is_email_verified:
+                raise SocialAuthException(
+                    SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
+                    SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED],
+                )
             return existing_user
 
         return self._create_account_from_social(
@@ -193,15 +225,15 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         )
         raise ImmediateHttpResponse(
             self._frontend_error_redirect(
-                'Ошибка аутентификации через OAuth.',
+                SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
                 provider_id,
             ),
         )
 
     @staticmethod
     def _frontend_error_redirect(
-        error_code,
-        provider='unknown',
+        error_code: str,
+        provider: str = 'unknown',
     ) -> HttpResponseRedirect:
         """Вспомогательный метод для редиректа на фронт с ошибкой."""
         base_url = getattr(settings, 'FRONTEND_SOCIAL_AUTH_URL', '/')

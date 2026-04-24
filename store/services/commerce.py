@@ -3,6 +3,7 @@
 from django.apps import apps
 from django.db import transaction
 
+from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
 from store.models import Product
 
 
@@ -23,7 +24,6 @@ class ProductService:
         model_name = content_instance.__class__.__name__.lower()
         # Импорт через apps, чтобы избежать циклической зависимости
         Product = apps.get_model('store', 'Product')
-        ProductVariant = apps.get_model('store', 'ProductVariant')
 
         try:
             product = content_instance.product
@@ -32,9 +32,9 @@ class ProductService:
 
         if not product.variants.exists():
             if model_name in ['album', 'track']:
-                ProductVariant.objects.create(
+                product.variants.create(
                     product=product,
-                    characteristic={'format': 'digital'},
+                    property_value=CHAR_PRESET_DIGITAL,
                     stock=None,  # Для цифры склад не нужен
                     is_active=True,
                 )
@@ -46,60 +46,43 @@ class ProductService:
         """Синхронизирует варианты мерча на основе переданных данных."""
         if not variants_data:
             # Сценарий 1: Свойств нет -> один вариант с общим стоком
-            characteristic = {'type': 'simple'}
-            # Ищем базовый вариант (даже неактивный)
-            variant = product.variants.filter(
-                characteristic=characteristic,
-            ).first()
-
-            if not variant:
-                # Создаем новый, если такого типа никогда не было
-                ProductVariant = apps.get_model('store', 'ProductVariant')
-                variant = ProductVariant.objects.create(
-                    product=product,
-                    characteristic=characteristic,
-                    stock=stock,
-                    is_active=True,
-                )
-            else:
-                # Если нашли старый — реанимируем и обновляем сток
-                variant.stock = stock
-                variant.is_active = True
-                variant.save(
-                    update_fields=['stock', 'is_active', 'characteristic'],
-                )
-            # Выключаем все остальные варианты этого продукта
+            variant, _ = product.variants.update_or_create(
+                property_value=CHAR_PRESET_SIMPLE,
+                defaults={
+                    'stock': stock,
+                    'is_active': True,
+                },
+            )
+            # Выключаем всё остальное
             product.variants.exclude(id=variant.id).update(is_active=False)
         else:
             # Сценарий 2: Есть свойства -> создаем по варианту на каждое
             ProductVariant = apps.get_model('store', 'ProductVariant')
             incoming_ids = []
 
-            for opt in variants_data:
-                v_id = opt.get('id')
+            for variant_data in variants_data:
+                variant_id = variant_data.get('id')
+                variant_value = variant_data.get('property_value')
 
-                if v_id:
-                    # Если ID пришел, обновляем существующий вариант
-                    ProductVariant.objects.filter(
-                        id=v_id,
-                        product=product,
-                    ).update(
-                        stock=opt.get('stock', 0),
-                        characteristic=opt.get('characteristics', {}),
-                        is_active=True,
-                    )
-                    incoming_ids.append(v_id)
+                lookup = {'product': product}
+                if variant_id:
+                    # Если ID пришел — ищем по нему (приоритет).
+                    lookup['id'] = variant_id
                 else:
-                    # Если ID нет, создаем новый
-                    new_v = ProductVariant.objects.create(
-                        product=product,
-                        stock=opt.get('stock', 0),
-                        characteristic=opt.get('characteristics', {}),
-                        is_active=True,
-                    )
-                    incoming_ids.append(new_v.id)
+                    # Если нет — по значению (защита от дублей).
+                    lookup['property_value'] = variant_value
 
-            # Деактивируем все варианты, которые не пришли в запросе
-            product.variants.exclude(id__in=incoming_ids).update(
-                is_active=False,
-            )
+                variant, _ = ProductVariant.objects.update_or_create(
+                    **lookup,
+                    defaults={
+                        'property_value': variant_value,
+                        'stock': variant_data.get('stock', 0),
+                        'is_active': True,
+                    },
+                )
+                incoming_ids.append(variant.id)
+
+            # Деактивируем варианты, которых нет в новом списке
+            product.variants.exclude(
+                id__in=incoming_ids,
+            ).update(is_active=False)

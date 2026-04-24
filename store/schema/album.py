@@ -26,50 +26,40 @@ album_schema = extend_schema_view(
         parameters=[
             OpenApiParameter(
                 name='genre',
-                type=OpenApiTypes.INT,
-                location=OpenApiParameter.QUERY,
-                description='Фильтр по ID жанра',
+                type=OpenApiTypes.STR,
+                description='Фильтр по slug жанра',
             ),
             OpenApiParameter(
                 name='name',
                 type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
                 description='Поиск по названию',
             ),
             OpenApiParameter(
-                name='artist_id',
-                type=OpenApiTypes.INT,
-                location=OpenApiParameter.QUERY,
-                description='Фильтр по ID профиля артиста',
-            ),
-            OpenApiParameter(
-                name='artist_name',
+                name='artist',
                 type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description='Поиск по имени артиста',
+                description='Фильтр по slug артиста',
             ),
             OpenApiParameter(
                 name='search',
                 type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description='Общий поиск (название, описание, жанр)',
+                description='Общий поиск (название, жанр)',
             ),
             OpenApiParameter(
                 name='ordering',
                 type=OpenApiTypes.STR,
-                location=OpenApiParameter.QUERY,
-                description='Сортировка (name, release_date, created_at)',
+                description=(
+                    'Сортировка (name, -name, release_date, '
+                    '-release_date, created_at, -created_at)'
+                ),
             ),
             OpenApiParameter(
                 name='limit',
                 type=OpenApiTypes.INT,
-                location=OpenApiParameter.QUERY,
                 description='Количество элементов в ответе.',
             ),
             OpenApiParameter(
                 name='offset',
                 type=OpenApiTypes.INT,
-                location=OpenApiParameter.QUERY,
                 description='Смещение от начала выборки.',
             ),
         ],

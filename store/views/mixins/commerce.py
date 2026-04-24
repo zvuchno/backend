@@ -22,13 +22,16 @@ class ProductActionMixin:
         # Обновляем общие поля продукта
         price = validated_data.get('price')
         allow_overpay = validated_data.get('allow_overpay')
+        property_name = validated_data.get('property_name')
         if price is not None:
             product.price = price
             update_fields.append('price')
         if allow_overpay is not None:
             product.allow_overpay = allow_overpay
             update_fields.append('allow_overpay')
-
+        if property_name is not None:
+            product.property_name = property_name
+            update_fields.append('property_name')
         if update_fields:
             product.save(update_fields=update_fields)
 

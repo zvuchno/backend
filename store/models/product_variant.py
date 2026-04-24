@@ -8,10 +8,10 @@ from store.constants import (
     MAX_CHAR_LENGTH,
 )
 from store.models import Product
-from users.models.abstract import ActivatableModel
+from users.models.abstract import ActivatableModel, TimestampModel
 
 
-class ProductVariant(ActivatableModel):
+class ProductVariant(ActivatableModel, TimestampModel):
     """Конкретная единица товара (SKU), доступная для покупки.
 
     Представляет конкретную конфигурацию продукта с ценой,
@@ -39,10 +39,11 @@ class ProductVariant(ActivatableModel):
         blank=True,
         help_text='Наличие на складе',
     )
-    characteristic = models.JSONField(
-        'Свойства',
-        default=dict,
+    property_value = models.CharField(
+        max_length=MAX_CHAR_LENGTH,
         blank=True,
+        null=True,
+        verbose_name='Значение свойства',
     )
 
     def generate_sku(self):
@@ -77,6 +78,12 @@ class ProductVariant(ActivatableModel):
         verbose_name = 'вариант продукта'
         verbose_name_plural = 'варианты продукта'
         ordering = ('id',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['product', 'property_value'],
+                name='unique_variant_value_per_product',
+            ),
+        ]
 
     @property
     def variant_name(self):
@@ -96,13 +103,9 @@ class ProductVariant(ActivatableModel):
             name = self.product.merch.name
         if name:
             parts.append(f'"{name}"')
-        # Характеристики
-        if self.characteristic:
-            char_values = ', '.join(
-                str(v) for v in self.characteristic.values() if v
-            )
-            if char_values:
-                parts.append(f'({char_values})')
+        # Свойства
+        if self.property_value:
+            parts.append(f'({self.property_value})')
         return ' '.join(parts)
 
     def __str__(self):

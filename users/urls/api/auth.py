@@ -10,6 +10,7 @@ from users.views import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
+    SocialAuthErrorCodesView,
     SocialLoginView,
 )
 
@@ -31,4 +32,9 @@ urlpatterns = [
         name='token_verify',
     ),
     path('social/get_tokens/', SocialLoginView.as_view(), name='social_login'),
+    path(
+        'social/error-codes/',
+        SocialAuthErrorCodesView.as_view(),
+        name='social_error_codes',
+    ),
 ]

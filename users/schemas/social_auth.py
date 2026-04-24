@@ -22,3 +22,15 @@ social_token_exchange_schema = extend_schema(
     ),
     responses={200: TokenPairSerializer},
 )
+
+social_error_codes_schema = extend_schema(
+    tags=['Auth'],
+    auth=[],
+    summary='Справочник кодов ошибок social auth',
+    description=(
+        'Возвращает словарь кодов ошибок social auth и их '
+        'базовых текстовых описаний. '
+        'Фронтенд может использовать коды как контракт, а тексты — '
+        'как fallback или для отладки.'
+    ),
+)

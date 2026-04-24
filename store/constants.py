@@ -8,6 +8,8 @@ MAX_SLUG_LENGTH = 50
 MAX_STR_LENGTH = 40
 MAX_COMMENT_LENGTH = 200
 PRICE_DECIMAL_PLACES = 2  # Количество цифр после запятой
+CHAR_PRESET_SIMPLE = 'simple'
+CHAR_PRESET_DIGITAL = 'digital'
 
 # Константы для мерча
 DESCRIPTION_MERCH_MAX_LENGTH = 1000
