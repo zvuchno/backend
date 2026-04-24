@@ -111,14 +111,17 @@ class MerchAdmin(
             'kind',
             'owner',
             'album',
-        ).prefetch_related('images_merch')
+        ).prefetch_related(
+            'images_merch',
+            'product__variants',
+        )
 
     @admin.display(description='Главное фото')
     def image_preview(self, obj):
-        image_obj = obj.images_merch.filter(is_main=True).first()
-        if image_obj:
-            return format_html(
-                '<img src="{}" width="150" height="100" />',
-                image_obj.image.url,
-            )
+        for image in obj.images_merch.all():
+            if image.is_main:
+                return format_html(
+                    '<img src="{}" width="150" height="100" />',
+                    image.image.url,
+                )
         return '-'

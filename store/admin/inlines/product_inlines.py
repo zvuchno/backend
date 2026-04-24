@@ -22,7 +22,7 @@ class ProductInline(NestedStackedInline):
 
     model = Product
     inlines = (ProductVariantInline,)
-    fields = ('price', 'allow_overpay')
+    fields = ('price', 'allow_overpay', 'property_name')
     can_delete = False
 
     def has_delete_permission(self, request, obj=None):

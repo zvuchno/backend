@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
@@ -37,14 +38,9 @@ class MerchReadSerializer(serializers.ModelSerializer):
 class VariantReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения варианта мерча."""
 
-    characteristics = serializers.SerializerMethodField()
-
     class Meta:
         model = ProductVariant
-        fields = ('id', 'sku', 'stock', 'characteristics')
-
-    def get_characteristics(self, obj):
-        return obj.characteristic or {}
+        fields = ('id', 'sku', 'stock', 'property_value')
 
 
 class MerchDetailSerializer(MerchReadSerializer):
@@ -55,6 +51,7 @@ class MerchDetailSerializer(MerchReadSerializer):
     kind = serializers.StringRelatedField()
     album = serializers.StringRelatedField()
     variants = serializers.SerializerMethodField()
+    property_name = serializers.SerializerMethodField()
 
     class Meta(MerchReadSerializer.Meta):
         fields = MerchReadSerializer.Meta.fields + (
@@ -65,6 +62,7 @@ class MerchDetailSerializer(MerchReadSerializer):
             'visibility',
             'is_published',
             'is_active',
+            'property_name',
             'variants',
         )
 
@@ -74,6 +72,13 @@ class MerchDetailSerializer(MerchReadSerializer):
             return product.allow_overpay
         return False
 
+    def get_property_name(self, obj):
+        product = getattr(obj, 'product', None)
+        if product:
+            return product.property_name
+        return None
+
+    @extend_schema_field(VariantReadSerializer(many=True))
     def get_variants(self, obj):
         product = getattr(obj, 'product', None)
         if not product:
@@ -85,19 +90,15 @@ class MerchDetailSerializer(MerchReadSerializer):
 class VariantWriteSerializer(serializers.Serializer):
     """Сериализатор для записи варианта мерча."""
 
+    value = serializers.CharField()
     stock = serializers.IntegerField(min_value=0, required=True)
-    characteristics = serializers.DictField(
-        child=serializers.CharField(allow_blank=True),
-        required=True,
-        help_text='JSON',
-    )
 
     def update(self, instance, validated_data):
         instance.stock = validated_data.get('stock', instance.stock)
-        instance.characteristic = validated_data.get(
-            'characteristics', instance.characteristic
+        instance.property_value = validated_data.get(
+            'value', instance.property_value
         )
-        instance.save(update_fields=['stock', 'characteristic'])
+        instance.save(update_fields=['stock', 'property_value'])
         return instance
 
 
@@ -111,6 +112,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     allow_overpay = serializers.BooleanField(required=False)
+    property_name = serializers.CharField(required=False, allow_blank=True)
     variants = VariantWriteSerializer(many=True, required=False)
 
     class Meta:
@@ -125,6 +127,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'visibility',
             'is_published',
             'is_active',
+            'property_name',
             'variants',
         )
 
@@ -135,6 +138,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
         validated_data.pop('variants', None)
+        validated_data.pop('property_name', None)
 
         return super().create(validated_data)
 
@@ -142,5 +146,6 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
         validated_data.pop('variants', None)
+        validated_data.pop('property_name', None)
 
         return super().update(instance, validated_data)
