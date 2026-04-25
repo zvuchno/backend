@@ -41,8 +41,8 @@ class Product(models.Model):
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
-        validators=[MinValueValidator(Decimal('0.00'))],
-        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.0000'))],
+        default=Decimal('0.0000'),
         help_text='Цена, руб.',
     )
     allow_overpay = models.BooleanField(
