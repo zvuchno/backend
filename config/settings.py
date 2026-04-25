@@ -291,6 +291,4 @@ if FIELD_ENCRYPTION_ENABLED and not FIELD_ENCRYPTION_KEYS:
         'FIELD_ENCRYPTION_KEYS is required when field encryption is enabled.'
     )
 
-FERNET_KEYS = FIELD_ENCRYPTION_KEYS
-# использовать 32-bit and url-safe base64-encoded bytestrings
-FERNET_USE_HKDF = False
+SALT_KEY = FIELD_ENCRYPTION_KEYS
