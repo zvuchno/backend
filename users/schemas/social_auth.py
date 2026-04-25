@@ -10,8 +10,6 @@ social_token_exchange_schema = extend_schema(
     description=(
         'Старый session-based flow. '
         'Не стоит использовать для новой интеграции фронтенда.\n\n'
-        'Устаревший fallback endpoint для старого сценария social auth. '
-        'Не использовать для новой интеграции фронтенда.\n\n'
         'Работает только после успешной аутентификации через allauth '
         'и установки session cookie: endpoint обменивает текущую '
         'серверную сессию на access и refresh JWT токены.\n\n'
