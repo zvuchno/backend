@@ -31,7 +31,10 @@ class TestProductService:
 
     def test_ensure_commerce_idempotency(self, variant_factory):
         """Повторный вызов не создает дубликаты."""
-        variant = variant_factory(product_type='track')
+        variant = variant_factory(
+            product_type='track',
+            property_value=CHAR_PRESET_DIGITAL,
+        )
         product_existing = variant.product
         track = product_existing.track
 
@@ -219,3 +222,26 @@ class TestSyncMerchVariants:
         assert variant.is_active is True
         assert variant.stock == 50
         assert product.variants.filter(property_value='L').count() == 1
+
+    def test_security_prevent_id_hijacking(self, variant_factory, user):
+        """Чужой ID в данных → создается новый вариант, чужой не меняется."""
+        other_variant = variant_factory(product_type='merch')
+        other_id = other_variant.id
+
+        # Наш мерч
+        my_merch = Merch.objects.create(name='My Merch', owner=user)
+        data = {
+            'variants': [
+                {'id': other_id, 'property_value': 'Fake Size', 'stock': 99},
+            ],
+        }
+
+        ProductService.ensure_commerce(my_merch, validated_data=data)
+
+        # Наш вариант создался с новым ID
+        new_variant = my_merch.product.variants.get(property_value='Fake Size')
+        assert new_variant.id != other_id
+
+        # Чужой вариант остался нетронутым
+        other_variant.refresh_from_db()
+        assert other_variant.property_value != 'Fake Size'

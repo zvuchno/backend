@@ -29,13 +29,13 @@ class ProductService:
             defaults=defaults,
         )
 
-        # Если создан — проверяем нужно ли добавить цифровой вариант
-        if created:
-            if model_name in ['album', 'track']:
-                cls._ensure_digital_variant(product)
         # Если продукт уже был — обновляем его поля
-        else:
+        if not created:
             cls._update_product_base_fields(product, validated_data)
+
+        # Для альбомов и треков гарантируем наличие цифрового варианта
+        if model_name in ['album', 'track']:
+            cls._ensure_digital_variant(product)
 
         # Варианты мерча синхронизируем всегда
         if model_name == 'merch':
@@ -98,11 +98,15 @@ class ProductService:
                 variant_value = variant_data.get('property_value')
 
                 lookup = {'product': product}
+                # Если ID пришел — ищем по нему (приоритет).
                 if variant_id:
-                    # Если ID пришел — ищем по нему (приоритет).
-                    lookup['id'] = variant_id
+                    # Проверяем, существует ли такой ID у этого продукта
+                    if product.variants.filter(id=variant_id).exists():
+                        lookup['id'] = variant_id
+                    else:
+                        # Если ID чужой — игнорируем его и ищем по значению
+                        lookup['property_value'] = variant_value
                 else:
-                    # Если нет — по значению (защита от дублей).
                     lookup['property_value'] = variant_value
 
                 variant, _ = ProductVariant.objects.update_or_create(
