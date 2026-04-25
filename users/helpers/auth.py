@@ -1,6 +1,12 @@
 """Хелперы для работы с аутентификацией."""
 
+import logging
+
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from store.services.cart_service import CartService
+
+logger = logging.getLogger(__name__)
 
 
 def issue_tokens_for_user(user) -> dict:
@@ -32,3 +38,13 @@ def set_unusable_password(user) -> None:
 
 def run_actions_after_authentication(user, request) -> None:
     """Выполнить действия после аутентификации."""
+    # Аутентификация пользователя с объединением корзин.
+    # После успешной валидации учетных данных выполняется merge
+    # гостевой корзины (session_key) с корзиной пользователя.
+    try:
+        CartService.merge_carts(user, request)
+    except Exception:
+        logger.exception(
+            'Не удалось объединить корзину для пользователя id=%s',
+            user.id,
+        )

@@ -42,7 +42,7 @@ class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
         filters.OrderingFilter,
     )
     filterset_class = AlbumFilter
-    search_fields = ('name', 'description', 'genre__name')
+    search_fields = ('name', 'genre__name')
     ordering_fields = ('name', 'created_at', 'release_date')
     ordering = ('-created_at', 'name')
 

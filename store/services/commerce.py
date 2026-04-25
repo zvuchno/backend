@@ -3,6 +3,7 @@
 from django.apps import apps
 from django.db import transaction
 
+from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
 from store.models import Product
 
 
@@ -23,7 +24,6 @@ class ProductService:
         model_name = content_instance.__class__.__name__.lower()
         # Импорт через apps, чтобы избежать циклической зависимости
         Product = apps.get_model('store', 'Product')
-        ProductVariant = apps.get_model('store', 'ProductVariant')
 
         try:
             product = content_instance.product
@@ -31,12 +31,58 @@ class ProductService:
             product = Product.objects.create(**{model_name: content_instance})
 
         if not product.variants.exists():
-            variant_data = {'product': product}
-            if model_name != 'merch':
-                variant_data.update({
-                    'characteristic': {'format': 'digital'},
-                    'stock': None,  # Для цифры склад не нужен
-                })
-            ProductVariant.objects.create(**variant_data)
-
+            if model_name in ['album', 'track']:
+                product.variants.create(
+                    product=product,
+                    property_value=CHAR_PRESET_DIGITAL,
+                    stock=None,  # Для цифры склад не нужен
+                    is_active=True,
+                )
         return product
+
+    @staticmethod
+    @transaction.atomic()
+    def sync_merch_variants(product, stock, variants_data=None) -> None:
+        """Синхронизирует варианты мерча на основе переданных данных."""
+        if not variants_data:
+            # Сценарий 1: Свойств нет -> один вариант с общим стоком
+            variant, _ = product.variants.update_or_create(
+                property_value=CHAR_PRESET_SIMPLE,
+                defaults={
+                    'stock': stock,
+                    'is_active': True,
+                },
+            )
+            # Выключаем всё остальное
+            product.variants.exclude(id=variant.id).update(is_active=False)
+        else:
+            # Сценарий 2: Есть свойства -> создаем по варианту на каждое
+            ProductVariant = apps.get_model('store', 'ProductVariant')
+            incoming_ids = []
+
+            for variant_data in variants_data:
+                variant_id = variant_data.get('id')
+                variant_value = variant_data.get('property_value')
+
+                lookup = {'product': product}
+                if variant_id:
+                    # Если ID пришел — ищем по нему (приоритет).
+                    lookup['id'] = variant_id
+                else:
+                    # Если нет — по значению (защита от дублей).
+                    lookup['property_value'] = variant_value
+
+                variant, _ = ProductVariant.objects.update_or_create(
+                    **lookup,
+                    defaults={
+                        'property_value': variant_value,
+                        'stock': variant_data.get('stock', 0),
+                        'is_active': True,
+                    },
+                )
+                incoming_ids.append(variant.id)
+
+            # Деактивируем варианты, которых нет в новом списке
+            product.variants.exclude(
+                id__in=incoming_ids,
+            ).update(is_active=False)

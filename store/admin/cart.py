@@ -17,7 +17,7 @@ class ProductVariantAdmin(admin.ModelAdmin):
 
     search_fields = (
         'sku',
-        'characteristic',
+        'property_value',
         'product__track__name',
         'product__album__name',
         'product__merch__name',
@@ -38,7 +38,7 @@ class CartItemInline(admin.TabularInline):
         'get_allow_overpay',
         'quantity',
         'get_price',
-        'custom_price',
+        'price_with_donation',
         'get_line_total',
         'comment',
     )
@@ -88,11 +88,11 @@ class CartItemInline(admin.TabularInline):
 class CartAdmin(admin.ModelAdmin):
     """Админка модели Cart с вложенными позициями."""
 
-    list_display = ('get_user', 'get_subtotal_sum', 'get_discounted_subtotal')
+    list_display = ('get_user', 'get_subtotal_sum', 'get_total')
     search_fields = ('user__username', 'user__email')
-    fields = ('user', 'get_subtotal_sum', 'get_discounted_subtotal')
+    fields = ('user', 'get_subtotal_sum', 'get_total')
     autocomplete_fields = ('user',)
-    readonly_fields = ('get_subtotal_sum', 'get_discounted_subtotal')
+    readonly_fields = ('get_subtotal_sum', 'get_total')
     inlines = (CartItemInline,)
 
     @admin.display(description='Покупатель', ordering='user')
@@ -110,8 +110,8 @@ class CartAdmin(admin.ModelAdmin):
         return f'{obj.subtotal:,.2f}'.replace(',', ' ')
 
     @admin.display(description='Итого (руб.)')
-    def get_discounted_subtotal(self, obj):
-        return f'{obj.discounted_subtotal:,.2f}'.replace(',', ' ')
+    def get_total(self, obj):
+        return f'{obj.total:,.2f}'.replace(',', ' ')
 
     def get_queryset(self, request):
         return super().get_queryset(request).with_subtotal()
