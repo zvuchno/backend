@@ -49,3 +49,26 @@ SOCIAL_AUTH_ERRORS = {
         'Ошибка аутентификации через OAuth.'
     ),
 }
+
+# Персональные данные
+NAME_FIELD_MAX_LENGTH = 150
+ADDRESS_FIELD_MAX_LENGTH = 500
+
+DOCUMENT_TYPE_MAX_LENGTH = 32
+PASSPORT_SERIES_MAX_LENGTH = 4  # РФ: строго 4 цифры, ослабить для других.
+PASSPORT_NUMBER_MAX_LENGTH = 6  # РФ: строго 6 цифр, ослабить до 20 для других.
+PASSPORT_ISSUED_BY_MAX_LENGTH = 255
+
+INN_MAX_LENGTH = 12
+BANK_NAME_MAX_LENGTH = 255
+BIK_MAX_LENGTH = 9  # РФ: строго 9 цифр
+ACCOUNT_NUMBER_MAX_LENGTH = 20  # РФ: строго 20 цифр
+
+RECIPIENT_TYPE_MAX_LENGTH = 32
+TAXATION_SYSTEM_MAX_LENGTH = 16
+
+KPP_MAX_LENGTH = 9
+OGRN_MAX_LENGTH = 13
+OGRNIP_MAX_LENGTH = 15
+
+COMMENT_MAX_LENGTH = 255
