@@ -18,7 +18,7 @@ from django.db.models.functions import Coalesce
 from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
 )
 from users.models.abstract import TimestampModel
 
@@ -49,7 +49,7 @@ class CartQuerySet(models.QuerySet):
             default=F('items__product_variant__product__price'),
             output_field=DecimalField(
                 max_digits=MAX_PRICE_DIGITS,
-                decimal_places=PRICE_DECIMAL_PLACES,
+                decimal_places=MONEY_INTERNAL_PRECISION,
             ),
         )
 
@@ -58,7 +58,7 @@ class CartQuerySet(models.QuerySet):
             unit_price_expr * F('items__quantity'),
             output_field=DecimalField(
                 max_digits=MAX_PRICE_DIGITS,
-                decimal_places=PRICE_DECIMAL_PLACES,
+                decimal_places=MONEY_INTERNAL_PRECISION,
             ),
         )
 
@@ -69,7 +69,7 @@ class CartQuerySet(models.QuerySet):
                 Decimal('0.00'),
                 output_field=DecimalField(
                     max_digits=MAX_PRICE_DIGITS,
-                    decimal_places=PRICE_DECIMAL_PLACES,
+                    decimal_places=MONEY_INTERNAL_PRECISION,
                 ),
             ),
         ).select_related('user')
