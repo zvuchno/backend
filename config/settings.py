@@ -274,3 +274,23 @@ LOGGING = logging_config.LOGGING
 
 # Настройка отправки ошибок проекта в GlitchTip
 init_glitchtip()
+
+# Параметры шифрования полей в бд.
+FIELD_ENCRYPTION_ENABLED = os.getenv(
+    'FIELD_ENCRYPTION_ENABLED',
+    'False'
+).lower() == 'true'
+FIELD_ENCRYPTION_KEYS = [
+    key.strip()
+    for key in os.getenv('FIELD_ENCRYPTION_KEYS', '').split(',')
+    if key.strip()
+]
+
+if FIELD_ENCRYPTION_ENABLED and not FIELD_ENCRYPTION_KEYS:
+    raise RuntimeError(
+        'FIELD_ENCRYPTION_KEYS is required when field encryption is enabled.'
+    )
+
+FERNET_KEYS = FIELD_ENCRYPTION_KEYS
+# использовать 32-bit and url-safe base64-encoded bytestrings
+FERNET_USE_HKDF = False

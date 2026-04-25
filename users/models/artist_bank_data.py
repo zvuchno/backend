@@ -2,6 +2,10 @@
 
 from django.db import models
 
+from common.fields import (
+    EncryptedCharField,
+)
+
 from .abstract import TimestampModel
 from users.constants import (
     ACCOUNT_NUMBER_MAX_LENGTH,
@@ -35,7 +39,7 @@ class ArtistBankData(TimestampModel):
         verbose_name='Юридический профиль',
     )
 
-    inn = models.CharField(
+    inn = EncryptedCharField(
         'ИНН',
         max_length=INN_MAX_LENGTH,
         blank=True,
@@ -53,13 +57,13 @@ class ArtistBankData(TimestampModel):
         blank=True,
         validators=[validate_bik],
     )
-    correspondent_account = models.CharField(
+    correspondent_account = EncryptedCharField(
         'Корреспондентский счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
         validators=[validate_correspondent_account],
     )
-    checking_account = models.CharField(
+    checking_account = EncryptedCharField(
         'Расчетный счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
@@ -69,7 +73,7 @@ class ArtistBankData(TimestampModel):
     def save(self, *args, **kwargs):
         """Сохраняет объект после полной валидации модели."""
         self.full_clean()
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def clean(self):
         """Нормализует поля банковских реквизитов."""

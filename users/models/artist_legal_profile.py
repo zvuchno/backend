@@ -3,6 +3,10 @@
 from django.conf import settings
 from django.db import models
 
+from common.fields import (
+    EncryptedCharField,
+)
+
 from .abstract import TimestampModel
 from users.constants import (
     NAME_FIELD_MAX_LENGTH,
@@ -49,7 +53,7 @@ class ArtistLegalProfile(TimestampModel):
         max_length=RECIPIENT_TYPE_MAX_LENGTH,
         choices=RecipientType.choices,
     )
-    recipient_name = models.CharField(
+    recipient_name = EncryptedCharField(
         'Наименование получателя',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
