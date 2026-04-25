@@ -16,6 +16,7 @@ class ConsentDocumentAdmin(admin.ModelAdmin):
         'document_type',
         'version',
         'created_at',
+        'updated_at',
         'is_active',
     )
     list_filter = (
@@ -40,7 +41,7 @@ class ConsentDocumentAdmin(admin.ModelAdmin):
             },
         ),
         (
-            'Служебные поля',
+            'Системная информация',
             {
                 'fields': ('created_at', 'updated_at'),
             },

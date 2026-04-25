@@ -23,36 +23,44 @@ class UserConsent(TimestampModel):
     - фиксирует технические данные (IP, User-Agent)
     """
 
+    email = models.EmailField()
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name='consents',
+        verbose_name='Пользователь',
     )
-    order = models.ForeignKey(
+    """order = models.ForeignKey(
         'store.Order',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='consents',
-    )
+        verbose_name='id заказа',
+    )"""
     accepted_at = models.DateTimeField(
+        'Дата соглашения',
         auto_now_add=True,
         help_text='Дата и время принятия согласия',
     )
     ip_address = models.GenericIPAddressField(
+        'IP-address',
         null=True,
         blank=True,
         help_text='IP-адрес пользователя в момент принятия',
     )
     user_agent = models.TextField(
+        'Пользовательский агент',
         null=True,
         blank=True,
-        help_text='User-Agent клиента пользователя',
+        help_text='Agent клиента пользователя',
     )
     document = models.ForeignKey(
-        'ConsentDocument',
+        'users.ConsentDocument',
         on_delete=models.PROTECT,
+        verbose_name='Принятый документ',
     )
 
     class Meta:
@@ -61,4 +69,7 @@ class UserConsent(TimestampModel):
         ordering = ('-created_at',)
 
     def __str__(self):
-        return f'{self.user.email} → [ {self.document} ]'
+        return (
+            f'{self.user.email if self.user else self.email} → '
+            f'[ {self.document} ]'
+        )

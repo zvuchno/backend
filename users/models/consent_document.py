@@ -30,12 +30,17 @@ class ConsentDocument(ActivatableModel, TimestampModel):
     document_type = models.ForeignKey(
         'users.DocumentType',
         on_delete=models.CASCADE,
+        verbose_name='Тип документа',
     )
 
     version = models.CharField('Версия', max_length=20)
 
     content = models.TextField('Содержание')  # Текст документа
-    content_hash = models.CharField(max_length=64, blank=True)  # SHA256
+    content_hash = models.CharField(  # SHA256
+        'hash документа',
+        max_length=64,
+        blank=True,
+    )
 
     def _calculate_hash(self) -> str:
         return hashlib.sha256(self.content.encode('utf-8')).hexdigest()

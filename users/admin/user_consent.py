@@ -13,9 +13,54 @@ class UserConsentAdmin(admin.ModelAdmin):
     """Админка модели UserConsent."""
 
     list_display = (
-        'user__email',
+        'email',
+        'is_registered',
         'document',
         'accepted_at',
     )
-    list_filter = ('user__email',)
-    search_fields = ('user__email',)
+    readonly_fields = (
+        'email',
+        'user',
+        'created_at',
+        'updated_at',
+        'accepted_at',
+        'document',
+        'user_agent',
+        'ip_address',
+    )
+    list_filter = ('accepted_at',)
+    search_fields = ('email', 'user__email', 'document')
+    fieldsets = (
+        (
+            'Пользователь',
+            {
+                'fields': (
+                    'email',
+                    'user',
+                ),
+            },
+        ),
+        (
+            'Согласие',
+            {
+                'fields': (
+                    'document',
+                    'accepted_at',
+                ),
+            },
+        ),
+        (
+            'Дополнительно',
+            {
+                'fields': (
+                    'ip_address',
+                    'user_agent',
+                ),
+            },
+        ),
+    )
+
+    @admin.display(description='Зарегистрирован', boolean=True)
+    def is_registered(self, obj):
+        """Проверяет, привязано ли согласие к профилю пользователя."""
+        return obj.user_id is not None
