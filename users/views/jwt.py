@@ -5,6 +5,10 @@
 и обновления JWT-токенов.
 """
 
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from allauth.socialaccount.providers.vk.views import VKOAuth2Adapter
+from allauth.socialaccount.providers.yandex.views import YandexOAuth2Adapter
+from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -19,11 +23,16 @@ from rest_framework_simplejwt.views import (
 
 from users.schemas import (
     logout_schema,
+    social_auth_schema,
     token_obtain_schema,
     token_refresh_schema,
     token_verify_schema,
 )
-from users.serializers import CustomTokenObtainPairSerializer
+from users.serializers import (
+    CustomTokenObtainPairSerializer,
+    SocialAuthInputSerializer,
+)
+from users.views.mixins import SocialAuthMixin
 
 
 @token_obtain_schema
@@ -101,3 +110,21 @@ class CustomLogoutView(APIView):
                 {'refresh': 'Некорректный refresh токен.'},
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@social_auth_schema
+class VKLogin(SocialAuthMixin, SocialLoginView):
+    """Аутентификация через ВК."""
+
+    adapter_class = VKOAuth2Adapter
+    serializer_class = SocialAuthInputSerializer
+    client_class = OAuth2Client
+
+
+@social_auth_schema
+class YandexLogin(SocialAuthMixin, SocialLoginView):
+    """Аутентификация через Яндекс."""
+
+    adapter_class = YandexOAuth2Adapter
+    serializer_class = SocialAuthInputSerializer
+    client_class = OAuth2Client

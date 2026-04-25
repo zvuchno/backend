@@ -11,7 +11,9 @@ from users.views import (
     CustomTokenRefreshView,
     CustomTokenVerifyView,
     SocialAuthErrorCodesView,
-    SocialLoginView,
+    SocialSessionExchangeView,
+    VKLogin,
+    YandexLogin,
 )
 
 urlpatterns = [
@@ -31,10 +33,16 @@ urlpatterns = [
         CustomTokenVerifyView.as_view(),
         name='token_verify',
     ),
-    path('social/get_tokens/', SocialLoginView.as_view(), name='social_login'),
+    path(
+        'social/get_tokens/',
+        SocialSessionExchangeView.as_view(),
+        name='social_login',
+    ),
     path(
         'social/error-codes/',
         SocialAuthErrorCodesView.as_view(),
         name='social_error_codes',
     ),
+    path('social/vk/', VKLogin.as_view(), name='vk_login'),
+    path('social/yandex/', YandexLogin.as_view(), name='yandex_login'),
 ]
