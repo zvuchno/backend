@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+from rest_framework.exceptions import ValidationError
 
 from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
 from store.models import Album, Merch, Product
@@ -224,11 +225,10 @@ class TestSyncMerchVariants:
         assert product.variants.filter(property_value='L').count() == 1
 
     def test_security_prevent_id_hijacking(self, variant_factory, user):
-        """Чужой ID в данных → создается новый вариант, чужой не меняется."""
-        other_variant = variant_factory(product_type='merch')
-        other_id = other_variant.id
+        """Передача чужого ID варианта должна приводить к ValidationError."""
+        other_merch = variant_factory(product_type='merch')
+        other_id = other_merch.id
 
-        # Наш мерч
         my_merch = Merch.objects.create(name='My Merch', owner=user)
         data = {
             'variants': [
@@ -236,12 +236,8 @@ class TestSyncMerchVariants:
             ],
         }
 
-        ProductService.ensure_commerce(my_merch, validated_data=data)
+        with pytest.raises(ValidationError) as excinfo:
+            ProductService.ensure_commerce(my_merch, validated_data=data)
 
-        # Наш вариант создался с новым ID
-        new_variant = my_merch.product.variants.get(property_value='Fake Size')
-        assert new_variant.id != other_id
-
-        # Чужой вариант остался нетронутым
-        other_variant.refresh_from_db()
-        assert other_variant.property_value != 'Fake Size'
+        assert f'ID {other_id} не принадлежит' in str(excinfo.value)
+        assert my_merch.product.variants.count() == 0

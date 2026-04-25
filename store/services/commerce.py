@@ -1,6 +1,7 @@
 """Модуль бизнес-логики управления коммерческой инфраструктурой контента."""
 
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
 from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
 from store.models import Product, ProductVariant
@@ -101,12 +102,14 @@ class ProductService:
                 # Если ID пришел — ищем по нему (приоритет).
                 if variant_id:
                     # Проверяем, существует ли такой ID у этого продукта
-                    if product.variants.filter(id=variant_id).exists():
-                        lookup['id'] = variant_id
-                    else:
-                        # Если ID чужой — игнорируем его и ищем по значению
-                        lookup['property_value'] = variant_value
+                    if not product.variants.filter(id=variant_id).exists():
+                        raise ValidationError({
+                            'variants': f'Вариант с ID {variant_id} '
+                            'не принадлежит данному продукту.',
+                        })
+                    lookup['id'] = variant_id
                 else:
+                    # Если ID нет — ищем по значению (защита от дублей)
                     lookup['property_value'] = variant_value
 
                 variant, _ = ProductVariant.objects.update_or_create(
