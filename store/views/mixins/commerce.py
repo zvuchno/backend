@@ -6,42 +6,17 @@ from store.services import ProductService
 
 
 class ProductActionMixin:
-    """Миксин для ViewSet, обеспечивающий коммерческую обвязку контента.
+    """Миксин для ViewSet, интегрирующий контент с коммерческим слоем системы.
 
-    Использует ProductService для гарантии существования связанных
-    объектов (Product/Variant) и выполняет синхронизацию их полей
-    на основе данных из сериализатора.
+    Обеспечивает автоматический запуск бизнес-логики через ProductService
+    после успешного сохранения основной модели. Гарантирует наличие
+    связанных объектов (Product/Variant) и актуализацию их данных
+    на основе входящего запроса.
     """
 
     def _update_product_data(self, instance, validated_data) -> None:
-        """Вспомогательный метод для синхронизации цен."""
-        # Сначала гарантируем базовые связи
-        product = ProductService.ensure_commerce(instance)
-
-        update_fields = []
-        # Обновляем общие поля продукта
-        price = validated_data.get('price')
-        allow_overpay = validated_data.get('allow_overpay')
-        property_name = validated_data.get('property_name')
-        if price is not None:
-            product.price = price
-            update_fields.append('price')
-        if allow_overpay is not None:
-            product.allow_overpay = allow_overpay
-            update_fields.append('allow_overpay')
-        if property_name is not None:
-            product.property_name = property_name
-            update_fields.append('property_name')
-        if update_fields:
-            product.save(update_fields=update_fields)
-
-        # Специфичная логика для мерча
-        if instance._meta.model_name == 'merch':
-            ProductService.sync_merch_variants(
-                product=product,
-                stock=validated_data.get('stock', 0),
-                variants_data=validated_data.get('variants'),
-            )
+        """Инициирует процесс синхронизации коммерческих данных.."""
+        ProductService.ensure_commerce(instance, validated_data)
 
     def perform_create(self, serializer):
         with transaction.atomic():
