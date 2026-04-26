@@ -61,16 +61,18 @@ class OrderAdmin(admin.ModelAdmin):
         'user',
         'status',
         'delivery',
-        'grand_total',
+        'total',
     )
     list_editable = ('status',)
     readonly_fields = (
         'order_number',
         'user',
-        'items_total',
+        'subtotal',
         'delivery_price',
-        'grand_total',
+        'total',
         'comment',
+        'created_at',
+        'updated_at',
     )
     search_fields = (
         'order_number',
@@ -122,9 +124,18 @@ class OrderAdmin(admin.ModelAdmin):
             'Итоги',
             {
                 'fields': (
-                    'items_total',
+                    'subtotal',
                     'delivery_price',
-                    'grand_total',
+                    'total',
+                ),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'fields': (
+                    'created_at',
+                    'updated_at',
                 ),
             },
         ),
