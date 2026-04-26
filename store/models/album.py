@@ -8,6 +8,7 @@ from django.db import models
 
 from store.constants import MAX_STR_LENGTH
 from store.models.abstract import BaseContent, VisibilityModel
+from store.querysets import VisibilityQuerySet
 from store.validators import validate_file_size
 
 
@@ -31,6 +32,7 @@ class Album(BaseContent, VisibilityModel):
         null=True,
         validators=(validate_file_size,),
     )
+    objects = VisibilityQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'альбом'

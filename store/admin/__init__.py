@@ -7,6 +7,7 @@
 from .album import AlbumAdmin
 from .cart import CartAdmin
 from .delivery import DeliveryAdmin
+from .favorite import FavoriteAdmin
 from .genre import GenreAdmin
 from .merch import MerchAdmin
 from .merch_kind import MerchKindAdmin
@@ -17,6 +18,7 @@ __all__ = [
     'AlbumAdmin',
     'CartAdmin',
     'DeliveryAdmin',
+    'FavoriteAdmin',
     'GenreAdmin',
     'MerchKindAdmin',
     'MerchAdmin',

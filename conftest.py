@@ -24,29 +24,87 @@ User = get_user_model()
 # User fixtures
 # =================================
 @pytest.fixture
-def user(db):
-    """Тестовый пользователь."""
-    password = 'Pas12345'
-    user = User.objects.create_user(
-        email='test@zvuchno.com',
-        username='Zvuchno_tester',
-        password=password,
-    )
-    user.raw_password = password
-    return user
+def user_factory(db):
+    """Фабрика для создания пользователей."""
+
+    def create_user(**kwargs) -> User:
+        password = kwargs.pop('password', 'Pas12345')
+        defaults = {
+            'email': 'user@test.com',
+            'username': 'user',
+        }
+        defaults.update(kwargs)
+        user = User.objects.create_user(password=password, **defaults)
+        user.raw_password = password
+        return user
+
+    return create_user
 
 
 @pytest.fixture
-def api_client(db):
+def user(user_factory):
+    """Тестовый пользователь."""
+    return user_factory()
+
+
+@pytest.fixture
+def other_user(user_factory):
+    """Другой пользователь (не владелец объектов)."""
+    return user_factory(
+        email='other@test.com',
+        username='other_user',
+    )
+
+
+@pytest.fixture
+def staff_user(user_factory):
+    """Администратор (видит всё)."""
+    return user_factory(
+        email='staff@test.com',
+        username='staff',
+        is_staff=True,
+        is_superuser=True,
+    )
+
+
+# =================================
+# Client fixtures
+# =================================
+@pytest.fixture
+def api_client():
     """Обычный клиент для анонимных запросов."""
     return APIClient()
 
 
 @pytest.fixture
-def auth_client(api_client, user):
-    """Клиент с уже подложенным JWT токеном."""
-    api_client.force_authenticate(user=user)
-    return api_client
+def client_factory():
+    """Фабрика для создания API-клиентов с авторизацией."""
+
+    def create_client(user=None) -> APIClient:
+        client = APIClient()
+        if user:
+            client.force_authenticate(user=user)
+        return client
+
+    return create_client
+
+
+@pytest.fixture
+def auth_client(client_factory, user):
+    """Клиент авторизованного пользователя."""
+    return client_factory(user)
+
+
+@pytest.fixture
+def other_client(client_factory, other_user):
+    """Клиент другого пользователя."""
+    return client_factory(other_user)
+
+
+@pytest.fixture
+def staff_client(client_factory, staff_user):
+    """Клиент администратора."""
+    return client_factory(staff_user)
 
 
 # =================================

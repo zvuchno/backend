@@ -22,10 +22,19 @@ from .jwt import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
+    VKLogin,
+    YandexLogin,
 )
 from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
-from .social_auth import SocialLoginView
+from .social_auth import (
+    SocialAuthErrorCodesView,
+    SocialSessionExchangeView,
+    redirect_social_auth_cancelled,
+    redirect_social_auth_confirm_email,
+    redirect_social_auth_error,
+    redirect_social_auth_signup,
+)
 
 __all__ = [
     'ArtistCoverUpdateView',
@@ -48,6 +57,13 @@ __all__ = [
     'PasswordResetConfirmView',
     'PasswordResetRequestView',
     'PasswordResetVerifyView',
+    'redirect_social_auth_cancelled',
+    'redirect_social_auth_error',
+    'redirect_social_auth_signup',
+    'redirect_social_auth_confirm_email',
     'ResendVerificationEmailView',
-    'SocialLoginView',
+    'SocialAuthErrorCodesView',
+    'SocialSessionExchangeView',
+    'VKLogin',
+    'YandexLogin',
 ]

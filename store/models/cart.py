@@ -42,7 +42,7 @@ class CartQuerySet(models.QuerySet):
             When(
                 items__product_variant__product__allow_overpay=True,
                 then=Coalesce(
-                    F('items__custom_price'),
+                    F('items__price_with_donation'),
                     F('items__product_variant__product__price'),
                 ),
             ),
@@ -106,7 +106,12 @@ class Cart(TimestampModel):
         )['total']
 
     @property
-    def discounted_subtotal(self):
+    def discount_promocode(self):
+        """Сумма скидки по промокоду."""
+        return Decimal('0.00')  # Пока не реализованы промокоды TODO: доделать
+
+    @property
+    def total(self):
         """Сумма корзины с учетом промокода."""
         return self.subtotal  # Пока не реализованы промокоды TODO: доделать
 

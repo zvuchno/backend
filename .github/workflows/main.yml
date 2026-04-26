@@ -1,12 +1,15 @@
 name: Main Zvuchno workflow
 
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
     branches:
       - main
       - develop
-      - feat/104-docker-add-healthchecks
 
 jobs:
 

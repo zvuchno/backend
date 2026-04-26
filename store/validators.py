@@ -14,24 +14,24 @@ def validate_file_size(value):
     return value
 
 
-def validate_custom_price(product, custom_price):
+def validate_price_with_donation(product, price_with_donation):
     """Проверяет корректность введенной кастомной цены.
 
-    Если для товара разрешена переплата, проверяет, чтобы custom_price
+    Если для товара разрешена переплата, проверяет, чтобы price_with_donation
     была не ниже номинальной цены продукта. Если переплата запрещена,
-    проверяет, чтобы поле custom_price оставалось пустым.
+    проверяет, чтобы поле price_with_donation оставалось пустым.
     """
-    if custom_price is None:
+    if price_with_donation is None:
         return
 
     if not product.allow_overpay:
         raise ValidationError({
-            'custom_price': 'Для этого товара переплата '
+            'price_with_donation': 'Для этого товара переплата '
             'не предусмотрена. Пожалуйста, оставьте поле пустым.',
         })
 
-    if custom_price < product.price:
+    if price_with_donation < product.price:
         raise ValidationError({
-            'custom_price': f'Цена с донатом не может быть ниже '
+            'price_with_donation': f'Цена с донатом не может быть ниже '
             f'номинала ({product.price} руб.)',
         })

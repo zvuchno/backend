@@ -40,6 +40,7 @@ ADMIN_REORDER = (
             'store.Order',
             'store.Cart',
             'store.Delivery',
+            'store.Favorite',
         ),
     },
     # Объединяем пользователей (users) и системные права доступа (auth)

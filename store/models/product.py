@@ -12,6 +12,7 @@ from django.db import models
 from django.db.models import Q
 
 from store.constants import (
+    MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     PRICE_DECIMAL_PLACES,
 )
@@ -35,7 +36,11 @@ class Product(models.Model):
         ALBUM = 'album', 'Album'
         MERCH = 'merch', 'Merch'
 
-    product_type = models.CharField(max_length=20, choices=ProductType.choices)
+    product_type = models.CharField(
+        'Тип продукта',
+        max_length=20,
+        choices=ProductType.choices,
+    )
     price = models.DecimalField(
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
@@ -48,6 +53,12 @@ class Product(models.Model):
         'Разрешить платить больше',
         default=False,
         help_text='Если включено, фанаты смогут заплатить больше стоимости.',
+    )
+    property_name = models.CharField(
+        'Название свойства',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        null=True,
     )
     album = models.OneToOneField(
         'store.Album',
