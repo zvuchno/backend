@@ -4,6 +4,7 @@ from django.contrib import admin
 
 from common.utils.money import format_money
 
+from store.models import ProductVariant
 from store.services import ProductService
 
 
@@ -17,11 +18,37 @@ class CommerceBaseMixin:
     def save_related(self, request, form, formsets, change):
         """Обеспечивает создание коммерческой инфраструктуры после сохранения.
 
-        Вызывает сервис, который создаёт Product + Variant только если их нет.
+        Метод извлекает данные о вариантах из вложенных формсетов админки,
+        структурирует их и передает в ProductService. Это гарантирует,
+        что при создании мерча в админке автоматически создадутся
+        соответствующие объекты Product и ProductVariant.
         """
         super().save_related(request, form, formsets, change)
 
-        ProductService.ensure_commerce(form.instance)
+        # Собираем данные для сервиса
+        validated_data = form.cleaned_data.copy()
+
+        # Ищем формсет с вариантами
+        for formset in formsets:
+            if formset.model.__name__ == 'ProductVariant':
+                # Собираем список словарей, как это делает DRF
+                variants_list = []
+                for sub_form in formset.forms:
+                    if sub_form.cleaned_data and not sub_form.cleaned_data.get(
+                        'DELETE',
+                    ):
+                        data = sub_form.cleaned_data.copy()
+                        # Преобразуем объект id в число
+                        if isinstance(data.get('id'), ProductVariant):
+                            data['id'] = data['id'].pk
+                        variants_list.append(data)
+
+                validated_data['variants'] = variants_list
+
+        ProductService.ensure_commerce(
+            form.instance,
+            validated_data=validated_data,
+        )
 
 
 class CommerceDisplayMixin:
