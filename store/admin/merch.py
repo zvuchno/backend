@@ -7,16 +7,37 @@ from django.contrib import admin
 from django.utils.html import format_html
 from nested_admin import (
     NestedModelAdmin,
+    NestedStackedInline,
     NestedTabularInline,
 )
 
-from store.admin.inlines import ProductInline
 from store.admin.mixins import (
     AutoOwnerAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
 )
-from store.models import Image, Merch
+from store.models import Image, Merch, Product, ProductVariant
+
+
+class ProductVariantInline(NestedTabularInline):
+    """Инлайн для редактирования вариантов продукта в админке."""
+
+    model = ProductVariant
+    fields = ('sku', 'property_value', 'stock', 'updated_at')
+    extra = 0
+    readonly_fields = ('sku', 'updated_at')
+
+
+class ProductInline(NestedStackedInline):
+    """Инлайн продукта с вложенными вариантами."""
+
+    model = Product
+    inlines = (ProductVariantInline,)
+    fields = ('price', 'allow_overpay', 'property_name')
+    can_delete = False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class PhotoInline(NestedTabularInline):
@@ -51,7 +72,6 @@ class MerchAdmin(
         'name',
         'kind',
         'owner',
-        'created_at',
         'image_preview',
         'album',
         'is_published',
@@ -81,6 +101,7 @@ class MerchAdmin(
     ordering = ('-created_at',)
     search_help_text = 'Поиск по названию, типу, названию альбома и владельцу'
     readonly_fields = ('image_preview', 'created_at', 'updated_at', 'owner')
+    autocomplete_fields = ('album', 'kind')
 
     fieldsets = (
         (
@@ -121,7 +142,14 @@ class MerchAdmin(
         for image in obj.images_merch.all():
             if image.is_main:
                 return format_html(
-                    '<img src="{}" width="150" height="100" />',
+                    '<img src="{}" style="max-height:100px; width:auto;" />',
                     image.image.url,
                 )
+
+        first = obj.images_merch.first()
+        if first:
+            return format_html(
+                '<img src="{}" style="max-height:100px; width:auto;" />',
+                first.image.url,
+            )
         return '-'
