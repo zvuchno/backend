@@ -94,9 +94,42 @@ class ProductService:
             # Сценарий 2: Есть свойства -> создаем по варианту на каждое
             incoming_ids = []
 
+            # Проверка дублей внутри запроса
+            payload_values = [
+                str(v.get('property_value')).strip() for v in variants_data
+            ]
+            if len(payload_values) != len(set(payload_values)):
+                raise ValidationError({
+                    'variants': 'В запросе дублирующиеся значения вариантов.',
+                })
+
+            # Проверка дублей с уже существующими вариантами в базе
             for variant_data in variants_data:
                 variant_id = variant_data.get('id')
-                variant_value = variant_data.get('property_value')
+                variant_value = str(variant_data.get('property_value')).strip()
+
+                duplicate_qs = ProductVariant.objects.filter(
+                    product=product,
+                    property_value=variant_value,
+                )
+                # Если редактируем существующий — исключаем его самого
+                if variant_id:
+                    duplicate_qs = duplicate_qs.exclude(id=variant_id)
+
+                    if duplicate_qs.exists():
+                        raise ValidationError({
+                            'variants': (
+                                'Нельзя переименовать вариант со значением '
+                                f'{variant_value}, он уже существует '
+                                'у этого товара. Добавьте его, если '
+                                'снова хотите активировать.'
+                            ),
+                        })
+
+            # Синхронизация / update_or_create
+            for variant_data in variants_data:
+                variant_id = variant_data.get('id')
+                variant_value = str(variant_data.get('property_value')).strip()
 
                 lookup = {'product': product}
                 # Если ID пришел — ищем по нему (приоритет).

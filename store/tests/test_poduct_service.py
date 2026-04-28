@@ -183,20 +183,20 @@ class TestSyncMerchVariants:
         assert product.variants.filter(is_active=False).count() == 2
 
     def test_no_duplicates(self, user):
-        """Дубли в списке → остается одна запись с последним стоком."""
+        """Дубли в списке → ValidationError."""
         merch = Merch.objects.create(name='T-Shirt', owner=user)
-        product = ProductService.ensure_commerce(
-            merch,
-            validated_data={
-                'variants': [
-                    {'property_value': 'S', 'stock': 10},
-                    {'property_value': 'S', 'stock': 20},
-                ],
-            },
-        )
 
-        assert product.variants.filter(is_active=True).count() == 1
-        assert product.variants.get(property_value='S').stock == 20
+        with pytest.raises(ValidationError) as excinfo:
+            ProductService.ensure_commerce(
+                merch,
+                validated_data={
+                    'variants': [
+                        {'property_value': 'S', 'stock': 10},
+                        {'property_value': 'S', 'stock': 20},
+                    ],
+                },
+            )
+        assert 'дублирующиеся значения' in excinfo.value.detail['variants']
 
     def test_reactivate_variant(self, user):
         """Повторный ввод данных → неактивный вариант снова включается."""
@@ -225,7 +225,7 @@ class TestSyncMerchVariants:
         assert product.variants.filter(property_value='L').count() == 1
 
     def test_security_prevent_id_hijacking(self, variant_factory, user):
-        """Передача чужого ID варианта должна приводить к ValidationError."""
+        """Передача чужого ID варианта → ValidationError."""
         other_merch = variant_factory(product_type='merch')
         other_id = other_merch.id
 
@@ -241,3 +241,31 @@ class TestSyncMerchVariants:
 
         assert f'ID {other_id} не принадлежит' in str(excinfo.value)
         assert my_merch.product.variants.count() == 0
+
+    def test_variant_name_collision_on_update(self, user):
+        """Переименование в уже существующее имя → ValidationError."""
+        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        product = ProductService.ensure_commerce(
+            merch,
+            validated_data={
+                'variants': [
+                    {'property_value': 'S', 'stock': 10},
+                    {'property_value': 'M', 'stock': 10},
+                ],
+            },
+        )
+        variant_s = product.variants.get(property_value='S')
+        payload_with_collision = {
+            'variants': [
+                {'id': variant_s.id, 'property_value': 'M', 'stock': 15},
+            ],
+        }
+
+        with pytest.raises(ValidationError) as excinfo:
+            ProductService.sync_merch_variants(
+                product=product,
+                stock=0,
+                variants_data=payload_with_collision['variants'],
+            )
+
+        assert 'Нельзя переименовать' in str(excinfo.value.detail['variants'])
