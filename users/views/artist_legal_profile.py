@@ -1,10 +1,7 @@
 """Представления для юр профиля артиста."""
 
-from http import HTTPStatus
-
-from rest_framework.response import Response
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.throttling import ScopedRateThrottle
-from rest_framework.views import APIView
 
 from common.permissions import IsArtist
 
@@ -14,7 +11,7 @@ from users.serializers import ArtistLegalSerializer
 
 
 @artist_legal_data_schema
-class ArtistLegalProfileView(APIView):
+class ArtistLegalProfileView(RetrieveUpdateAPIView):
     """API для работы с юридическими данными текущего артиста.
 
     Позволяет получить и частично обновить данные, связанные с выплатами:
@@ -28,8 +25,10 @@ class ArtistLegalProfileView(APIView):
     permission_classes = [IsArtist]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'artist_legal_profile'
+    http_method_names = ['get', 'patch']
+    serializer_class = ArtistLegalSerializer
 
-    def _get_legal_profile(self) -> ArtistLegalProfile:
+    def get_object(self) -> ArtistLegalProfile:
         """Возвращает юридический профиль текущего пользователя.
 
         Если профиль отсутствует, создаёт его.
@@ -40,19 +39,3 @@ class ArtistLegalProfileView(APIView):
             )
         )
         return legal_profile
-
-    def get(self, request):
-        """Возвращает агрегированные юридические данные артиста."""
-        serializer = ArtistLegalSerializer(self._get_legal_profile())
-        return Response(serializer.data)
-
-    def patch(self, request):
-        """Частично обновляет юридические данные артиста."""
-        serializer = ArtistLegalSerializer(
-            self._get_legal_profile(),
-            data=request.data,
-            partial=True,
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=HTTPStatus.OK)
