@@ -36,6 +36,7 @@ class ArtistLegalProfile(TimestampModel):
         PATENT = 'patent', 'Патент'
 
     class RecipientType(models.TextChoices):
+        EMPTY = '', 'Не указано'
         INDIVIDUAL = 'individual', 'Физическое лицо'
         SELF_EMPLOYED = 'self_employed', 'Самозанятый'
         INDIVIDUAL_ENTREPRENEUR = 'individual_entrepreneur', 'ИП'
@@ -52,11 +53,13 @@ class ArtistLegalProfile(TimestampModel):
         'Тип получателя',
         max_length=RECIPIENT_TYPE_MAX_LENGTH,
         choices=RecipientType.choices,
+        default=RecipientType.EMPTY,
     )
     recipient_name = EncryptedCharField(
         'Наименование получателя',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
+        default='',
     )
 
     taxation_system = models.CharField(
@@ -76,6 +79,7 @@ class ArtistLegalProfile(TimestampModel):
     comment = models.TextField(
         'Комментарий модератора',
         blank=True,
+        default='',
     )
 
     class Meta:

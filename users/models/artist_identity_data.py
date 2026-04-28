@@ -47,16 +47,19 @@ class ArtistIdentityData(TimestampModel):
         'Фамилия',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
+        default='',
     )
     first_name = EncryptedCharField(
         'Имя',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
+        default='',
     )
     middle_name = EncryptedCharField(
         'Отчество',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
+        default='',
     )
     birth_date = EncryptedDateField(
         'Дата рождения',
@@ -68,24 +71,28 @@ class ArtistIdentityData(TimestampModel):
         'Адрес регистрации',
         max_length=ADDRESS_FIELD_MAX_LENGTH,
         blank=True,
+        default='',
     )
 
     passport_series = EncryptedCharField(
         'Серия паспорта',
         max_length=PASSPORT_SERIES_MAX_LENGTH,
         blank=True,
+        default='',
         validators=[validate_passport_series],
     )
     passport_number = EncryptedCharField(
         'Номер паспорта',
         max_length=PASSPORT_NUMBER_MAX_LENGTH,
         blank=True,
+        default='',
         validators=[validate_passport_number],
     )
     passport_issued_by = EncryptedCharField(
         'Кем выдан паспорт',
         max_length=PASSPORT_ISSUED_BY_MAX_LENGTH,
         blank=True,
+        default='',
     )
     passport_issue_date = EncryptedDateField(
         'Дата выдачи паспорта',
