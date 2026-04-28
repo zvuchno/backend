@@ -94,6 +94,9 @@ class CustomTokenVerifyView(TokenVerifyView):
 class CustomLogoutView(APIView):
     """Инвалидирует refresh токен пользователя."""
 
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'logout'
+
     @staticmethod
     def post(request) -> Response:
         """Добавляет refresh token в blacklist."""
@@ -119,6 +122,8 @@ class VKLogin(SocialAuthMixin, SocialLoginView):
     adapter_class = VKOAuth2Adapter
     serializer_class = SocialAuthInputSerializer
     client_class = OAuth2Client
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'social_auth'
 
 
 @social_auth_schema
@@ -128,3 +133,5 @@ class YandexLogin(SocialAuthMixin, SocialLoginView):
     adapter_class = YandexOAuth2Adapter
     serializer_class = SocialAuthInputSerializer
     client_class = OAuth2Client
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'social_auth'
