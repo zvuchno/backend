@@ -34,8 +34,10 @@ class ArtistLegalProfileView(APIView):
 
         Если профиль отсутствует, создаёт его.
         """
-        legal_profile, _ = ArtistLegalProfile.objects.get_or_create(
-            user=self.request.user,
+        legal_profile, _ = (
+            ArtistLegalProfile.objects.with_legal_data().get_or_create(
+                user=self.request.user,
+            )
         )
         return legal_profile
 

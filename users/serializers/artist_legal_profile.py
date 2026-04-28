@@ -66,6 +66,7 @@ class ArtistLegalSerializer(serializers.Serializer):
     """Агрегирующий сериализатор юридических данных артиста."""
 
     legal_profile = ArtistLegalProfileSerializer(
+        source='*',  # получит весь instance
         required=False,
     )
     identity_data = ArtistIdentityDataSerializer(
@@ -77,21 +78,6 @@ class ArtistLegalSerializer(serializers.Serializer):
         allow_null=True,
     )
 
-    def to_representation(self, instance):
-        identity_data = getattr(instance, 'identity_data', None)
-        bank_data = getattr(instance, 'bank_data', None)
-        return {
-            'legal_profile': ArtistLegalProfileSerializer(instance).data,
-            'identity_data': (
-                ArtistIdentityDataSerializer(identity_data).data
-                if identity_data
-                else None
-            ),
-            'bank_data': (
-                ArtistBankDataSerializer(bank_data).data if bank_data else None
-            ),
-        }
-
     @staticmethod
     def _update_items(instance, data) -> None:
         """Заполняет значения полей модели."""
@@ -101,9 +87,9 @@ class ArtistLegalSerializer(serializers.Serializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         """Обновляет юридический профиль и связанные блоки данных."""
-        legal_profile = validated_data.pop('legal_profile', None)
         identity_data = validated_data.pop('identity_data', None)
         bank_data = validated_data.pop('bank_data', None)
+        legal_profile = validated_data
 
         if legal_profile:
             self._update_items(instance, legal_profile)
