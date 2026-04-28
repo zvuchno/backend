@@ -6,6 +6,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
+from users.exceptions import SocialAuthException
+
 logger = logging.getLogger(__name__)
 
 
@@ -14,6 +16,23 @@ def custom_exception_handler(exception, context):
     response = exception_handler(exception, context)
     view = context.get('view')
     request = context.get('request')
+
+    if isinstance(exception, SocialAuthException):
+        logger.warning(
+            'Social auth error | %s | %s | view=%s | code=%s | detail=%s',
+            request.method if request else 'UNKNOWN',
+            request.path if request else 'UNKNOWN',
+            view.__class__.__name__ if view else 'UNKNOWN',
+            exception.error_code,
+            exception.message,
+        )
+        return Response(
+            {
+                'error_code': exception.error_code,
+                'detail': exception.message,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     if response is not None:
         logger.warning(

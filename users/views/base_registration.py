@@ -2,6 +2,7 @@
 
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import ScopedRateThrottle
 
 
 class BaseRegistrationView(CreateAPIView):
@@ -13,3 +14,5 @@ class BaseRegistrationView(CreateAPIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'registration'

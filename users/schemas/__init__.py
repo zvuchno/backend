@@ -31,6 +31,7 @@ from .registration import (
     listener_registration_schema,
 )
 from .social_auth import (
+    social_auth_schema,
     social_error_codes_schema,
     social_token_exchange_schema,
 )
@@ -59,5 +60,6 @@ __all__ = [
     'social_error_codes_schema',
     'social_token_exchange_schema',
     'change_username_schema',
+    'social_auth_schema',
     'artist_legal_data_schema',
 ]

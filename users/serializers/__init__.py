@@ -30,6 +30,7 @@ from .jwt import (
 )
 from .listener_profile import ListenerMeSerializer
 from .listener_registration import ListenerRegistrationSerializer
+from .social_auth import SocialAuthInputSerializer
 
 __all__ = [
     'ArtistRegistrationSerializer',
@@ -52,6 +53,7 @@ __all__ = [
     'UsernameChangeSerializer',
     'LogoutSerializer',
     'TokenPairSerializer',
+    'SocialAuthInputSerializer',
     'ArtistIdentityDataSerializer',
     'ArtistBankDataSerializer',
     'ArtistLegalProfileSerializer',
