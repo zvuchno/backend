@@ -1,7 +1,12 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
+from store.constants import (
+    CHAR_PRESET_DIGITAL,
+    CHAR_PRESET_SIMPLE,
+    MAX_PRICE_DIGITS,
+    PRICE_DECIMAL_PLACES,
+)
 from store.models import Merch, ProductVariant
 from store.serializers import ImageSerializer
 
@@ -38,9 +43,11 @@ class MerchReadSerializer(serializers.ModelSerializer):
 class VariantReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения варианта мерча."""
 
+    value = serializers.CharField(source='property_value')
+
     class Meta:
         model = ProductVariant
-        fields = ('id', 'sku', 'stock', 'property_value')
+        fields = ('id', 'sku', 'stock', 'value')
 
 
 class MerchDetailSerializer(MerchReadSerializer):
@@ -81,17 +88,38 @@ class MerchDetailSerializer(MerchReadSerializer):
     @extend_schema_field(VariantReadSerializer(many=True))
     def get_variants(self, obj):
         product = getattr(obj, 'product', None)
-        if not product:
+        if not product or not product.property_name:
             return []
-        qs = product.variants.all().order_by('id')
+
+        request = self.context.get('request')
+        is_owner = request and request.user == obj.owner
+
+        qs = product.variants.filter(
+            is_active=True,
+        ).exclude(
+            property_value=CHAR_PRESET_SIMPLE,
+        ).order_by('id')
+
+        if not is_owner:
+            qs = qs.exclude(stock=0)
+
         return VariantReadSerializer(qs, many=True).data
 
 
 class VariantWriteSerializer(serializers.Serializer):
     """Сериализатор для записи варианта мерча."""
 
+    id = serializers.IntegerField(required=False)
     value = serializers.CharField()
     stock = serializers.IntegerField(min_value=0, required=True)
+
+    def validate_value(self, value):
+        if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
+            raise serializers.ValidationError(
+                f'Значение "{value}" зарезервировано '
+                'системой и недоступно для использования.'
+            )
+        return value
 
     def update(self, instance, validated_data):
         instance.stock = validated_data.get('stock', instance.stock)
@@ -130,6 +158,14 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'property_name',
             'variants',
         )
+
+    def validate_property_name(self, value):
+        if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
+            raise serializers.ValidationError(
+                f'Значение "{value}" зарезервировано системой '
+                'и недоступно для использования.'
+            )
+        return value
 
     def to_representation(self, instance):
         return MerchDetailSerializer(instance).data

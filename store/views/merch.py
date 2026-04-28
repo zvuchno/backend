@@ -68,7 +68,7 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
     @extend_schema(
         methods=['patch'],
         summary='Обновить вариант',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Обновляет вариант мерча.',
         request=VariantWriteSerializer,
         responses={200: VariantReadSerializer},
@@ -76,7 +76,7 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
     @extend_schema(
         methods=['delete'],
         summary='Удалить вариант',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Удаляет вариант мерча.',
         responses={204: None},
     )
@@ -104,7 +104,7 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
 
     @extend_schema(
         summary='Добавить изображение',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Добавляет изображение к мерчу.',
         request=ImageSerializer,
         responses={201: ImageSerializer},
@@ -120,7 +120,7 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
     @extend_schema(
         methods=['patch'],
         summary='Обновить изображение',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Обновляет изображение мерча.',
         request=ImageSerializer,
         responses={200: ImageSerializer},
@@ -128,7 +128,7 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
     @extend_schema(
         methods=['delete'],
         summary='Удалить изображение',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Удаляет изображение мерча.',
         responses={204: None},
     )

@@ -20,7 +20,7 @@ from store.serializers import (
 merch_schema = extend_schema_view(
     list=extend_schema(
         summary='Список мерча',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Возвращает список мерча.',
         parameters=[
             OpenApiParameter(
@@ -81,19 +81,19 @@ merch_schema = extend_schema_view(
     ),
     retrieve=extend_schema(
         summary='Получить мерч',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Возвращает мерч по id.',
     ),
     create=extend_schema(
         summary='Создать мерч',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Создаёт новый мерч.',
         request=MerchWriteSerializer,
         responses={201: MerchDetailSerializer},
     ),
     partial_update=extend_schema(
         summary='Частично обновить мерч',
-        tags=['Merches'],
+        tags=['Merch'],
         description=(
             'Обновляет поля мерча. '
             'Изображения обновляются через отдельные эндпоинты.'
@@ -103,12 +103,12 @@ merch_schema = extend_schema_view(
     ),
     destroy=extend_schema(
         summary='Удалить мерч',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Удаляет мерч.',
     ),
     list_variants=extend_schema(
         summary='Список вариантов мерча',
-        tags=['Merches'],
+        tags=['Merch'],
         description='Возвращает список вариантов мерча.',
         responses={200: VariantReadSerializer(many=True)},
     ),

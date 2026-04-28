@@ -96,7 +96,7 @@ class ProductService:
 
             for variant_data in variants_data:
                 variant_id = variant_data.get('id')
-                variant_value = variant_data.get('property_value')
+                variant_value = variant_data.get('value')
 
                 lookup = {'product': product}
                 # Если ID пришел — ищем по нему (приоритет).
