@@ -30,10 +30,12 @@ class ArtistLegalProfile(TimestampModel):
 
     class TaxationSystem(models.TextChoices):
         EMPTY = '', 'Не указано'
-        NPD = 'npd', 'НПД (самозанятый)'
-        USN = 'usn', 'УСН'
         OSNO = 'osno', 'ОСНО'
+        USN = 'usn', 'УСН'
+        AUSN = 'ausn', 'АУСН'
+        ESHN = 'eshn', 'ЕСХН'
         PATENT = 'patent', 'Патент'
+        NPD = 'npd', 'НПД'
 
     class RecipientType(models.TextChoices):
         EMPTY = '', 'Не указано'
@@ -54,12 +56,13 @@ class ArtistLegalProfile(TimestampModel):
         max_length=RECIPIENT_TYPE_MAX_LENGTH,
         choices=RecipientType.choices,
         default=RecipientType.EMPTY,
+        blank=True,
     )
     recipient_name = EncryptedCharField(
         'Наименование получателя',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
-        default='',
+        null=True,
     )
 
     taxation_system = models.CharField(
