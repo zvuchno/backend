@@ -264,8 +264,91 @@ class TestSyncMerchVariants:
         with pytest.raises(ValidationError) as excinfo:
             ProductService.sync_merch_variants(
                 product=product,
-                stock=0,
+                value_stock=0,
                 variants_data=payload_with_collision['variants'],
             )
 
-        assert 'Нельзя переименовать' in str(excinfo.value.detail['variants'])
+        assert 'Нельзя переименовать' in excinfo.value.detail['variants']
+
+    # fmt: off
+    @pytest.mark.parametrize('invalid_value, invalid_stock', [
+        (None, 10),        # value — None
+        ('', 10),          # value — пустая строка
+        ('   ', 10),       # value — строка с пробелами
+        ('L', None),       # stock — None
+        ('L', '10'),       # stock — строка вместо числа
+        ('L', 10.5),       # stock — float вместо int
+        ('L', -1),         # stock — отрицательное число
+    ])
+    # fmt: on
+    def test_invalid_variant_data_raises_error(
+        self,
+        user,
+        invalid_value,
+        invalid_stock,
+    ):
+        """Некорректные value или stock → ValidationError."""
+        from store.models import Merch
+        merch = Merch.objects.create(name='Test', owner=user)
+
+        invalid_data = {
+            'variants': [
+                {'property_value': invalid_value, 'stock': invalid_stock},
+            ],
+        }
+
+        with pytest.raises(ValidationError) as excinfo:
+            ProductService.ensure_commerce(merch, validated_data=invalid_data)
+
+        assert 'value и stock — обязательны' in (
+            excinfo.value.detail['variants']
+        )
+
+    def test_empty_variants_list_deactivates_all(self, user):
+        """variants=[] → simple + все варианты деактивируются."""
+        merch = Merch.objects.create(name='T-Shirt', owner=user)
+
+        product = ProductService.ensure_commerce(
+            merch,
+            validated_data={
+                'variants': [
+                    {'property_value': 'S', 'stock': 10},
+                    {'property_value': 'M', 'stock': 20},
+                ],
+            },
+        )
+
+        ProductService.sync_merch_variants(product, 0, [])
+
+        assert product.variants.filter(is_active=True).count() == 1
+        assert product.variants.filter(
+            property_value=CHAR_PRESET_SIMPLE,
+        ).exists()
+
+    def test_patch_without_variants_is_noop(self, user):
+        """PATCH без variants не меняет варианты и не создает simple."""
+        merch = Merch.objects.create(name='T-Shirt', owner=user)
+
+        product = ProductService.ensure_commerce(
+            merch,
+            validated_data={
+                'variants': [
+                    {'property_value': 'S', 'stock': 10},
+                    {'property_value': 'M', 'stock': 20},
+                ],
+            },
+        )
+
+        initial_ids = set(product.variants.values_list('id', flat=True))
+
+        ProductService.ensure_commerce(
+            merch,
+            validated_data={'price': 10},
+        )
+
+        assert set(product.variants.values_list('id', flat=True)) == (
+            initial_ids
+        )
+        assert not product.variants.filter(
+            property_value=CHAR_PRESET_SIMPLE,
+        ).exists()
