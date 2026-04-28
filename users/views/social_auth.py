@@ -12,6 +12,7 @@ from rest_framework.permissions import (
     IsAuthenticated,
 )
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from config import settings
@@ -32,11 +33,13 @@ from users.serializers import (
 
 @social_token_exchange_schema
 class SocialSessionExchangeView(GenericAPIView):
-    """Вход или регистрация через соцсеть."""
+    """Вход или регистрация через соцсеть. Старый web flow."""
 
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = TokenPairSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'social_auth'
 
     def post(self, request):
         user = request.user
