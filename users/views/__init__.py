@@ -8,6 +8,7 @@ from .account import (
     PasswordResetVerifyView,
     ResendVerificationEmailView,
 )
+from .artist_legal_profile import ArtistLegalProfileView
 from .artist_profile import (
     ArtistCoverUpdateView,
     ArtistListView,
@@ -63,6 +64,7 @@ __all__ = [
     'redirect_social_auth_confirm_email',
     'ResendVerificationEmailView',
     'SocialAuthErrorCodesView',
+    'ArtistLegalProfileView',
     'SocialSessionExchangeView',
     'VKLogin',
     'YandexLogin',

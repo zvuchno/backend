@@ -203,16 +203,26 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_THROTTLE_RATES': {
         'login': '5/min',
+        'social_auth': '10/min',
+        'registration': '5/min',
+        'logout': '10/min',
+
         'refresh': '10/min',
-        'verify': '20/minute',
+        'verify': '20/min',
+
         'change_phone': '5/min',
         'change_username': '5/min',
         'change_password': '5/min',
+
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',
         'reset_password_confirm': '5/min',
+
         'verify_email': '10/min',
-        'resend_verification_email': '3/min',
+        'resend_verification_email': '5/min',
+
+        'become_artist': '5/min',
+        'artist_legal_profile': '60/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
