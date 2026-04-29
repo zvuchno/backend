@@ -3,7 +3,7 @@
 Содержит настройку интерфейса Django Admin для модели альбомов.
 """
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django import forms
 from django.contrib import admin
@@ -16,6 +16,7 @@ from nested_admin import (
     NestedTabularInline,
 )
 
+from .forms import MoneyForm
 from .mixins import (
     AutoOwnerAdminMixin,
     CommerceBaseMixin,
@@ -23,12 +24,12 @@ from .mixins import (
 )
 from store.constants import (
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album, Product, Track
 
 
-class TrackInlineForm(forms.ModelForm):
+class TrackInlineForm(MoneyForm):
     """Форма для TrackInline с редактированием цены из связанного Product.
 
     Особенности:
@@ -41,7 +42,7 @@ class TrackInlineForm(forms.ModelForm):
     price = forms.DecimalField(
         label='Цена',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         validators=[MinValueValidator(Decimal('0.00'))],
         initial=Decimal('0.00'),
         required=False,
@@ -59,7 +60,10 @@ class TrackInlineForm(forms.ModelForm):
 
         if product:
             # Если Product существует, подставляем его цену в initial
-            self.fields['price'].initial = product.price
+            self.fields['price'].initial = product.price.quantize(
+                Decimal('0.01'),
+                rounding=ROUND_HALF_UP,
+            )
 
     def save(self, commit=True):
         """Сохраняет Track и синхронизирует цену с Product.
@@ -132,6 +136,7 @@ class ProductInline(NestedStackedInline):
     """Инлайн продукта с вложенными вариантами."""
 
     model = Product
+    form = MoneyForm
     fields = ('price', 'allow_overpay')
     can_delete = False
     verbose_name = 'Торговые настройки альбома'

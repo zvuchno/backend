@@ -1,10 +1,10 @@
 """Модуль бизнес-логики управления коммерческой инфраструктурой контента."""
 
-from django.apps import apps
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
 from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
-from store.models import Product
+from store.models import Product, ProductVariant
 
 
 class ProductService:
@@ -14,34 +14,69 @@ class ProductService:
     сущностей (Product, ProductVariant) для различных типов контента.
     """
 
-    @staticmethod
-    @transaction.atomic()
-    def ensure_commerce(content_instance) -> Product:
-        """Гарантирует наличие связанных объектов Product и ProductVariant.
-
-        Не изменяет существующие объекты.
-        """
+    @classmethod
+    @transaction.atomic
+    def ensure_commerce(cls, content_instance, validated_data) -> Product:
         model_name = content_instance.__class__.__name__.lower()
-        # Импорт через apps, чтобы избежать циклической зависимости
-        Product = apps.get_model('store', 'Product')
 
-        try:
-            product = content_instance.product
-        except Product.DoesNotExist:
-            product = Product.objects.create(**{model_name: content_instance})
+        defaults = {
+            'price': validated_data.get('price', 0),
+            'allow_overpay': validated_data.get('allow_overpay', False),
+            'property_name': validated_data.get('property_name', ''),
+        }
 
-        if not product.variants.exists():
-            if model_name in ['album', 'track']:
-                product.variants.create(
-                    product=product,
-                    property_value=CHAR_PRESET_DIGITAL,
-                    stock=None,  # Для цифры склад не нужен
-                    is_active=True,
-                )
+        product, created = Product.objects.get_or_create(
+            **{model_name: content_instance},
+            defaults=defaults,
+        )
+
+        # Если продукт уже был — обновляем его поля
+        if not created:
+            cls._update_product_base_fields(product, validated_data)
+
+        # Для альбомов и треков гарантируем наличие цифрового варианта
+        if model_name in ['album', 'track']:
+            cls._ensure_digital_variant(product)
+
+        # Варианты мерча синхронизируем всегда
+        if model_name == 'merch':
+            cls.sync_merch_variants(
+                product=product,
+                stock=validated_data.get('stock', 0),
+                variants_data=validated_data.get('variants'),
+            )
+
         return product
 
     @staticmethod
-    @transaction.atomic()
+    def _ensure_digital_variant(product) -> None:
+        """Создает вариант цифрового товара."""
+        product.variants.get_or_create(
+            property_value=CHAR_PRESET_DIGITAL,
+            defaults={
+                'stock': None,  # Для цифры склад не нужен
+                'is_active': True,
+            },
+        )
+
+    @staticmethod
+    def _update_product_base_fields(product, validated_data) -> None:
+        """Обновляет поля Product, если они изменились."""
+        allowed_fields = ['price', 'allow_overpay', 'property_name']
+        updated_fields = []
+
+        for key in allowed_fields:
+            if key in validated_data:
+                value = validated_data[key]
+                if getattr(product, key) != value:
+                    setattr(product, key, value)
+                    updated_fields.append(key)
+
+        if updated_fields:
+            product.save(update_fields=updated_fields)
+
+    @staticmethod
+    @transaction.atomic
     def sync_merch_variants(product, stock, variants_data=None) -> None:
         """Синхронизирует варианты мерча на основе переданных данных."""
         if not variants_data:
@@ -57,7 +92,6 @@ class ProductService:
             product.variants.exclude(id=variant.id).update(is_active=False)
         else:
             # Сценарий 2: Есть свойства -> создаем по варианту на каждое
-            ProductVariant = apps.get_model('store', 'ProductVariant')
             incoming_ids = []
 
             for variant_data in variants_data:
@@ -65,11 +99,17 @@ class ProductService:
                 variant_value = variant_data.get('property_value')
 
                 lookup = {'product': product}
+                # Если ID пришел — ищем по нему (приоритет).
                 if variant_id:
-                    # Если ID пришел — ищем по нему (приоритет).
+                    # Проверяем, существует ли такой ID у этого продукта
+                    if not product.variants.filter(id=variant_id).exists():
+                        raise ValidationError({
+                            'variants': f'Вариант с ID {variant_id} '
+                            'не принадлежит данному продукту.',
+                        })
                     lookup['id'] = variant_id
                 else:
-                    # Если нет — по значению (защита от дублей).
+                    # Если ID нет — ищем по значению (защита от дублей)
                     lookup['property_value'] = variant_value
 
                 variant, _ = ProductVariant.objects.update_or_create(
