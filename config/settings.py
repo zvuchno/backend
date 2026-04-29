@@ -222,6 +222,7 @@ REST_FRAMEWORK = {
         'resend_verification_email': '5/min',
 
         'become_artist': '5/min',
+        'artist_legal_profile': '60/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
