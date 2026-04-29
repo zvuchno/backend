@@ -5,6 +5,7 @@
 
 from django.contrib import admin
 
+from .forms import MoneyForm
 from .mixins import (
     AutoOwnerAdminMixin,
     CommerceBaseMixin,
@@ -17,6 +18,7 @@ class ProductInline(admin.StackedInline):
     """Инлайн для редактирования полей продукта, связанных с треком."""
 
     model = Product
+    form = MoneyForm
     fields = ('price', 'allow_overpay')
     can_delete = False
     verbose_name = 'Торговые настройки трека'
