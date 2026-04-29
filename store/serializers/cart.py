@@ -5,7 +5,7 @@
 
 from rest_framework import serializers
 
-from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
+from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Cart, CartItem, ProductVariant
 from store.services.cart_service import CartService
 from store.validators import validate_price_with_donation
@@ -25,13 +25,13 @@ class CartItemReadSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(
         source='unit_price',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
     stock = serializers.SerializerMethodField()
     line_total = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
 
@@ -64,17 +64,17 @@ class CartReadSerializer(serializers.ModelSerializer):
     )
     subtotal = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
     discount_promocode = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
     total = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
 

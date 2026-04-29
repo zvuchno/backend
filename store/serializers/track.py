@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
+from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
 
 
@@ -77,7 +77,7 @@ class TrackWriteSerializer(serializers.ModelSerializer):
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         required=True,
     )
     allow_overpay = serializers.BooleanField(required=False)

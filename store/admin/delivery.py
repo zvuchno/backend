@@ -5,6 +5,9 @@
 
 from django.contrib import admin
 
+from common.utils.money import format_money
+
+from .forms import MoneyForm
 from store.models import Delivery
 
 
@@ -12,16 +15,15 @@ from store.models import Delivery
 class DeliveryAdmin(admin.ModelAdmin):
     """Админка вариантов доставки."""
 
+    form = MoneyForm
+
     list_display = (
         'name',
         'description',
-        'price',
+        'display_price',
         'is_active',
     )
-    list_editable = (
-        'price',
-        'is_active',
-    )
+    list_editable = ('is_active',)
     readonly_fields = ('created_at', 'updated_at')
     fields = (
         'name',
@@ -34,3 +36,7 @@ class DeliveryAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     list_filter = ('name',)
     ordering = ('name',)
+
+    @admin.display(description='Цена', ordering='price')
+    def display_price(self, obj):
+        return format_money(obj.price)

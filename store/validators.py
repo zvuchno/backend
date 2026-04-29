@@ -33,5 +33,5 @@ def validate_price_with_donation(product, price_with_donation):
     if price_with_donation < product.price:
         raise ValidationError({
             'price_with_donation': f'Цена с донатом не может быть ниже '
-            f'номинала ({product.price} руб.)',
+            f'номинала ({product.price:.2f} руб.)',
         })

@@ -109,6 +109,7 @@ class ProductService:
                 variant_id = variant_data.get('id')
                 value = variant_data.get('property_value')
                 stock = variant_data.get('stock')
+                is_active = variant_data.get('is_active', True)
 
                 #  =============== Валидация ===============
                 if (
@@ -169,7 +170,7 @@ class ProductService:
                     defaults={
                         'property_value': variant_value,
                         'stock': stock,
-                        'is_active': True,
+                        'is_active': is_active,
                     },
                 )
                 incoming_ids.append(variant.id)

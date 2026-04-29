@@ -4,6 +4,7 @@ from django.urls import path
 
 from users.views import (
     ArtistCoverUpdateView,
+    ArtistLegalProfileView,
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
@@ -14,6 +15,11 @@ urlpatterns = [
         'me/',
         ArtistMeView.as_view(),
         name='artist_me',
+    ),
+    path(
+        'me/legal/',
+        ArtistLegalProfileView.as_view(),
+        name='artist_legal_profile',
     ),
     path(
         'me/cover/',
