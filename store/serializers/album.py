@@ -10,7 +10,7 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
-from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
+from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Album
 
 
@@ -81,7 +81,7 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         required=True,
     )
     allow_overpay = serializers.BooleanField(required=False)
