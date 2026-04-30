@@ -12,8 +12,9 @@ from django.db import models
 from django.db.models import Q
 
 from store.constants import (
+    MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
 )
 
 
@@ -35,19 +36,29 @@ class Product(models.Model):
         ALBUM = 'album', 'Album'
         MERCH = 'merch', 'Merch'
 
-    product_type = models.CharField(max_length=20, choices=ProductType.choices)
+    product_type = models.CharField(
+        'Тип продукта',
+        max_length=20,
+        choices=ProductType.choices,
+    )
     price = models.DecimalField(
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        validators=[MinValueValidator(Decimal('0.00'))],
-        default=Decimal('0.00'),
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        validators=[MinValueValidator(Decimal('0.0000'))],
+        default=Decimal('0.0000'),
         help_text='Цена, руб.',
     )
     allow_overpay = models.BooleanField(
         'Разрешить платить больше',
         default=False,
         help_text='Если включено, фанаты смогут заплатить больше стоимости.',
+    )
+    property_name = models.CharField(
+        'Название свойства',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        null=True,
     )
     album = models.OneToOneField(
         'store.Album',

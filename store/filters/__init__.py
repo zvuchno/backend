@@ -4,7 +4,9 @@
 """
 
 from .album import AlbumFilter
+from .track import TrackFilter
 
 __all__ = [
     'AlbumFilter',
+    'TrackFilter',
 ]

@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'nested_admin',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'dj_rest_auth',
     'djoser',
     'phonenumber_field',
     'admin_reorder',
@@ -77,6 +78,12 @@ MIDDLEWARE = [
     'admin_reorder.middleware.ModelAdminReorder',
     'allauth.account.middleware.AccountMiddleware',
 ]
+
+# Настройки для debug_toolbar
+if DEBUG:
+    INSTALLED_APPS += ['debug_toolbar']
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
+    INTERNAL_IPS = ['127.0.0.1']
 
 ROOT_URLCONF = 'config.urls'
 
@@ -196,16 +203,26 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_THROTTLE_RATES': {
         'login': '5/min',
+        'social_auth': '10/min',
+        'registration': '5/min',
+        'logout': '10/min',
+
         'refresh': '10/min',
-        'verify': '20/minute',
+        'verify': '20/min',
+
         'change_phone': '5/min',
         'change_username': '5/min',
         'change_password': '5/min',
+
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',
         'reset_password_confirm': '5/min',
+
         'verify_email': '10/min',
-        'resend_verification_email': '3/min',
+        'resend_verification_email': '5/min',
+
+        'become_artist': '5/min',
+        'artist_legal_profile': '60/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
@@ -228,17 +245,23 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 )
+REST_AUTH = {
+    'USE_JWT': True,
+    'TOKEN_MODEL': None,
+    'JWT_AUTH_HTTPONLY': False,
+    'JWT_SERIALIZER': 'users.serializers.TokenPairSerializer',
+}
 SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {
     'vk': {
         'SCOPE': ['email'],
-        'VERIFIED_EMAIL': True,
+        'VERIFIED_EMAIL': True,  # доверяем почте из Вк.
         'AUTH_PARAMS': {'prompt': 'login'},
     },
     'yandex': {
         'SCOPE': ['login:email'],
-        'VERIFIED_EMAIL': True,
+        'VERIFIED_EMAIL': True,  # доверяем почте из Я.
         'AUTH_PARAMS': {'force_confirm': 'yes'},
     }
 }

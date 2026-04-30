@@ -8,6 +8,7 @@ from .account import (
     PasswordResetVerifyView,
     ResendVerificationEmailView,
 )
+from .artist_legal_profile import ArtistLegalProfileView
 from .artist_profile import (
     ArtistCoverUpdateView,
     ArtistListView,
@@ -22,11 +23,14 @@ from .jwt import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
+    VKLogin,
+    YandexLogin,
 )
 from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
 from .social_auth import (
-    SocialLoginView,
+    SocialAuthErrorCodesView,
+    SocialSessionExchangeView,
     redirect_social_auth_cancelled,
     redirect_social_auth_confirm_email,
     redirect_social_auth_error,
@@ -59,5 +63,9 @@ __all__ = [
     'redirect_social_auth_signup',
     'redirect_social_auth_confirm_email',
     'ResendVerificationEmailView',
-    'SocialLoginView',
+    'SocialAuthErrorCodesView',
+    'ArtistLegalProfileView',
+    'SocialSessionExchangeView',
+    'VKLogin',
+    'YandexLogin',
 ]

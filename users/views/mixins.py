@@ -1,8 +1,15 @@
 """Миксины для представлений пользователей."""
 
-from django.http import Http404
+import logging
 
+from django.http import Http404
+from rest_framework.exceptions import AuthenticationFailed
+
+from users.constants import SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED
+from users.exceptions import SocialAuthException
 from users.models import ArtistProfile
+
+logger = logging.getLogger(__name__)
 
 
 class CurrentArtistProfileMixin:
@@ -26,3 +33,20 @@ class CurrentArtistProfileMixin:
             return self.get_artist_queryset().get(user=self.request.user)
         except ArtistProfile.DoesNotExist:
             raise Http404('Профиль артиста не найден.')
+
+
+class SocialAuthMixin:
+    """Миксин для обработки ошибок социальной аутентификации."""
+
+    def post(self, request, *args, **kwargs):
+        try:
+            return super().post(request, *args, **kwargs)
+        except (SocialAuthException, AuthenticationFailed) as exc:
+            raise exc
+        except Exception:
+            logger.exception('Внутренняя ошибка social auth.')
+            raise AuthenticationFailed({
+                'error_code': SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
+                'detail': 'Не удалось завершить '
+                'аутентификацию через провайдера.',
+            })

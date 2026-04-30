@@ -1,6 +1,11 @@
 """Схемы автодокументации OpenAPI для сущности Треков."""
 
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiTypes,
+    extend_schema,
+    extend_schema_view,
+)
 
 from store.serializers import (
     TrackReadDetailSerializer,
@@ -15,6 +20,50 @@ track_schema = extend_schema_view(
         summary='Список треков',
         tags=TRACKS_TAGS,
         description='Возвращает список всех аудиозаписей.',
+        parameters=[
+            OpenApiParameter(
+                name='name',
+                type=OpenApiTypes.STR,
+                description='Фильтр по названию трека (icontains)',
+            ),
+            OpenApiParameter(
+                name='genre',
+                type=OpenApiTypes.STR,
+                description='Фильтр по slug жанра',
+            ),
+            OpenApiParameter(
+                name='album',
+                type=OpenApiTypes.INT,
+                description='Фильтр по ID альбома',
+            ),
+            OpenApiParameter(
+                name='artist',
+                type=OpenApiTypes.STR,
+                description='Фильтр по slug артиста',
+            ),
+            OpenApiParameter(
+                name='search',
+                type=OpenApiTypes.STR,
+                description='Поиск по названию',
+            ),
+            OpenApiParameter(
+                name='ordering',
+                type=OpenApiTypes.STR,
+                description='Сортировка: position, -position, name, -name',
+            ),
+            OpenApiParameter(
+                name='limit',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Количество элементов в ответе.',
+            ),
+            OpenApiParameter(
+                name='offset',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Смещение от начала выборки.',
+            ),
+        ],
         responses={200: TrackReadSerializer(many=True)},
     ),
     retrieve=extend_schema(

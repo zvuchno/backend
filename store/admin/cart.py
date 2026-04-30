@@ -8,6 +8,9 @@ from django.db import models
 from django.forms import Textarea
 from django.utils.html import format_html
 
+from common.utils.money import format_money
+
+from .forms import MoneyForm
 from store.models import Cart, CartItem, ProductVariant
 
 
@@ -17,7 +20,7 @@ class ProductVariantAdmin(admin.ModelAdmin):
 
     search_fields = (
         'sku',
-        'characteristic',
+        'property_value',
         'product__track__name',
         'product__album__name',
         'product__merch__name',
@@ -32,6 +35,7 @@ class CartItemInline(admin.TabularInline):
     """Инлайн отображения позиций в корзине."""
 
     model = CartItem
+    form = MoneyForm
     extra = 0
     fields = (
         'product_variant',
@@ -52,7 +56,7 @@ class CartItemInline(admin.TabularInline):
     def get_line_total(self, obj):
         """Отображает результат property line_total."""
         if obj and obj.pk:
-            return obj.line_total
+            return format_money(obj.line_total)
         return '-'
 
     def get_queryset(self, request):
@@ -73,7 +77,7 @@ class CartItemInline(admin.TabularInline):
     def get_price(self, obj):
         """Проходим цепочку: CartItem -> ProductVariant -> Product -> price."""
         if obj.product_variant and obj.product_variant.product:
-            return obj.product_variant.product.price
+            return format_money(obj.product_variant.product.price)
         return None
 
     @admin.display(description='Разрешена переплата', boolean=True)
@@ -107,11 +111,11 @@ class CartAdmin(admin.ModelAdmin):
 
     @admin.display(description='Сумма (руб.)', ordering='_subtotal')
     def get_subtotal_sum(self, obj):
-        return f'{obj.subtotal:,.2f}'.replace(',', ' ')
+        return format_money(obj.subtotal)
 
     @admin.display(description='Итого (руб.)')
     def get_total(self, obj):
-        return f'{obj.total:,.2f}'.replace(',', ' ')
+        return format_money(obj.total)
 
     def get_queryset(self, request):
         return super().get_queryset(request).with_subtotal()

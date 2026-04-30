@@ -8,14 +8,10 @@ from store.models import Album
 class AlbumFilter(filters.FilterSet):
     """Набор фильтров для модели Альбомов."""
 
-    genre = filters.NumberFilter(field_name='genre_id')
+    genre = filters.CharFilter(field_name='genre__slug')
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
-    artist_id = filters.NumberFilter(field_name='owner__artist_profile__id')
-    artist_name = filters.CharFilter(
-        field_name='owner__artist_profile__name',
-        lookup_expr='icontains',
-    )
+    artist = filters.CharFilter(field_name='owner__artist_profile__slug')
 
     class Meta:
         model = Album
-        fields = ('genre', 'name', 'artist_id', 'artist_name')
+        fields = ('genre', 'name', 'artist')
