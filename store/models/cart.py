@@ -18,7 +18,7 @@ from django.db.models.functions import Coalesce
 from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
 )
 from users.models.abstract import TimestampModel
 
@@ -49,7 +49,7 @@ class CartQuerySet(models.QuerySet):
             default=F('items__product_variant__product__price'),
             output_field=DecimalField(
                 max_digits=MAX_PRICE_DIGITS,
-                decimal_places=PRICE_DECIMAL_PLACES,
+                decimal_places=MONEY_INTERNAL_PRECISION,
             ),
         )
 
@@ -58,7 +58,7 @@ class CartQuerySet(models.QuerySet):
             unit_price_expr * F('items__quantity'),
             output_field=DecimalField(
                 max_digits=MAX_PRICE_DIGITS,
-                decimal_places=PRICE_DECIMAL_PLACES,
+                decimal_places=MONEY_INTERNAL_PRECISION,
             ),
         )
 
@@ -66,10 +66,10 @@ class CartQuerySet(models.QuerySet):
         return self.annotate(
             _subtotal=Coalesce(
                 Sum(line_total_expr),
-                Decimal('0.00'),
+                Decimal('0.0000'),
                 output_field=DecimalField(
                     max_digits=MAX_PRICE_DIGITS,
-                    decimal_places=PRICE_DECIMAL_PLACES,
+                    decimal_places=MONEY_INTERNAL_PRECISION,
                 ),
             ),
         ).select_related('user')
@@ -102,18 +102,18 @@ class Cart(TimestampModel):
             return self._subtotal
         # Если нет, делаем агрегацию Fallback — одним запросом
         return self.items.with_prices().aggregate(
-            total=Coalesce(Sum('_line_total'), Decimal('0.00')),
+            total=Coalesce(Sum('_line_total'), Decimal('0.0000')),
         )['total']
 
     @property
     def discount_promocode(self):
         """Сумма скидки по промокоду."""
-        return Decimal('0.00')  # Пока не реализованы промокоды TODO: доделать
+        return Decimal('0.0000')  # TODO: Пока не реализованы промокоды
 
     @property
     def total(self):
         """Сумма корзины с учетом промокода."""
-        return self.subtotal  # Пока не реализованы промокоды TODO: доделать
+        return self.subtotal  # TODO: Пока не реализованы промокоды, доделать
 
     def clean(self):
         super().clean()

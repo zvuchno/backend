@@ -9,7 +9,7 @@ from django.db.models.functions import Coalesce
 from store.constants import (
     MAX_COMMENT_LENGTH,
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
 )
 from store.validators import validate_price_with_donation
 
@@ -55,7 +55,7 @@ class CartItemQuerySet(models.QuerySet):
                     default=F('product_variant__product__price'),
                     output_field=DecimalField(
                         max_digits=MAX_PRICE_DIGITS,
-                        decimal_places=PRICE_DECIMAL_PLACES,
+                        decimal_places=MONEY_INTERNAL_PRECISION,
                     ),
                 ),
             )
@@ -65,7 +65,7 @@ class CartItemQuerySet(models.QuerySet):
                     F('_unit_price') * F('quantity'),
                     output_field=DecimalField(
                         max_digits=MAX_PRICE_DIGITS,
-                        decimal_places=PRICE_DECIMAL_PLACES,
+                        decimal_places=MONEY_INTERNAL_PRECISION,
                     ),
                 ),
             )
@@ -94,7 +94,7 @@ class CartItem(models.Model):
     price_with_donation = models.DecimalField(
         'Хочет заплатить, руб.',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_INTERNAL_PRECISION,
         null=True,
         blank=True,
         help_text='Цена с донатом, руб.',

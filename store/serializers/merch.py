@@ -5,7 +5,7 @@ from store.constants import (
     CHAR_PRESET_DIGITAL,
     CHAR_PRESET_SIMPLE,
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_DISPLAY_PRECISION,
 )
 from store.models import Merch, ProductVariant
 from store.serializers import ImageSerializer
@@ -135,7 +135,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         required=True,
         write_only=True,
     )

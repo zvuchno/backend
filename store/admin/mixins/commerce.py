@@ -2,6 +2,8 @@
 
 from django.contrib import admin
 
+from common.utils.money import format_money
+
 from store.models import ProductVariant
 from store.services import ProductService
 
@@ -62,7 +64,7 @@ class CommerceDisplayMixin:
     def get_price(self, obj):
         """Геттер для отображения поля price из связанного Product."""
         product = getattr(obj, 'product', None)
-        return product.price if product else '-'
+        return format_money(product.price) if product else '-'
 
     @admin.display(description='Переплата', boolean=True)
     def get_allow_overpay(self, obj):
