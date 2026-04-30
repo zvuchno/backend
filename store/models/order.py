@@ -1,7 +1,5 @@
 """Модели заказов покупателя."""
 
-from decimal import Decimal
-
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
@@ -13,7 +11,8 @@ from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_NUMBER_ORDER_LENGTH,
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
+    ZERO_MONEY,
 )
 from users.models.abstract import TimestampModel
 
@@ -90,30 +89,23 @@ class Order(TimestampModel):
     subtotal = models.DecimalField(
         'Сумма товаров (руб.)',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        default=Decimal('0.00'),
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
     )
-
-    # TODO: Промокоды
-
     delivery_price = models.DecimalField(
         'Стоимость доставки (руб.)',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        default=Decimal('0.00'),
-        validators=[MinValueValidator(Decimal('0.00'))],
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
     )
     total = models.DecimalField(
         'Итого (руб.)',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        default=Decimal('0.00'),
-    )
-    comment = models.TextField(
-        'Комментарий',
-        help_text='Комментарий к заказу',
-        null=True,
-        blank=True,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
     )
 
     def _generate_order_number(self) -> str:
@@ -155,4 +147,7 @@ class Order(TimestampModel):
         ordering = ('-created_at',)
 
     def __str__(self):
-        return f'Заказ # {self.order_number} ({self.user})'
+        return (
+            f'Заказ # {self.order_number} '
+            f'({self.user if self.user else self.full_name})'
+        )

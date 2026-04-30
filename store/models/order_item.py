@@ -1,11 +1,15 @@
-"""Модель позиций в заказе покупателя."""
+"""Модель позиции в заказе покупателя."""
 
+from decimal import Decimal
+
+from django.core.validators import MinValueValidator
 from django.db import models
 
 from store.constants import (
     MAX_COMMENT_LENGTH,
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
+    ZERO_MONEY,
 )
 
 
@@ -19,13 +23,12 @@ class OrderItem(models.Model):
     )
     product_variant = models.ForeignKey(
         'store.ProductVariant',
-        on_delete=models.SET_NULL,
-        null=True,
+        on_delete=models.PROTECT,
         related_name='order_items',
         verbose_name='Продукт',
     )
     comment = models.TextField(
-        'Комментарий к заказу',
+        'Комментарий артисту',
         max_length=MAX_COMMENT_LENGTH,
         blank=True,
         null=True,
@@ -36,32 +39,49 @@ class OrderItem(models.Model):
     price_at_purchase = models.DecimalField(
         'Цена на момент покупки, руб.',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        validators=[MinValueValidator(ZERO_MONEY)],
         help_text='Цена за единицу товара на момент оформления заказа',
     )
     unit_price = models.DecimalField(
-        'Фактическая оплата за ед., руб.',
+        'Цена с донатом за ед., руб.',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        validators=[MinValueValidator(ZERO_MONEY)],
         help_text='Цена с донатом, руб.',
     )
     quantity = models.PositiveIntegerField(
         'Количество',
         default=1,
+        validators=[MinValueValidator(1)],
+    )
+    discount_promocode = models.DecimalField(
+        'Скидка по промокоду, руб.',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+        help_text='Скидка по промокоду продавца, руб.',
     )
 
     # Snapshot {name, variant_name, artist..}
     product_info = models.JSONField('Данные о товаре (snapshot)', default=dict)
 
     @property
-    def donation(self):
+    def donation(self) -> Decimal:
         """Разница между уплаченным и номиналом."""
-        return (self.unit_price - self.price_at_purchase) * self.quantity
+        return max(
+            (self.unit_price - self.price_at_purchase) * self.quantity,
+            ZERO_MONEY,
+        )
 
     @property
-    def line_total(self):
+    def line_total(self) -> Decimal:
         """Сумма за всю позицию."""
-        return self.unit_price * self.quantity
+        return max(
+            (self.unit_price * self.quantity - self.discount_promocode),
+            ZERO_MONEY,
+        )
 
     class Meta:
         verbose_name = 'товар в заказе'
@@ -74,4 +94,5 @@ class OrderItem(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.product_info.get("name", "Товар")} (x{self.quantity})'
+        name = self.product_info.get('name') or 'Товар'
+        return f'{name} (x{self.quantity})'

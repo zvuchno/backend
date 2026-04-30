@@ -4,6 +4,10 @@
 """
 
 from django.contrib import admin
+from django.urls import NoReverseMatch, reverse
+from django.utils.safestring import mark_safe
+
+from common.utils.money import format_money
 
 from store.models import Order, OrderItem
 
@@ -13,17 +17,18 @@ class OrderItemInline(admin.TabularInline):
 
     model = OrderItem
     extra = 0
-    readonly_fields = (
-        'product_variant',
+    fields = (
+        'display_product_link',
         'product_info',
-        'get_allow_overpay',
+        'display_allow_overpay',
+        'display_price_at_purchase',
         'quantity',
-        'price_at_purchase',
-        'get_donation',
-        'unit_price',
-        'get_line_total',
+        'display_donation',
+        'display_discount_promocode',
+        'display_line_total',
         'comment',
     )
+    readonly_fields = fields
     can_delete = False
 
     def has_delete_permission(self, request, obj=None):
@@ -32,24 +37,62 @@ class OrderItemInline(admin.TabularInline):
     def has_add_permission(self, request, obj=None):
         return False
 
-    @admin.display(description='Донат')
-    def get_donation(self, obj):
-        if obj and obj.pk:
-            return obj.donation
-        return '-'
+    @admin.display(description='Товар')
+    def display_product_link(self, obj):
+        """Возвращает ссылку на родительский контент через вариант продукта.
 
-    @admin.display(description='Итого')
-    def get_line_total(self, obj):
-        if obj and obj.pk:
-            return obj.line_total
-        return '-'
+        Текст ссылки берется из строкового представления варианта. Переход
+        осуществляется в админку основной сущности (Альбома, Трека или Мерча),
+        к которой привязан универсальный продукт. Если ссылка не может быть
+        построена, возвращается строковое представление варианта.
+        """
+        if not obj.product_variant:
+            return obj.product_info.get('name', 'Товар (удален)')
+
+        variant = obj.product_variant
+        # Используем __str__ варианта как текст ссылки
+        link_text = str(variant)
+        product = getattr(variant, 'product', None)
+        if product:
+            content_obj = product.album or product.track or product.merch
+            if content_obj:
+                try:
+                    url = reverse(
+                        f'admin:{content_obj._meta.app_label}_'
+                        f'{content_obj._meta.model_name}_change',
+                        args=[content_obj.id],
+                    )
+                    return mark_safe(f'<a href="{url}">{link_text}</a>')
+                except NoReverseMatch:
+                    pass
+        return link_text
 
     @admin.display(description='Разрешена переплата', boolean=True)
-    def get_allow_overpay(self, obj):
+    def display_allow_overpay(self, obj):
         """Берет флаг разрешения переплаты из сохраненного снапшота."""
         if obj.product_info and isinstance(obj.product_info, dict):
             return obj.product_info.get('allow_overpay', False)
         return False
+
+    @admin.display(description='Донат')
+    def display_donation(self, obj):
+        if obj and obj.pk:
+            return format_money(obj.donation)
+        return '-'
+
+    @admin.display(description='Итого руб.')
+    def display_line_total(self, obj):
+        if obj and obj.pk:
+            return format_money(obj.line_total)
+        return '-'
+
+    @admin.display(description='Цена на момент покупки, руб.')
+    def display_price_at_purchase(self, obj):
+        return format_money(obj.price_at_purchase)
+
+    @admin.display(description='Скидка по промокоду, руб.')
+    def display_discount_promocode(self, obj):
+        return format_money(obj.discount_promocode)
 
 
 @admin.register(Order)
@@ -58,19 +101,18 @@ class OrderAdmin(admin.ModelAdmin):
 
     list_display = (
         'order_number',
-        'user',
+        'email',
         'status',
         'delivery',
-        'total',
+        'display_total',
     )
     list_editable = ('status',)
     readonly_fields = (
         'order_number',
         'user',
-        'subtotal',
-        'delivery_price',
-        'total',
-        'comment',
+        'display_subtotal',
+        'display_delivery_price',
+        'display_total',
         'created_at',
         'updated_at',
     )
@@ -94,7 +136,6 @@ class OrderAdmin(admin.ModelAdmin):
                     'order_number',
                     'user',
                     'status',
-                    'comment',
                 ),
             },
         ),
@@ -124,9 +165,9 @@ class OrderAdmin(admin.ModelAdmin):
             'Итоги',
             {
                 'fields': (
-                    'subtotal',
-                    'delivery_price',
-                    'total',
+                    'display_subtotal',
+                    'display_delivery_price',
+                    'display_total',
                 ),
             },
         ),
@@ -141,3 +182,26 @@ class OrderAdmin(admin.ModelAdmin):
         ),
     )
     inlines = (OrderItemInline,)
+
+    @admin.display(description='Сумма товаров (руб.)')
+    def display_subtotal(self, obj):
+        return format_money(obj.subtotal)
+
+    @admin.display(description='Стоимость доставки (руб.)')
+    def display_delivery_price(self, obj):
+        return format_money(obj.delivery_price)
+
+    @admin.display(description='Итого (руб.)', ordering='total')
+    def display_total(self, obj):
+        return format_money(obj.total)
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .prefetch_related(
+                'items__product_variant__product__album',
+                'items__product_variant__product__track',
+                'items__product_variant__product__merch',
+            )
+        )
