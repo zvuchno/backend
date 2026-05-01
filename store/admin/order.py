@@ -24,7 +24,7 @@ class OrderItemInline(admin.TabularInline):
         'display_price_at_purchase',
         'quantity',
         'display_donation',
-        'display_discount_promocode',
+        'display_promocode_discount',
         'display_line_total',
         'comment',
     )
@@ -91,8 +91,8 @@ class OrderItemInline(admin.TabularInline):
         return format_money(obj.price_at_purchase)
 
     @admin.display(description='Скидка по промокоду, руб.')
-    def display_discount_promocode(self, obj):
-        return format_money(obj.discount_promocode)
+    def display_promocode_discount(self, obj):
+        return format_money(obj.promocode_discount)
 
 
 @admin.register(Order)
@@ -110,8 +110,13 @@ class OrderAdmin(admin.ModelAdmin):
     readonly_fields = (
         'order_number',
         'user',
+        'full_name',
+        'email',
+        'phone',
         'display_subtotal',
         'display_delivery_price',
+        'delivery',
+        'display_address',
         'display_total',
         'created_at',
         'updated_at',
@@ -154,10 +159,7 @@ class OrderAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'delivery',
-                    'city',
-                    'street',
-                    'house',
-                    'apartment',
+                    'display_address',
                 ),
             },
         ),
@@ -195,6 +197,16 @@ class OrderAdmin(admin.ModelAdmin):
     def display_total(self, obj):
         return format_money(obj.total)
 
+    @admin.display(description='Адрес доставки')
+    def display_address(self, obj):
+        parts = [
+            f'г. {obj.city}' if obj.city else None,
+            f'ул. {obj.street}' if obj.street else None,
+            f'д. {obj.house}' if obj.house else None,
+            f'кв/оф. {obj.apartment}' if obj.apartment else None,
+        ]
+        return ', '.join(filter(None, parts)) or '-'
+
     def get_queryset(self, request):
         return (
             super()
@@ -205,3 +217,11 @@ class OrderAdmin(admin.ModelAdmin):
                 'items__product_variant__product__merch',
             )
         )
+
+    def has_add_permission(self, request):
+        """Запрещает ручное создание заказов через кнопку 'Добавить'."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает ручное удаление заказов через кнопку 'Удалить'."""
+        return False

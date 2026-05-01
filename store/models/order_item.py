@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import F, Q
 
 from store.constants import (
     MAX_COMMENT_LENGTH,
@@ -20,6 +21,7 @@ class OrderItem(models.Model):
         'store.Order',
         on_delete=models.CASCADE,
         related_name='items',
+        verbose_name='Заказ',
     )
     product_variant = models.ForeignKey(
         'store.ProductVariant',
@@ -31,8 +33,7 @@ class OrderItem(models.Model):
         'Комментарий артисту',
         max_length=MAX_COMMENT_LENGTH,
         blank=True,
-        null=True,
-        help_text='Сообщение для артиста',
+        default='',
     )
 
     # Поля для математики и отчетов
@@ -40,6 +41,7 @@ class OrderItem(models.Model):
         'Цена на момент покупки, руб.',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
         validators=[MinValueValidator(ZERO_MONEY)],
         help_text='Цена за единицу товара на момент оформления заказа',
     )
@@ -47,6 +49,7 @@ class OrderItem(models.Model):
         'Цена с донатом за ед., руб.',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
         validators=[MinValueValidator(ZERO_MONEY)],
         help_text='Цена с донатом, руб.',
     )
@@ -55,7 +58,7 @@ class OrderItem(models.Model):
         default=1,
         validators=[MinValueValidator(1)],
     )
-    discount_promocode = models.DecimalField(
+    promocode_discount = models.DecimalField(
         'Скидка по промокоду, руб.',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
@@ -79,7 +82,7 @@ class OrderItem(models.Model):
     def line_total(self) -> Decimal:
         """Сумма за всю позицию."""
         return max(
-            (self.unit_price * self.quantity - self.discount_promocode),
+            (self.unit_price * self.quantity - self.promocode_discount),
             ZERO_MONEY,
         )
 
@@ -91,8 +94,18 @@ class OrderItem(models.Model):
                 fields=('order', 'product_variant'),
                 name='unique_product_variant_in_order',
             ),
+            models.CheckConstraint(
+                condition=Q(unit_price__gte=F('price_at_purchase')),
+                name='unit_price_gte_price_at_purchase',
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    promocode_discount__lte=F('unit_price') * F('quantity'),
+                ),
+                name='discount_not_exceed_total',
+            ),
         ]
 
     def __str__(self):
-        name = self.product_info.get('name') or 'Товар'
+        name = self.product_info.get('name', 'Товар')
         return f'{name} (x{self.quantity})'

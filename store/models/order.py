@@ -57,34 +57,43 @@ class Order(TimestampModel):
     )
 
     # --- Контакты ---
-    full_name = models.CharField(
-        'Имя и фамилия',
-        max_length=MAX_CHAR_LENGTH,
-        default='',
-    )
+    full_name = models.CharField('Имя и фамилия', max_length=MAX_CHAR_LENGTH)
     email = models.EmailField('Email')
     phone = PhoneNumberField(
         'Номер телефона',
-        help_text='Номер телефона',
     )
 
     # --- Адрес доставки ---
-    city = models.CharField('Город', max_length=MAX_CHAR_LENGTH, blank=True)
-    street = models.CharField('Улица', max_length=MAX_CHAR_LENGTH, blank=True)
-    house = models.CharField('Дом', max_length=MAX_CHAR_LENGTH, blank=True)
+    city = models.CharField(
+        'Город',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+    )
+    street = models.CharField(
+        'Улица',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+    )
+    house = models.CharField(
+        'Дом',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+    )
     apartment = models.CharField(
         'Квартира/Офис',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
+        default='',
     )
 
-    delivery = models.ForeignKey(
-        'store.Delivery',
-        on_delete=models.SET_NULL,
-        null=True,
+    delivery = models.CharField(
+        'Способ доставки',
+        max_length=MAX_CHAR_LENGTH,
         blank=True,
-        related_name='orders',
-        verbose_name='Способ доставки',
+        default='',
     )
     subtotal = models.DecimalField(
         'Сумма товаров (руб.)',
@@ -124,13 +133,16 @@ class Order(TimestampModel):
             counter, _ = (
                 OrderNumberCounter.objects.select_for_update().get_or_create(
                     year=year,
+                    defaults={'last_number': 0},
                 )
             )
-            OrderNumberCounter.objects.filter(
-                pk=counter.pk,
-            ).update(last_number=F('last_number') + 1)
+
+            counter.last_number = F('last_number') + 1
+            counter.save(update_fields=['last_number'])
+
             counter.refresh_from_db()
-        return f'ZV-{short_year}{counter.last_number:06d}'
+
+            return f'ZV-{short_year}{counter.last_number:06d}'
 
     def save(self, *args, **kwargs):
         if not self.order_number:
@@ -148,6 +160,6 @@ class Order(TimestampModel):
 
     def __str__(self):
         return (
-            f'Заказ # {self.order_number} '
+            f'Заказ {self.order_number} '
             f'({self.user if self.user else self.full_name})'
         )
