@@ -22,10 +22,8 @@ class ProductActionMixin:
         with transaction.atomic():
             instance = serializer.save(owner=self.request.user)
             self._update_product_data(instance, serializer.validated_data)
-            instance.refresh_from_db()
 
     def perform_update(self, serializer):
         with transaction.atomic():
             instance = serializer.save()
             self._update_product_data(instance, serializer.validated_data)
-            instance.refresh_from_db()

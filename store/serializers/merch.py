@@ -110,8 +110,9 @@ class VariantWriteSerializer(serializers.Serializer):
     """Сериализатор для записи варианта мерча."""
 
     id = serializers.IntegerField(required=False)
-    value = serializers.CharField()
+    value = serializers.CharField(source='property_value')
     stock = serializers.IntegerField(min_value=0, required=True)
+    is_active = serializers.BooleanField(required=False)
 
     def validate_value(self, value):
         if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
@@ -126,7 +127,10 @@ class VariantWriteSerializer(serializers.Serializer):
         instance.property_value = validated_data.get(
             'value', instance.property_value
         )
-        instance.save(update_fields=['stock', 'property_value'])
+        instance.is_active = validated_data.get(
+            'is_active', instance.is_active
+        )
+        instance.save(update_fields=['stock', 'property_value', 'is_active'])
         return instance
 
 

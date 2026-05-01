@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
@@ -45,15 +46,15 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
         return MerchWriteSerializer
 
     def get_queryset(self):
-        return (
-            Merch.objects
-            .visible_for(self.request.user, self.action)
-            .select_related('product', 'kind', 'album', 'owner')
-            .prefetch_related(
+        queryset = Merch.objects.visible_for(self.request.user, self.action)
+        if self.action in ('list', 'retrieve'):
+            queryset = queryset.select_related(
+                'product', 'kind', 'album', 'owner'
+            ).prefetch_related(
                 'images_merch',
                 'product__variants'
             )
-        )
+        return queryset
 
     @action(detail=True, methods=['get'], url_path='variants')
     def list_variants(self, request, pk=None):
@@ -73,16 +74,9 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
         request=VariantWriteSerializer,
         responses={200: VariantReadSerializer},
     )
-    @extend_schema(
-        methods=['delete'],
-        summary='Удалить вариант',
-        tags=['Merch'],
-        description='Удаляет вариант мерча.',
-        responses={204: None},
-    )
     @action(
         detail=True,
-        methods=['patch', 'delete'],
+        methods=['patch'],
         url_path='variants/(?P<variant_id>[0-9]+)',
     )
     def variant_detail(self, request, pk=None, variant_id=None):
@@ -90,11 +84,6 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
         variant = get_object_or_404(
             ProductVariant, id=variant_id, product__merch=merch
         )
-
-        if request.method == 'DELETE':
-            variant.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
         serializer = VariantWriteSerializer(
             variant, data=request.data, partial=True
         )
@@ -142,13 +131,14 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
         image = get_object_or_404(Image, id=image_id, merch=merch)
 
         if request.method == 'DELETE':
-            was_main = image.is_main
-            image.delete()
-            if was_main:
-                next_image = merch.images_merch.first()
-                if next_image:
-                    next_image.is_main = True
-                    next_image.save(update_fields=['is_main'])
+            with transaction.atomic():
+                was_main = image.is_main
+                image.delete()
+                if was_main:
+                    next_image = merch.images_merch.first()
+                    if next_image:
+                        next_image.is_main = True
+                        next_image.save(update_fields=['is_main'])
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         serializer = ImageSerializer(image, data=request.data, partial=True)

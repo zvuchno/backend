@@ -107,7 +107,6 @@ class ProductService:
 
             for variant_data in variants_data:
                 variant_id = variant_data.get('id')
-                # variant_value = variant_data.get('value')
                 value = variant_data.get('property_value')
                 stock = variant_data.get('stock')
                 is_active = variant_data.get('is_active', True)
