@@ -30,7 +30,7 @@ class ProductService:
             defaults=defaults,
         )
 
-        # Если продукт уже был — обновляем его поля
+        # Если продукт уже был → обновляем его поля
         if not created:
             cls._update_product_base_fields(product, validated_data)
 
@@ -40,11 +40,20 @@ class ProductService:
 
         # Варианты мерча синхронизируем всегда
         if model_name == 'merch':
-            cls.sync_merch_variants(
-                product=product,
-                stock=validated_data.get('stock', 0),
-                variants_data=validated_data.get('variants'),
-            )
+            if 'variants' in validated_data:
+                # POST/PATCH и 'variants' в запросе
+                cls.sync_merch_variants(
+                    product=product,
+                    value_stock=validated_data.get('stock', 0),
+                    variants_data=validated_data.get('variants'),
+                )
+            elif created:
+                # POST без variants → создаём simple
+                cls.sync_merch_variants(
+                    product=product,
+                    value_stock=validated_data.get('stock', 0),
+                    variants_data=None,
+                )
 
         return product
 
@@ -77,14 +86,14 @@ class ProductService:
 
     @staticmethod
     @transaction.atomic
-    def sync_merch_variants(product, stock, variants_data=None) -> None:
+    def sync_merch_variants(product, value_stock, variants_data=None) -> None:
         """Синхронизирует варианты мерча на основе переданных данных."""
         if not variants_data:
             # Сценарий 1: Свойств нет -> один вариант с общим стоком
             variant, _ = product.variants.update_or_create(
                 property_value=CHAR_PRESET_SIMPLE,
                 defaults={
-                    'stock': stock,
+                    'stock': value_stock,
                     'is_active': True,
                 },
             )
@@ -93,20 +102,64 @@ class ProductService:
         else:
             # Сценарий 2: Есть свойства -> создаем по варианту на каждое
             incoming_ids = []
+            seen_values = set()
+            existing_v_ids = set(product.variants.values_list('id', flat=True))
 
             for variant_data in variants_data:
                 variant_id = variant_data.get('id')
-                variant_value = variant_data.get('property_value')
+                value = variant_data.get('property_value')
+                stock = variant_data.get('stock')
+                is_active = variant_data.get('is_active', True)
 
-                lookup = {'product': product}
-                # Если ID пришел — ищем по нему (приоритет).
+                #  =============== Валидация ===============
+                if (
+                    value is None
+                    or str(value).strip() == ''
+                    or not isinstance(stock, int)
+                    or stock < 0
+                ):
+                    raise ValidationError({
+                        'variants': 'value и stock — обязательны '
+                        'для свойства (stock должен быть числом).',
+                    })
+
+                variant_value = str(value).strip()
+
+                if variant_value in seen_values:
+                    raise ValidationError({
+                        'variants': 'В запросе дублирующиеся '
+                        'значения вариантов.',
+                    })
+                seen_values.add(variant_value)
+
+                duplicate_qs = ProductVariant.objects.filter(
+                    product=product,
+                    property_value=variant_value,
+                )
                 if variant_id:
-                    # Проверяем, существует ли такой ID у этого продукта
-                    if not product.variants.filter(id=variant_id).exists():
+                    # Проверка принадлежности продукту
+                    if variant_id not in existing_v_ids:
                         raise ValidationError({
                             'variants': f'Вариант с ID {variant_id} '
                             'не принадлежит данному продукту.',
                         })
+                    # Если редактируем существующий — исключаем его самого
+                    duplicate_qs = duplicate_qs.exclude(id=variant_id)
+
+                    if duplicate_qs.exists():
+                        raise ValidationError({
+                            'variants': (
+                                'Нельзя переименовать вариант со значением '
+                                f'{variant_value}, он уже существует '
+                                'у этого товара. Добавьте его, если '
+                                'снова хотите активировать.'
+                            ),
+                        })
+
+                # =============== Синхронизация ===============
+                lookup = {'product': product}
+                # Если ID пришел — ищем по нему (приоритет)
+                if variant_id:
                     lookup['id'] = variant_id
                 else:
                     # Если ID нет — ищем по значению (защита от дублей)
@@ -116,8 +169,8 @@ class ProductService:
                     **lookup,
                     defaults={
                         'property_value': variant_value,
-                        'stock': variant_data.get('stock', 0),
-                        'is_active': True,
+                        'stock': stock,
+                        'is_active': is_active,
                     },
                 )
                 incoming_ids.append(variant.id)

@@ -37,6 +37,7 @@ ADMIN_REORDER = (
         'app': 'store',
         'label': 'Заказы',
         'models': (
+            'store.Order',
             'store.Cart',
             'store.Delivery',
             'store.Favorite',
