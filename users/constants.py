@@ -20,6 +20,8 @@ URL_FIELD_MAX_LENGTH = 254
 URL_FIELD_MIN_LENGTH = 3
 FULL_NAME_FIELD_MAX_LENGTH = 254
 MAX_USER_CREATE_ATTEMPTS = 30
+MAX_CHAR_LENGTH = 255
+MAX_SLUG_LENGTH = 50
 
 # Коды ошибок social auth.
 """Коды и сообщения ошибок social auth."""
