@@ -14,6 +14,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     sku = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
+    property_name = serializers.SerializerMethodField()
+    property_value = serializers.SerializerMethodField()
     donation = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
@@ -34,18 +36,22 @@ class OrderItemSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
         fields = (
-            'id',
             'sku',
             'name',
+            'property_name',
+            'property_value',
             'price_at_purchase',
+            'quantity',
             'donation',
             'promocode_discount',
             'line_total',
             'comment',
+            'image',
         )
 
     def get_sku(self, obj) -> str:
@@ -54,12 +60,44 @@ class OrderItemSerializer(serializers.ModelSerializer):
     def get_name(self, obj) -> str:
         return obj.product_info.get('name') or '-'
 
+    def get_property_name(self, obj) -> str:
+        return obj.product_info.get('property_name') or '-'
+
+    def get_property_value(self, obj) -> str:
+        return obj.product_info.get('property_value') or '-'
+
+    def get_image(self, obj) -> str:
+        """Отдаем одну картинку в придачу для отображения позиции."""
+        product = obj.product_variant.product
+        product_type = product.product_type
+
+        if product_type in (
+            product.ProductType.ALBUM,
+            product.ProductType.TRACK,
+        ):
+            if product_type == product.ProductType.ALBUM:
+                album = getattr(product, 'album', None)
+            else:
+                track = getattr(product, 'track', None)
+                album = getattr(track, 'album', None) if track else None
+
+            if album and album.cover_image:
+                return album.cover_image.url
+
+        if product_type == product.ProductType.MERCH:
+            merch = getattr(product, 'merch', None)
+            if merch:
+                image_obj = merch.images_merch.all().first()
+                if image_obj and image_obj.image:
+                    return image_obj.image.url
+        return None
+
 
 class OrderSerializer(serializers.ModelSerializer):
     """Сериализтор заказа."""
 
     items_count = serializers.IntegerField(
-        source='items.count',
+        source='items_count_annotated',
         read_only=True,
     )
     total = serializers.DecimalField(
