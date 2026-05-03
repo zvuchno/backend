@@ -4,6 +4,7 @@ from rest_framework import serializers
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     CHAR_PRESET_SIMPLE,
+    DEFAULT_QUANTITY,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
@@ -111,7 +112,7 @@ class VariantWriteSerializer(serializers.Serializer):
 
     id = serializers.IntegerField(required=False)
     value = serializers.CharField(source='property_value')
-    stock = serializers.IntegerField(min_value=0, required=True)
+    stock = serializers.IntegerField(min_value=DEFAULT_QUANTITY, required=True)
     is_active = serializers.BooleanField(required=False)
 
     def validate_value(self, value):
