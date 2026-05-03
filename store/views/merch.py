@@ -9,15 +9,13 @@ from rest_framework.response import Response
 from common.permissions import IsStoreObjectOwnerOrReadOnly
 
 from store.filters.merch import MerchFilter
-from store.models import Image, Merch, ProductVariant
+from store.models import Image, Merch
 from store.schema.merch import merch_schema
 from store.serializers import (
     ImageSerializer,
     MerchDetailSerializer,
     MerchReadSerializer,
     MerchWriteSerializer,
-    VariantReadSerializer,
-    VariantWriteSerializer,
 )
 from store.views.mixins import ProductActionMixin
 
@@ -55,41 +53,6 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
                 'product__variants'
             )
         return queryset
-
-    @action(detail=True, methods=['get'], url_path='variants')
-    def list_variants(self, request, pk=None):
-        merch = self.get_object()
-        product = getattr(merch, 'product', None)
-        if not product:
-            return Response([])
-        variants = product.variants.all().order_by('id')
-        serializer = VariantReadSerializer(variants, many=True)
-        return Response(serializer.data)
-
-    @extend_schema(
-        methods=['patch'],
-        summary='Обновить вариант',
-        tags=['Merch'],
-        description='Обновляет вариант мерча.',
-        request=VariantWriteSerializer,
-        responses={200: VariantReadSerializer},
-    )
-    @action(
-        detail=True,
-        methods=['patch'],
-        url_path='variants/(?P<variant_id>[0-9]+)',
-    )
-    def variant_detail(self, request, pk=None, variant_id=None):
-        merch = self.get_object()
-        variant = get_object_or_404(
-            ProductVariant, id=variant_id, product__merch=merch
-        )
-        serializer = VariantWriteSerializer(
-            variant, data=request.data, partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(VariantReadSerializer(variant).data)
 
     @extend_schema(
         summary='Добавить изображение',

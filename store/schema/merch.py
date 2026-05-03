@@ -1,9 +1,3 @@
-"""Схемы автодокументации OpenAPI для сущности Мерча.
-
-Содержит конфигурации `drf-spectacular` для валидного отображения
-CRUD-операций в Swagger/ReDoc.
-"""
-
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -14,7 +8,6 @@ from drf_spectacular.utils import (
 from store.serializers import (
     MerchDetailSerializer,
     MerchWriteSerializer,
-    VariantReadSerializer,
 )
 
 merch_schema = extend_schema_view(
@@ -94,22 +87,26 @@ merch_schema = extend_schema_view(
     partial_update=extend_schema(
         summary='Частично обновить мерч',
         tags=['Merch'],
-        description=(
-            'Обновляет поля мерча. '
-            'Изображения обновляются через отдельные эндпоинты.'
-        ),
         request=MerchWriteSerializer,
         responses={200: MerchDetailSerializer},
+        description=(
+            'Обновляет поля мерча. '
+            'Изображения обновляются через отдельные эндпоинты.\n\n'
+            'Если поле `variants` передано — оно должно содержать '
+            'ПОЛНЫЙ список вариантов. '
+            'Отсутствующие варианты будут деактивированы.\n\n'
+            'Логика работы с вариантами:\n'
+            '- вариант без `id` → создаёт\n'
+            '- вариант с `id` → обновляет\n'
+            '- вариант отсутствует в списке → деактивирует\n'
+            '- нет `id`, но значение есть среди деактивированных → '
+            'реанимирует и обновляет\n'
+            '- `variants: []` → деактивирует все'
+        ),
     ),
     destroy=extend_schema(
         summary='Удалить мерч',
         tags=['Merch'],
         description='Удаляет мерч.',
-    ),
-    list_variants=extend_schema(
-        summary='Список вариантов мерча',
-        tags=['Merch'],
-        description='Возвращает список вариантов мерча.',
-        responses={200: VariantReadSerializer(many=True)},
     ),
 )
