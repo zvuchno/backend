@@ -79,11 +79,21 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
-# Настройки для debug_toolbar
+# Настройки Silk и nplusone
 if DEBUG:
-    INSTALLED_APPS += ['debug_toolbar']
-    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
-    INTERNAL_IPS = ['127.0.0.1']
+    INSTALLED_APPS += ['silk']
+    MIDDLEWARE = ['silk.middleware.SilkyMiddleware'] + MIDDLEWARE
+    SILKY_PYTHON_PROFILER = True  # Включает профилирование Python-кода
+    SILKY_INTERCEPT_PERCENT = 100 # Записывать 100% запросов (для дебага)
+    SILKY_MAX_RECORDED_STACKTRACES = 10 # Ограничение стека, чтобы не раздувать БД
+    SILKY_META = True # Записывать время генерации самого Silk
+
+    INSTALLED_APPS += ['nplusone.ext.django']
+    MIDDLEWARE = ['nplusone.ext.django.NPlusOneMiddleware'] + MIDDLEWARE
+    NPLUSONE_RAISE = False  # Не выбрасывать ошибку
+    NPLUSONE_LOGGER = logging.getLogger('nplusone')
+    NPLUSONE_LOG_LEVEL = logging.WARN
+    NPLUSONE_WHITELIST = [{'model': 'silk.*'}]
 
 ROOT_URLCONF = 'config.urls'
 
