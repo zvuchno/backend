@@ -18,6 +18,7 @@ from .artist_profile import (
 )
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
+from .consent_documents import ConsentDocumentViewSet
 from .jwt import (
     CustomLogoutView,
     CustomTokenObtainPairView,
@@ -45,6 +46,7 @@ __all__ = [
     'ArtistRegistrationView',
     'BecomeArtistView',
     'BaseRegistrationView',
+    'ConsentDocumentViewSet',
     'CustomLogoutView',
     'CustomTokenObtainPairView',
     'CustomTokenRefreshView',

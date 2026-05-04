@@ -25,6 +25,7 @@ from .auth import (
     token_refresh_schema,
     token_verify_schema,
 )
+from .consent_documents import consent_doc_schema
 from .listener_profile import listener_me_schema
 from .registration import (
     artist_registration_schema,
@@ -45,6 +46,7 @@ __all__ = [
     'become_artist_schema',
     'change_password_schema',
     'change_phone_schema',
+    'consent_doc_schema',
     'email_verification_schema',
     'listener_me_schema',
     'listener_registration_schema',
