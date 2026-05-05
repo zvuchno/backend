@@ -4,18 +4,22 @@
 как точка входа для коммерческой логики.
 """
 
+import logging
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
+from django.urls import NoReverseMatch, reverse
 
 from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MONEY_INTERNAL_PRECISION,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Product(models.Model):
@@ -82,22 +86,49 @@ class Product(models.Model):
         related_name='product',
     )
 
+    @property
+    def target_url(self):
+        """Определяет URL в зависимости от того, какой контент привязан."""
+        try:
+            if self.album_id:
+                return reverse(
+                    'api:store:albums-detail',
+                    kwargs={'pk': self.album_id},
+                )
+            if self.track_id:
+                return reverse(
+                    'api:store:tracks-detail',
+                    kwargs={'pk': self.track_id},
+                )
+            if self.merch_id:
+                # return reverse(
+                #'api:store:merch-detail',
+                # kwargs={'pk': self.merch_id},
+                # )
+                return (
+                    f'/api/v1/store/merch/{self.merch_id}/'  # TODO: временно
+                )
+        except NoReverseMatch as e:
+            logger.error(f'Ошибка формирования URL для Product {self.id}: {e}')
+            return None
+        return None
+
     def determine_product_type(self):
         """Автозаполнение поля product_type.
 
         Автоматически определяет категорию товара на основе заполненной связи.
         """
-        filled = (self.album, self.track, self.merch)
-        if sum(map(bool, filled)) != 1:
+        filled_ids = (self.album_id, self.track_id, self.merch_id)
+        if sum(map(bool, filled_ids)) != 1:
             raise ValidationError(
                 'Должен быть указан ровно один тип продукта.',
             )
 
-        if self.album:
+        if self.album_id:
             self.product_type = self.ProductType.ALBUM
-        elif self.track:
+        elif self.track_id:
             self.product_type = self.ProductType.TRACK
-        elif self.merch:
+        elif self.merch_id:
             self.product_type = self.ProductType.MERCH
 
     def save(self, *args, **kwargs):

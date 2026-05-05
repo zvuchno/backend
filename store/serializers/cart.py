@@ -34,6 +34,10 @@ class CartItemReadSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    target_url = serializers.CharField(
+        source='product_variant.product.target_url',
+        read_only=True,
+    )
 
     class Meta:
         model = CartItem
@@ -45,12 +49,14 @@ class CartItemReadSerializer(serializers.ModelSerializer):
             'line_total',
             'comment',
             'stock',
+            'target_url',
         )
 
     def get_stock(self, obj) -> int:
         """Если цифра - наличие = 1."""
         variant = obj.product_variant
-        if variant.product.product_type != 'merch':
+        product = variant.product
+        if product.product_type != product.ProductType.MERCH:
             return 1
         return variant.stock
 

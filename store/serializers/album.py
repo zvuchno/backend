@@ -10,6 +10,7 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
+from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Album
 
@@ -56,10 +57,11 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         return ret
 
 
-class AlbumReadDetailSerializer(AlbumReadSerializer):
+class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Album."""
 
     allow_overpay = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
@@ -67,6 +69,7 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
             'genre',
             'release_date',
             'allow_overpay',
+            'variants',
         )
 
     def get_allow_overpay(self, obj) -> bool:
