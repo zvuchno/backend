@@ -1,6 +1,4 @@
-import random
 from decimal import Decimal
-from random import choice, randint
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
@@ -69,85 +67,74 @@ class Command(BaseCommand):
         )
         # Альбом
         album = Album.objects.get_or_create(
-            genre=random.choice(genres),
+            genre=genres[0],
             owner=user,
         )[0]
 
         # ----------Массовые данные----------
         created = 0
         for i in range(total):
-            product_type = random.choice(['track', 'album', 'merch'])
+            track = Track.objects.create(
+                name=f'product_{i}',
+                duration=100,
+                album=album,
+                owner=user,
+            )
+            product = Product.objects.create(
+                price=Decimal(100),
+                track=track,
+            )
+            track.product = product
+            track.save()
 
-            if product_type == 'track':
-                track = Track.objects.create(
-                    name=f'product_{i}',
-                    duration=randint(90, 300),
-                    album=album,
-                    owner=user,
-                )
-                product = Product.objects.create(
-                    price=Decimal(randint(100, 5000) / 100),
-                    track=track,
-                )
-                track.product = product
-                track.save()
+            album = Album.objects.get_or_create(
+                name=f'album_{i}',
+                genre=genres[0],
+                owner=user,
+            )[0]
+            product = Product.objects.create(
+                price=Decimal(100),
+                album=album,
+            )
+            album.product = product
+            album.save()
 
-            elif product_type == 'album':
-                album = Album.objects.get_or_create(
-                    name=f'album_{i}',
-                    genre=choice(genres),
-                    owner=user,
-                )[0]
-                product = Product.objects.create(
-                    price=Decimal(randint(100, 5000) / 100),
-                    album=album,
-                )
-                album.product = product
-                album.save()
+            merch = Merch.objects.create(
+                name=f'merch_{i}',
+                kind=merch_kinds[0],
+                owner=user,
+            )
+            product = Product.objects.create(
+                price=Decimal(100),
+                merch=merch,
+            )
+            merch.product = product
+            merch.save()
 
-            else:  # merch
-                merch = Merch.objects.create(
-                    name=f'merch_{i}',
-                    kind=choice(merch_kinds),
-                    owner=user,
-                )
-                product = Product.objects.create(
-                    price=Decimal(randint(100, 5000) / 100),
-                    merch=merch,
-                )
-                merch.product = product
-                merch.save()
-
-                Image.objects.create(
-                    merch=merch,
-                )
+            Image.objects.create(
+                merch=merch,
+            )
 
             product_variant = ProductVariant.objects.get_or_create(
                 product=product,
-                stock=random.randint(0, 100),
+                stock=100,
             )[0]
-            if i % 4 == 0:
-                Favorite.objects.create(
-                    user=user,
-                    product_variant=product_variant,
-                )
 
-            if i % 5 == 0:
-                CartItem.objects.create(
-                    cart=cart,
-                    product_variant=product_variant,
-                    quantity=(
-                        random.randint(1, 10)
-                        if product_variant.product.product_type == 'merch'
-                        else 1
-                    ),
-                )
+            Favorite.objects.create(
+                user=user,
+                product_variant=product_variant,
+            )
 
-            if i % 5 == 0:
-                Delivery.objects.create(
-                    name=f'delivery_{i}',
-                    price=random.randint(1, 10000),
-                )
+            CartItem.objects.create(
+                cart=cart,
+                product_variant=product_variant,
+                quantity=1,
+            )
+
+            Delivery.objects.create(
+                name=f'delivery_{i}',
+                price=100,
+            )
 
             created += 1
             self.stdout.write(f'Создано {created} / {total}', ending='\r')
