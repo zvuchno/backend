@@ -29,7 +29,6 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'cover_image',
             'visibility',
             'is_published',
-            'is_active',
         )
 
     def get_price(self, obj) -> Decimal | None:
@@ -51,7 +50,6 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             user.is_authenticated and (user == instance.owner or user.is_staff)
         ):
             ret.pop('visibility', None)
-            ret.pop('is_active', None)
             ret.pop('is_published', None)
         return ret
 
@@ -99,7 +97,6 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
             'allow_overpay',
             'visibility',
             'is_published',
-            'is_active',
         )
 
     def validate_release_date(self, value):
