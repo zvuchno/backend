@@ -10,6 +10,19 @@ from store.serializers import (
     MerchWriteSerializer,
 )
 
+# Описание логики работы с вариантами для API документации
+VARIANTS_DESCRIPTION = (
+    'Если поле `variants` передано — оно должно содержать '
+    'ПОЛНЫЙ список вариантов. Отсутствующие варианты будут деактивированы.\n\n'
+    'Логика работы с вариантами:\n'
+    '- вариант без `id` → создаёт\n'
+    '- вариант с `id` → обновляет\n'
+    '- вариант отсутствует в списке → деактивирует\n'
+    '- нет `id`, но значение есть среди деактивированных '
+    '→ реанимирует и обновляет\n'
+    '- `variants: []` → деактивирует все'
+)
+
 merch_schema = extend_schema_view(
     list=extend_schema(
         summary='Список мерча',
@@ -80,9 +93,9 @@ merch_schema = extend_schema_view(
     create=extend_schema(
         summary='Создать мерч',
         tags=['Merch'],
-        description='Создаёт новый мерч.',
         request=MerchWriteSerializer,
         responses={201: MerchDetailSerializer},
+        description=(f'Создаёт новый мерч.\n\n{VARIANTS_DESCRIPTION}'),
     ),
     partial_update=extend_schema(
         summary='Частично обновить мерч',
@@ -91,17 +104,8 @@ merch_schema = extend_schema_view(
         responses={200: MerchDetailSerializer},
         description=(
             'Обновляет поля мерча. '
-            'Изображения обновляются через отдельные эндпоинты.\n\n'
-            'Если поле `variants` передано — оно должно содержать '
-            'ПОЛНЫЙ список вариантов. '
-            'Отсутствующие варианты будут деактивированы.\n\n'
-            'Логика работы с вариантами:\n'
-            '- вариант без `id` → создаёт\n'
-            '- вариант с `id` → обновляет\n'
-            '- вариант отсутствует в списке → деактивирует\n'
-            '- нет `id`, но значение есть среди деактивированных → '
-            'реанимирует и обновляет\n'
-            '- `variants: []` → деактивирует все'
+            'Изображения обновляются через отдельные эндпоинты.'
+            f'\n\n{VARIANTS_DESCRIPTION}'
         ),
     ),
     destroy=extend_schema(

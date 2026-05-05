@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -35,9 +36,18 @@ class MerchReadSerializer(serializers.ModelSerializer):
         return None
 
     def get_main_image(self, obj):
+        request = self.context.get('request')
+
         for image in obj.images_merch.all():
             if image.is_main:
-                return image.image.url
+                url = image.image.url
+                return request.build_absolute_uri(url) if request else url
+
+        first = obj.images_merch.first()
+        if first:
+            url = first.image.url
+            return request.build_absolute_uri(url) if request else url
+
         return None
 
 
@@ -60,6 +70,7 @@ class MerchDetailSerializer(MerchReadSerializer):
     album = serializers.StringRelatedField()
     variants = serializers.SerializerMethodField()
     property_name = serializers.SerializerMethodField()
+    stock = serializers.SerializerMethodField()
 
     class Meta(MerchReadSerializer.Meta):
         fields = MerchReadSerializer.Meta.fields + (
@@ -67,12 +78,37 @@ class MerchDetailSerializer(MerchReadSerializer):
             'images_merch',
             'kind',
             'album',
-            'visibility',
-            'is_published',
-            'is_active',
             'property_name',
+            'stock',
             'variants',
         )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop('main_image', None)
+        request = self.context.get('request')
+        if request and request.user == instance.owner:
+            for field in ('visibility', 'is_published', 'is_active'):
+                data[field] = getattr(instance, field)
+        return data
+
+    def get_stock(self, obj):
+        product = getattr(obj, 'product', None)
+        if not product:
+            return 0
+
+        # если нет свойств - берём stock простого варианта
+        if not product.property_name:
+            simple = product.variants.filter(
+                property_value=CHAR_PRESET_SIMPLE,
+                is_active=True
+            ).first()
+            return simple.stock if simple else 0
+
+        # если есть свойства - сумма стоков всех вариантов
+        return product.variants.filter(is_active=True).exclude(
+            property_value=CHAR_PRESET_SIMPLE
+        ).aggregate(total=Sum('stock'))['total'] or 0
 
     def get_allow_overpay(self, obj):
         product = getattr(obj, 'product', None)
@@ -113,7 +149,6 @@ class VariantWriteSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
     value = serializers.CharField(source='property_value')
     stock = serializers.IntegerField(min_value=DEFAULT_QUANTITY, required=True)
-    is_active = serializers.BooleanField(required=False)
 
     def validate_value(self, value):
         if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
@@ -122,17 +157,6 @@ class VariantWriteSerializer(serializers.Serializer):
                 'системой и недоступно для использования.'
             )
         return value
-
-    def update(self, instance, validated_data):
-        instance.stock = validated_data.get('stock', instance.stock)
-        instance.property_value = validated_data.get(
-            'value', instance.property_value
-        )
-        instance.is_active = validated_data.get(
-            'is_active', instance.is_active
-        )
-        instance.save(update_fields=['stock', 'property_value', 'is_active'])
-        return instance
 
 
 class MerchWriteSerializer(serializers.ModelSerializer):
@@ -147,6 +171,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
     allow_overpay = serializers.BooleanField(required=False)
     property_name = serializers.CharField(required=False, allow_blank=True)
     variants = VariantWriteSerializer(many=True, required=False)
+    stock = serializers.IntegerField(min_value=0, required=False)
 
     class Meta:
         model = Merch
@@ -161,6 +186,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'is_published',
             'is_active',
             'property_name',
+            'stock',
             'variants',
         )
 
@@ -172,15 +198,23 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate(self, attrs):
+        if attrs.get('variants') and attrs.get('stock') is not None:
+            raise serializers.ValidationError({
+                'stock': 'Нельзя указывать stock вместе с variants. '
+                        'Укажите stock внутри каждого варианта.'
+            })
+        return attrs
+
     def to_representation(self, instance):
-        return MerchDetailSerializer(instance).data
+        return MerchDetailSerializer(instance, context=self.context).data
 
     def create(self, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
         validated_data.pop('variants', None)
         validated_data.pop('property_name', None)
-
+        validated_data.pop('stock', None)
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
@@ -188,5 +222,5 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         validated_data.pop('allow_overpay', None)
         validated_data.pop('variants', None)
         validated_data.pop('property_name', None)
-
+        validated_data.pop('stock', None)
         return super().update(instance, validated_data)

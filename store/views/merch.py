@@ -64,7 +64,9 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='images')
     def add_image(self, request, pk=None):
         merch = self.get_object()
-        serializer = ImageSerializer(data=request.data)
+        serializer = ImageSerializer(
+            data=request.data, context={'request': request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save(merch=merch)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -104,7 +106,12 @@ class MerchViewSet(ProductActionMixin, viewsets.ModelViewSet):
                         next_image.save(update_fields=['is_main'])
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        serializer = ImageSerializer(image, data=request.data, partial=True)
+        serializer = ImageSerializer(
+            image,
+            data=request.data,
+            partial=True,
+            context={'request': request}
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)

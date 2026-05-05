@@ -6,7 +6,7 @@ from store.models import Image
 class ImageSerializer(serializers.ModelSerializer):
     """Сериализатор для изображений мерча."""
 
-    image = serializers.ImageField()
+    image = serializers.ImageField(use_url=True)
     is_main = serializers.BooleanField(required=False, default=False)
 
     class Meta:
