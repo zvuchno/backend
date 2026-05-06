@@ -1,4 +1,7 @@
-"""Модель юридического профиля артиста."""
+"""Модель юридического профиля артиста.
+
+TODO: валидация комбинаций всех данных.
+"""
 
 from django.conf import settings
 from django.db import models

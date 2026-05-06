@@ -2,6 +2,7 @@ from django.db import models
 
 from .abstract import TimestampModel
 from users.constants import (
+    ADDRESS_FIELD_MAX_LENGTH,
     INN_COMPANY_MAX_LENGTH,
     NAME_FIELD_MAX_LENGTH,
     OGRN_MAX_LENGTH,
@@ -29,6 +30,12 @@ class ArtistCompanyData(TimestampModel):
     company_name = models.CharField(
         'Наименование получателя',
         max_length=NAME_FIELD_MAX_LENGTH,
+        blank=True,
+    )
+
+    company_address = models.CharField(
+        'Юридический адрес',
+        max_length=ADDRESS_FIELD_MAX_LENGTH,
         blank=True,
     )
 

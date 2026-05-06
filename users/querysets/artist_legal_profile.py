@@ -10,7 +10,11 @@ class ArtistLegalProfileQuerySet(QuerySet):
 
     def with_legal_data(self):
         """Подтягивает паспортные и банковские данные."""
-        return self.select_related('identity_data', 'bank_data')
+        return self.select_related(
+            'identity_data',
+            'bank_data',
+            'company_data',
+        )
 
     def verified(self):
         """Возвращает только подтвержденные юр профили."""
