@@ -10,6 +10,7 @@ from .views import (
     AlbumViewSet,
     CartViewSet,
     DeliveryViewSet,
+    FavoritesViewSet,
     GenreViewSet,
     TrackViewSet,
 )
@@ -22,6 +23,7 @@ router.register(r'albums', AlbumViewSet, basename='albums')
 router.register(r'tracks', TrackViewSet, basename='tracks')
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'deliveries', DeliveryViewSet, basename='deliveries')
+router.register(r'me/favorites', FavoritesViewSet, basename='me-favorites')
 
 
 urlpatterns = [

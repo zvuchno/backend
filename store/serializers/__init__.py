@@ -9,6 +9,7 @@ from .cart import (
     CartWriteSerializer,
 )
 from .delivery import DeliverySerializer
+from .favorites import FavoritesSerializer
 from .genre import GenreSerializer
 from .track import (
     TrackReadDetailSerializer,
@@ -21,6 +22,7 @@ __all__ = [
     'AlbumWriteSerializer',
     'AlbumReadDetailSerializer',
     'CartItemWriteSerializer',
+    'FavoritesSerializer',
     'DeliverySerializer',
     'GenreSerializer',
     'CartReadSerializer',
