@@ -5,8 +5,10 @@
 не зависящие от конкретной модели.
 """
 
+from .product_variant_url_mixin import ProductVariantURLMixin
 from .product_variants import ProductVariantsMixin
 
 __all__ = [
     'ProductVariantsMixin',
+    'ProductVariantURLMixin',
 ]

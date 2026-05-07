@@ -5,13 +5,17 @@
 
 from rest_framework import serializers
 
+from .mixins import ProductVariantURLMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Cart, CartItem, ProductVariant
 from store.services.cart_service import CartService
 from store.validators import validate_price_with_donation
 
 
-class CartItemReadSerializer(serializers.ModelSerializer):
+class CartItemReadSerializer(
+    ProductVariantURLMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор товаров в корзине пользователя - чтение."""
 
     product_variant = serializers.IntegerField(
@@ -34,10 +38,7 @@ class CartItemReadSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
-    target_url = serializers.CharField(
-        source='product_variant.product.target_url',
-        read_only=True,
-    )
+    target_url = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem

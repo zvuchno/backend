@@ -10,11 +10,9 @@ class ProductVariantsMixin:
         """
         product = getattr(obj, 'product', None)
         if not product:
-            print('not product')
             return []
         variant = product.variants.first()
         if not variant:
-            print('not variant')
             return []
 
         return [
