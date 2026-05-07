@@ -88,9 +88,54 @@ pre-commit run --all-files
 
 ## 4. .env файл
 Пример - env.example
+## 4. .env файл
 
----
+Пример: `.env.example`
 
+```env
+# Общие настройки
+DEBUG=False                 # Режим отладки (True только для локальной разработки)
+USE_SQLITE=False            # Использовать SQLite вместо Postgres
+
+# База данных (PostgreSQL)
+POSTGRES_DB=zvuchno_db      # Имя базы данных
+POSTGRES_USER=admin         # Пользователь БД
+POSTGRES_PASSWORD=12345     # Пароль БД
+POSTGRES_HOST=db            # Хост БД (docker service или localhost)
+POSTGRES_PORT=5432          # Порт БД
+
+# Безопасность
+ALLOWED_HOSTS=127.0.0.1     # Разрешенные хосты
+CSRF_TRUSTED_ORIGINS=http://127.0.0.1
+
+SECRET_KEY=topsecretkey     # Django SECRET_KEY (заменить на проде)
+
+# JWT
+JWT_ACCESS_MINUTES=30       # Время жизни access токена
+JWT_REFRESH_DAYS=7          # Время жизни refresh токена
+
+# Frontend (URL для редиректов)
+FRONTEND_VERIFY_EMAIL_URL=/verify-email
+FRONTEND_RESET_PASSWORD_URL=/reset-password-confirm
+FRONTEND_SOCIAL_AUTH_URL=/
+
+# Мониторинг (GlitchTip / Sentry)
+GLITCHTIP_DSN=              # DSN для мониторинга (опционально)
+GLITCHTIP_TRACES_RATE=0.05  # Доля трассировок (0.0–1.0)
+DJANGO_ENV=local            # Окружение (local / dev / prod)
+
+# Шифрование чувствительных полей
+FIELD_ENCRYPTION_ENABLED=True   # Включить шифрование
+FIELD_ENCRYPTION_KEYS=          # Ключ(и) через запятую: первый — для записи, остальные — для чтения старых данных.
+                                # Сгенерировать: python manage.py generate_encryption_key
+                                # Пример: FIELD_ENCRYPTION_KEYS=key1,key2
+                                # Первый запуск: временно установить FIELD_ENCRYPTION_ENABLED=False, сгенерировать ключ,
+                                # вставить сюда и включить обратно.
+                                # Важно!
+                                # Если ключей несколько - новый должен быть первым, остальные через запятую (ротация).
+                                # Сохраните все ключи в менеджере паролей.
+                                # Потеря ключей = потеря доступа к зашифрованным полям бд.
+```
 ## 5. Применить миграции
 
 ```

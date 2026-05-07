@@ -3,6 +3,11 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from common.fields import (
+    EncryptedCharField,
+    EncryptedDateField,
+)
+
 from .abstract import TimestampModel
 from users.constants import (
     ADDRESS_FIELD_MAX_LENGTH,
@@ -40,51 +45,58 @@ class ArtistIdentityData(TimestampModel):
         verbose_name='Юридический профиль',
     )
 
-    last_name = models.CharField(
+    last_name = EncryptedCharField(
         'Фамилия',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
+        null=True,
     )
-    first_name = models.CharField(
+    first_name = EncryptedCharField(
         'Имя',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
+        null=True,
     )
-    middle_name = models.CharField(
+    middle_name = EncryptedCharField(
         'Отчество',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
+        null=True,
     )
-    birth_date = models.DateField(
+    birth_date = EncryptedDateField(
         'Дата рождения',
         blank=True,
         null=True,
         validators=[validate_birth_date],
     )
-    registration_address = models.CharField(
+    registration_address = EncryptedCharField(
         'Адрес регистрации',
         max_length=ADDRESS_FIELD_MAX_LENGTH,
         blank=True,
+        null=True,
     )
 
-    passport_series = models.CharField(
+    passport_series = EncryptedCharField(
         'Серия паспорта',
         max_length=PASSPORT_SERIES_MAX_LENGTH,
         blank=True,
+        null=True,
         validators=[validate_passport_series],
     )
-    passport_number = models.CharField(
+    passport_number = EncryptedCharField(
         'Номер паспорта',
         max_length=PASSPORT_NUMBER_MAX_LENGTH,
         blank=True,
+        null=True,
         validators=[validate_passport_number],
     )
-    passport_issued_by = models.CharField(
+    passport_issued_by = EncryptedCharField(
         'Кем выдан паспорт',
         max_length=PASSPORT_ISSUED_BY_MAX_LENGTH,
         blank=True,
+        null=True,
     )
-    passport_issue_date = models.DateField(
+    passport_issue_date = EncryptedDateField(
         'Дата выдачи паспорта',
         blank=True,
         null=True,
@@ -101,7 +113,7 @@ class ArtistIdentityData(TimestampModel):
     def save(self, *args, **kwargs):
         """Сохраняет объект после полной валидации модели."""
         self.full_clean()
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def clean(self):
         """Проверяет согласованность паспортных данных."""

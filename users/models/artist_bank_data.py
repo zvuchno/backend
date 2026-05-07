@@ -37,23 +37,27 @@ class ArtistBankData(TimestampModel):
         'Название банка',
         max_length=BANK_NAME_MAX_LENGTH,
         blank=True,
+        null=True,
     )
     bik = models.CharField(
         'БИК',
         max_length=BIK_MAX_LENGTH,
         blank=True,
+        null=True,
         validators=[validate_bik],
     )
     correspondent_account = models.CharField(
         'Корреспондентский счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
+        null=True,
         validators=[validate_correspondent_account],
     )
     checking_account = models.CharField(
         'Расчетный счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
+        null=True,
         validators=[validate_checking_account],
     )
 

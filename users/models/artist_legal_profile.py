@@ -26,6 +26,7 @@ class ArtistLegalProfile(TimestampModel):
     objects = ArtistLegalProfileQuerySet.as_manager()
 
     class RecipientType(models.TextChoices):
+        EMPTY = '', 'Не указано'
         INDIVIDUAL_ENTREPRENEUR = 'individual_entrepreneur', 'ИП'
         SELF_EMPLOYED = 'self_employed', 'СМЗ'
         LEGAL_ENTITY = 'legal_entity', 'Юридическое лицо'
@@ -41,6 +42,8 @@ class ArtistLegalProfile(TimestampModel):
         'Организационная форма',
         max_length=RECIPIENT_TYPE_MAX_LENGTH,
         choices=RecipientType.choices,
+        blank=True,
+        default=RecipientType.EMPTY,
     )
 
     is_verified = models.BooleanField(

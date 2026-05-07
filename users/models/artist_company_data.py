@@ -1,5 +1,7 @@
 from django.db import models
 
+from common.fields import EncryptedCharField
+
 from .abstract import TimestampModel
 from users.constants import (
     ADDRESS_FIELD_MAX_LENGTH,
@@ -31,25 +33,29 @@ class ArtistCompanyData(TimestampModel):
         'Наименование получателя',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
+        null=True,
     )
 
-    company_address = models.CharField(
+    company_address = EncryptedCharField(
         'Юридический адрес',
         max_length=ADDRESS_FIELD_MAX_LENGTH,
         blank=True,
+        null=True,
     )
 
-    inn = models.CharField(
+    inn = EncryptedCharField(
         'ИНН',
         max_length=INN_COMPANY_MAX_LENGTH,
         blank=True,
+        null=True,
         validators=[validate_company_inn],
     )
 
-    ogrn = models.CharField(
+    ogrn = EncryptedCharField(
         'ОГРН',
         max_length=OGRN_MAX_LENGTH,
         blank=True,
+        null=True,
         validators=[validate_ogrn],
     )
 
