@@ -5,11 +5,12 @@
 
 from rest_framework import serializers
 
+from .mixins import ProductVariantURLMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Order, OrderItem
 
 
-class OrderItemSerializer(serializers.ModelSerializer):
+class OrderItemSerializer(ProductVariantURLMixin, serializers.ModelSerializer):
     """Сериализатор товаров в заказе."""
 
     sku = serializers.SerializerMethodField()
@@ -37,6 +38,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     image = serializers.SerializerMethodField()
+    target_url = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
@@ -52,24 +54,27 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'line_total',
             'comment',
             'image',
+            'target_url',
         )
 
     def get_sku(self, obj) -> str:
-        return obj.product_info.get('sku') or '-'
+        return obj.product_info.get('sku') or ''
 
     def get_name(self, obj) -> str:
-        return obj.product_info.get('name') or '-'
+        return obj.product_info.get('name') or ''
 
     def get_property_name(self, obj) -> str:
-        return obj.product_info.get('property_name') or '-'
+        return obj.product_info.get('property_name') or ''
 
     def get_property_value(self, obj) -> str:
-        return obj.product_info.get('property_value') or '-'
+        return obj.product_info.get('property_value') or ''
 
     def get_image(self, obj) -> str:
         """Отдаем одну картинку в придачу для отображения позиции."""
         product = obj.product_variant.product
         product_type = product.product_type
+
+        relative_url = None
 
         if product_type in (
             product.ProductType.ALBUM,
@@ -82,15 +87,21 @@ class OrderItemSerializer(serializers.ModelSerializer):
                 album = getattr(track, 'album', None) if track else None
 
             if album and album.cover_image:
-                return album.cover_image.url
+                relative_url = album.cover_image.url
 
-        if product_type == product.ProductType.MERCH:
+        elif product_type == product.ProductType.MERCH:
             merch = getattr(product, 'merch', None)
             if merch:
                 image_obj = merch.images_merch.all().first()
                 if image_obj and image_obj.image:
-                    return image_obj.image.url
-        return None
+                    relative_url = image_obj.image.url
+        request = (
+            self.context.get('request') if hasattr(self, 'context') else None
+        )
+        if relative_url and request:
+            return request.build_absolute_uri(relative_url)
+
+        return relative_url
 
 
 class OrderSerializer(serializers.ModelSerializer):
