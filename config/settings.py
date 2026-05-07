@@ -79,11 +79,21 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
-# Настройки для debug_toolbar
+# Настройки Silk и nplusone
 if DEBUG:
-    INSTALLED_APPS += ['debug_toolbar']
-    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
-    INTERNAL_IPS = ['127.0.0.1']
+    INSTALLED_APPS += ['silk']
+    MIDDLEWARE = ['silk.middleware.SilkyMiddleware'] + MIDDLEWARE
+    SILKY_PYTHON_PROFILER = True  # Включает профилирование Python-кода
+    SILKY_INTERCEPT_PERCENT = 100 # Записывать 100% запросов (для дебага)
+    SILKY_MAX_RECORDED_STACKTRACES = 10 # Ограничение стека, чтобы не раздувать БД
+    SILKY_META = True # Записывать время генерации самого Silk
+
+    INSTALLED_APPS += ['nplusone.ext.django']
+    MIDDLEWARE = ['nplusone.ext.django.NPlusOneMiddleware'] + MIDDLEWARE
+    NPLUSONE_RAISE = False  # Не выбрасывать ошибку
+    NPLUSONE_LOGGER = logging.getLogger('nplusone')
+    NPLUSONE_LOG_LEVEL = logging.WARN
+    NPLUSONE_WHITELIST = [{'model': 'silk.*'}]
 
 ROOT_URLCONF = 'config.urls'
 
@@ -203,16 +213,26 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_THROTTLE_RATES': {
         'login': '5/min',
+        'social_auth': '10/min',
+        'registration': '5/min',
+        'logout': '10/min',
+
         'refresh': '10/min',
-        'verify': '20/minute',
+        'verify': '20/min',
+
         'change_phone': '5/min',
         'change_username': '5/min',
         'change_password': '5/min',
+
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',
         'reset_password_confirm': '5/min',
+
         'verify_email': '10/min',
-        'resend_verification_email': '3/min',
+        'resend_verification_email': '5/min',
+
+        'become_artist': '5/min',
+        'artist_legal_profile': '60/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',

@@ -2,16 +2,11 @@
 
 from django.db import models
 
-from common.fields import (
-    EncryptedCharField,
-)
-
 from .abstract import TimestampModel
 from users.constants import (
     ACCOUNT_NUMBER_MAX_LENGTH,
     BANK_NAME_MAX_LENGTH,
     BIK_MAX_LENGTH,
-    INN_MAX_LENGTH,
 )
 from users.querysets import LegalDataQuerySet
 from users.validators import (
@@ -19,14 +14,13 @@ from users.validators import (
     validate_bik,
     validate_checking_account,
     validate_correspondent_account,
-    validate_inn,
 )
 
 
 class ArtistBankData(TimestampModel):
     """Банковские данные артиста.
 
-    Хранит ИНН и реквизиты банковского счета, используемые
+    Хранит реквизиты банковского счета, используемые
     для выплат артисту.
     """
 
@@ -37,14 +31,6 @@ class ArtistBankData(TimestampModel):
         on_delete=models.CASCADE,
         related_name='bank_data',
         verbose_name='Юридический профиль',
-    )
-
-    inn = EncryptedCharField(
-        'ИНН',
-        max_length=INN_MAX_LENGTH,
-        blank=True,
-        null=True,
-        validators=[validate_inn],
     )
 
     bank_name = models.CharField(
@@ -60,14 +46,14 @@ class ArtistBankData(TimestampModel):
         null=True,
         validators=[validate_bik],
     )
-    correspondent_account = EncryptedCharField(
+    correspondent_account = models.CharField(
         'Корреспондентский счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
         null=True,
         validators=[validate_correspondent_account],
     )
-    checking_account = EncryptedCharField(
+    checking_account = models.CharField(
         'Расчетный счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
@@ -78,7 +64,7 @@ class ArtistBankData(TimestampModel):
     def save(self, *args, **kwargs):
         """Сохраняет объект после полной валидации модели."""
         self.full_clean()
-        return super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Нормализует поля банковских реквизитов."""
@@ -86,8 +72,6 @@ class ArtistBankData(TimestampModel):
 
         if self.bik:
             self.bik = normalize_digits(self.bik)
-        if self.inn:
-            self.inn = normalize_digits(self.inn)
         if self.correspondent_account:
             self.correspondent_account = normalize_digits(
                 self.correspondent_account,

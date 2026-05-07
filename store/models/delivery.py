@@ -6,7 +6,7 @@ from django.db import models
 
 from store.constants import (
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
 )
 from users.models.abstract import ActivatableModel, TimestampModel
 
@@ -18,8 +18,8 @@ class Delivery(ActivatableModel, TimestampModel):
     price = models.DecimalField(
         'Стоимость (руб.)',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        default=Decimal('0.00'),
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=Decimal('0.0000'),
     )
     description = models.TextField('Описание')
 

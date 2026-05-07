@@ -3,12 +3,11 @@
 Содержит настройку интерфейса Django Admin для модели альбомов.
 """
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from django import forms
 from django.contrib import admin
 from django.core.validators import MinValueValidator
-from django.db import transaction
 from django.utils.html import format_html
 from nested_admin import (
     NestedModelAdmin,
@@ -16,6 +15,7 @@ from nested_admin import (
     NestedTabularInline,
 )
 
+from .forms import MoneyForm
 from .mixins import (
     AutoOwnerAdminMixin,
     CommerceBaseMixin,
@@ -23,12 +23,13 @@ from .mixins import (
 )
 from store.constants import (
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album, Product, Track
+from store.services import ProductService
 
 
-class TrackInlineForm(forms.ModelForm):
+class TrackInlineForm(MoneyForm):
     """Форма для TrackInline с редактированием цены из связанного Product.
 
     Особенности:
@@ -41,7 +42,7 @@ class TrackInlineForm(forms.ModelForm):
     price = forms.DecimalField(
         label='Цена',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         validators=[MinValueValidator(Decimal('0.00'))],
         initial=Decimal('0.00'),
         required=False,
@@ -59,7 +60,10 @@ class TrackInlineForm(forms.ModelForm):
 
         if product:
             # Если Product существует, подставляем его цену в initial
-            self.fields['price'].initial = product.price
+            self.fields['price'].initial = product.price.quantize(
+                Decimal('0.01'),
+                rounding=ROUND_HALF_UP,
+            )
 
     def save(self, commit=True):
         """Сохраняет Track и синхронизирует цену с Product.
@@ -76,18 +80,20 @@ class TrackInlineForm(forms.ModelForm):
         # Берём цену из формы, 0.00 если поле пустое
         price = self.cleaned_data.get('price') or Decimal('0.00')
 
-        @transaction.atomic
-        def sync_price() -> None:
-            """Функция синхронизации цены с Product."""
-            product, _ = Product.objects.get_or_create(track=instance)
-            if price is not None and product.price != price:
-                product.price = price
-                # Сохраняем только поле price
-                product.save(update_fields=['price'])
+        def sync_commerce_data() -> None:
+            """Синхронизирует коммерческие данные через ProductService."""
+            validated_data = {
+                'price': price,
+                'variants': [],
+            }
+            ProductService.ensure_commerce(
+                instance,
+                validated_data=validated_data,
+            )
 
         if commit:
             # Для обычного сохранения вызываем сразу
-            sync_price()
+            sync_commerce_data()
         else:
             # Для inline-форм в админке: цепляем к save_m2m
             original_save_m2m = getattr(self, 'save_m2m', None)
@@ -97,7 +103,7 @@ class TrackInlineForm(forms.ModelForm):
                 if original_save_m2m:
                     original_save_m2m()
                 # Затем синхронизируем цену
-                sync_price()
+                sync_commerce_data()
 
             self.save_m2m = chained_save_m2m
         return instance
@@ -132,6 +138,7 @@ class ProductInline(NestedStackedInline):
     """Инлайн продукта с вложенными вариантами."""
 
     model = Product
+    form = MoneyForm
     fields = ('price', 'allow_overpay')
     can_delete = False
     verbose_name = 'Торговые настройки альбома'

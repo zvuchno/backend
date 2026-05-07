@@ -8,8 +8,11 @@ from rest_framework_simplejwt.token_blacklist.models import (
 )
 
 from . import artist as artist
+from . import consent_document as consent_document
+from . import document_type as document_type
 from . import listener as listener
 from . import user as user
+from . import user_consent as user_consent
 
 # Убираем Token Blacklist и лишнее от allauth
 for model in (

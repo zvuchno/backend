@@ -37,6 +37,7 @@ ADMIN_REORDER = (
         'app': 'store',
         'label': 'Заказы',
         'models': (
+            'store.Order',
             'store.Cart',
             'store.Delivery',
             'store.Favorite',
@@ -59,4 +60,13 @@ ADMIN_REORDER = (
     'sites',
     # Социальная авторизация (social accounts + providers)
     'socialaccount',
+    {
+        'app': 'users',
+        'label': 'Документы и согласия',
+        'models': (
+            'users.DocumentType',
+            'users.ConsentDocument',
+            'users.UserConsent',
+        ),
+    },
 )

@@ -12,6 +12,7 @@ from rest_framework.generics import (
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
 from common.permissions import IsNotArtist
 
@@ -108,6 +109,8 @@ class BecomeArtistView(GenericAPIView):
 
     serializer_class = BecomeArtistSerializer
     permission_classes = [IsAuthenticated, IsNotArtist]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'become_artist'
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
