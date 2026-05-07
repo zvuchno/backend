@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
 
@@ -38,16 +39,18 @@ class TrackReadSerializer(serializers.ModelSerializer):
         return None
 
 
-class TrackReadDetailSerializer(TrackReadSerializer):
+class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Track."""
 
     allow_overpay = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
 
     class Meta(TrackReadSerializer.Meta):
         fields = TrackReadSerializer.Meta.fields + (
             'audio_file',
             'allow_overpay',
             'description',
+            'variants',
         )
 
     def get_allow_overpay(self, obj) -> bool:
