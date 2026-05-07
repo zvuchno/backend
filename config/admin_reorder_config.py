@@ -52,6 +52,7 @@ ADMIN_REORDER = (
             'users.CoreUser',
             'users.ListenerProfile',
             'users.ArtistProfile',
+            'users.ArtistLegalProfile',
             'auth.Group',
             'auth.Permission',
         ),

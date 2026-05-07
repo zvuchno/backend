@@ -8,6 +8,7 @@ from rest_framework_simplejwt.token_blacklist.models import (
 )
 
 from . import artist as artist
+from . import artist_legal_profile as artist_legal_profile
 from . import consent_document as consent_document
 from . import document_type as document_type
 from . import listener as listener
