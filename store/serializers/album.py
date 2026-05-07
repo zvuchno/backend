@@ -10,6 +10,7 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
+from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Album
 
@@ -29,7 +30,6 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'cover_image',
             'visibility',
             'is_published',
-            'is_active',
         )
 
     def get_price(self, obj) -> Decimal | None:
@@ -51,15 +51,15 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             user.is_authenticated and (user == instance.owner or user.is_staff)
         ):
             ret.pop('visibility', None)
-            ret.pop('is_active', None)
             ret.pop('is_published', None)
         return ret
 
 
-class AlbumReadDetailSerializer(AlbumReadSerializer):
+class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Album."""
 
     allow_overpay = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
@@ -67,6 +67,7 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
             'genre',
             'release_date',
             'allow_overpay',
+            'variants',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -99,7 +100,6 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
             'allow_overpay',
             'visibility',
             'is_published',
-            'is_active',
         )
 
     def validate_release_date(self, value):

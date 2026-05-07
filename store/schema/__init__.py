@@ -20,6 +20,7 @@ __all__ = [
     'cart_schema',
     'delivery_schema',
     'genre_schema',
+    'order_schema',
     'track_schema',
     'order_schema',
 ]

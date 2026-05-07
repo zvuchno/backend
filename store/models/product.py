@@ -87,17 +87,17 @@ class Product(models.Model):
 
         Автоматически определяет категорию товара на основе заполненной связи.
         """
-        filled = (self.album, self.track, self.merch)
-        if sum(map(bool, filled)) != 1:
+        filled_ids = (self.album_id, self.track_id, self.merch_id)
+        if sum(map(bool, filled_ids)) != 1:
             raise ValidationError(
                 'Должен быть указан ровно один тип продукта.',
             )
 
-        if self.album:
+        if self.album_id:
             self.product_type = self.ProductType.ALBUM
-        elif self.track:
+        elif self.track_id:
             self.product_type = self.ProductType.TRACK
-        elif self.merch:
+        elif self.merch_id:
             self.product_type = self.ProductType.MERCH
 
     def save(self, *args, **kwargs):
