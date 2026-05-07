@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    'corsheaders',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -68,6 +69,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -294,3 +296,21 @@ LOGGING = logging_config.LOGGING
 
 # Настройка отправки ошибок проекта в GlitchTip
 init_glitchtip()
+
+#CORS
+DEFAULT_CORS_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+EXTRA_CORS_ORIGINS = []
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+    EXTRA_CORS_ORIGINS = [o.strip() for o in origins.split(',') if o.strip()]
+
+CORS_ALLOWED_ORIGINS = list({
+    *DEFAULT_CORS_ORIGINS,
+    *EXTRA_CORS_ORIGINS,
+})
