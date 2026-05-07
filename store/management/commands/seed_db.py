@@ -1,6 +1,12 @@
+"""Модуль кастомных команд Django.
+
+Содержит классы для дополнения стандартного менеджера.
+"""
+
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
 from store.models import (
@@ -34,9 +40,20 @@ class Command(BaseCommand):
             default=20,
             help='Количество создаваемых объектов.',
         )
+        parser.add_argument(
+            '--flush',
+            action='store_true',
+            help='Очистить базу данных перед заполнением',
+        )
 
     def handle(self, *args, **options):
         total = options['total']
+        force_flush = options['flush']
+        if force_flush:
+            self.stdout.write(self.style.WARNING('Очистка базы данных...'))
+            call_command('flush', verbosity=0, interactive=False)
+            self.stdout.write(self.style.SUCCESS('База данных очищена'))
+
         self.stdout.write(f'Процесс заполнение БД. Цель: {total} объектов')
 
         # ----------Начальные данные----------

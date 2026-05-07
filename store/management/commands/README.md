@@ -11,3 +11,6 @@ python manage.py seed_db
 
 # Создать 100 объектов
 python manage.py seed_db 100
+
+# параметр --flush предварительно очищает базу данных.
+python manage.py seed_db --flush
