@@ -2,17 +2,15 @@
 
 from rest_framework import serializers
 
+from .mixins import ProductVariantURLMixin
 from store.models import Favorite
 
 
-class FavoritesSerializer(serializers.ModelSerializer):
+class FavoritesSerializer(ProductVariantURLMixin, serializers.ModelSerializer):
     """Сериализатор модели Favorite."""
 
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    target_url = serializers.CharField(
-        source='product_variant.product.target_url',
-        read_only=True,
-    )
+    target_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Favorite
