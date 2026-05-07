@@ -7,7 +7,6 @@ from users.constants import (
     ACCOUNT_NUMBER_MAX_LENGTH,
     BANK_NAME_MAX_LENGTH,
     BIK_MAX_LENGTH,
-    INN_MAX_LENGTH,
 )
 from users.querysets import LegalDataQuerySet
 from users.validators import (
@@ -15,14 +14,13 @@ from users.validators import (
     validate_bik,
     validate_checking_account,
     validate_correspondent_account,
-    validate_inn,
 )
 
 
 class ArtistBankData(TimestampModel):
     """Банковские данные артиста.
 
-    Хранит ИНН и реквизиты банковского счета, используемые
+    Хранит реквизиты банковского счета, используемые
     для выплат артисту.
     """
 
@@ -33,13 +31,6 @@ class ArtistBankData(TimestampModel):
         on_delete=models.CASCADE,
         related_name='bank_data',
         verbose_name='Юридический профиль',
-    )
-
-    inn = models.CharField(
-        'ИНН',
-        max_length=INN_MAX_LENGTH,
-        blank=True,
-        validators=[validate_inn],
     )
 
     bank_name = models.CharField(
@@ -77,8 +68,6 @@ class ArtistBankData(TimestampModel):
 
         if self.bik:
             self.bik = normalize_digits(self.bik)
-        if self.inn:
-            self.inn = normalize_digits(self.inn)
         if self.correspondent_account:
             self.correspondent_account = normalize_digits(
                 self.correspondent_account,

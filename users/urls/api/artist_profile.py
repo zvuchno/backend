@@ -8,6 +8,7 @@ from users.views import (
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
+    RecipientTypeListView,
 )
 
 urlpatterns = [
@@ -20,6 +21,11 @@ urlpatterns = [
         'me/legal/',
         ArtistLegalProfileView.as_view(),
         name='artist_legal_profile',
+    ),
+    path(
+        'me/legal/recipient-types/',
+        RecipientTypeListView.as_view(),
+        name='recipient_type_list',
     ),
     path(
         'me/cover/',

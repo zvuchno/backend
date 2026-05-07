@@ -20,6 +20,8 @@ URL_FIELD_MAX_LENGTH = 254
 URL_FIELD_MIN_LENGTH = 3
 FULL_NAME_FIELD_MAX_LENGTH = 254
 MAX_USER_CREATE_ATTEMPTS = 30
+MAX_CHAR_LENGTH = 255
+MAX_SLUG_LENGTH = 50
 
 # Коды ошибок social auth.
 """Коды и сообщения ошибок social auth."""
@@ -57,7 +59,8 @@ PASSPORT_SERIES_MAX_LENGTH = 4  # РФ: строго 4 цифры, ослаби�
 PASSPORT_NUMBER_MAX_LENGTH = 6  # РФ: строго 6 цифр, ослабить до 20 для других.
 PASSPORT_ISSUED_BY_MAX_LENGTH = 255
 
-INN_MAX_LENGTH = 12
+INN_PERSON_MAX_LENGTH = 12
+INN_COMPANY_MAX_LENGTH = 10
 BANK_NAME_MAX_LENGTH = 255
 BIK_MAX_LENGTH = 9  # РФ: строго 9 цифр
 ACCOUNT_NUMBER_MAX_LENGTH = 20  # РФ: строго 20 цифр

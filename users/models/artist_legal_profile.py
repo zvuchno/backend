@@ -1,13 +1,14 @@
-"""Модель юридического профиля артиста."""
+"""Модель юридического профиля артиста.
+
+TODO: валидация комбинаций всех данных.
+"""
 
 from django.conf import settings
 from django.db import models
 
 from .abstract import TimestampModel
 from users.constants import (
-    NAME_FIELD_MAX_LENGTH,
     RECIPIENT_TYPE_MAX_LENGTH,
-    TAXATION_SYSTEM_MAX_LENGTH,
 )
 from users.querysets import ArtistLegalProfileQuerySet
 
@@ -16,7 +17,7 @@ class ArtistLegalProfile(TimestampModel):
     """Юридический профиль артиста.
 
     Хранит служебные данные, связанные с идентификацией артиста
-    как получателя выплат: тип получателя, систему налогообложения,
+    как получателя выплат: тип получателя,
     статус проверки и комментарий модератора.
 
     Не предназначен для публичного отображения.
@@ -24,17 +25,9 @@ class ArtistLegalProfile(TimestampModel):
 
     objects = ArtistLegalProfileQuerySet.as_manager()
 
-    class TaxationSystem(models.TextChoices):
-        EMPTY = '', 'Не указано'
-        NPD = 'npd', 'НПД (самозанятый)'
-        USN = 'usn', 'УСН'
-        OSNO = 'osno', 'ОСНО'
-        PATENT = 'patent', 'Патент'
-
     class RecipientType(models.TextChoices):
-        INDIVIDUAL = 'individual', 'Физическое лицо'
-        SELF_EMPLOYED = 'self_employed', 'Самозанятый'
         INDIVIDUAL_ENTREPRENEUR = 'individual_entrepreneur', 'ИП'
+        SELF_EMPLOYED = 'self_employed', 'СМЗ'
         LEGAL_ENTITY = 'legal_entity', 'Юридическое лицо'
 
     user = models.OneToOneField(
@@ -45,22 +38,9 @@ class ArtistLegalProfile(TimestampModel):
     )
 
     recipient_type = models.CharField(
-        'Тип получателя',
+        'Организационная форма',
         max_length=RECIPIENT_TYPE_MAX_LENGTH,
         choices=RecipientType.choices,
-    )
-    recipient_name = models.CharField(
-        'Наименование получателя',
-        max_length=NAME_FIELD_MAX_LENGTH,
-        blank=True,
-    )
-
-    taxation_system = models.CharField(
-        'Система налогообложения',
-        max_length=TAXATION_SYSTEM_MAX_LENGTH,
-        choices=TaxationSystem.choices,
-        blank=True,
-        default=TaxationSystem.EMPTY,
     )
 
     is_verified = models.BooleanField(
