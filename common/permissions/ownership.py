@@ -1,3 +1,6 @@
+from django.db.models import Q
+from rest_framework.permissions import BasePermission
+
 from .base import (
     _IsOwnerByField,
     _IsOwnerByFieldOrReadOnly,
@@ -52,3 +55,46 @@ class IsUserObjectOwnerOrReadOnly(_IsOwnerByFieldOrReadOnly):
     """
 
     owner_field_name = 'user'
+
+
+class IsSalesOwner(BasePermission):
+    """Доступ к заказу только продавцу (артисту) товаров в этом заказе.
+
+    На уровне object-level:
+    - разрешает доступ, если хотя бы один товар (`OrderItem`) в заказе
+      принадлежит текущему пользователю через связь с альбомом,
+      треком или мерчем.
+    """
+
+    message = 'Вы не являетесь продавцом товаров в этом заказе.'
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        user = request.user
+
+        # Если префетч уже отработал во ViewSet, используем его
+        if (
+            hasattr(obj, '_prefetched_objects_cache')
+            and 'items' in obj._prefetched_objects_cache
+        ):
+            return any(
+                (
+                    item.product_variant.product.album
+                    and item.product_variant.product.album.owner == user
+                )
+                or (
+                    item.product_variant.product.track
+                    and item.product_variant.product.track.owner == user
+                )
+                or (
+                    item.product_variant.product.merch
+                    and item.product_variant.product.merch.owner == user
+                )
+                for item in obj.items.all()
+            )
+
+        # Fallback
+        return obj.items.filter(
+            Q(product_variant__product__album__owner=user)
+            | Q(product_variant__product__track__owner=user)
+            | Q(product_variant__product__merch__owner=user),
+        ).exists()

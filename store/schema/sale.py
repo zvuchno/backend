@@ -11,15 +11,18 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-from store.serializers.order import OrderDetailSerializer, OrderSerializer
+from store.serializers import (
+    ArtistSaleDetailSerializer,
+    ArtistSaleSerializer,
+)
 
-ORDER_TAGS = ['Orders']
+ORDER_TAGS = ['Artists']
 
-order_schema = extend_schema_view(
+artist_sale_schema = extend_schema_view(
     list=extend_schema(
-        summary='Список заказов',
-        description='Возвращает список заказов пользователя.',
-        responses={200: OrderSerializer},
+        summary='Получить список заказов',
+        description='Возвращает список заказов для продавца.',
+        responses={200: ArtistSaleSerializer},
         tags=ORDER_TAGS,
         parameters=[
             OpenApiParameter(
@@ -43,8 +46,9 @@ order_schema = extend_schema_view(
     ),
     retrieve=extend_schema(
         summary='Получить заказ',
-        description='Возвращает подробную информацию о заказе по id.',
-        responses={200: OrderDetailSerializer},
+        description='Возвращает подробную информацию '
+        'о заказе для продавца по id.',
+        responses={200: ArtistSaleDetailSerializer},
         tags=ORDER_TAGS,
     ),
 )
