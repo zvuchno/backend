@@ -10,4 +10,5 @@ urlpatterns = [
     path('auth/account/', include('users.urls.api.account')),
     path('listener/', include('users.urls.api.listener_profile')),
     path('artists/', include('users.urls.api.artist_profile')),
+    path('compliance/', include('users.urls.api.compliance')),
 ]

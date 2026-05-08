@@ -6,6 +6,7 @@ from django.db import models
 from .abstract import TimestampModel
 from users.constants import (
     ADDRESS_FIELD_MAX_LENGTH,
+    INN_PERSON_MAX_LENGTH,
     NAME_FIELD_MAX_LENGTH,
     PASSPORT_ISSUED_BY_MAX_LENGTH,
     PASSPORT_NUMBER_MAX_LENGTH,
@@ -18,6 +19,7 @@ from users.validators import (
     validate_passport_issue_date,
     validate_passport_number,
     validate_passport_series,
+    validate_person_inn,
 )
 
 
@@ -87,6 +89,13 @@ class ArtistIdentityData(TimestampModel):
         blank=True,
         null=True,
         validators=[validate_passport_issue_date],
+    )
+
+    inn = models.CharField(
+        'ИНН',
+        max_length=INN_PERSON_MAX_LENGTH,
+        blank=True,
+        validators=[validate_person_inn],
     )
 
     def save(self, *args, **kwargs):

@@ -23,6 +23,10 @@ from .artist_profile import (
 )
 from .artist_registration import ArtistRegistrationSerializer
 from .base_registration import BaseRegistrationSerializer
+from .consent_documents import (
+    ConsentDocumentDetailSerializer,
+    ConsentDocumentSerializer,
+)
 from .jwt import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
@@ -38,6 +42,8 @@ __all__ = [
     'ArtistPublicSerializer',
     'ArtistMeUpdateSerializer',
     'BaseRegistrationSerializer',
+    'ConsentDocumentDetailSerializer',
+    'ConsentDocumentSerializer',
     'CustomTokenObtainPairSerializer',
     'ListenerMeSerializer',
     'ListenerRegistrationSerializer',
