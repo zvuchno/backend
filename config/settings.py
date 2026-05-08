@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    'corsheaders',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -68,6 +69,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -79,11 +81,21 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
 ]
 
-# Настройки для debug_toolbar
+# Настройки Silk и nplusone
 if DEBUG:
-    INSTALLED_APPS += ['debug_toolbar']
-    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
-    INTERNAL_IPS = ['127.0.0.1']
+    INSTALLED_APPS += ['silk']
+    MIDDLEWARE = ['silk.middleware.SilkyMiddleware'] + MIDDLEWARE
+    SILKY_PYTHON_PROFILER = True  # Включает профилирование Python-кода
+    SILKY_INTERCEPT_PERCENT = 100 # Записывать 100% запросов (для дебага)
+    SILKY_MAX_RECORDED_STACKTRACES = 10 # Ограничение стека, чтобы не раздувать БД
+    SILKY_META = True # Записывать время генерации самого Silk
+
+    INSTALLED_APPS += ['nplusone.ext.django']
+    MIDDLEWARE = ['nplusone.ext.django.NPlusOneMiddleware'] + MIDDLEWARE
+    NPLUSONE_RAISE = False  # Не выбрасывать ошибку
+    NPLUSONE_LOGGER = logging.getLogger('nplusone')
+    NPLUSONE_LOG_LEVEL = logging.WARN
+    NPLUSONE_WHITELIST = [{'model': 'silk.*'}]
 
 ROOT_URLCONF = 'config.urls'
 
@@ -284,3 +296,21 @@ LOGGING = logging_config.LOGGING
 
 # Настройка отправки ошибок проекта в GlitchTip
 init_glitchtip()
+
+#CORS
+DEFAULT_CORS_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+EXTRA_CORS_ORIGINS = []
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+    EXTRA_CORS_ORIGINS = [o.strip() for o in origins.split(',') if o.strip()]
+
+CORS_ALLOWED_ORIGINS = list({
+    *DEFAULT_CORS_ORIGINS,
+    *EXTRA_CORS_ORIGINS,
+})
