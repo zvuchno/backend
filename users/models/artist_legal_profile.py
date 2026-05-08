@@ -5,6 +5,7 @@ TODO: валидация комбинаций всех данных.
 
 from django.conf import settings
 from django.db import models
+from phonenumber_field.modelfields import PhoneNumberField
 
 from .abstract import TimestampModel
 from users.constants import (
@@ -26,6 +27,7 @@ class ArtistLegalProfile(TimestampModel):
     objects = ArtistLegalProfileQuerySet.as_manager()
 
     class RecipientType(models.TextChoices):
+        EMPTY = '', 'Не указано'
         INDIVIDUAL_ENTREPRENEUR = 'individual_entrepreneur', 'ИП'
         SELF_EMPLOYED = 'self_employed', 'СМЗ'
         LEGAL_ENTITY = 'legal_entity', 'Юридическое лицо'
@@ -37,10 +39,22 @@ class ArtistLegalProfile(TimestampModel):
         verbose_name='Учетная запись',
     )
 
+    email = models.EmailField(
+        'Email для юридических документов',
+        blank=True,
+    )
+    phone = PhoneNumberField(
+        'Телефон для юридических документов',
+        blank=True,
+        null=True,
+    )
+
     recipient_type = models.CharField(
         'Организационная форма',
         max_length=RECIPIENT_TYPE_MAX_LENGTH,
         choices=RecipientType.choices,
+        blank=True,
+        default='',
     )
 
     is_verified = models.BooleanField(

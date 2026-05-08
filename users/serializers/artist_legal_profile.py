@@ -1,6 +1,7 @@
 """Сериализаторы юр профиля."""
 
 from django.db import transaction
+from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from users.models import (
@@ -62,6 +63,7 @@ class ArtistCompanyDataSerializer(serializers.ModelSerializer):
 class ArtistLegalProfileSerializer(serializers.ModelSerializer):
     """Сериализатор юридического профиля артиста."""
 
+    phone = PhoneNumberField(required=False, allow_blank=True, allow_null=True)
     is_verified = serializers.BooleanField(read_only=True)
     comment = serializers.CharField(read_only=True)
 
@@ -69,6 +71,8 @@ class ArtistLegalProfileSerializer(serializers.ModelSerializer):
         model = ArtistLegalProfile
         fields = (
             'id',
+            'email',
+            'phone',
             'recipient_type',
             'is_verified',
             'comment',
@@ -133,6 +137,8 @@ class ArtistLegalSerializer(serializers.Serializer):
             )
             self._update_items(company_data_instance, company_data)
             company_data_instance.save()
+
+        instance.refresh_from_db()
 
         return instance
 

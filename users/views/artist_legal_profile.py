@@ -44,6 +44,10 @@ class ArtistLegalProfileView(RetrieveUpdateAPIView):
         legal_profile, _ = (
             ArtistLegalProfile.objects.with_legal_data().get_or_create(
                 user=self.request.user,
+                defaults={
+                    'email': self.request.user.email,
+                    'phone': self.request.user.phone,
+                },
             )
         )
         return legal_profile
