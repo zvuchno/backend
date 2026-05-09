@@ -18,7 +18,6 @@ class ArtistIdentityDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistIdentityData
         fields = (
-            'id',
             'first_name',
             'last_name',
             'middle_name',
@@ -38,7 +37,6 @@ class ArtistBankDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistBankData
         fields = (
-            'id',
             'bank_name',
             'bik',
             'correspondent_account',
@@ -52,7 +50,6 @@ class ArtistCompanyDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistCompanyData
         fields = (
-            'id',
             'company_name',
             'company_address',
             'inn',
@@ -70,7 +67,6 @@ class ArtistLegalProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistLegalProfile
         fields = (
-            'id',
             'email',
             'phone',
             'recipient_type',
