@@ -102,6 +102,7 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         'id',
         'user',
         'artist_name',
+        'email',
         'recipient_type',
         'is_verified',
         'updated_at',
@@ -117,6 +118,8 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         'user__email',
         'user__username',
         'user__phone',
+        'email',
+        'phone',
         'user__artist_profile__name',
         'company_data__company_name',
     )
@@ -129,6 +132,15 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
                 'fields': (
                     'user',
                     'artist_link',
+                ),
+            },
+        ),
+        (
+            'Контакты для юридических документов',
+            {
+                'fields': (
+                    'email',
+                    'phone',
                 ),
             },
         ),
