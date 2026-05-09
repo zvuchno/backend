@@ -1,6 +1,7 @@
 """Сериализаторы юр профиля."""
 
 from django.db import transaction
+from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from users.models import (
@@ -17,7 +18,6 @@ class ArtistIdentityDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistIdentityData
         fields = (
-            'id',
             'first_name',
             'last_name',
             'middle_name',
@@ -37,7 +37,6 @@ class ArtistBankDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistBankData
         fields = (
-            'id',
             'bank_name',
             'bik',
             'correspondent_account',
@@ -51,7 +50,6 @@ class ArtistCompanyDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistCompanyData
         fields = (
-            'id',
             'company_name',
             'company_address',
             'inn',
@@ -62,13 +60,15 @@ class ArtistCompanyDataSerializer(serializers.ModelSerializer):
 class ArtistLegalProfileSerializer(serializers.ModelSerializer):
     """Сериализатор юридического профиля артиста."""
 
+    phone = PhoneNumberField(required=False, allow_blank=True, allow_null=True)
     is_verified = serializers.BooleanField(read_only=True)
     comment = serializers.CharField(read_only=True)
 
     class Meta:
         model = ArtistLegalProfile
         fields = (
-            'id',
+            'email',
+            'phone',
             'recipient_type',
             'is_verified',
             'comment',
@@ -97,10 +97,14 @@ class ArtistLegalSerializer(serializers.Serializer):
     )
 
     @staticmethod
-    def _update_items(instance, data) -> None:
-        """Заполняет значения полей модели."""
+    def _update_items(instance, data) -> bool:
+        """Обновляет поля модели и возвращает признак изменений."""
+        changed = False
         for key, value in data.items():
-            setattr(instance, key, value)
+            if getattr(instance, key) != value:
+                setattr(instance, key, value)
+                changed = True
+        return changed
 
     @transaction.atomic
     def update(self, instance, validated_data):
@@ -109,30 +113,43 @@ class ArtistLegalSerializer(serializers.Serializer):
         bank_data = validated_data.pop('bank_data', None)
         company_data = validated_data.pop('company_data', None)
         legal_profile = validated_data
+        reset_verified = False
 
         if legal_profile:
-            self._update_items(instance, legal_profile)
-            instance.save()
+            changed = self._update_items(instance, legal_profile)
+            reset_verified |= changed
+            if changed:
+                instance.save()
         if identity_data is not None:
             identity_data_instance, _ = (
                 ArtistIdentityData.objects.get_or_create(
                     legal_profile=instance,
                 )
             )
-            self._update_items(identity_data_instance, identity_data)
-            identity_data_instance.save()
+            changed = self._update_items(identity_data_instance, identity_data)
+            reset_verified |= changed
+            if changed:
+                identity_data_instance.save()
         if bank_data is not None:
             bank_data_instance, _ = ArtistBankData.objects.get_or_create(
                 legal_profile=instance,
             )
-            self._update_items(bank_data_instance, bank_data)
-            bank_data_instance.save()
+            changed = self._update_items(bank_data_instance, bank_data)
+            reset_verified |= changed
+            if changed:
+                bank_data_instance.save()
         if company_data is not None:
             company_data_instance, _ = ArtistCompanyData.objects.get_or_create(
                 legal_profile=instance,
             )
-            self._update_items(company_data_instance, company_data)
-            company_data_instance.save()
+            changed = self._update_items(company_data_instance, company_data)
+            reset_verified |= changed
+            if changed:
+                company_data_instance.save()
+
+        if reset_verified and instance.is_verified:
+            instance.is_verified = False
+            instance.save(update_fields=('is_verified',))
 
         return instance
 
