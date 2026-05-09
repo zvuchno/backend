@@ -8,7 +8,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from django import forms
 from django.contrib import admin
 from django.core.validators import MinValueValidator
-from django.db import transaction
 from django.utils.html import format_html
 from nested_admin import (
     NestedModelAdmin,
@@ -27,6 +26,7 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album, Product, Track
+from store.services import ProductService
 
 
 class TrackInlineForm(MoneyForm):
@@ -80,18 +80,20 @@ class TrackInlineForm(MoneyForm):
         # Берём цену из формы, 0.00 если поле пустое
         price = self.cleaned_data.get('price') or Decimal('0.00')
 
-        @transaction.atomic
-        def sync_price() -> None:
-            """Функция синхронизации цены с Product."""
-            product, _ = Product.objects.get_or_create(track=instance)
-            if price is not None and product.price != price:
-                product.price = price
-                # Сохраняем только поле price
-                product.save(update_fields=['price'])
+        def sync_commerce_data() -> None:
+            """Синхронизирует коммерческие данные через ProductService."""
+            validated_data = {
+                'price': price,
+                'variants': [],
+            }
+            ProductService.ensure_commerce(
+                instance,
+                validated_data=validated_data,
+            )
 
         if commit:
             # Для обычного сохранения вызываем сразу
-            sync_price()
+            sync_commerce_data()
         else:
             # Для inline-форм в админке: цепляем к save_m2m
             original_save_m2m = getattr(self, 'save_m2m', None)
@@ -101,7 +103,7 @@ class TrackInlineForm(MoneyForm):
                 if original_save_m2m:
                     original_save_m2m()
                 # Затем синхронизируем цену
-                sync_price()
+                sync_commerce_data()
 
             self.save_m2m = chained_save_m2m
         return instance

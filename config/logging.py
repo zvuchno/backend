@@ -90,5 +90,13 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': True,
         },
+        'nplusone': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
+        'silk': {
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
 }

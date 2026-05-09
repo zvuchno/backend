@@ -119,3 +119,9 @@ def cart_url():
 def cart_add_url():
     """Возвращает URL-адрес эндпоинта для добавления товара в корзину."""
     return reverse('api:store:cart-add-item')
+
+
+@pytest.fixture
+def favorites_url():
+    """Возвращает URL-адрес эндпоинта избранного."""
+    return reverse('api:store:me-favorites-list')
