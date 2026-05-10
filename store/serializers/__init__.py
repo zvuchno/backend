@@ -8,6 +8,7 @@ from .cart import (
     CartReadSerializer,
     CartWriteSerializer,
 )
+from .checkout import CheckoutSerializer
 from .delivery import DeliverySerializer
 from .favorites import FavoritesSerializer
 from .genre import GenreSerializer
@@ -26,6 +27,7 @@ __all__ = [
     'ArtistSaleDetailSerializer',
     'ArtistSaleSerializer',
     'CartItemWriteSerializer',
+    'CheckoutSerializer',
     'FavoritesSerializer',
     'DeliverySerializer',
     'GenreSerializer',
