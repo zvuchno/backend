@@ -7,6 +7,8 @@ from django.conf import settings
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
+from common.utils import normalize_email
+
 from .abstract import TimestampModel
 from users.constants import (
     RECIPIENT_TYPE_MAX_LENGTH,
@@ -72,6 +74,11 @@ class ArtistLegalProfile(TimestampModel):
         verbose_name = 'юридический профиль артиста'
         verbose_name_plural = 'юридические профили артистов'
         ordering = ('-updated_at',)
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = normalize_email(self.email)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'Юридический профиль: {self.user.username}'

@@ -4,6 +4,8 @@ from datetime import date
 
 from django.core.exceptions import ValidationError
 
+from common.utils import normalize_digits
+
 from users.constants import (
     ACCOUNT_NUMBER_MAX_LENGTH,
     BIK_MAX_LENGTH,
@@ -13,13 +15,6 @@ from users.constants import (
     PASSPORT_NUMBER_MAX_LENGTH,
     PASSPORT_SERIES_MAX_LENGTH,
 )
-
-
-def normalize_digits(value: str) -> str:
-    """Нормализация числового поля."""
-    if not value:
-        return ''
-    return ''.join(d for d in str(value) if d.isdigit())
 
 
 def _validate_digits_number(
