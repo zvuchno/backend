@@ -75,9 +75,13 @@ class ArtistLegalProfile(TimestampModel):
         verbose_name_plural = 'юридические профили артистов'
         ordering = ('-updated_at',)
 
-    def save(self, *args, **kwargs):
+    def clean(self):
+        super().clean()
         if self.email:
             self.email = normalize_email(self.email)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
