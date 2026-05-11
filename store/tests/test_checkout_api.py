@@ -232,9 +232,10 @@ class TestCheckoutAPI:
 
     def test_checkout_consent_linking(self, user):
         """Чекаут → корректная привязка UserConsent к заказу и документу."""
+        pyload = self.get_payload()
         response = self.auth_client.post(
             self.checkout_url,
-            data=self.get_payload(),
+            data=pyload,
             format='json',
         )
 
@@ -244,7 +245,7 @@ class TestCheckoutAPI:
         assert order.consents.exists()
         consent = order.consents.first()
         assert consent.order == order
-        assert consent.email == user.email
+        assert consent.email == pyload['email']
         assert consent.document == self.document
 
     def test_checkout_delivery_methods_only_for_merch(self, variant_factory):

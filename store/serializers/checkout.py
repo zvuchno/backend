@@ -98,7 +98,7 @@ class CheckoutSerializer(serializers.Serializer):
                 ),
             })
 
-        if delivery.delivery_type != 'pickup':
+        if delivery.delivery_type != Delivery.DeliveryType.PICKUP:
             self._validate_delivery_address(attrs)
         else:
             self._clear_address_fields(attrs)

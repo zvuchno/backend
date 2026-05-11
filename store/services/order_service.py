@@ -5,10 +5,9 @@
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.utils import timezone
 
 from store.constants import ZERO_MONEY
-from store.models import Delivery, Order, OrderItem
+from store.models import Delivery, Order, OrderItem, Product
 from store.serializers import DeliverySerializer
 from users.models import ConsentDocument, UserConsent
 
@@ -33,7 +32,7 @@ class OrderService:
         cart = cart or (user.cart if user else None)
 
         has_merch = cart.items.filter(
-            product_variant__product__product_type='merch',
+            product_variant__product__product_type=Product.ProductType.MERCH,
         ).exists()
 
         deliveries_qs = Delivery.objects.none()
@@ -146,17 +145,12 @@ class OrderService:
                     'Нет активного документа согласия для слушателя.',
                 )
             UserConsent.objects.create(
-                email=(
-                    user.email
-                    if user and user.is_authenticated
-                    else validated_data.get('email')
-                ),
+                email=validated_data.get('email'),
                 user=user if user and user.is_authenticated else None,
                 order=order,
                 document=consent_document,
                 ip_address=ip_address,
                 user_agent=user_agent,
-                accepted_at=timezone.now(),
             )
 
         # Очищаем корзину
