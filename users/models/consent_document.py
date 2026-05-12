@@ -62,7 +62,7 @@ class ConsentDocument(ActivatableModel, TimestampModel):
         )
         LISTENER_NEWSLETTER = (
             'listener_newsletter',
-            'Слушатель: Согласие на рассылку',
+            'Слушатель: Согласие на получение рассылки',
         )
 
     document_type = models.CharField(

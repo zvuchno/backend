@@ -22,11 +22,12 @@ class CartService:
         quantity: int,
         price_with_donation: Decimal = None,
         comment: str = '',
+        is_artist_subscription: bool = False,
     ) -> CartItem:
-        """Идемпотентное добавление товара в корзину.
+        """Добавление товара в корзину.
 
-        Если товар уже есть, увеличивает его количество.
-        Если нет — создает новую запись.
+        Если товар данного варианта уже есть в корзине,
+        увеличивает его количество (инкрементальное обновление).
         """
         item, created = CartItem.objects.get_or_create(
             cart=cart,
@@ -35,6 +36,7 @@ class CartService:
                 'quantity': quantity,
                 'price_with_donation': price_with_donation,
                 'comment': comment,
+                'is_artist_subscription': is_artist_subscription,
             },
         )
         if not created:
@@ -48,6 +50,10 @@ class CartService:
             if comment is not None:
                 item.comment = comment
                 update_fields.append('comment')
+
+            if is_artist_subscription:
+                item.is_artist_subscription = True
+                update_fields.append('is_artist_subscription')
 
             item.save(update_fields=update_fields)
 
@@ -88,6 +94,7 @@ class CartService:
             quantity = item_data['quantity']
             price_with_donation = item_data.get('price_with_donation')
             comment = item_data.get('comment')
+            is_sub = item_data.get('is_artist_subscription', False)
 
             if variant.id in current_items:
                 item = current_items[variant.id]
@@ -95,10 +102,12 @@ class CartService:
                     item.quantity != quantity
                     or item.price_with_donation != price_with_donation
                     or item.comment != comment
+                    or item.is_artist_subscription != is_sub
                 ):
                     item.quantity = quantity
                     item.price_with_donation = price_with_donation
                     item.comment = comment
+                    item.is_artist_subscription = is_sub
                     updated_items.append(item)
             else:
                 new_items.append(
@@ -108,13 +117,19 @@ class CartService:
                         quantity=quantity,
                         price_with_donation=price_with_donation,
                         comment=comment,
+                        is_artist_subscription=is_sub,
                     ),
                 )
 
         if updated_items:
             CartItem.objects.bulk_update(
                 updated_items,
-                ['quantity', 'price_with_donation', 'comment'],
+                [
+                    'quantity',
+                    'price_with_donation',
+                    'comment',
+                    'is_artist_subscription',
+                ],
             )
 
         if new_items:
@@ -178,6 +193,9 @@ class CartService:
                     'quantity': guest_item.quantity,
                     'price_with_donation': guest_item.price_with_donation,
                     'comment': guest_item.comment,
+                    'is_artist_subscription': (
+                        guest_item.is_artist_subscription,
+                    ),
                 },
             )
             if not created:
@@ -194,5 +212,12 @@ class CartService:
                 if user_item.quantity != total_qty:
                     user_item.quantity = total_qty
                     user_item.save(update_fields=['quantity'])
+
+                if (
+                    guest_item.is_artist_subscription
+                    and not user_item.is_artist_subscription
+                ):
+                    user_item.is_artist_subscription = True
+                    user_item.save(update_fields=['is_artist_subscription'])
         # Удаляем гостевую корзину после переноса
         guest_cart.delete()

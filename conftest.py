@@ -17,6 +17,8 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from users.models import ArtistProfile
+
 User = get_user_model()
 
 
@@ -64,6 +66,19 @@ def staff_user(user_factory):
         username='staff',
         is_staff=True,
         is_superuser=True,
+    )
+
+
+@pytest.fixture
+def artist_user(user_factory):
+    """Пользователь-Артист."""
+    user = user_factory(
+        email='artist@test.com',
+        username='artist_user',
+    )
+    return ArtistProfile.objects.create(
+        user=user,
+        name='Test_Artist',
     )
 
 
