@@ -1,4 +1,3 @@
-from django.db.models import Q
 from rest_framework.permissions import BasePermission
 
 from .base import (
@@ -70,31 +69,10 @@ class IsSalesOwner(BasePermission):
 
     def has_object_permission(self, request, view, obj) -> bool:
         user = request.user
+        if not user.is_authenticated:
+            return False
 
-        # Если префетч уже отработал во ViewSet, используем его
-        if (
-            hasattr(obj, '_prefetched_objects_cache')
-            and 'items' in obj._prefetched_objects_cache
-        ):
-            return any(
-                (
-                    item.product_variant.product.album
-                    and item.product_variant.product.album.owner == user
-                )
-                or (
-                    item.product_variant.product.track
-                    and item.product_variant.product.track.owner == user
-                )
-                or (
-                    item.product_variant.product.merch
-                    and item.product_variant.product.merch.owner == user
-                )
-                for item in obj.items.all()
-            )
-
-        # Fallback
-        return obj.items.filter(
-            Q(product_variant__product__album__owner=user)
-            | Q(product_variant__product__track__owner=user)
-            | Q(product_variant__product__merch__owner=user),
-        ).exists()
+        return any(
+            item.product_variant.product.owner == user
+            for item in obj.items.all()
+        )
