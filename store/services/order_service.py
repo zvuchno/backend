@@ -66,15 +66,13 @@ class OrderService:
         1. Блокирует позиции корзины для предотвращения race condition.
         2. Рассчитывает финальную стоимость - total.
         3. Создает объект Order и OrderItem (со снапшотами данных о товарах).
-        4. Регистрирует согласие пользователя на обработку ПДн (UserConsent).
+        4. Регистрирует согласие пользователя на рассылку и обработку ПДн.
         5. Очищает корзину (удаляет позиции или объект целиком для анонимов).
         """
         cart_items = (
             cart.items
             .select_for_update()
-            .select_related(
-                'product_variant__product',
-            )
+            .select_related('product_variant__product')
             .prefetch_related(
                 'product_variant__product__album__owner__artist_profile',
                 'product_variant__product__track__owner__artist_profile',
@@ -90,12 +88,9 @@ class OrderService:
             None,
         )
         delivery = validated_data.pop('delivery', None)
-        delivery_price = ZERO_MONEY
-        delivery_name = ''
 
-        if delivery:
-            delivery_price = delivery.price
-            delivery_name = delivery.name
+        delivery_price = delivery.price if delivery else ZERO_MONEY
+        delivery_name = delivery.name if delivery else ''
 
         subtotal = cart.subtotal
         total = cart.total + delivery_price
@@ -111,8 +106,10 @@ class OrderService:
             **validated_data,  # full_name, email, phone, адресные поля
         )
 
-        # Формируем позиции заказа
+        # Формируем позиции заказа и собираем уникальных артистов для рассылки
         order_items = []
+        artists_to_subscribe = set()
+
         for item in cart_items:
             variant = item.product_variant
             product = variant.product
@@ -138,48 +135,55 @@ class OrderService:
                     product_info=product_info_snapshot,
                 ),
             )
-            # Согласие на рассылку
             if item.is_artist_subscription:
-                consent_document = ConsentDocument.objects.filter(
-                    document_type=ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
-                    is_active=True,
-                ).first()
-                if not consent_document:
-                    raise ValidationError(
-                        'Нет активного документа согласия на рассылку.',
-                    )
-
-                owner = item.product_variant.product.owner
-                artist_profile = getattr(owner, 'artist_profile', None)
-
-                UserConsent.objects.create(
-                    email=validated_data.get('email'),
-                    user=user if user and user.is_authenticated else None,
-                    order=order,
-                    artist=artist_profile,
-                    document=consent_document,
-                    ip_address=ip_address,
-                    user_agent=user_agent,
-                )
+                artist_profile = getattr(product.owner, 'artist_profile', None)
+                if artist_profile:
+                    artists_to_subscribe.add(artist_profile)
 
         OrderItem.objects.bulk_create(order_items)
 
-        # Согласие на обработку ПДн
-        consent_document = ConsentDocument.objects.filter(
-            document_type=ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
-            is_active=True,
-        ).first()
+        # Согласие на рассылку
+        if artists_to_subscribe:
+            newsletter_doc = ConsentDocument.objects.filter(
+                document_type=ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+                is_active=True,
+            ).first()
 
+            if not newsletter_doc:
+                raise ValidationError(
+                    'Нет активного документа согласия на рассылку.',
+                )
+
+            UserConsent.objects.bulk_create([
+                UserConsent(
+                    email=validated_data.get('email'),
+                    user=user if user and user.is_authenticated else None,
+                    order=order,
+                    artist=artist,
+                    document=newsletter_doc,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
+                for artist in artists_to_subscribe
+            ])
+
+        # Согласие на обработку ПДн
         if personal_data_consent:
-            if not consent_document:
+            personal_doc = ConsentDocument.objects.filter(
+                document_type=ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+                is_active=True,
+            ).first()
+
+            if not personal_doc:
                 raise ValidationError(
                     'Нет активного документа согласия для слушателя.',
                 )
+
             UserConsent.objects.create(
                 email=validated_data.get('email'),
                 user=user if user and user.is_authenticated else None,
                 order=order,
-                document=consent_document,
+                document=personal_doc,
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
