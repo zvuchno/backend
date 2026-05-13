@@ -59,6 +59,19 @@ def other_user(user_factory):
 
 
 @pytest.fixture
+def artist_user(user_factory):
+    """Пользователь-Артист."""
+    user = user_factory(
+        email='artist@test.com',
+        username='artist_user',
+    )
+    return ArtistProfile.objects.create(
+        user=user,
+        name='Test_Artist',
+    )
+
+
+@pytest.fixture
 def staff_user(user_factory):
     """Администратор (видит всё)."""
     return user_factory(

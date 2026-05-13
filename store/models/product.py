@@ -82,6 +82,17 @@ class Product(models.Model):
         related_name='product',
     )
 
+    @property
+    def owner(self):
+        """Возвращает владельца на основе типа продукта."""
+        if self.product_type == self.ProductType.ALBUM and self.album:
+            return self.album.owner
+        if self.product_type == self.ProductType.TRACK and self.track:
+            return self.track.owner
+        if self.product_type == self.ProductType.MERCH and self.merch:
+            return self.merch.owner
+        return None
+
     def determine_product_type(self):
         """Автозаполнение поля product_type.
 
