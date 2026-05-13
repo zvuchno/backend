@@ -140,7 +140,7 @@ def artist_legal_profile_factory():
         legal_profile = ArtistLegalProfile.objects.create(
             user=user,
             email=kwargs.get('email', user.email),
-            phone=kwargs.get('phone', user.phone),
+            phone=kwargs.get('phone', '+79998887766'),
             recipient_type=kwargs.get(
                 'recipient_type',
                 ArtistLegalProfile.RecipientType.SELF_EMPLOYED,
@@ -181,3 +181,60 @@ def artist_legal_profile_factory():
         return legal_profile
 
     return create_legal_profile
+
+
+@pytest.fixture
+def legal_profile_payload():
+    """Payload юридического профиля."""
+    return {
+        'legal_profile': {
+            'email': 'legal1@artist.ru',
+            'phone': '+79991234567',
+            'recipient_type': 'self_employed',
+        },
+    }
+
+
+@pytest.fixture
+def identity_data_payload():
+    """Payload паспортных данных."""
+    return {
+        'identity_data': {
+            'first_name': 'Иван1',
+            'last_name': 'Иванов1',
+            'middle_name': 'Иванович1',
+            'birth_date': '1990-12-01',
+            'registration_address': 'г. Москва1',
+            'passport_series': '0001',
+            'passport_number': '000001',
+            'passport_issued_by': '111111',
+            'passport_issue_date': '2010-12-01',
+            'inn': '123456789011',
+        },
+    }
+
+
+@pytest.fixture
+def bank_data_payload():
+    """Payload банковских данных."""
+    return {
+        'bank_data': {
+            'bank_name': 'Тест-Банк1',
+            'bik': '123456781',
+            'correspondent_account': '12345678901234567891',
+            'checking_account': '12345678901234567891',
+        },
+    }
+
+
+@pytest.fixture
+def company_data_payload():
+    """Payload данных юридического лица."""
+    return {
+        'company_data': {
+            'company_name': 'ООО Тест1',
+            'company_address': 'г. Москва1',
+            'inn': '1234567891',
+            'ogrn': '1234567890121',
+        },
+    }
