@@ -1,4 +1,7 @@
-"""Тесты API юридических данных артиста."""
+"""Тесты API юридических данных артиста.
+
+TODO валидация.
+"""
 
 import pytest
 from rest_framework import status
@@ -131,12 +134,27 @@ class TestArtistLegalProfileAPI:
 
     def test_artist_can_patch_legal_profile(
         self,
+        artist_user,
         artist_client,
         artist_legal_url,
+        legal_profile_payload,
     ):
         """Артисту доступен patch."""
-        response = artist_client.patch(artist_legal_url)
+        response = artist_client.patch(
+            artist_legal_url,
+            data=legal_profile_payload,
+            format='json',
+        )
+        legal_profile = ArtistLegalProfile.objects.get(user=artist_user)
         assert response.status_code == status.HTTP_200_OK
+        assert (
+            legal_profile.email
+            == (legal_profile_payload['legal_profile']['email'])
+        )
+        assert (
+            response.data['legal_profile']['email']
+            == (legal_profile_payload['legal_profile']['email'])
+        )
 
     def test_not_artist_cannot_patch_legal_profile(
         self,
@@ -173,7 +191,10 @@ class TestArtistLegalProfileAPI:
         assert response.status_code == status.HTTP_200_OK
         assert ArtistLegalProfile.objects.filter(user=artist_user).exists()
         legal_profile = ArtistLegalProfile.objects.get(user=artist_user)
-        assert legal_profile.email == response.data['legal_profile']['email']
+        assert (
+            legal_profile.email
+            == (legal_profile_payload['legal_profile']['email'])
+        )
         assert ArtistLegalProfile.objects.count() == 1
 
     def test_patch_creates_nested_identity_data_if_not_exists(
@@ -196,9 +217,12 @@ class TestArtistLegalProfileAPI:
         identity_data = ArtistIdentityData.objects.get(
             legal_profile=legal_profile,
         )
-        assert ArtistIdentityData.objects.filter(
-            legal_profile=legal_profile,
-        ).exists()
+        assert (
+            ArtistIdentityData.objects.filter(
+                legal_profile=legal_profile,
+            ).count()
+            == 1
+        )
 
         assert (
             identity_data.first_name
@@ -233,9 +257,12 @@ class TestArtistLegalProfileAPI:
         bank_data = ArtistBankData.objects.get(
             legal_profile=legal_profile,
         )
-        assert ArtistBankData.objects.filter(
-            legal_profile=legal_profile,
-        ).exists()
+        assert (
+            ArtistBankData.objects.filter(
+                legal_profile=legal_profile,
+            ).count()
+            == 1
+        )
 
         assert bank_data.bank_name == (response.data['bank_data']['bank_name'])
         assert (
@@ -258,7 +285,7 @@ class TestArtistLegalProfileAPI:
         """Создаются юр данные."""
         assert ArtistCompanyData.objects.count() == 0
         legal_profile_payload['legal_profile']['recipient_type'] = (
-            'legal_entity'
+            ArtistLegalProfile.RecipientType.LEGAL_ENTITY
         )
         response = artist_client.patch(
             artist_legal_url,
@@ -270,9 +297,12 @@ class TestArtistLegalProfileAPI:
         company_data = ArtistCompanyData.objects.get(
             legal_profile=legal_profile,
         )
-        assert ArtistCompanyData.objects.filter(
-            legal_profile=legal_profile,
-        ).exists()
+        assert (
+            ArtistCompanyData.objects.filter(
+                legal_profile=legal_profile,
+            ).count()
+            == 1
+        )
 
         assert (
             company_data.company_name
@@ -405,7 +435,7 @@ class TestArtistLegalProfileAPI:
         """Обновляются существующие юр. данные."""
         legal_profile = artist_legal_profile_factory(
             user=artist_user,
-            recipient_type='legal_entity',
+            recipient_type=ArtistLegalProfile.RecipientType.LEGAL_ENTITY,
             with_company_data=True,
         )
         company_data = legal_profile.company_data
@@ -447,6 +477,7 @@ class TestArtistLegalProfileAPI:
         """Не очищаются не переданные данные."""
         legal_profile = artist_legal_profile_factory(
             user=artist_user,
+            recipient_type=ArtistLegalProfile.RecipientType.LEGAL_ENTITY,
             with_company_data=True,
         )
         old_phone = legal_profile.phone
@@ -507,3 +538,48 @@ class TestArtistLegalProfileAPI:
         )
         assert legal_profile.is_verified is False
         assert response.data['legal_profile']['is_verified'] is False
+
+    def test_put_is_not_allowed(
+        self,
+        artist_client,
+        artist_legal_url,
+    ):
+        """Put запрещен."""
+        response = artist_client.put(artist_legal_url, data={}, format='json')
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+    def test_delete_is_not_allowed(
+        self,
+        artist_client,
+        artist_legal_url,
+    ):
+        """Delete запрещен."""
+        response = artist_client.delete(artist_legal_url)
+        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+    def test_readonly_fields_do_not_change(
+        self,
+        artist_user,
+        artist_client,
+        artist_legal_profile_factory,
+        legal_profile_payload,
+        artist_legal_url,
+    ):
+        """Поля is_verified и comment не меняются артистом."""
+        legal_profile = artist_legal_profile_factory(artist_user)
+        old_is_verified = legal_profile.is_verified
+        old_comment = legal_profile.comment
+
+        legal_profile_payload['legal_profile']['is_verified'] = True
+        legal_profile_payload['legal_profile']['comment'] = 'new comment'
+        response = artist_client.patch(
+            artist_legal_url,
+            data=legal_profile_payload,
+            format='json',
+        )
+        legal_profile.refresh_from_db()
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['legal_profile']['is_verified'] is old_is_verified
+        assert legal_profile.is_verified is old_is_verified
+        assert response.data['legal_profile']['comment'] == old_comment
+        assert legal_profile.comment == old_comment

@@ -115,12 +115,6 @@ def listener_client(client_factory, listener_user):
 
 
 @pytest.fixture
-def other_listener_client(client_factory, other_listener_user):
-    """Клиент другого слушателя."""
-    return client_factory(other_listener_user)
-
-
-@pytest.fixture
 def artist_legal_url():
     """URL юридических данных артиста."""
     return reverse('api:users:artist_legal_profile')
