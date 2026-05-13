@@ -200,3 +200,9 @@ def cart_add_url():
 def favorites_url():
     """Возвращает URL-адрес эндпоинта избранного."""
     return reverse('api:store:me-favorites-list')
+
+
+@pytest.fixture
+def checkout_url():
+    """Возвращает URL-адрес эндпоинта создания заказа."""
+    return reverse('api:store:orders-checkout')

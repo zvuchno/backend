@@ -113,6 +113,22 @@ class ArtistIdentityData(TimestampModel):
         if self.passport_number:
             self.passport_number = normalize_digits(self.passport_number)
 
+        if self.inn:
+            self.inn = normalize_digits(self.inn)
+
+        if self.first_name:
+            self.first_name = self.first_name.strip()
+        if self.last_name:
+            self.last_name = self.last_name.strip()
+        if self.middle_name:
+            self.middle_name = self.middle_name.strip()
+
+        if self.registration_address:
+            self.registration_address = self.registration_address.strip()
+
+        if self.passport_issued_by:
+            self.passport_issued_by = self.passport_issued_by.strip()
+
         if (
             self.birth_date
             and self.passport_issue_date

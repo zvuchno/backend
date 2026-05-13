@@ -8,6 +8,7 @@
 
 from .album import album_schema
 from .cart import cart_schema
+from .checkout_schema import checkout_schema
 from .delivery import delivery_schema
 from .favorites import favorites_schema
 from .genre import genre_schema
@@ -19,6 +20,7 @@ __all__ = [
     'album_schema',
     'artist_sale_schema',
     'cart_schema',
+    'checkout_schema',
     'delivery_schema',
     'favorites_schema',
     'genre_schema',
