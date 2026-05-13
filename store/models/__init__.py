@@ -29,5 +29,6 @@ __all__ = [
     'ProductVariant',
     'Promocode',
     'Cart',
+    'Promocode',
     'Track',
 ]
