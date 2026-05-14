@@ -13,7 +13,6 @@
 """
 
 import pytest
-from django.contrib.auth import get_user_model
 from django.urls import reverse
 
 from users.models import (
@@ -21,97 +20,7 @@ from users.models import (
     ArtistCompanyData,
     ArtistIdentityData,
     ArtistLegalProfile,
-    ArtistProfile,
-    ListenerProfile,
 )
-
-User = get_user_model()
-
-
-@pytest.fixture
-def artist_user_factory(user_factory):
-    """Фабрика пользователей-артистов."""
-
-    def create_artist_user(
-        name='Test Artist',
-        is_active=True,
-        **kwargs,
-    ) -> User:
-        user = user_factory(**kwargs)
-        ArtistProfile.objects.create(
-            user=user,
-            name=name,
-            is_active=is_active,
-        )
-        return user
-
-    return create_artist_user
-
-
-@pytest.fixture
-def listener_user_factory(user_factory):
-    """Фабрика пользователей-слушателей."""
-
-    def create_listener_user(
-        full_name='Test Listener',
-        is_active=True,
-        **kwargs,
-    ) -> User:
-        user = user_factory(**kwargs)
-        ListenerProfile.objects.create(
-            user=user,
-            full_name=full_name,
-            is_active=is_active,
-        )
-        return user
-
-    return create_listener_user
-
-
-@pytest.fixture
-def artist_user(artist_user_factory):
-    """Пользователь с профилем артиста."""
-    return artist_user_factory(
-        email='artist@artist.ru',
-        username='artist',
-    )
-
-
-@pytest.fixture
-def other_artist_user(artist_user_factory):
-    """Другой пользователь с профилем артиста."""
-    return artist_user_factory(
-        email='other_artist@artist.ru',
-        username='other_artist',
-        name='Other Artist',
-    )
-
-
-@pytest.fixture
-def listener_user(listener_user_factory):
-    """Пользователь с профилем слушателя."""
-    return listener_user_factory(
-        email='listener@listener.ru',
-        username='listener',
-    )
-
-
-@pytest.fixture
-def artist_client(client_factory, artist_user):
-    """Клиент артиста."""
-    return client_factory(artist_user)
-
-
-@pytest.fixture
-def other_artist_client(client_factory, other_artist_user):
-    """Клиент другого артиста."""
-    return client_factory(other_artist_user)
-
-
-@pytest.fixture
-def listener_client(client_factory, listener_user):
-    """Клиент слушателя."""
-    return client_factory(listener_user)
 
 
 @pytest.fixture
