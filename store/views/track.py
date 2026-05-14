@@ -4,7 +4,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
-from common.permissions import IsStoreObjectOwnerOrReadOnly
+from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
 
 from .mixins import ProductActionMixin
 from store.filters import TrackFilter
@@ -22,18 +22,21 @@ class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
     """API для работы с треками."""
 
     queryset = Track.objects.all()
-    permission_classes = (IsStoreObjectOwnerOrReadOnly,)
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
         DjangoFilterBackend,
         filters.SearchFilter,
         filters.OrderingFilter,
     )
-
     filterset_class = TrackFilter
     search_fields = ('name',)
     ordering_fields = ('name', 'position')
     ordering = ('album', 'position')
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return (IsArtist(),)
+        return (IsStoreObjectOwnerOrReadOnly(),)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):

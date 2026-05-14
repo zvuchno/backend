@@ -3,8 +3,8 @@
 import pytest
 from rest_framework import status
 
-from store.models import Order, OrderItem
-from users.models import UserConsent
+from store.models import CartItem, Order, OrderItem
+from users.models import ConsentDocument, UserConsent
 
 
 @pytest.mark.django_db
@@ -19,7 +19,7 @@ class TestCheckoutAPI:
         checkout_url,
         cart_with_items,
         delivery_courier,
-        active_consent_document,
+        consent_doc_pdn,
     ) -> None:
         """Автоматически прокидывает зависимости в self перед каждым тестом."""
         self.auth_client = auth_client
@@ -27,7 +27,7 @@ class TestCheckoutAPI:
         self.checkout_url = checkout_url
         self.cart_with_items = cart_with_items
         self.delivery = delivery_courier
-        self.document = active_consent_document
+        self.document = consent_doc_pdn
 
     def get_payload(self, **kwargs):
         """Генератор данных для чекаута."""
@@ -58,13 +58,28 @@ class TestCheckoutAPI:
         assert UserConsent.objects.filter(user=user).exists()
         assert self.cart_with_items.items.count() == 0
 
-    def test_anon_checkout_flow(self, cart_url, cart_add_url, variant_factory):
-        """Сквозной тест: Аноним → сессия + успешный заказ + очистка."""
+    def test_anon_checkout_flow(
+        self,
+        cart_url,
+        cart_add_url,
+        artist_user,
+        variant_factory,
+        consent_doc_newsletter,
+    ):
+        """Сквозной тест оформления заказа.
+
+        Аноним → сессия + успешный заказ + очистка корзины + согласия.
+        """
         response = self.api_client.get(cart_url)
-        variant = variant_factory(product_type='merch')
+        variant = variant_factory(product_type='merch', owner=artist_user)
+        types = [
+            ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+            ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+        ]
         payload = {
             'product_variant': variant.id,
             'quantity': 2,
+            'is_artist_subscription': 'true',
         }
         response = self.api_client.post(cart_add_url, payload, format='json')
 
@@ -79,10 +94,13 @@ class TestCheckoutAPI:
 
         cart_response = self.api_client.get(cart_url)
         assert len(cart_response.data['items']) == 0
-
-        assert UserConsent.objects.filter(user__isnull=True).exists()
-        consent = UserConsent.objects.get(email='test@test.ru')
-        assert consent.document == self.document
+        assert (
+            UserConsent.objects.filter(
+                user__isnull=True,
+                document__document_type__in=types,
+            ).count()
+            == 2
+        )
 
     def test_checkout_integrity_snapshots(self):
         """Смена цены товара → в заказе сохраняется цена на момент покупки."""
@@ -265,3 +283,34 @@ class TestCheckoutAPI:
         response = self.auth_client.get(self.checkout_url)
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['deliveries']) > 0
+
+    def test_artist_subscription_consent_created(
+        self,
+        user,
+        artist_user,
+        variant_factory,
+        consent_doc_newsletter,
+    ):
+        """Заказ с подпиской на рассылку → создано корректное согласие."""
+        variant = variant_factory(owner=artist_user)
+        CartItem.objects.create(
+            cart=self.cart_with_items,
+            product_variant=variant,
+            quantity=1,
+            is_artist_subscription=True,
+        )
+
+        response = self.auth_client.post(
+            self.checkout_url,
+            self.get_payload(),
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        order = Order.objects.first()
+        consent = UserConsent.objects.get(
+            document__document_type=ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+        )
+        assert consent.order == order
+        assert consent.artist == artist_user.artist_profile
+        assert consent.email == self.get_payload()['email']
