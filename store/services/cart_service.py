@@ -194,7 +194,7 @@ class CartService:
                     'price_with_donation': guest_item.price_with_donation,
                     'comment': guest_item.comment,
                     'is_artist_subscription': (
-                        guest_item.is_artist_subscription,
+                        guest_item.is_artist_subscription
                     ),
                 },
             )

@@ -62,12 +62,20 @@ class TestCheckoutAPI:
         self,
         cart_url,
         cart_add_url,
+        artist_user,
         variant_factory,
         consent_doc_newsletter,
     ):
-        """Сквозной тест: Аноним → сессия + успешный заказ + очистка."""
+        """Сквозной тест оформления заказа.
+
+        Аноним → сессия + успешный заказ + очистка корзины + согласия.
+        """
         response = self.api_client.get(cart_url)
-        variant = variant_factory(product_type='merch')
+        variant = variant_factory(product_type='merch', owner=artist_user)
+        types = [
+            ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+            ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+        ]
         payload = {
             'product_variant': variant.id,
             'quantity': 2,
@@ -86,10 +94,13 @@ class TestCheckoutAPI:
 
         cart_response = self.api_client.get(cart_url)
         assert len(cart_response.data['items']) == 0
-
-        assert UserConsent.objects.filter(user__isnull=True).count() == 2
-        consent = UserConsent.objects.filter(email='test@test.ru').first()
-        assert consent.document == self.document
+        assert (
+            UserConsent.objects.filter(
+                user__isnull=True,
+                document__document_type__in=types,
+            ).count()
+            == 2
+        )
 
     def test_checkout_integrity_snapshots(self):
         """Смена цены товара → в заказе сохраняется цена на момент покупки."""
@@ -281,7 +292,7 @@ class TestCheckoutAPI:
         consent_doc_newsletter,
     ):
         """Заказ с подпиской на рассылку → создано корректное согласие."""
-        variant = variant_factory(owner=artist_user.user)
+        variant = variant_factory(owner=artist_user)
         CartItem.objects.create(
             cart=self.cart_with_items,
             product_variant=variant,
@@ -301,5 +312,5 @@ class TestCheckoutAPI:
             document__document_type=ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
         )
         assert consent.order == order
-        assert consent.artist == artist_user
+        assert consent.artist == artist_user.artist_profile
         assert consent.email == self.get_payload()['email']
