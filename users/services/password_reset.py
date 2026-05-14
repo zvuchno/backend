@@ -3,12 +3,16 @@
 Пока без отправки письма.
 """
 
+import logging
+
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
 from config import settings
 from users.services import send_password_reset_email
+
+logger = logging.getLogger(__name__)
 
 
 def generate_password_reset_data(user) -> dict:
@@ -38,8 +42,14 @@ def request_password_reset(user) -> str:
         user=user,
         front_url=settings.FRONTEND_RESET_PASSWORD_URL,
     )
-    send_password_reset_email(
-        to_email=user.email,
-        reset_url=reset_url,
-    )
+    try:
+        send_password_reset_email(
+            to_email=user.email,
+            reset_url=reset_url,
+        )
+    except Exception:
+        logger.exception(
+            'Не удалось отправить письмо для восстановления пароля user_id=%s',
+            user.id,
+        )
     return reset_url

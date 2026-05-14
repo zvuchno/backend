@@ -3,6 +3,8 @@
 Пока без отправки письма.
 """
 
+import logging
+
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
@@ -11,6 +13,8 @@ from django.utils.http import (
 )
 
 from users.services import send_email_verification_mail
+
+logger = logging.getLogger(__name__)
 
 
 def generate_email_verification_data(user) -> dict:
@@ -40,8 +44,16 @@ def request_email_verification(user) -> str:
         user=user,
         frontend_base_url=settings.FRONTEND_VERIFY_EMAIL_URL,
     )
-    send_email_verification_mail(
-        to_email=user.email,
-        verification_url=verification_url,
-    )
+
+    try:
+        send_email_verification_mail(
+            to_email=user.email,
+            verification_url=verification_url,
+        )
+    except Exception:
+        logger.exception(
+            'Не удалось отправить письмо подтверждения email user_id=%s',
+            user.id,
+        )
+
     return verification_url

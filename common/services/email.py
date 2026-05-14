@@ -21,4 +21,4 @@ def send_template_email(
         to=[to_email],
     )
     message.attach_alternative(html_body, 'text/html')
-    message.send()
+    message.send(fail_silently=False)
