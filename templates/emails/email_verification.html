@@ -1,0 +1,26 @@
+{% extends 'emails/base.html' %}
+
+{% block title %}Подтверждение email{% endblock %}
+
+{% block content %}
+  <h2 style="font-size:20px;">Подтвердите email</h2>
+
+<h2>Добро пожаловать на «Звучно»</h2>
+
+<p>
+  Спасибо за регистрацию. Чтобы завершить создание аккаунта,
+  подтвердите адрес электронной почты.
+</p>
+
+  <p style="margin:28px 0;">
+    <a href="{{ verification_url }}"
+       style="background:#222;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;display:inline-block;">
+      Подтвердить email
+    </a>
+  </p>
+
+  <p style="font-size:14px;color:#555;">
+    Если кнопка не работает, скопируйте ссылку в браузер:<br>
+    <a href="{{ verification_url }}">{{ verification_url }}</a>
+  </p>
+{% endblock %}
