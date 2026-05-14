@@ -200,7 +200,7 @@ def test_product_create_permission(
     """Тест прав на создание: только пользователь с профилем артиста."""
     if role == 'artist':
         client = request.getfixturevalue('auth_client')
-        client.force_authenticate(user=artist_user.user)
+        client.force_authenticate(user=artist_user)
     else:
         client = request.getfixturevalue(ROLE_CLIENTS[role])
 

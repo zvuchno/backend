@@ -80,7 +80,7 @@ class OrderItemInline(admin.TabularInline):
             return format_money(obj.donation)
         return '-'
 
-    @admin.display(description='Итого руб.')
+    @admin.display(description='Сумма руб.')
     def display_line_total(self, obj):
         if obj and obj.pk:
             return format_money(obj.line_total)

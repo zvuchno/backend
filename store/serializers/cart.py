@@ -50,6 +50,7 @@ class CartItemReadSerializer(
             'line_total',
             'comment',
             'stock',
+            'is_artist_subscription',
             'target_url',
         )
 
@@ -97,6 +98,10 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
         queryset=ProductVariant.objects.all(),
     )
     quantity = serializers.IntegerField(min_value=1)
+    is_artist_subscription = serializers.BooleanField(
+        required=False,
+        default=False,
+    )
 
     class Meta:
         model = CartItem
@@ -105,6 +110,7 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
             'quantity',
             'price_with_donation',
             'comment',
+            'is_artist_subscription',
         )
 
     def validate(self, attrs):

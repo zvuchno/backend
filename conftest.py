@@ -60,15 +60,16 @@ def other_user(user_factory):
 
 @pytest.fixture
 def artist_user(user_factory):
-    """Пользователь-Артист."""
+    """Пользователь с созданным профилем артиста."""
     user = user_factory(
         email='artist@test.com',
         username='artist_user',
     )
-    return ArtistProfile.objects.create(
+    ArtistProfile.objects.create(
         user=user,
         name='Test_Artist',
     )
+    return user
 
 
 @pytest.fixture

@@ -52,7 +52,7 @@ def variant_factory(user):
     ) -> ProductVariant:
 
         common_fields = {
-            'owner': user,
+            'owner': kwargs.get('owner') or user,
             'is_active': is_active,
             'is_published': is_published,
             'visibility': visibility,
@@ -73,7 +73,7 @@ def variant_factory(user):
             )
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
-                owner=user,
+                owner=kwargs.get('owner') or user,
                 album=album,
                 audio_file=ContentFile(
                     b'fake mp3 content',
@@ -126,10 +126,21 @@ def cart_with_items(user, variant_factory) -> Cart:
 
 
 @pytest.fixture
-def active_consent_document():
+def consent_doc_pdn():
     """Создает активный документ согласия на обработку ПДн."""
     return ConsentDocument.objects.create(
         document_type=ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+        version='1.0',
+        content='Текст согласия для тестов...',
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def consent_doc_newsletter():
+    """Создает активный документ cогласия на получение рассылки."""
+    return ConsentDocument.objects.create(
+        document_type=ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
         version='1.0',
         content='Текст согласия для тестов...',
         is_active=True,

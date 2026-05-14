@@ -206,6 +206,7 @@ class TestCartAPI:
             'product_variant': variant.id,
             'quantity': 2,
             'comment': 'Test guest comment',
+            'is_artist_subscription': 'true',
         }
         # Делаем запрос, чтобы создалась сессия и корзина
         response = api_client.post(cart_add_url, data=payload, format='json')
@@ -222,6 +223,7 @@ class TestCartAPI:
         assert user_cart.items.filter(
             product_variant=variant,
             quantity=2,
+            is_artist_subscription=True,
         ).exists()
         item = user_cart.items.get(product_variant=variant)
         assert item.comment == 'Test guest comment'
@@ -364,6 +366,7 @@ class TestCartAPI:
             'product_variant': variant.id,
             'quantity': quantity,
             'price_with_donation': price_with_donation,
+            'is_artist_subscription': 'true',
         }
 
         response = api_client.post(cart_add_url, data=payload, format='json')
@@ -382,7 +385,11 @@ class TestCartAPI:
         )
         api_client.post(
             cart_add_url,
-            data={'product_variant': other_variant.id, 'quantity': 1},
+            data={
+                'product_variant': other_variant.id,
+                'quantity': 1,
+                'is_artist_subscription': 'true',
+            },
             format='json',
         )
         final_response = api_client.get(cart_url)

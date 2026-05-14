@@ -23,6 +23,7 @@ class UserConsent(TimestampModel):
     - хранит версию документа, с которым согласился пользователь
     - можно согласиться только с активным в настоящий момент документом
     - фиксирует технические данные (IP, User-Agent)
+    - хранит объкт подписки (artist) TODO: вынести подписки в отдельную модель.
     """
 
     email = models.EmailField()
@@ -41,6 +42,14 @@ class UserConsent(TimestampModel):
         blank=True,
         related_name='consents',
         verbose_name='Связанный заказ',
+    )
+    artist = models.ForeignKey(
+        'users.ArtistProfile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='consents',
+        verbose_name='Объект подписки',
     )
     accepted_at = models.DateTimeField(
         'Дата соглашения',
