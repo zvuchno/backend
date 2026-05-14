@@ -73,7 +73,7 @@ DROP VIEW IF EXISTS listener_track_access;
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0018_delivery_delivery_type'),
+        ('store', '0019_cartitem_is_artist_subscription'),
     ]
 
     operations = [

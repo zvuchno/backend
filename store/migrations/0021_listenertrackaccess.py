@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('store', '0019_create_listener_track_access_view'),
+        ('store', '0020_create_listener_track_access_view'),
     ]
 
     operations = [
