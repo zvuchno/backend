@@ -2,6 +2,8 @@ from allauth.socialaccount.models import SocialAccount
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 
+from common.utils import normalize_email
+
 from users.constants import (
     MAX_USER_CREATE_ATTEMPTS,
     SOCIAL_AUTH_ERRORS,
@@ -14,7 +16,6 @@ from users.exceptions import SocialAuthException
 from users.helpers import (
     ensure_listener_profile,
     generate_username,
-    normalize_email,
     set_unusable_password,
 )
 

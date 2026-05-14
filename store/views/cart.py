@@ -110,6 +110,9 @@ class CartViewSet(viewsets.GenericViewSet):
                 'price_with_donation',
             ),
             comment=serializer.validated_data.get('comment'),
+            is_artist_subscription=(
+                serializer.validated_data.get('is_artist_subscription')
+            ),
         )
 
         cart = self.get_queryset().get(pk=cart.pk)

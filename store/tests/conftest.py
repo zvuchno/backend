@@ -12,11 +12,23 @@
 Файл не требует явного импорта — pytest находит его автоматически.
 """
 
+from decimal import Decimal
+
 import pytest
 from django.core.files.base import ContentFile
 from django.urls import reverse
 
-from store.models import Album, Merch, Product, ProductVariant, Track
+from store.models import (
+    Album,
+    Cart,
+    CartItem,
+    Delivery,
+    Merch,
+    Product,
+    ProductVariant,
+    Track,
+)
+from users.models import ConsentDocument
 
 
 # =================================
@@ -40,7 +52,7 @@ def variant_factory(user):
     ) -> ProductVariant:
 
         common_fields = {
-            'owner': user,
+            'owner': kwargs.get('owner') or user,
             'is_active': is_active,
             'is_published': is_published,
             'visibility': visibility,
@@ -61,7 +73,7 @@ def variant_factory(user):
             )
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
-                owner=user,
+                owner=kwargs.get('owner') or user,
                 album=album,
                 audio_file=ContentFile(
                     b'fake mp3 content',
@@ -92,6 +104,69 @@ def variant_factory(user):
         )
 
     return create_variant
+
+
+@pytest.fixture
+def cart_with_items(user, variant_factory) -> Cart:
+    """Создает корзину с товарами (мерч и цифра)."""
+    album = variant_factory('album')
+    merch = variant_factory('merch')
+    cart = Cart.objects.create(user=user)
+    CartItem.objects.create(
+        cart=cart,
+        product_variant=album,
+        quantity=1,
+    )
+    CartItem.objects.create(
+        cart=cart,
+        product_variant=merch,
+        quantity=1,
+    )
+    return cart
+
+
+@pytest.fixture
+def consent_doc_pdn():
+    """Создает активный документ согласия на обработку ПДн."""
+    return ConsentDocument.objects.create(
+        document_type=ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+        version='1.0',
+        content='Текст согласия для тестов...',
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def consent_doc_newsletter():
+    """Создает активный документ cогласия на получение рассылки."""
+    return ConsentDocument.objects.create(
+        document_type=ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+        version='1.0',
+        content='Текст согласия для тестов...',
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def delivery_courier():
+    """Создает активный способ доставки курьером."""
+    return Delivery.objects.create(
+        name='Курьерская доставка',
+        delivery_type=Delivery.DeliveryType.COURIER,
+        price=Decimal('500.00'),
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def inactive_delivery():
+    """Создает неактивный способ доставки (не должен быть доступен)."""
+    return Delivery.objects.create(
+        name='Старая доставка',
+        delivery_type=Delivery.DeliveryType.COURIER,
+        price=Decimal('100.00'),
+        is_active=False,
+    )
 
 
 # =================================
@@ -125,3 +200,9 @@ def cart_add_url():
 def favorites_url():
     """Возвращает URL-адрес эндпоинта избранного."""
     return reverse('api:store:me-favorites-list')
+
+
+@pytest.fixture
+def checkout_url():
+    """Возвращает URL-адрес эндпоинта создания заказа."""
+    return reverse('api:store:orders-checkout')
