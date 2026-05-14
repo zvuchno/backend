@@ -120,6 +120,7 @@ class OrderService:
                 'product_type': product.product_type,
                 'property_name': product.property_name,
                 'property_value': variant.property_value,
+                'allow_overpay': product.allow_overpay,
                 'sku': variant.sku,
             }
 
