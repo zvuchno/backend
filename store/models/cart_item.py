@@ -106,6 +106,10 @@ class CartItem(models.Model):
         null=True,
         help_text='Сообщение для артиста',
     )
+    is_artist_subscription = models.BooleanField(
+        'Согласие на рассылку артиста',
+        default=False,
+    )
     objects = CartItemQuerySet.as_manager()
 
     @property

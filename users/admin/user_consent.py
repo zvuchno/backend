@@ -26,6 +26,7 @@ class UserConsentAdmin(admin.ModelAdmin):
         'accepted_at',
         'document',
         'order',
+        'artist',
         'user_agent',
         'ip_address',
     )
@@ -50,7 +51,7 @@ class UserConsentAdmin(admin.ModelAdmin):
                 ),
             },
         ),
-        ('Контекст', {'fields': ('order',)}),
+        ('Контекст', {'fields': ('order', 'artist')}),
         (
             'Дополнительно',
             {
