@@ -4,9 +4,7 @@ from django.db import migrations
 CREATE_VIEW = """
 CREATE VIEW listener_track_access AS
 
--- Сгенерировать id для Django ORM.
 SELECT
-    CONCAT(user_id, '-', track_id) AS id,
     user_id,
     track_id
 

@@ -5,7 +5,7 @@ from django.db import models
 class ListenerTrackAccess(models.Model):
     """Read-only модель доступа слушателя к купленному треку."""
 
-    id = models.CharField(primary_key=True, max_length=64)
+    pk = models.CompositePrimaryKey('user', 'track')
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
