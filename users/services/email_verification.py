@@ -12,6 +12,8 @@ from django.utils.http import (
     urlsafe_base64_encode,
 )
 
+from common.services.email import EMAIL_SEND_EXCEPTIONS
+
 from users.services import send_email_verification_mail
 
 logger = logging.getLogger(__name__)
@@ -50,10 +52,13 @@ def request_email_verification(user) -> str:
             to_email=user.email,
             verification_url=verification_url,
         )
-    except Exception:
-        logger.exception(
-            'Не удалось отправить письмо подтверждения email user_id=%s',
+    except EMAIL_SEND_EXCEPTIONS as exc:
+        logger.warning(
+            'Email verification send '
+            'failed | user_id=%s | email=%s | error=%s',
             user.id,
+            user.email,
+            exc,
         )
 
     return verification_url

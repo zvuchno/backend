@@ -9,6 +9,8 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
+from common.services.email import EMAIL_SEND_EXCEPTIONS
+
 from config import settings
 from users.services import send_password_reset_email
 
@@ -47,9 +49,12 @@ def request_password_reset(user) -> str:
             to_email=user.email,
             reset_url=reset_url,
         )
-    except Exception:
-        logger.exception(
-            'Не удалось отправить письмо для восстановления пароля user_id=%s',
+    except EMAIL_SEND_EXCEPTIONS as exc:
+        logger.warning(
+            'Password reset email send '
+            'failed | user_id=%s | email=%s | error=%s',
             user.id,
+            user.email,
+            exc,
         )
     return reset_url

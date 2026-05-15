@@ -1,6 +1,16 @@
+import smtplib
+import socket
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+
+EMAIL_SEND_EXCEPTIONS = (
+    smtplib.SMTPException,
+    TimeoutError,
+    socket.timeout,
+    OSError,
+)
 
 
 def send_template_email(
