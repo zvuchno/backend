@@ -5,6 +5,7 @@ from nested_admin import (
     NestedTabularInline,
 )
 
+from store.admin.forms import MoneyForm
 from store.models import Product, ProductVariant
 
 
@@ -12,15 +13,16 @@ class ProductVariantInline(NestedTabularInline):
     """Инлайн для редактирования вариантов продукта в админке."""
 
     model = ProductVariant
-    fields = ('sku', 'stock', 'characteristic')
+    fields = ('sku', 'property_value', 'stock', 'updated_at')
     extra = 0
-    readonly_fields = ('sku',)
+    readonly_fields = ('sku', 'updated_at')
 
 
 class ProductInline(NestedStackedInline):
     """Инлайн продукта с вложенными вариантами."""
 
     model = Product
+    form = MoneyForm
     inlines = (ProductVariantInline,)
     fields = ('price', 'allow_overpay')
     can_delete = False

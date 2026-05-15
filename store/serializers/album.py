@@ -7,12 +7,12 @@
 
 from decimal import Decimal
 
-from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
-from store.models import Album, Product, ProductVariant
+from .mixins import ProductVariantsMixin
+from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from store.models import Album
 
 
 class AlbumReadSerializer(serializers.ModelSerializer):
@@ -30,7 +30,6 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'cover_image',
             'visibility',
             'is_published',
-            'is_active',
         )
 
     def get_price(self, obj) -> Decimal | None:
@@ -52,15 +51,15 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             user.is_authenticated and (user == instance.owner or user.is_staff)
         ):
             ret.pop('visibility', None)
-            ret.pop('is_active', None)
             ret.pop('is_published', None)
         return ret
 
 
-class AlbumReadDetailSerializer(AlbumReadSerializer):
+class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Album."""
 
     allow_overpay = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
@@ -68,6 +67,7 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
             'genre',
             'release_date',
             'allow_overpay',
+            'variants',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -82,7 +82,7 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         required=True,
     )
     allow_overpay = serializers.BooleanField(required=False)
@@ -100,7 +100,6 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
             'allow_overpay',
             'visibility',
             'is_published',
-            'is_active',
         )
 
     def validate_release_date(self, value):
@@ -111,49 +110,11 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        """Создает Альбом и связанный Product."""
-        price = validated_data.pop('price', None)
-        allow_overpay = validated_data.pop('allow_overpay', False)
-
-        with transaction.atomic():
-            # Создаем Альбом
-            album = Album.objects.create(**validated_data)
-
-            # Создаем связанный Product
-            product = Product.objects.create(
-                album=album,
-                price=(price if price is not None else Decimal('0.00')),
-                allow_overpay=allow_overpay,
-            )
-
-            # Создаем базовый Вариант (Цифровая копия)
-            ProductVariant.objects.create(
-                product=product,
-                stock=None,  # Для цифры склад не нужен
-                characteristic={'format': 'digital'},
-            )
-
-        return album
+        validated_data.pop('price', None)
+        validated_data.pop('allow_overpay', None)
+        return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        """Обновляет Альбом и связанный Product."""
-        price = validated_data.pop('price', None)
-        allow_overpay = validated_data.pop('allow_overpay', None)
-
-        with transaction.atomic():
-            # Обновляем поля Альбома
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save(update_fields=validated_data.keys())
-
-            # Получаем или создаем связанный Product
-            product, created = Product.objects.get_or_create(album=instance)
-
-            if price is not None:
-                product.price = price
-            if allow_overpay is not None:
-                product.allow_overpay = allow_overpay
-
-            product.save()
-
-        return instance
+        validated_data.pop('price', None)
+        validated_data.pop('allow_overpay', None)
+        return super().update(instance, validated_data)

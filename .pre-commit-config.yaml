@@ -1,13 +1,25 @@
 repos:
 
+- repo: local
+  hooks:
+    # Проверяет наличие миграций
+    - id: check-migrations
+      name: Check missing migrations
+      entry: python manage.py makemigrations --check --dry-run
+      language: system
+      pass_filenames: false
+      types: [python]
+      always_run: true
+
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v6.0.0
   hooks:
+    # Проверка конфликтов при слиянии веток
+    - id: check-merge-conflict
     - id: trailing-whitespace
     - id: end-of-file-fixer
     - id: check-yaml
     - id: check-added-large-files
-    - id: check-merge-conflict
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.

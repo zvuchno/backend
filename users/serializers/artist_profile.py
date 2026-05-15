@@ -1,8 +1,9 @@
 """Сериализаторы профиля артиста."""
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
+from users.helpers import ensure_listener_profile
 from users.models import ArtistContact, ArtistProfile, ArtistSocial
 
 
@@ -151,3 +152,36 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
             'socials',
             'contacts',
         )
+
+
+class BecomeArtistSerializer(serializers.ModelSerializer):
+    """Сериализатор для реализации возможности стать артистом слушателю."""
+
+    class Meta:
+        model = ArtistProfile
+        fields = ('name',)
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        if hasattr(user, 'artist_profile'):
+            raise serializers.ValidationError(
+                {'detail': 'У пользователя уже есть профиль артиста.'},
+            )
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        """Создает профиль артиста для текущего пользователя."""
+        user = self.context['request'].user
+        ensure_listener_profile(user)
+        try:
+            return ArtistProfile.objects.create(
+                user=user,
+                **validated_data,
+            )
+        except IntegrityError:
+            if ArtistProfile.objects.filter(user=user).exists():
+                raise serializers.ValidationError(
+                    {'detail': 'У пользователя уже есть профиль артиста.'},
+                )
+            raise

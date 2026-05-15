@@ -7,16 +7,34 @@ from .account import (
     PasswordResetRequestSerializer,
     PasswordResetVerifySerializer,
     PhoneChangeSerializer,
+    UsernameChangeSerializer,
+)
+from .artist_legal_profile import (
+    ArtistBankDataSerializer,
+    ArtistIdentityDataSerializer,
+    ArtistLegalProfileSerializer,
+    ArtistLegalSerializer,
 )
 from .artist_profile import (
     ArtistMeSerializer,
     ArtistMeUpdateSerializer,
     ArtistPublicSerializer,
+    BecomeArtistSerializer,
 )
 from .artist_registration import ArtistRegistrationSerializer
 from .base_registration import BaseRegistrationSerializer
+from .consent_documents import (
+    ConsentDocumentDetailSerializer,
+    ConsentDocumentSerializer,
+)
+from .jwt import (
+    CustomTokenObtainPairSerializer,
+    LogoutSerializer,
+    TokenPairSerializer,
+)
 from .listener_profile import ListenerMeSerializer
 from .listener_registration import ListenerRegistrationSerializer
+from .social_auth import SocialAuthInputSerializer
 
 __all__ = [
     'ArtistRegistrationSerializer',
@@ -24,6 +42,9 @@ __all__ = [
     'ArtistPublicSerializer',
     'ArtistMeUpdateSerializer',
     'BaseRegistrationSerializer',
+    'ConsentDocumentDetailSerializer',
+    'ConsentDocumentSerializer',
+    'CustomTokenObtainPairSerializer',
     'ListenerMeSerializer',
     'ListenerRegistrationSerializer',
     'MeSerializer',
@@ -34,4 +55,13 @@ __all__ = [
     'PasswordResetRequestSerializer',
     'PhoneChangeSerializer',
     'EmptySerializer',
+    'BecomeArtistSerializer',
+    'UsernameChangeSerializer',
+    'LogoutSerializer',
+    'TokenPairSerializer',
+    'SocialAuthInputSerializer',
+    'ArtistIdentityDataSerializer',
+    'ArtistBankDataSerializer',
+    'ArtistLegalProfileSerializer',
+    'ArtistLegalSerializer',
 ]

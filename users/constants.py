@@ -19,3 +19,57 @@ ARTIST_LINK_TYPE_MAX_LENGTH = 32
 URL_FIELD_MAX_LENGTH = 254
 URL_FIELD_MIN_LENGTH = 3
 FULL_NAME_FIELD_MAX_LENGTH = 254
+MAX_USER_CREATE_ATTEMPTS = 30
+MAX_CHAR_LENGTH = 255
+MAX_SLUG_LENGTH = 50
+
+# Коды ошибок social auth.
+"""Коды и сообщения ошибок social auth."""
+
+SOCIAL_AUTH_ERROR_BLOCKED_USER = 'blocked_user'
+SOCIAL_AUTH_ERROR_MISSING_EMAIL = 'missing_email'
+SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED = 'email_not_confirmed'
+SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED = 'username_generation_failed'
+SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED = 'social_save_failed'
+SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED = 'oauth_auth_failed'
+
+SOCIAL_AUTH_ERRORS = {
+    SOCIAL_AUTH_ERROR_BLOCKED_USER: 'Учетная запись заблокирована.',
+    SOCIAL_AUTH_ERROR_MISSING_EMAIL: 'Провайдер не передал email.',
+    SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED: (
+        'Аккаунт с таким email уже существует, но email не подтвержден.'
+    ),
+    SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED: (
+        'Не удалось подобрать уникальный username.'
+    ),
+    SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED: (
+        'Не удалось завершить вход через соцсеть.'
+    ),
+    SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED: (
+        'Ошибка аутентификации через OAuth.'
+    ),
+}
+
+# Персональные данные
+NAME_FIELD_MAX_LENGTH = 150
+ADDRESS_FIELD_MAX_LENGTH = 500
+
+DOCUMENT_TYPE_MAX_LENGTH = 32
+PASSPORT_SERIES_MAX_LENGTH = 4  # РФ: строго 4 цифры, ослабить для других.
+PASSPORT_NUMBER_MAX_LENGTH = 6  # РФ: строго 6 цифр, ослабить до 20 для других.
+PASSPORT_ISSUED_BY_MAX_LENGTH = 255
+
+INN_PERSON_MAX_LENGTH = 12
+INN_COMPANY_MAX_LENGTH = 10
+BANK_NAME_MAX_LENGTH = 255
+BIK_MAX_LENGTH = 9  # РФ: строго 9 цифр
+ACCOUNT_NUMBER_MAX_LENGTH = 20  # РФ: строго 20 цифр
+
+RECIPIENT_TYPE_MAX_LENGTH = 32
+TAXATION_SYSTEM_MAX_LENGTH = 16
+
+KPP_MAX_LENGTH = 9
+OGRN_MAX_LENGTH = 13
+OGRNIP_MAX_LENGTH = 15
+
+COMMENT_MAX_LENGTH = 255

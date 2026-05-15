@@ -9,11 +9,11 @@ TODO: Реализовать логику покупки аудиофайла:
 
 from decimal import Decimal
 
-from django.db import transaction
 from rest_framework import serializers
 
-from store.constants import MAX_PRICE_DIGITS, PRICE_DECIMAL_PLACES
-from store.models import Product, ProductVariant, Track
+from .mixins import ProductVariantsMixin
+from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from store.models import Track
 
 
 class TrackReadSerializer(serializers.ModelSerializer):
@@ -30,7 +30,6 @@ class TrackReadSerializer(serializers.ModelSerializer):
             'duration',
             'position',
             'price',
-            'is_active',
         )
 
     def get_price(self, obj) -> Decimal | None:
@@ -39,31 +38,19 @@ class TrackReadSerializer(serializers.ModelSerializer):
             return product.price
         return None
 
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        user = (
-            self.context.get('request').user
-            if self.context.get('request')
-            else None
-        )
-        # Скрываем поле, если юзера нет, если не владелец и не админ
-        if not user or not (
-            user.is_authenticated and (user == instance.owner or user.is_staff)
-        ):
-            ret.pop('is_active', None)
-        return ret
 
-
-class TrackReadDetailSerializer(TrackReadSerializer):
+class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Track."""
 
     allow_overpay = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
 
     class Meta(TrackReadSerializer.Meta):
         fields = TrackReadSerializer.Meta.fields + (
             'audio_file',
             'allow_overpay',
             'description',
+            'variants',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -78,7 +65,7 @@ class TrackWriteSerializer(serializers.ModelSerializer):
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
+        decimal_places=MONEY_DISPLAY_PRECISION,
         required=True,
     )
     allow_overpay = serializers.BooleanField(required=False)
@@ -96,49 +83,11 @@ class TrackWriteSerializer(serializers.ModelSerializer):
         )
 
     def create(self, validated_data):
-        """Создает Трек и связанный Product."""
-        price = validated_data.pop('price', None)
-        allow_overpay = validated_data.pop('allow_overpay', False)
-
-        with transaction.atomic():
-            # Создаем Трек
-            track = Track.objects.create(**validated_data)
-
-            # Создаем связанный Product
-            product = Product.objects.create(
-                track=track,
-                price=(price if price is not None else Decimal('0.00')),
-                allow_overpay=allow_overpay,
-            )
-
-            # Создаем базовый Вариант (Цифровая копия)
-            ProductVariant.objects.create(
-                product=product,
-                stock=None,  # Для цифры склад не нужен
-                characteristic={'format': 'digital'},
-            )
-
-        return track
+        validated_data.pop('price', None)
+        validated_data.pop('allow_overpay', None)
+        return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        """Обновляет Трек и связанный Product."""
-        price = validated_data.pop('price', None)
-        allow_overpay = validated_data.pop('allow_overpay', None)
-
-        with transaction.atomic():
-            # Обновляем поля Трека
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save(update_fields=validated_data.keys())
-
-            # Получаем или создаем связанный Product
-            product, created = Product.objects.get_or_create(track=instance)
-
-            if price is not None:
-                product.price = price
-            if allow_overpay is not None:
-                product.allow_overpay = allow_overpay
-
-            product.save()
-
-        return instance
+        validated_data.pop('price', None)
+        validated_data.pop('allow_overpay', None)
+        return super().update(instance, validated_data)

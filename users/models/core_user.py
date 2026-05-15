@@ -4,6 +4,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from phonenumber_field.modelfields import PhoneNumberField
 
+from common.utils import normalize_email
+
 
 class CoreUser(AbstractUser):
     """Кастомная модель пользователя.
@@ -34,6 +36,11 @@ class CoreUser(AbstractUser):
         'Телефон подтвержден',
         default=False,
     )
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = normalize_email(self.email)
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'учетная запись'

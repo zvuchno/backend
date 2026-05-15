@@ -5,7 +5,12 @@
 
 from django.contrib import admin
 
-from .mixins import AutoOwnerAdminMixin
+from .forms import MoneyForm
+from .mixins import (
+    AutoOwnerAdminMixin,
+    CommerceBaseMixin,
+    CommerceDisplayMixin,
+)
 from store.models import Product, Track
 
 
@@ -13,24 +18,29 @@ class ProductInline(admin.StackedInline):
     """Инлайн для редактирования полей продукта, связанных с треком."""
 
     model = Product
+    form = MoneyForm
     fields = ('price', 'allow_overpay')
     can_delete = False
     verbose_name = 'Торговые настройки трека'
 
 
 @admin.register(Track)
-class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
+class TrackAdmin(
+    AutoOwnerAdminMixin,
+    CommerceBaseMixin,
+    CommerceDisplayMixin,
+    admin.ModelAdmin,
+):
     """Админка для модели Track."""
 
     list_display = (
         'name',
         'album',
-        'is_active',
+        'owner',
         'get_price',
         'get_allow_overpay',
-        'position',
+        'is_active',
     )
-
     search_fields = ('album__name', 'lyrics', 'name')
     list_filter = (
         'is_active',
@@ -42,6 +52,7 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         'formatted_duration',
         'created_at',
         'updated_at',
+        'get_sku',
         'owner',
     )
     list_editable = ('is_active',)
@@ -56,6 +67,7 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
                     'audio_file',
                     'formatted_duration',
                     'lyrics',
+                    'get_sku',
                     'owner',
                     'created_at',
                     'updated_at',
@@ -65,20 +77,6 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
     )
     inlines = (ProductInline,)
 
-    @admin.display(description='Цена')
-    def get_price(self, obj):
-        """Геттер для отображения поля price из связанного Product."""
-        if hasattr(obj, 'product') and obj.product:
-            return obj.product.price
-        return '-'
-
-    @admin.display(description='Переплата')
-    def get_allow_overpay(self, obj):
-        """Геттер для отображения поля allow_overpay из связанного Product."""
-        if hasattr(obj, 'product') and obj.product:
-            return 'Да' if obj.product.allow_overpay else 'Нет'
-        return '-'
-
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):
         """Показывает длительность трека в формате мм:сс."""
@@ -87,3 +85,7 @@ class TrackAdmin(AutoOwnerAdminMixin, admin.ModelAdmin):
         minutes = obj.duration // 60
         seconds = obj.duration % 60
         return f'{minutes}:{seconds:02}'
+
+    def get_queryset(self, request):
+        """Родительский метод миксина + select_related('album', 'owner')."""
+        return super().get_queryset(request).select_related('album', 'owner')

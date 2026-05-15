@@ -1,18 +1,13 @@
-"""ViewSet для работы с моделью track.
+"""ViewSet для работы с моделью track."""
 
-Todo:
-    - фильтрация
-    - поиск
-    - permissions
-    - пагинация
-
-"""
-
-from django.db.models import Q
-from rest_framework import status, viewsets
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
+from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
+
+from .mixins import ProductActionMixin
+from store.filters import TrackFilter
 from store.models import Track
 from store.schema import track_schema
 from store.serializers import (
@@ -23,11 +18,25 @@ from store.serializers import (
 
 
 @track_schema
-class TrackViewSet(viewsets.ModelViewSet):
+class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
     """API для работы с треками."""
 
-    permission_classes = (IsAuthenticatedOrReadOnly,)
+    queryset = Track.objects.all()
     http_method_names = ('get', 'post', 'patch', 'delete')
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    )
+    filterset_class = TrackFilter
+    search_fields = ('name',)
+    ordering_fields = ('name', 'position')
+    ordering = ('album', 'position')
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return (IsArtist(),)
+        return (IsStoreObjectOwnerOrReadOnly(),)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
@@ -37,36 +46,29 @@ class TrackViewSet(viewsets.ModelViewSet):
         return TrackReadSerializer
 
     def get_queryset(self):
-        user = self.request.user
-
-        # Если это администратор — отдаем всё
-        if user.is_authenticated and user.is_staff:
-            queryset = Track.objects.all()
-        else:
-            # Базовый фильтр: активные
-            filters = Q(is_active=True)
-            # Если юзер залогинен, добавляем к фильтру 'или это моё'
-            if user.is_authenticated:
-                filters |= Q(owner=user)
-            queryset = Track.objects.filter(filters)
-
-        if self.action in ('list', 'retrieve'):
-            queryset = queryset.select_related('product')
-
-        return queryset
+        queryset = (
+            super()
+            .get_queryset()
+            .visible_for(
+                user=self.request.user,
+                action=self.action,
+            )
+        )
+        return queryset.select_related(
+            'album',
+            'album__genre',
+            'album__owner__artist_profile',
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         instance = serializer.instance
-
-        # Используем другой сериализатор для ответа
         read_serializer = TrackReadDetailSerializer(
             instance,
             context=self.get_serializer_context(),
         )
-
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
@@ -78,12 +80,9 @@ class TrackViewSet(viewsets.ModelViewSet):
             partial=partial,
         )
         serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
+        self.perform_update(serializer)
         read_serializer = TrackReadDetailSerializer(
             instance,
             context=self.get_serializer_context(),
         )
         return Response(read_serializer.data)
-
-    def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)

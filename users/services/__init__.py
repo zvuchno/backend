@@ -8,7 +8,11 @@ from .password_reset import (
     generate_password_reset_data,
     verify_password_reset_token,
 )
-from .utils import get_user_from_uid, set_user_password
+from .social_auth import SocialAuthService
+from .utils import (
+    get_user_from_uid,
+    set_user_password,
+)
 
 __all__ = [
     'build_email_verification_url',
@@ -19,4 +23,5 @@ __all__ = [
     'get_user_from_uid',
     'set_user_password',
     'verify_email_token',
+    'SocialAuthService',
 ]

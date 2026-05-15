@@ -12,8 +12,9 @@ from django.db import models
 from django.db.models import Q
 
 from store.constants import (
+    MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
-    PRICE_DECIMAL_PLACES,
+    MONEY_INTERNAL_PRECISION,
 )
 
 
@@ -35,19 +36,29 @@ class Product(models.Model):
         ALBUM = 'album', 'Album'
         MERCH = 'merch', 'Merch'
 
-    product_type = models.CharField(max_length=20, choices=ProductType.choices)
+    product_type = models.CharField(
+        'Тип продукта',
+        max_length=20,
+        choices=ProductType.choices,
+    )
     price = models.DecimalField(
         'Цена',
         max_digits=MAX_PRICE_DIGITS,
-        decimal_places=PRICE_DECIMAL_PLACES,
-        validators=[MinValueValidator(Decimal('0.00'))],
-        default=Decimal('0.00'),
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        validators=[MinValueValidator(Decimal('0.0000'))],
+        default=Decimal('0.0000'),
         help_text='Цена, руб.',
     )
     allow_overpay = models.BooleanField(
         'Разрешить платить больше',
         default=False,
         help_text='Если включено, фанаты смогут заплатить больше стоимости.',
+    )
+    property_name = models.CharField(
+        'Название свойства',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        null=True,
     )
     album = models.OneToOneField(
         'store.Album',
@@ -71,22 +82,33 @@ class Product(models.Model):
         related_name='product',
     )
 
+    @property
+    def owner(self):
+        """Возвращает владельца на основе типа продукта."""
+        if self.product_type == self.ProductType.ALBUM and self.album:
+            return self.album.owner
+        if self.product_type == self.ProductType.TRACK and self.track:
+            return self.track.owner
+        if self.product_type == self.ProductType.MERCH and self.merch:
+            return self.merch.owner
+        return None
+
     def determine_product_type(self):
         """Автозаполнение поля product_type.
 
         Автоматически определяет категорию товара на основе заполненной связи.
         """
-        filled = (self.album, self.track, self.merch)
-        if sum(map(bool, filled)) != 1:
+        filled_ids = (self.album_id, self.track_id, self.merch_id)
+        if sum(map(bool, filled_ids)) != 1:
             raise ValidationError(
                 'Должен быть указан ровно один тип продукта.',
             )
 
-        if self.album:
+        if self.album_id:
             self.product_type = self.ProductType.ALBUM
-        elif self.track:
+        elif self.track_id:
             self.product_type = self.ProductType.TRACK
-        elif self.merch:
+        elif self.merch_id:
             self.product_type = self.ProductType.MERCH
 
     def save(self, *args, **kwargs):

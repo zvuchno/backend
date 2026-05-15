@@ -9,11 +9,19 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+import logging
 import os
 from datetime import timedelta
 from pathlib import Path
 
+import sentry_sdk
 from dotenv import load_dotenv
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+from .admin_reorder_config import ADMIN_REORDER  # noqa
+from config import logging as logging_config
+from config.glitchtip import init_glitchtip
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +40,6 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -40,19 +47,29 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
+    'corsheaders',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.vk',
+    'allauth.socialaccount.providers.yandex',
     'rest_framework',
     'django_filters',
     'drf_spectacular',
     'nested_admin',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'dj_rest_auth',
     'djoser',
     'phonenumber_field',
+    'admin_reorder',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -60,7 +77,25 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder',
+    'allauth.account.middleware.AccountMiddleware',
 ]
+
+# Настройки Silk и nplusone
+if DEBUG:
+    INSTALLED_APPS += ['silk']
+    MIDDLEWARE = ['silk.middleware.SilkyMiddleware'] + MIDDLEWARE
+    SILKY_PYTHON_PROFILER = True  # Включает профилирование Python-кода
+    SILKY_INTERCEPT_PERCENT = 100 # Записывать 100% запросов (для дебага)
+    SILKY_MAX_RECORDED_STACKTRACES = 10 # Ограничение стека, чтобы не раздувать БД
+    SILKY_META = True # Записывать время генерации самого Silk
+
+    INSTALLED_APPS += ['nplusone.ext.django']
+    MIDDLEWARE = ['nplusone.ext.django.NPlusOneMiddleware'] + MIDDLEWARE
+    NPLUSONE_RAISE = False  # Не выбрасывать ошибку
+    NPLUSONE_LOGGER = logging.getLogger('nplusone')
+    NPLUSONE_LOG_LEVEL = logging.WARN
+    NPLUSONE_WHITELIST = [{'model': 'silk.*'}]
 
 ROOT_URLCONF = 'config.urls'
 
@@ -174,20 +209,32 @@ FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://local
 FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://localhost:3000/reset-password-confirm')
 
 REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_THROTTLE_RATES': {
         'login': '5/min',
+        'social_auth': '10/min',
+        'registration': '5/min',
+        'logout': '10/min',
+
         'refresh': '10/min',
-        'verify': '20/minute',
+        'verify': '20/min',
+
         'change_phone': '5/min',
+        'change_username': '5/min',
         'change_password': '5/min',
+
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',
         'reset_password_confirm': '5/min',
+
         'verify_email': '10/min',
-        'resend_verification_email': '3/min',
+        'resend_verification_email': '5/min',
+
+        'become_artist': '5/min',
+        'artist_legal_profile': '60/min',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
@@ -206,19 +253,64 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'users': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+REST_AUTH = {
+    'USE_JWT': True,
+    'TOKEN_MODEL': None,
+    'JWT_AUTH_HTTPONLY': False,
+    'JWT_SERIALIZER': 'users.serializers.TokenPairSerializer',
 }
+SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_PROVIDERS = {
+    'vk': {
+        'SCOPE': ['email'],
+        'VERIFIED_EMAIL': True,  # доверяем почте из Вк.
+        'AUTH_PARAMS': {'prompt': 'login'},
+    },
+    'yandex': {
+        'SCOPE': ['login:email'],
+        'VERIFIED_EMAIL': True,  # доверяем почте из Я.
+        'AUTH_PARAMS': {'force_confirm': 'yes'},
+    }
+}
+SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
+SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # автоматически связывать
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_LOGIN_ON_GET = True  # сразу редиректить вход без промежуточной страницы
+FRONTEND_SOCIAL_AUTH_URL = os.getenv(
+    'FRONTEND_SOCIAL_AUTH_URL',
+    '/'
+)
+LOGIN_REDIRECT_URL = FRONTEND_SOCIAL_AUTH_URL  # Для успешных входов по умолчанию
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+# SESSION_COOKIE_AGE = 86400
+
+LOGGING = logging_config.LOGGING
+
+# Настройка отправки ошибок проекта в GlitchTip
+init_glitchtip()
+
+#CORS
+DEFAULT_CORS_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+EXTRA_CORS_ORIGINS = []
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+    EXTRA_CORS_ORIGINS = [o.strip() for o in origins.split(',') if o.strip()]
+
+CORS_ALLOWED_ORIGINS = list({
+    *DEFAULT_CORS_ORIGINS,
+    *EXTRA_CORS_ORIGINS,
+})
