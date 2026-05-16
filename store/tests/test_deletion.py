@@ -1,36 +1,21 @@
-"""Тесты механизма гибридного удаления контента."""
+"""Тесты механизма удаления контента."""
 
 import pytest
+from django.urls import reverse
+from rest_framework import status
 
-from store.models import Merch, Order, OrderItem, Product, ProductVariant
-from store.services import ProductService
+from store.models import Merch, Product, ProductVariant
 
 
 @pytest.mark.django_db
 class TestDeletion:
-    """Тесты гибридного удаления контента."""
+    """Тесты удаления контента."""
 
-    @pytest.fixture
-    def merch_setup(self, user):
-        """Фикстура для создания мерча с продуктом и вариантами."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
-        product = ProductService.ensure_commerce(
-            merch,
-            validated_data={
-                'variants': [
-                    {'property_value': 'S', 'stock': 10},
-                    {'property_value': 'L', 'stock': 5},
-                ],
-            },
-        )
-        return merch, product
-
-    def test_hard_delete_when_no_orders(self, merch_setup):
-        """Мерч без заказа → вся цепочка удаляется физически."""
-        merch, product = merch_setup
-
-        assert product.variants.filter(is_active=True).count() == 2
-
+    def test_physical_delete_cascade(self, variant_factory):
+        """Физическое удаление → удаляется вся цепочка."""
+        variant_merch = variant_factory('merch')
+        product = variant_merch.product
+        merch = getattr(product, 'merch', None)
         merch_id = merch.id
         prod_id = product.id
 
@@ -40,28 +25,39 @@ class TestDeletion:
         assert not Product.objects.filter(id=prod_id).exists()
         assert not ProductVariant.objects.filter(product_id=prod_id).exists()
 
-    def test_hybrid_delete_with_orders(self, merch_setup, user):
-        """Мерч с заказом → деактивация мерча и его вариантов."""
-        merch, product = merch_setup
-        variant = product.variants.first()
+    @pytest.mark.parametrize(
+        ('factory_attr', 'url_resource_name'),
+        [
+            ('album', 'albums'),
+            ('track', 'tracks'),
+            ('merch', 'merch'),
+        ],
+    )
+    def test_soft_delete_deactivates_object_and_variants(
+        self,
+        artist_client,
+        variant_factory,
+        factory_attr,
+        url_resource_name,
+    ):
+        """Удаление через API → деактивация контента и его вариантов."""
+        variant = variant_factory(factory_attr)
+        product = variant.product
+        content = getattr(product, factory_attr)
 
-        assert product.variants.filter(is_active=True).count() == 2
-
-        order = Order.objects.create(
-            user=user,
-            full_name='Test User',
-            email='test@email.com',
-            phone='89445654785',
+        url = reverse(
+            f'api:store:{url_resource_name}-detail',
+            args=[content.pk],
         )
-        OrderItem.objects.create(
-            order=order,
-            product_variant=variant,
-            quantity=1,
-        )
 
-        merch.delete()
+        response = artist_client.delete(url)
 
-        merch.refresh_from_db()
-        assert merch.is_active is False
-        assert product.variants.filter(is_active=True).count() == 0
-        assert product.variants.filter(is_active=False).count() == 2
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        content.refresh_from_db()
+        assert content.is_active is False
+
+        variants = product.variants.all()
+        assert variants.exists()
+        for v in variants:
+            v.refresh_from_db()
+            assert v.is_active is False

@@ -27,22 +27,5 @@ class BaseContent(ActivatableModel, TimestampModel):
         verbose_name='Артист',
     )
 
-    def delete(self, *args, **kwargs):
-        """Реализует гибридное удаление.
-
-        - Пытается удалить объект физически.
-        - Если объект связан с защищенными данными(заказы) -
-          делаем is_active=False.
-        """
-        try:
-            return super().delete(*args, **kwargs)
-        except models.ProtectedError:
-            self.is_active = False
-            self.save()
-            # Деактивируем связанные варианты
-            product = getattr(self, 'product', None)
-            if product and hasattr(product, 'variants'):
-                product.variants.update(is_active=False)
-
     class Meta:
         abstract = True
