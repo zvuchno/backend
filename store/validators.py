@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 
-from .constants import MAX_IMAGE_SIZE_MB
+from .constants import MAX_AUDIOFILE_SIZE_MB, MAX_IMAGE_SIZE_MB
 
 
 def validate_file_size(value):
@@ -10,6 +10,17 @@ def validate_file_size(value):
     if filesize > MAX_IMAGE_SIZE_MB * 1024 * 1024:  # MB в байтах
         raise ValidationError(
             f'Размер файла не должен превышать {MAX_IMAGE_SIZE_MB} MB',
+        )
+    return value
+
+
+def validate_audiofile_size(value):
+    """Ограничения размера аудиофайла до 500 MB."""
+    filesize = value.size
+
+    if filesize > MAX_AUDIOFILE_SIZE_MB * 1024 * 1024:  # MB в байтах
+        raise ValidationError(
+            f'Размер файла не должен превышать {MAX_AUDIOFILE_SIZE_MB} MB',
         )
     return value
 
