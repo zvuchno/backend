@@ -7,9 +7,8 @@ from django.urls import reverse
 ROLE_CLIENTS = {
     'anon': 'api_client',
     'user': 'auth_client',
-    'other': 'other_client',
-    'staff': 'staff_client',
     'artist': 'artist_client',
+    'staff': 'staff_client',
 }
 
 
@@ -34,13 +33,13 @@ def product_meta(request):
         ('anon', 'private', 'list', False, 200, 'anon cannot private'),
         ('anon', 'link_only', 'list', False, 200, 'anon cannot link_only'),
 
-        ('user', 'public', 'list', True, 200, 'user can public'),
-        ('user', 'private', 'list', True, 200, 'user can own private'),
-        ('user', 'link_only', 'list', True, 200, 'user can link_only'),
+        ('artist', 'public', 'list', True, 200, 'artist can public'),
+        ('artist', 'private', 'list', True, 200, 'artist can own private'),
+        ('artist', 'link_only', 'list', True, 200, 'artist can link_only'),
 
-        ('other', 'public', 'list', True, 200, 'other can public'),
-        ('other', 'private', 'list', False, 200, 'other cannot private'),
-        ('other', 'link_only', 'list', False, 200, 'other cannot link_only'),
+        ('user', 'public', 'list', True, 200, 'user can public'),
+        ('user', 'private', 'list', False, 200, 'user cannot private'),
+        ('user', 'link_only', 'list', False, 200, 'user cannot link_only'),
 
         ('staff', 'public', 'list', True, 200, 'staff full access'),
         ('staff', 'private', 'list', True, 200, 'staff full access'),
@@ -52,13 +51,13 @@ def product_meta(request):
         ('anon', 'private', 'retrieve', False, 404, 'anon cannot private'),
         ('anon', 'link_only', 'retrieve', True, 200, 'anon can link_only'),
 
-        ('user', 'public', 'retrieve', True, 200, 'user can public'),
-        ('user', 'private', 'retrieve', True, 200, 'user can own private'),
-        ('user', 'link_only', 'retrieve', True, 200, 'user can link_only'),
+        ('artist', 'public', 'retrieve', True, 200, 'artist can public'),
+        ('artist', 'private', 'retrieve', True, 200, 'artist can own private'),
+        ('artist', 'link_only', 'retrieve', True, 200, 'artist can link_only'),
 
-        ('other', 'public', 'retrieve', True, 200, 'other can public'),
-        ('other', 'private', 'retrieve', False, 404, 'other cannot private'),
-        ('other', 'link_only', 'retrieve', True, 200, 'other can link_only'),
+        ('user', 'public', 'retrieve', True, 200, 'user can public'),
+        ('user', 'private', 'retrieve', False, 404, 'user cannot private'),
+        ('user', 'link_only', 'retrieve', True, 200, 'user can link_only'),
 
         ('staff', 'public', 'retrieve', True, 200, 'staff full access'),
         ('staff', 'private', 'retrieve', True, 200, 'staff full access'),
@@ -99,16 +98,16 @@ def test_product_visibility_matrix(
     'role, is_published, is_active, expected_status, can_see_in_list, comment',
     [
         # ================= НЕ ОПУБЛИКОВАНО (Черновики) =================
-        ('anon',  False, True,  404, False, 'anon cannot see unpublished'),
-        ('other', False, True,  404, False, 'other cannot see unpublished'),
-        ('user',  False, True,  200, True,  'owner can see their own draft'),
-        ('staff', False, True,  200, True,  'staff can see unpublished'),
+        ('anon',   False, True,  404, False, 'anon cannot see unpublished'),
+        ('user',   False, True,  404, False,  'user cannot see unpublished'),
+        ('artist', False, True,  200, True,  'owner can see their own draft'),
+        ('staff',  False, True,  200, True,  'staff can see unpublished'),
 
         # ================= НЕ АКТИВНО (Деактивировано) =================
-        ('anon',  True,  False, 404, False, 'anon cannot see inactive'),
-        ('other', True,  False, 404, False, 'other cannot see inactive'),
-        ('user',  True,  False, 404, False, 'owner cannot see own inactive'),
-        ('staff', True,  False, 200, True,  'staff can see inactive'),
+        ('anon',   True,  False, 404, False, 'anon cannot see inactive'),
+        ('user',   True,  False, 404, False, 'user cannot see inactive'),
+        ('artist', True, False, 404, False,  'owner cannot see own inactive'),
+        ('staff',  True,  False, 200, True,  'staff can see inactive'),
     ],
 )
 # fmt: on
@@ -143,19 +142,19 @@ def test_product_status_logic(
     'role, method, expected_status, comment',
     [
         # --- Чтение (Safe Methods) ---
-        ('anon',  'get',    200, 'anon can read'),
-        ('other', 'get',    200, 'other user can read'),
-        ('user',  'get',    200, 'owner can read'),
+        ('anon',   'get',    200, 'anon can read public'),
+        ('user',   'get',    200, 'regular user can read public'),
+        ('artist', 'get',    200, 'owner can read public'),
 
         # --- Изменение (Unsafe Methods) ---
-        ('anon',  'patch',  401, 'anon cannot edit'),
-        ('other', 'patch',  403, 'other user cannot edit'),
-        ('user',  'patch',  200, 'owner can edit'),
-        ('staff', 'patch',  403, 'staff cannot edit too'),
+        ('anon',   'patch',  401, 'anon cannot edit'),
+        ('user',   'patch',  403, 'regular user cannot edit'),
+        ('artist', 'patch',  200, 'owner can edit'),
+        ('staff',  'patch',  403, 'staff cannot edit too'),
 
         # --- Удаление ---
-        ('other', 'delete', 403, 'other user cannot delete'),
-        ('user',  'delete', 204, 'owner can delete'),
+        ('user',   'delete', 403, 'regular user cannot delete'),
+        ('artist', 'delete', 204, 'owner can delete'),
     ],
 )
 # fmt: on
