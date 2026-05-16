@@ -12,7 +12,10 @@ from .account import (
     password_reset_verify_schema,
     resend_verification_email_schema,
 )
-from .artist_legal_profile import artist_legal_data_schema
+from .artist_legal_profile import (
+    artist_legal_data_schema,
+    recipient_type_list_schema,
+)
 from .artist_profile import (
     artist_cover_update_schema,
     artist_list_schema,
@@ -25,6 +28,7 @@ from .auth import (
     token_refresh_schema,
     token_verify_schema,
 )
+from .consent_documents import consent_doc_schema
 from .listener_profile import listener_me_schema
 from .registration import (
     artist_registration_schema,
@@ -45,6 +49,7 @@ __all__ = [
     'become_artist_schema',
     'change_password_schema',
     'change_phone_schema',
+    'consent_doc_schema',
     'email_verification_schema',
     'listener_me_schema',
     'listener_registration_schema',
@@ -62,4 +67,5 @@ __all__ = [
     'change_username_schema',
     'social_auth_schema',
     'artist_legal_data_schema',
+    'recipient_type_list_schema',
 ]

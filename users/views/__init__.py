@@ -8,7 +8,10 @@ from .account import (
     PasswordResetVerifyView,
     ResendVerificationEmailView,
 )
-from .artist_legal_profile import ArtistLegalProfileView
+from .artist_legal_profile import (
+    ArtistLegalProfileView,
+    RecipientTypeListView,
+)
 from .artist_profile import (
     ArtistCoverUpdateView,
     ArtistListView,
@@ -18,6 +21,7 @@ from .artist_profile import (
 )
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
+from .consent_documents import ConsentDocumentViewSet
 from .jwt import (
     CustomLogoutView,
     CustomTokenObtainPairView,
@@ -45,6 +49,7 @@ __all__ = [
     'ArtistRegistrationView',
     'BecomeArtistView',
     'BaseRegistrationView',
+    'ConsentDocumentViewSet',
     'CustomLogoutView',
     'CustomTokenObtainPairView',
     'CustomTokenRefreshView',
@@ -65,6 +70,7 @@ __all__ = [
     'ResendVerificationEmailView',
     'SocialAuthErrorCodesView',
     'ArtistLegalProfileView',
+    'RecipientTypeListView',
     'SocialSessionExchangeView',
     'VKLogin',
     'YandexLogin',

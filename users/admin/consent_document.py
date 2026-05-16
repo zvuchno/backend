@@ -22,11 +22,11 @@ class ConsentDocumentAdmin(admin.ModelAdmin):
     list_filter = (
         'document_type',
         'is_active',
-        'created_at',
     )
     readonly_fields = ('created_at', 'content_hash', 'updated_at')
     list_editable = ('is_active',)
     search_fields = ('version', 'content')
+    ordering = ('document_type',)
     fieldsets = (
         (
             'Основная информация',

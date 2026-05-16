@@ -1,3 +1,5 @@
+from rest_framework.permissions import BasePermission
+
 from .base import (
     _IsOwnerByField,
     _IsOwnerByFieldOrReadOnly,
@@ -52,3 +54,25 @@ class IsUserObjectOwnerOrReadOnly(_IsOwnerByFieldOrReadOnly):
     """
 
     owner_field_name = 'user'
+
+
+class IsSalesOwner(BasePermission):
+    """Доступ к заказу только продавцу (артисту) товаров в этом заказе.
+
+    На уровне object-level:
+    - разрешает доступ, если хотя бы один товар (`OrderItem`) в заказе
+      принадлежит текущему пользователю через связь с альбомом,
+      треком или мерчем.
+    """
+
+    message = 'Вы не являетесь продавцом товаров в этом заказе.'
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        user = request.user
+        if not user.is_authenticated:
+            return False
+
+        return any(
+            item.product_variant.product.owner == user
+            for item in obj.items.all()
+        )

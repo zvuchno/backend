@@ -4,19 +4,17 @@ from datetime import date
 
 from django.core.exceptions import ValidationError
 
+from common.utils import normalize_digits
+
 from users.constants import (
     ACCOUNT_NUMBER_MAX_LENGTH,
     BIK_MAX_LENGTH,
+    INN_COMPANY_MAX_LENGTH,
+    INN_PERSON_MAX_LENGTH,
+    OGRN_MAX_LENGTH,
     PASSPORT_NUMBER_MAX_LENGTH,
     PASSPORT_SERIES_MAX_LENGTH,
 )
-
-
-def normalize_digits(value: str) -> str:
-    """Нормализация числового поля."""
-    if not value:
-        return ''
-    return ''.join(d for d in str(value) if d.isdigit())
 
 
 def _validate_digits_number(
@@ -99,22 +97,31 @@ def validate_bik(value: str) -> None:
     )
 
 
-def validate_inn(value: str) -> None:
-    """Проверяет ИНН (10 или 12 цифр)."""
-    if not value:
-        return
+def validate_ogrn(value: str) -> None:
+    """Проверяет ОГРН."""
+    _validate_digits_number(
+        value,
+        OGRN_MAX_LENGTH,
+        'ОГРН',
+    )
 
-    normalized_value = normalize_digits(value)
 
-    if not normalized_value:
-        raise ValidationError(
-            'ИНН должен содержать только цифры.',
-        )
+def validate_person_inn(value: str) -> None:
+    """Проверяет ИНН физического лица."""
+    _validate_digits_number(
+        value,
+        INN_PERSON_MAX_LENGTH,
+        'ИНН физического лица',
+    )
 
-    if len(normalized_value) not in (10, 12):
-        raise ValidationError(
-            'ИНН должен содержать 10 или 12 цифр.',
-        )
+
+def validate_company_inn(value: str) -> None:
+    """Проверяет ИНН юридического лица."""
+    _validate_digits_number(
+        value,
+        INN_COMPANY_MAX_LENGTH,
+        'ИНН юридического лица',
+    )
 
 
 def validate_checking_account(value: str) -> None:
@@ -132,4 +139,26 @@ def validate_correspondent_account(value: str) -> None:
         value,
         ACCOUNT_NUMBER_MAX_LENGTH,
         'Корреспондентский счет',
+    )
+
+
+def validate_inn(value: str) -> None:
+    """Проверяет ИНН физического лица или юридического лица.
+
+    Legacy validator для старых миграций.
+    """
+    if not value:
+        return
+
+    normalized_value = normalize_digits(value)
+    if len(normalized_value) == INN_PERSON_MAX_LENGTH:
+        validate_person_inn(value)
+        return
+    if len(normalized_value) == INN_COMPANY_MAX_LENGTH:
+        validate_company_inn(value)
+        return
+
+    raise ValidationError(
+        'ИНН должен содержать 10 цифр для юридического лица '
+        'или 12 цифр для физического лица.',
     )

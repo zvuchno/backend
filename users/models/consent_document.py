@@ -27,10 +27,48 @@ class ConsentDocument(ActivatableModel, TimestampModel):
     даже при обходе форм.
     """
 
-    document_type = models.ForeignKey(
-        'users.DocumentType',
-        on_delete=models.CASCADE,
-        verbose_name='Тип документа',
+    class DocumentType(models.TextChoices):
+        PRIVACY_POLICY = (
+            'privacy_policy',
+            'Политика обработки персональных данных',
+        )
+        ARTIST_OFFER = (
+            'artist_offer',
+            'Артист: Договор-оферта',
+        )
+        ARTIST_PERSONAL_DATA = (
+            'artist_personal_data',
+            'Артист: Согласие на обработку ПДн',
+        )
+        ARTIST_DISTRIBUTION = (
+            'artist_distribution',
+            'Артист: Согласие на распространение ПДн',
+        )
+        ARTIST_NEWSLETTER = (
+            'artist_newsletter',
+            'Артист: Согласие на получение рассылки',
+        )
+        LISTENER_OFFER = (
+            'listener_offer',
+            'Слушатель: Договор-оферта',
+        )
+        LISTENER_PERSONAL_DATA = (
+            'listener_personal_data',
+            'Слушатель: Согласие на обработку ПДн',
+        )
+        LISTENER_DISTRIBUTION = (
+            'listener_distribution',
+            'Слушатель: Согласие на распространение ПДн',
+        )
+        LISTENER_NEWSLETTER = (
+            'listener_newsletter',
+            'Слушатель: Согласие на получение рассылки',
+        )
+
+    document_type = models.CharField(
+        'Тип документа',
+        max_length=50,
+        choices=DocumentType.choices,
     )
 
     version = models.CharField('Версия', max_length=20)
@@ -77,7 +115,7 @@ class ConsentDocument(ActivatableModel, TimestampModel):
                 'Текст документа изменять нельзя. Создайте новую версию.'
             )
 
-        if original.document_type_id != self.document_type_id:
+        if original.document_type != self.document_type:
             errors['document_type'] = (
                 'Нельзя менять тип уже созданного документа.'
             )
@@ -97,7 +135,8 @@ class ConsentDocument(ActivatableModel, TimestampModel):
             version=self.version,
         ).exists():
             raise ValidationError({
-                'version': f'Документ типа "{self.document_type.name}" '
+                'version': 'Документ типа '
+                f'"{self.get_document_type_display()}" '
                 f'с версией {self.version} уже существует.',
             })
 
@@ -114,8 +153,9 @@ class ConsentDocument(ActivatableModel, TimestampModel):
             raise ValidationError({
                 'is_active': (
                     f'Уже существует активный документ для типа '
-                    f'"{self.document_type.name}". '
-                    'Сначала деактивируйте старый документ.'
+                    f'"{self.get_document_type_display()}". '
+                    'Сначала деактивируйте старый документ '
+                    'или сохраните неактивный черновик.'
                 ),
             })
 
@@ -128,7 +168,7 @@ class ConsentDocument(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'юридический документ'
         verbose_name_plural = 'юридические документы'
-        ordering = ('-created_at',)
+        ordering = ('document_type', '-created_at')
         constraints = [
             models.UniqueConstraint(
                 fields=('document_type',),
@@ -146,4 +186,4 @@ class ConsentDocument(ActivatableModel, TimestampModel):
         ]
 
     def __str__(self):
-        return f'{self.document_type.name} (v{self.version})'
+        return f'{self.get_document_type_display()} (v{self.version})'

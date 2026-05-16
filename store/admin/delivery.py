@@ -20,6 +20,7 @@ class DeliveryAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'description',
+        'delivery_type',
         'display_price',
         'is_active',
     )
@@ -27,6 +28,7 @@ class DeliveryAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at')
     fields = (
         'name',
+        'delivery_type',
         'description',
         'price',
         'is_active',

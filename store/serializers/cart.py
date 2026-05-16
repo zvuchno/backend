@@ -5,13 +5,17 @@
 
 from rest_framework import serializers
 
+from .mixins import ProductVariantURLMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Cart, CartItem, ProductVariant
 from store.services.cart_service import CartService
 from store.validators import validate_price_with_donation
 
 
-class CartItemReadSerializer(serializers.ModelSerializer):
+class CartItemReadSerializer(
+    ProductVariantURLMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор товаров в корзине пользователя - чтение."""
 
     product_variant = serializers.IntegerField(
@@ -34,6 +38,7 @@ class CartItemReadSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    target_url = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
@@ -45,12 +50,15 @@ class CartItemReadSerializer(serializers.ModelSerializer):
             'line_total',
             'comment',
             'stock',
+            'is_artist_subscription',
+            'target_url',
         )
 
     def get_stock(self, obj) -> int:
         """Если цифра - наличие = 1."""
         variant = obj.product_variant
-        if variant.product.product_type != 'merch':
+        product = variant.product
+        if product.product_type != product.ProductType.MERCH:
             return 1
         return variant.stock
 
@@ -90,6 +98,10 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
         queryset=ProductVariant.objects.all(),
     )
     quantity = serializers.IntegerField(min_value=1)
+    is_artist_subscription = serializers.BooleanField(
+        required=False,
+        default=False,
+    )
 
     class Meta:
         model = CartItem
@@ -98,6 +110,7 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
             'quantity',
             'price_with_donation',
             'comment',
+            'is_artist_subscription',
         )
 
     def validate(self, attrs):

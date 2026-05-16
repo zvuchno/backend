@@ -82,22 +82,33 @@ class Product(models.Model):
         related_name='product',
     )
 
+    @property
+    def owner(self):
+        """Возвращает владельца на основе типа продукта."""
+        if self.product_type == self.ProductType.ALBUM and self.album:
+            return self.album.owner
+        if self.product_type == self.ProductType.TRACK and self.track:
+            return self.track.owner
+        if self.product_type == self.ProductType.MERCH and self.merch:
+            return self.merch.owner
+        return None
+
     def determine_product_type(self):
         """Автозаполнение поля product_type.
 
         Автоматически определяет категорию товара на основе заполненной связи.
         """
-        filled = (self.album, self.track, self.merch)
-        if sum(map(bool, filled)) != 1:
+        filled_ids = (self.album_id, self.track_id, self.merch_id)
+        if sum(map(bool, filled_ids)) != 1:
             raise ValidationError(
                 'Должен быть указан ровно один тип продукта.',
             )
 
-        if self.album:
+        if self.album_id:
             self.product_type = self.ProductType.ALBUM
-        elif self.track:
+        elif self.track_id:
             self.product_type = self.ProductType.TRACK
-        elif self.merch:
+        elif self.merch_id:
             self.product_type = self.ProductType.MERCH
 
     def save(self, *args, **kwargs):

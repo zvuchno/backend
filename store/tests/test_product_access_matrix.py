@@ -1,6 +1,7 @@
 """Комплексная проверка прав доступа и статусов публикации альбомов."""
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 ROLE_CLIENTS = {
@@ -8,6 +9,7 @@ ROLE_CLIENTS = {
     'user': 'auth_client',
     'other': 'other_client',
     'staff': 'staff_client',
+    'artist': 'artist_client',
 }
 
 ROUTE_NAMES = {
@@ -186,5 +188,45 @@ def test_product_permissions_logic(
         response = client.patch(url, data={'name': 'new name'})
     elif method == 'delete':
         response = client.delete(url)
+
+    assert response.status_code == expected_status, f'Failed on: {comment}'
+
+
+@pytest.mark.parametrize(
+    'role, expected_status, comment',
+    [
+        ('anon',   401, 'anon cannot create'),
+        ('user',   403, 'regular user cannot create'),
+        ('artist', 201, 'artist can create'),
+        ('staff',  403, 'staff cannot create (если не артист)'),
+    ],
+)
+def test_product_create_permission(
+    role, expected_status, comment,
+    request, product_meta, artist_user, variant_factory,
+):
+    """Тест прав на создание: только пользователь с профилем артиста."""
+    if role == 'artist':
+        client = request.getfixturevalue('auth_client')
+        client.force_authenticate(user=artist_user)
+    else:
+        client = request.getfixturevalue(ROLE_CLIENTS[role])
+
+    payload = {
+        'name': f'New {product_meta["type"]}',
+        'price': '100.00',
+    }
+    if product_meta['type'] == 'track':
+        album = variant_factory('album')
+        payload.update({
+            'album': album.id,
+            'audio_file': SimpleUploadedFile(
+                'test.mp3', b'a', content_type='audio/mpeg',
+            ),
+        })
+
+    response = client.post(
+        product_meta['list_url'], data=payload, format='multipart',
+    )
 
     assert response.status_code == expected_status, f'Failed on: {comment}'

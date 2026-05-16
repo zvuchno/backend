@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
 
@@ -29,7 +30,6 @@ class TrackReadSerializer(serializers.ModelSerializer):
             'duration',
             'position',
             'price',
-            'is_active',
         )
 
     def get_price(self, obj) -> Decimal | None:
@@ -38,31 +38,19 @@ class TrackReadSerializer(serializers.ModelSerializer):
             return product.price
         return None
 
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        user = (
-            self.context.get('request').user
-            if self.context.get('request')
-            else None
-        )
-        # Скрываем поле, если юзера нет, если не владелец и не админ
-        if not user or not (
-            user.is_authenticated and (user == instance.owner or user.is_staff)
-        ):
-            ret.pop('is_active', None)
-        return ret
 
-
-class TrackReadDetailSerializer(TrackReadSerializer):
+class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Track."""
 
     allow_overpay = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
 
     class Meta(TrackReadSerializer.Meta):
         fields = TrackReadSerializer.Meta.fields + (
             'audio_file',
             'allow_overpay',
             'description',
+            'variants',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -92,7 +80,6 @@ class TrackWriteSerializer(serializers.ModelSerializer):
             'price',
             'allow_overpay',
             'description',
-            'is_active',
         )
 
     def create(self, validated_data):

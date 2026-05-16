@@ -7,6 +7,7 @@
 """
 
 from .ownership import (
+    IsSalesOwner,
     IsStoreObjectOwner,
     IsStoreObjectOwnerOrReadOnly,
     IsUserObjectOwner,
@@ -19,6 +20,7 @@ __all__ = [
     'IsArtist',
     'IsListener',
     'IsNotArtist',
+    'IsSalesOwner',
     'IsStoreObjectOwner',
     'IsStoreObjectOwnerOrReadOnly',
     'IsUserObjectOwner',
