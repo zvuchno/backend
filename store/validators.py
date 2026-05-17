@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 
 from .constants import MAX_AUDIOFILE_SIZE_MB, MAX_IMAGE_SIZE_MB
 
@@ -46,3 +47,14 @@ def validate_price_with_donation(product, price_with_donation):
             'price_with_donation': f'Цена с донатом не может быть ниже '
             f'номинала ({product.price:.2f} руб.)',
         })
+
+
+"""Валидатор формата кода промокода."""
+validate_promocode_format = RegexValidator(
+    regex=r'^[A-Z0-9_-]+$',
+    message=(
+        'Код промокода может содержать только заглавные '
+        'латинские буквы, цифры, дефис и подчеркивание.'
+    ),
+    code='invalid_promocode_format',
+)
