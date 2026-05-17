@@ -87,6 +87,15 @@ class CartItemInline(admin.TabularInline):
             return obj.product_variant.product.allow_overpay
         return None
 
+    def get_formset(self, request, obj=None, **kwargs):
+        """Отключаем кнопки управления связанным объектом."""
+        formset = super().get_formset(request, obj, **kwargs)
+        widget = formset.form.base_fields['product_variant'].widget
+        widget.can_add_related = False
+        widget.can_change_related = False
+        widget.can_view_related = False
+        return formset
+
 
 @admin.register(Cart)
 class CartAdmin(admin.ModelAdmin):
@@ -94,10 +103,33 @@ class CartAdmin(admin.ModelAdmin):
 
     list_display = ('get_user', 'get_subtotal_sum', 'get_total')
     search_fields = ('user__username', 'user__email')
-    fields = ('user', 'get_subtotal_sum', 'get_total')
     autocomplete_fields = ('user',)
-    readonly_fields = ('get_subtotal_sum', 'get_total')
+    readonly_fields = (
+        'user',
+        'get_subtotal_sum',
+        'get_total',
+        'created_at',
+        'updated_at',
+    )
     inlines = (CartItemInline,)
+    fieldsets = (
+        (
+            'Основная информация',
+            {
+                'fields': ('user', 'get_subtotal_sum', 'get_total'),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'classes': ('collapse',),
+                'fields': (
+                    'created_at',
+                    'updated_at',
+                ),
+            },
+        ),
+    )
 
     @admin.display(description='Покупатель', ordering='user')
     def get_user(self, obj):
@@ -119,3 +151,7 @@ class CartAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).with_subtotal()
+
+    def has_add_permission(self, request):
+        """Запрещает ручное создание заказов через кнопку 'Добавить'."""
+        return False
