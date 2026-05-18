@@ -7,7 +7,6 @@ from django.utils import timezone
 from rest_framework import status
 
 from store.models import Album, Genre
-from users.models import ArtistProfile
 
 
 @pytest.mark.django_db
@@ -15,7 +14,7 @@ class TestAlbumFilters:
     """Тестирование функционала фильтрации, поиска и сортировки альбомов."""
 
     @pytest.fixture
-    def albums(self, variant_factory, user, other_user):
+    def albums(self, variant_factory, other_artist_user):
         """Создаём альбомы с разными владельцами и жанрами."""
         # Жанры
         rock, _ = Genre.objects.get_or_create(
@@ -25,15 +24,6 @@ class TestAlbumFilters:
         jazz, _ = Genre.objects.get_or_create(
             name='Jazz',
             defaults={'slug': 'jazz'},
-        )
-        # Профили артистов
-        ArtistProfile.objects.get_or_create(
-            user=user,
-            defaults={'name': 'Viktor Tsoi', 'slug': 'viktor-tsoi'},
-        )
-        ArtistProfile.objects.get_or_create(
-            user=other_user,
-            defaults={'name': 'Boris', 'slug': 'boris-bg'},
         )
         # Время для стабильной сортировки
         now = timezone.now()
@@ -49,14 +39,15 @@ class TestAlbumFilters:
         v2 = variant_factory(product_type='album', name='Breath')
         a2 = v2.product.album
         a2.genre = jazz
-        a2.owner = other_user
+        a2.owner = other_artist_user
         a2.save()
 
         return {'album_1': a1, 'album_2': a2, 'rock': rock, 'jazz': jazz}
 
     def test_filter_by_artist_slug(self, albums, album_list_url, api_client):
         """Фильтр по slug артиста."""
-        response = api_client.get(album_list_url, {'artist': 'viktor-tsoi'})
+        artist_slug = albums['album_1'].owner.artist_profile.slug
+        response = api_client.get(album_list_url, {'artist': artist_slug})
 
         assert response.status_code == status.HTTP_200_OK
         results = response.data['results']

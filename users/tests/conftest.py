@@ -36,6 +36,30 @@ def artist_recipient_type_url():
 
 
 @pytest.fixture
+def listener_register_url():
+    """URL регистрации слушателя."""
+    return reverse('api:users:listener_registration')
+
+
+@pytest.fixture
+def artist_register_url():
+    """URL регистрации артиста."""
+    return reverse('api:users:artist_registration')
+
+
+@pytest.fixture
+def reset_password_url():
+    """URL восстановления пароля."""
+    return reverse('api:users:reset_password')
+
+
+@pytest.fixture
+def resend_email_verification_url():
+    """URL повторного подтверждения email."""
+    return reverse('api:users:resend_verification_email')
+
+
+@pytest.fixture
 def artist_legal_profile_factory():
     """Фабрика полного набора юридических данных артиста."""
 
@@ -140,4 +164,28 @@ def company_data_payload():
             'inn': '1234567891',
             'ogrn': '1234567890121',
         },
+    }
+
+
+@pytest.fixture
+def artist_register_payload():
+    """Payload регистрации артиста."""
+    return {
+        'username': 'artist_username',
+        'email': 'artist@newmail.ru',
+        'phone': '+79991234567',
+        'password': 'qwertyhgfdsa123',
+        'name': 'my rock band',
+    }
+
+
+@pytest.fixture
+def listener_register_payload():
+    """Payload регистрации слушателя."""
+    return {
+        'username': 'artist_username',
+        'email': 'artist@newmail.ru',
+        'phone': '+79991234567',
+        'password': 'qwertyhgfdsa123',
+        'full_name': 'Bestfan Ivanov',
     }

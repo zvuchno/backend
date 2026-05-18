@@ -58,7 +58,7 @@ class TrackAdmin(
     list_editable = ('is_active',)
     fieldsets = (
         (
-            'Основные данные',
+            'Основная информация',
             {
                 'fields': (
                     'name',
@@ -69,6 +69,14 @@ class TrackAdmin(
                     'description',
                     'get_sku',
                     'owner',
+                ),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'classes': ('collapse',),
+                'fields': (
                     'created_at',
                     'updated_at',
                 ),

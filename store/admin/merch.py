@@ -117,9 +117,17 @@ class MerchAdmin(
                     'is_carrier',
                     'visibility',
                     'owner',
+                    'is_active',
+                ),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'classes': ('collapse',),
+                'fields': (
                     'created_at',
                     'updated_at',
-                    'is_active',
                 ),
             },
         ),

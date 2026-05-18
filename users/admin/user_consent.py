@@ -14,7 +14,7 @@ class UserConsentAdmin(admin.ModelAdmin):
 
     list_display = (
         'email',
-        'is_registered',
+        'is_authorized',
         'document',
         'accepted_at',
     )
@@ -63,8 +63,8 @@ class UserConsentAdmin(admin.ModelAdmin):
         ),
     )
 
-    @admin.display(description='Зарегистрирован', boolean=True)
-    def is_registered(self, obj):
+    @admin.display(description='Авторизован', boolean=True)
+    def is_authorized(self, obj):
         """Проверяет, привязано ли согласие к профилю пользователя."""
         return obj.user_id is not None
 
