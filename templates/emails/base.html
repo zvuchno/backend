@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}Звучно{% endblock %}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f6f6f6;font-family:Arial,sans-serif;color:#222;">
+    <div style="max-width:600px;margin:0 auto;padding:24px;">
+      <div style="background:#ffffff;border-radius:12px;padding:24px;">
+        <h1 style="margin-top:0;font-size:24px;">Звучно</h1>
+
+        {% block content %}{% endblock %}
+
+        <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+
+        <p style="font-size:13px;color:#777;">
+          Если вы не выполняли это действие, просто проигнорируйте письмо.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
