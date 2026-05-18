@@ -69,7 +69,9 @@ class MerchDetailSerializer(MerchReadSerializer):
     kind = serializers.StringRelatedField()
     album = serializers.StringRelatedField()
     variants = serializers.SerializerMethodField()
-    property_name = serializers.SerializerMethodField()
+    property_name = serializers.CharField(
+        source='product.property_name', read_only=True
+    )
     stock = serializers.SerializerMethodField()
 
     class Meta(MerchReadSerializer.Meta):
@@ -115,12 +117,6 @@ class MerchDetailSerializer(MerchReadSerializer):
         if product:
             return product.allow_overpay
         return False
-
-    def get_property_name(self, obj):
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.property_name
-        return None
 
     @extend_schema_field(VariantReadSerializer(many=True))
     def get_variants(self, obj):
