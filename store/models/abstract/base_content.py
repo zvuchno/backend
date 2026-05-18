@@ -1,12 +1,10 @@
 """Модуль базовой модели контента."""
 
-from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db import models
 
 from store.constants import MAX_CHAR_LENGTH
 from users.models.abstract import ActivatableModel, TimestampModel
-
-User = get_user_model()
 
 
 class BaseContent(ActivatableModel, TimestampModel):
@@ -21,7 +19,7 @@ class BaseContent(ActivatableModel, TimestampModel):
     description = models.TextField('Описание', blank=True, default='')
 
     owner = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='%(class)s_set',
         verbose_name='Артист',
