@@ -12,6 +12,37 @@ class TestAuthEmails:
 
     UID_PATTERN = r'uid=[^&"\s]+'
     TOKEN_PATTERN = r'token=[^&"\s]+'
+    EMAIL_VERIFY_SUBJECT = 'Подтверждение email'
+    PASS_RESET_SUBJECT = 'Восстановление пароля'
+
+    def _assert_email_sent(
+        self,
+        *,
+        to_email,
+        subject,
+    ) -> None:
+        """Проверяет отправку письма."""
+        assert len(mail.outbox) == 1
+
+        message = mail.outbox[0]
+        assert isinstance(message, mail.EmailMultiAlternatives)
+        assert message.to == [to_email]
+        assert subject.lower() in message.subject.lower()
+        assert len(message.alternatives) == 1
+
+        html_body, mime_type = message.alternatives[0]
+        assert mime_type == 'text/html'
+
+        self._assert_email_contains_uid_and_token(str(message.body))
+        self._assert_email_contains_uid_and_token(str(html_body))
+
+    def _assert_email_contains_uid_and_token(
+        self,
+        content: str,
+    ) -> None:
+        """Email содержит token и uid."""
+        assert re.search(self.UID_PATTERN, content)
+        assert re.search(self.TOKEN_PATTERN, content)
 
     def test_listener_registration_sends_verification_email(
         self,
@@ -28,23 +59,10 @@ class TestAuthEmails:
 
         assert response.status_code == status.HTTP_201_CREATED
 
-        assert len(mail.outbox) == 1
-
-        message = mail.outbox[0]
-        assert isinstance(message, mail.EmailMultiAlternatives)
-        assert message.to == [listener_register_payload['email']]
-        assert 'Подтверждение email'.lower() in message.subject.lower()
-
-        assert re.search(self.UID_PATTERN, str(message.body))
-        assert re.search(self.TOKEN_PATTERN, str(message.body))
-
-        assert len(message.alternatives) == 1
-
-        html_body, mime_type = message.alternatives[0]
-
-        assert mime_type == 'text/html'
-        assert re.search(self.UID_PATTERN, str(html_body))
-        assert re.search(self.TOKEN_PATTERN, str(html_body))
+        self._assert_email_sent(
+            to_email=listener_register_payload['email'],
+            subject=self.EMAIL_VERIFY_SUBJECT,
+        )
 
     def test_artist_registration_sends_verification_email(
         self,
@@ -61,23 +79,10 @@ class TestAuthEmails:
 
         assert response.status_code == status.HTTP_201_CREATED
 
-        assert len(mail.outbox) == 1
-
-        message = mail.outbox[0]
-        assert isinstance(message, mail.EmailMultiAlternatives)
-        assert message.to == [artist_register_payload['email']]
-        assert 'Подтверждение email'.lower() in message.subject.lower()
-
-        assert re.search(self.UID_PATTERN, str(message.body))
-        assert re.search(self.TOKEN_PATTERN, str(message.body))
-
-        assert len(message.alternatives) == 1
-
-        html_body, mime_type = message.alternatives[0]
-
-        assert mime_type == 'text/html'
-        assert re.search(self.UID_PATTERN, str(html_body))
-        assert re.search(self.TOKEN_PATTERN, str(html_body))
+        self._assert_email_sent(
+            to_email=artist_register_payload['email'],
+            subject=self.EMAIL_VERIFY_SUBJECT,
+        )
 
     def test_resend_verification_email_sends_email(
         self,
@@ -90,23 +95,10 @@ class TestAuthEmails:
 
         assert response.status_code == status.HTTP_200_OK
 
-        assert len(mail.outbox) == 1
-
-        message = mail.outbox[0]
-        assert isinstance(message, mail.EmailMultiAlternatives)
-        assert message.to == [user.email]
-        assert 'Подтверждение email'.lower() in message.subject.lower()
-
-        assert re.search(self.UID_PATTERN, str(message.body))
-        assert re.search(self.TOKEN_PATTERN, str(message.body))
-
-        assert len(message.alternatives) == 1
-
-        html_body, mime_type = message.alternatives[0]
-
-        assert mime_type == 'text/html'
-        assert re.search(self.UID_PATTERN, str(html_body))
-        assert re.search(self.TOKEN_PATTERN, str(html_body))
+        self._assert_email_sent(
+            to_email=user.email,
+            subject=self.EMAIL_VERIFY_SUBJECT,
+        )
 
     def test_password_reset_sends_email_for_existing_user(
         self,
@@ -123,23 +115,10 @@ class TestAuthEmails:
 
         assert response.status_code == status.HTTP_200_OK
 
-        assert len(mail.outbox) == 1
-
-        message = mail.outbox[0]
-        assert isinstance(message, mail.EmailMultiAlternatives)
-        assert message.to == [user.email]
-        assert 'Восстановление пароля'.lower() in message.subject.lower()
-
-        assert re.search(self.UID_PATTERN, str(message.body))
-        assert re.search(self.TOKEN_PATTERN, str(message.body))
-
-        assert len(message.alternatives) == 1
-
-        html_body, mime_type = message.alternatives[0]
-
-        assert mime_type == 'text/html'
-        assert re.search(self.UID_PATTERN, str(html_body))
-        assert re.search(self.TOKEN_PATTERN, str(html_body))
+        self._assert_email_sent(
+            to_email=user.email,
+            subject=self.PASS_RESET_SUBJECT,
+        )
 
     def test_password_reset_does_not_send_email_for_unknown_user(
         self,
@@ -149,7 +128,7 @@ class TestAuthEmails:
         """Письмо сброса пароля не уходит на неизвестный email."""
         response = api_client.post(
             reset_password_url,
-            data={'email': 'non@existing.email'},
+            data={'email': 'unknown@example.com'},
             format='json',
         )
         assert response.status_code == status.HTTP_200_OK
