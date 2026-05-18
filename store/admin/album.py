@@ -192,7 +192,7 @@ class AlbumAdmin(
     list_editable = ('is_active', 'is_published', 'visibility')
     fieldsets = (
         (
-            'Основные данные',
+            'Основная информация',
             {
                 'fields': (
                     'name',
@@ -206,9 +206,17 @@ class AlbumAdmin(
                     'visibility',
                     'get_sku',
                     'owner',
+                    'is_active',
+                ),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'classes': ('collapse',),
+                'fields': (
                     'created_at',
                     'updated_at',
-                    'is_active',
                 ),
             },
         ),

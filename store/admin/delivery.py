@@ -26,15 +26,30 @@ class DeliveryAdmin(admin.ModelAdmin):
     )
     list_editable = ('is_active',)
     readonly_fields = ('created_at', 'updated_at')
-    fields = (
-        'name',
-        'delivery_type',
-        'description',
-        'price',
-        'is_active',
-        'created_at',
-        'updated_at',
+    fieldsets = (
+        (
+            'Основная информация',
+            {
+                'fields': (
+                    'name',
+                    'delivery_type',
+                    'description',
+                    'price',
+                    'is_active',
+                ),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'fields': (
+                    'created_at',
+                    'updated_at',
+                ),
+            },
+        ),
     )
+
     search_fields = ('name',)
     list_filter = ('name',)
     ordering = ('name',)
