@@ -2,6 +2,8 @@ from django.db import migrations
 
 
 CREATE_VIEW = """
+DROP VIEW IF EXISTS listener_track_access;
+
 CREATE VIEW listener_track_access AS
 
 SELECT
@@ -71,7 +73,7 @@ DROP VIEW IF EXISTS listener_track_access;
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0019_cartitem_is_artist_subscription'),
+        ('store', '0020_remove_track_lyrics_alter_track_audio_file'),
     ]
 
     operations = [
