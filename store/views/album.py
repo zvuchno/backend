@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
 
-from .mixins import ProductActionMixin
+from .mixins import ProductActionMixin, SoftDeleteMixin
 from store.filters import AlbumFilter
 from store.models import Album
 from store.schema import album_schema
@@ -18,7 +18,7 @@ from store.serializers import (
 
 
 @album_schema
-class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
+class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     """API для работы с альбомами.
 
     Особенности:

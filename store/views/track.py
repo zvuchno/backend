@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
 
-from .mixins import ProductActionMixin
+from .mixins import ProductActionMixin, SoftDeleteMixin
 from store.filters import TrackFilter
 from store.models import Track
 from store.schema import track_schema
@@ -18,7 +18,7 @@ from store.serializers import (
 
 
 @track_schema
-class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
+class TrackViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     """API для работы с треками."""
 
     queryset = Track.objects.all()
