@@ -1,4 +1,3 @@
-from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -37,13 +36,14 @@ class MerchReadSerializer(serializers.ModelSerializer):
 
     def get_main_image(self, obj):
         request = self.context.get('request')
+        images = list(obj.images_merch.all())
 
-        for image in obj.images_merch.all():
+        for image in images:
             if image.is_main:
                 url = image.image.url
                 return request.build_absolute_uri(url) if request else url
 
-        first = obj.images_merch.first()
+        first = images[0] if images else None
         if first:
             url = first.image.url
             return request.build_absolute_uri(url) if request else url
@@ -70,7 +70,8 @@ class MerchDetailSerializer(MerchReadSerializer):
     album = serializers.StringRelatedField()
     variants = serializers.SerializerMethodField()
     property_name = serializers.CharField(
-        source='product.property_name', read_only=True
+        source='product.property_name',
+        read_only=True,
     )
     stock = serializers.SerializerMethodField()
 
@@ -90,7 +91,7 @@ class MerchDetailSerializer(MerchReadSerializer):
         data.pop('main_image', None)
         request = self.context.get('request')
         if request and request.user == instance.owner:
-            for field in ('visibility', 'is_published', 'is_active'):
+            for field in ('visibility', 'is_published'):
                 data[field] = getattr(instance, field)
         return data
 
@@ -99,18 +100,24 @@ class MerchDetailSerializer(MerchReadSerializer):
         if not product:
             return 0
 
-        # если нет свойств - берём stock простого варианта
+        variants = list(product.variants.all())
+
         if not product.property_name:
-            simple = product.variants.filter(
-                property_value=CHAR_PRESET_SIMPLE,
-                is_active=True
-            ).first()
+            simple = next(
+                (
+                    v
+                    for v in variants
+                    if v.property_value == CHAR_PRESET_SIMPLE and v.is_active
+                ),
+                None,
+            )
             return simple.stock if simple else 0
 
-        # если есть свойства - сумма стоков всех вариантов
-        return product.variants.filter(is_active=True).exclude(
-            property_value=CHAR_PRESET_SIMPLE
-        ).aggregate(total=Sum('stock'))['total'] or 0
+        return sum(
+            v.stock
+            for v in variants
+            if v.is_active and v.property_value != CHAR_PRESET_SIMPLE
+        )
 
     def get_allow_overpay(self, obj):
         product = getattr(obj, 'product', None)
@@ -121,17 +128,32 @@ class MerchDetailSerializer(MerchReadSerializer):
     @extend_schema_field(VariantReadSerializer(many=True))
     def get_variants(self, obj):
         product = getattr(obj, 'product', None)
-        if not product or not product.property_name:
+        if not product:
+            return []
+
+        if not product.property_name:
+            simple = product.variants.filter(
+                property_value=CHAR_PRESET_SIMPLE,
+                is_active=True,
+            ).first()
+            if simple:
+                simple.property_value = ''
+                return VariantReadSerializer([simple], many=True).data
             return []
 
         request = self.context.get('request')
         is_owner = request and request.user == obj.owner
 
-        qs = product.variants.filter(
-            is_active=True,
-        ).exclude(
-            property_value=CHAR_PRESET_SIMPLE,
-        ).order_by('id')
+        qs = (
+            product.variants
+            .filter(
+                is_active=True,
+            )
+            .exclude(
+                property_value=CHAR_PRESET_SIMPLE,
+            )
+            .order_by('id')
+        )
 
         if not is_owner:
             qs = qs.exclude(stock=0)
@@ -150,7 +172,7 @@ class VariantWriteSerializer(serializers.Serializer):
         if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
             raise serializers.ValidationError(
                 f'Значение "{value}" зарезервировано '
-                'системой и недоступно для использования.'
+                'системой и недоступно для использования.',
             )
         return value
 
@@ -180,7 +202,6 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'allow_overpay',
             'visibility',
             'is_published',
-            'is_active',
             'property_name',
             'stock',
             'variants',
@@ -190,7 +211,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
             raise serializers.ValidationError(
                 f'Значение "{value}" зарезервировано системой '
-                'и недоступно для использования.'
+                'и недоступно для использования.',
             )
         return value
 
@@ -198,7 +219,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         if attrs.get('variants') and attrs.get('stock') is not None:
             raise serializers.ValidationError({
                 'stock': 'Нельзя указывать stock вместе с variants. '
-                        'Укажите stock внутри каждого варианта.'
+                'Укажите stock внутри каждого варианта.',
             })
         return attrs
 

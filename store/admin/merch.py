@@ -147,17 +147,19 @@ class MerchAdmin(
 
     @admin.display(description='Главное фото')
     def image_preview(self, obj):
-        for image in obj.images_merch.all():
+        images = list(obj.images_merch.all())
+
+        for image in images:
             if image.is_main:
                 return format_html(
                     '<img src="{}" style="max-height:100px; width:auto;" />',
                     image.image.url,
                 )
 
-        first = obj.images_merch.first()
-        if first:
+        image = images[0] if images else None
+        if image:
             return format_html(
                 '<img src="{}" style="max-height:100px; width:auto;" />',
-                first.image.url,
+                image.image.url,
             )
         return '-'
