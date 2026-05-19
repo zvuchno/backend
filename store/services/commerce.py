@@ -54,6 +54,20 @@ class ProductService:
                     value_stock=validated_data.get('stock', 0),
                     variants_data=None,
                 )
+            has_active_variants = (
+                product.variants
+                .filter(
+                    is_active=True,
+                )
+                .exclude(
+                    property_value=CHAR_PRESET_SIMPLE,
+                )
+                .exists()
+            )
+
+            if not has_active_variants and product.property_name:
+                product.property_name = ''
+                product.save(update_fields=['property_name'])
 
         return product
 
