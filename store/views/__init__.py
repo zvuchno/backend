@@ -4,6 +4,7 @@ from .delivery import DeliveryViewSet
 from .favorites import FavoritesViewSet
 from .genre import GenreViewSet
 from .order import OrderViewSet
+from .purchased_music import PurchasedMusicView
 from .sale import ArtistSaleViewSet
 from .track import TrackViewSet
 
@@ -16,4 +17,5 @@ __all__ = [
     'GenreViewSet',
     'OrderViewSet',
     'TrackViewSet',
+    'PurchasedMusicView',
 ]

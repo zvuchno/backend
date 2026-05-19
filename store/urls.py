@@ -13,6 +13,7 @@ from .views import (
     FavoritesViewSet,
     GenreViewSet,
     OrderViewSet,
+    PurchasedMusicView,
     TrackViewSet,
 )
 
@@ -29,4 +30,9 @@ router.register(r'orders', OrderViewSet, basename='orders')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path(
+        'me/purchased-music',
+        PurchasedMusicView.as_view(),
+        name='purchased-music',
+    ),
 ]

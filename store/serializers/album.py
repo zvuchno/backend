@@ -10,6 +10,7 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
+from ..querysets import AlbumQuerySet
 from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Album
@@ -118,3 +119,5 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
         return super().update(instance, validated_data)
+
+    object = AlbumQuerySet.as_manager()

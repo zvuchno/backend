@@ -13,6 +13,7 @@ from .delivery import DeliverySerializer
 from .favorites import FavoritesSerializer
 from .genre import GenreSerializer
 from .order import OrderDetailSerializer, OrderItemSerializer, OrderSerializer
+from .purchased_music import PurchasedMusicSerializer
 from .sale import ArtistSaleDetailSerializer, ArtistSaleSerializer
 from .track import (
     TrackReadDetailSerializer,
@@ -41,4 +42,5 @@ __all__ = [
     'TrackReadSerializer',
     'TrackReadDetailSerializer',
     'TrackWriteSerializer',
+    'PurchasedMusicSerializer',
 ]
