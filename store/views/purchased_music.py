@@ -7,9 +7,11 @@ from store.models import (
     ListenerTrackAccess,
     Track,
 )
+from store.schema import purchased_music_schema
 from store.serializers import PurchasedMusicSerializer
 
 
+@purchased_music_schema
 class PurchasedMusicView(RetrieveAPIView):
     """Библиотека купленной музыки текущего слушателя."""
 

@@ -13,6 +13,7 @@ from .delivery import delivery_schema
 from .favorites import favorites_schema
 from .genre import genre_schema
 from .order import order_schema
+from .purchased_music import purchased_music_schema
 from .sale import artist_sale_schema
 from .track import track_schema
 
@@ -27,4 +28,5 @@ __all__ = [
     'order_schema',
     'track_schema',
     'order_schema',
+    'purchased_music_schema',
 ]
