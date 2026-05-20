@@ -12,13 +12,15 @@ from .order import Order
 from .order_item import OrderItem
 from .product import Product
 from .product_variant import ProductVariant
+from .promocode import Promocode
 from .track import Track
 
 __all__ = [
     'Album',
-    'Favorite',
+    'Cart',
     'CartItem',
     'Delivery',
+    'Favorite',
     'Genre',
     'Image',
     'ListenerTrackAccess',
@@ -28,6 +30,6 @@ __all__ = [
     'OrderItem',
     'Product',
     'ProductVariant',
-    'Cart',
+    'Promocode',
     'Track',
 ]

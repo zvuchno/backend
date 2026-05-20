@@ -21,8 +21,24 @@ from store.views.mixins import ProductActionMixin, SoftDeleteMixin
 
 
 @merch_schema
-class MerchViewSet(SoftDeleteMixin, ProductActionMixin, viewsets.ModelViewSet):
-    """API для работы с мерчем."""
+class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
+    """API для работы с мерчем.
+
+    Особенности:
+    - Обеспечение коммерческой обвязки через ProductActionMixin.
+    - Мягкое удаление объектов через SoftDeleteMixin
+      для сохранения связи с заказами.
+    - Динамическое разграничение прав доступа
+      и видимости объектов на уровне QuerySet.
+
+    При create/update:
+    * Данные мерча сохраняются через валидацию сериализатора.
+    * Далее ProductActionMixin:
+        - Вызывает ProductService.ensure_commerce(), который гарантирует
+          наличие связанного Product и ProductVariant,
+          а также управляет вариантами.
+        - Синхронизирует коммерческие поля (price, allow_overpay).
+    """
 
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
