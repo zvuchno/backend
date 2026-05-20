@@ -12,6 +12,16 @@ from store.models import Merch, ProductVariant
 from store.serializers import ImageSerializer
 
 
+def validate_not_reserved(value):
+    """Проверяет, что значение не совпадает с зарезервированными пресетами."""
+    if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
+        raise serializers.ValidationError(
+            f'Значение "{value}" зарезервировано '
+            'системой и недоступно для использования.',
+        )
+    return value
+
+
 class MerchReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Merch."""
 
@@ -137,8 +147,10 @@ class MerchDetailSerializer(MerchReadSerializer):
                 is_active=True,
             ).first()
             if simple:
-                simple.property_value = ''
-                return VariantReadSerializer([simple], many=True).data
+                data = VariantReadSerializer(simple).data
+                data['value'] = ''
+                return [data]
+
             return []
 
         request = self.context.get('request')
@@ -165,16 +177,11 @@ class VariantWriteSerializer(serializers.Serializer):
     """Сериализатор для записи варианта мерча."""
 
     id = serializers.IntegerField(required=False)
-    value = serializers.CharField(source='property_value')
+    value = serializers.CharField(
+        source='property_value',
+        validators=[validate_not_reserved],
+    )
     stock = serializers.IntegerField(min_value=DEFAULT_QUANTITY, required=True)
-
-    def validate_value(self, value):
-        if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
-            raise serializers.ValidationError(
-                f'Значение "{value}" зарезервировано '
-                'системой и недоступно для использования.',
-            )
-        return value
 
 
 class MerchWriteSerializer(serializers.ModelSerializer):
@@ -187,7 +194,11 @@ class MerchWriteSerializer(serializers.ModelSerializer):
         write_only=True,
     )
     allow_overpay = serializers.BooleanField(required=False)
-    property_name = serializers.CharField(required=False, allow_blank=True)
+    property_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        validators=[validate_not_reserved],
+    )
     variants = VariantWriteSerializer(many=True, required=False)
     stock = serializers.IntegerField(min_value=0, required=False)
 
@@ -206,14 +217,6 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'stock',
             'variants',
         )
-
-    def validate_property_name(self, value):
-        if value in (CHAR_PRESET_SIMPLE, CHAR_PRESET_DIGITAL):
-            raise serializers.ValidationError(
-                f'Значение "{value}" зарезервировано системой '
-                'и недоступно для использования.',
-            )
-        return value
 
     def validate(self, attrs):
         if attrs.get('variants') and attrs.get('stock') is not None:

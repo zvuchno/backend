@@ -94,14 +94,12 @@ class MerchViewSet(SoftDeleteMixin, ProductActionMixin, viewsets.ModelViewSet):
                 was_main = image.is_main
                 image_file = image.image
                 image.delete()
+                transaction.on_commit(lambda: image_file.delete(save=False))
                 if was_main:
                     next_image = merch.images_merch.first()
                     if next_image:
                         next_image.is_main = True
                         next_image.save(update_fields=['is_main'])
-                        transaction.on_commit(
-                            lambda: image_file.delete(save=False),
-                        )
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         serializer = ImageSerializer(
