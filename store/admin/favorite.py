@@ -63,7 +63,7 @@ class FavoriteAdmin(admin.ModelAdmin):
 
     # Отображение формы редактирования
     fieldsets = (
-        ('Основное', {'fields': ('user', 'product_variant')}),
+        ('Основная информация', {'fields': ('user', 'product_variant')}),
         (
             'Системная информация',
             {'fields': ('created_at', 'updated_at')},

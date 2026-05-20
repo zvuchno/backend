@@ -36,10 +36,8 @@ from users.serializers import (
     PhoneChangeSerializer,
     UsernameChangeSerializer,
 )
-from users.services import (
-    build_email_verification_url,
-    build_password_reset_url,
-)
+from users.services import request_password_reset
+from users.services.email_verification import request_email_verification
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -131,12 +129,7 @@ class ResendVerificationEmailView(GenericAPIView):
                 status=status.HTTP_200_OK,
             )
 
-        frontend_base_url = settings.FRONTEND_VERIFY_EMAIL_URL
-
-        verification_url = build_email_verification_url(
-            user=user,
-            frontend_base_url=frontend_base_url,
-        )
+        verification_url = request_email_verification(user=user)
         response_data = {
             'detail': 'Запрос на подтверждение Email принят.',
         }
@@ -174,8 +167,7 @@ class PasswordResetRequestView(GenericAPIView):
         }
 
         if user:
-            frontend_base_url = settings.FRONTEND_RESET_PASSWORD_URL
-            reset_url = build_password_reset_url(user, frontend_base_url)
+            reset_url = request_password_reset(user)
 
             if settings.DEBUG:
                 response_data['debug_reset_url'] = reset_url

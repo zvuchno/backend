@@ -22,3 +22,6 @@ class MerchKindAdmin(admin.ModelAdmin):
     )
     search_fields = ('name',)
     search_help_text = 'Поиск по имени'
+    fieldsets = (
+        ('Основная информация', {'fields': ('name', 'slug', 'is_active')}),
+    )
