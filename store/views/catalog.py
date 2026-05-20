@@ -1,6 +1,7 @@
 import random
 from itertools import chain
 
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -20,21 +21,50 @@ class CatalogView(APIView):
 
     default_limit: int = sum(settings.CATALOG_MIX.values())
     allowed_ordering = ('created_at', '-created_at', 'random')
+    allowed_types = ('all', 'album', 'carrier', 'merch', None)
 
     def get(self, request):
-        """Возвращает смешанный список карточек каталога."""
+        """Возвращает карточки каталога."""
+        catalog_type = request.query_params.get('type')
+
+        if catalog_type is None:
+            return self._get_homepage_response()
+
+        if catalog_type not in self.allowed_types:
+            return Response(
+                {'type': 'Недопустимый тип каталога.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         offset = self._get_offset()
         batch_number = offset // self.default_limit
 
-        items = self._get_catalog_items(batch_number)
+        items = self._get_items_by_type(catalog_type, batch_number)
         items = self._sort_items(items)
 
-        return Response(
-            {
-                'next': self._get_next_url(offset, len(items)),
-                'results': items,
-            },
-        )
+        return Response({
+            'next': self._get_next_url(offset, len(items)),
+            'results': items,
+        })
+
+    def _get_items_by_type(
+        self,
+        catalog_type: str,
+        batch_number: int,
+    ) -> list[dict]:
+        """Возвращает карточки каталога по типу."""
+        if catalog_type == 'all':
+            return self._get_catalog_items(batch_number)
+
+        limit = self.default_limit
+
+        if catalog_type == 'album':
+            return self._get_album_items(limit, batch_number)
+
+        if catalog_type == 'carrier':
+            return self._get_carrier_items(limit, batch_number)
+
+        return self._get_merch_items(limit, batch_number)
 
     def _get_catalog_items(self, batch_number: int) -> list[dict]:
         """Возвращает общий список карточек каталога."""
@@ -179,3 +209,23 @@ class CatalogView(APIView):
             key=lambda item: item['created_at'],
             reverse=ordering == '-created_at',
         )
+
+    def _get_homepage_response(self) -> Response:
+        """Возвращает блоки главной страницы каталога."""
+        batch_number = 0
+        preview_limit = settings.CARDS_PER_ROW
+
+        return Response({
+            'albums': self._get_album_items(
+                preview_limit,
+                batch_number,
+            ),
+            'carriers': self._get_carrier_items(
+                preview_limit,
+                batch_number,
+            ),
+            'merch': self._get_merch_items(
+                preview_limit,
+                batch_number,
+            ),
+        })

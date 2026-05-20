@@ -43,7 +43,7 @@ class CatalogBaseSerializer(
                 None,
             )
             image = main_image or (images[0] if images else None)
-            if image:
+            if image and image.image:
                 return image.image.url
         return None
 

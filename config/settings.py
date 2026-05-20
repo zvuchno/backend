@@ -335,3 +335,4 @@ CATALOG_MIX = {
     'carrier': 4,
     'merch': 2,
 }
+CARDS_PER_ROW = 4
