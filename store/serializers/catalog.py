@@ -22,6 +22,7 @@ class CatalogBaseSerializer(
         required=False,
     )
     target_url = serializers.CharField()
+    created_at = serializers.DateTimeField()
 
     def get_artist_name(self, owner) -> str:
         """Возвращает имя артиста-владельца."""
@@ -61,6 +62,7 @@ class CatalogAlbumSerializer(CatalogBaseSerializer):
     subtitle = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     target_url = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only=True)
 
     def get_subtitle(self, obj):
         return self.get_artist_name(obj.owner)
@@ -86,6 +88,7 @@ class CatalogCarrierSerializer(CatalogBaseSerializer):
     subtitle = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     target_url = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only=True)
 
     def get_subtitle(self, obj):
         return self.get_artist_name(obj.owner)
@@ -94,7 +97,7 @@ class CatalogCarrierSerializer(CatalogBaseSerializer):
         return self.get_image_url(obj)
 
     def get_target_url(self, obj):
-        return self.get_album_target_url_by_id(obj.album_id)
+        return self.get_merch_target_url(obj)
 
 
 class CatalogMerchSerializer(CatalogBaseSerializer):
@@ -111,6 +114,7 @@ class CatalogMerchSerializer(CatalogBaseSerializer):
     subtitle = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     target_url = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(read_only=True)
 
     def get_subtitle(self, obj):
         return self.get_artist_name(obj.owner)

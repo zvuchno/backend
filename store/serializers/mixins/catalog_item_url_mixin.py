@@ -24,9 +24,7 @@ class CatalogTargetURLMixin:
         #     'api:store:merch-detail',
         #     kwargs={'pk': merch.pk},
         # )
-        return reverse(
-            f'/api/v1/store/merch/{merch.pk}/',
-        )
+        return 'no_link_yet'
 
     def get_artist_url(self, artist_profile) -> str:
         return reverse(
