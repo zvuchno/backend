@@ -12,6 +12,10 @@ MAX_STR_LENGTH = 40
 MAX_NUMBER_ORDER_LENGTH = 15
 MAX_COMMENT_LENGTH = 200
 MAX_PROMOCODE_LENGTH = 32
+PROMOCODE_FORMAT_HELP_TEXT = (
+    'Код промокода может содержать только заглавные '
+    'латинские буквы, цифры, дефис и подчеркивание.'
+)
 ZERO_MONEY = Decimal('0.0000')
 MONEY_INTERNAL_PRECISION = 4
 MONEY_DISPLAY_PRECISION = 2

@@ -12,6 +12,7 @@ from store.constants import (
     DISCOUNT_VALUE_PRECISION,
     MAX_PRICE_DIGITS,
     MAX_PROMOCODE_LENGTH,
+    PROMOCODE_FORMAT_HELP_TEXT,
 )
 from store.validators import validate_promocode_format
 from users.models.abstract import ActivatableModel, TimestampModel
@@ -53,8 +54,7 @@ class Promocode(ActivatableModel, TimestampModel):
         max_length=MAX_PROMOCODE_LENGTH,
         unique=True,
         validators=[validate_promocode_format],
-        help_text='Только заглавные '
-        'латинские буквы, цифры, дефис и подчеркивание',
+        help_text=PROMOCODE_FORMAT_HELP_TEXT,
     )
     description = models.TextField('Описание', blank=True, default='')
     discount_value = models.DecimalField(
