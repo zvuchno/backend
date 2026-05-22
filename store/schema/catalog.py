@@ -58,6 +58,20 @@ catalog_schema = extend_schema(
             required=False,
             description='Смещение от начала списка.',
         ),
+        OpenApiParameter(
+            name='ordering',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            enum=['-created_at', 'created_at', 'random'],
+            description=(
+                'Сортировка товаров. '
+                '-created_at — сначала новые, используется по умолчанию. '
+                'created_at — сначала старые. '
+                'random — случайная подборка для кнопки "Удиви меня"; '
+                'не предназначен для стабильной пагинации через offset.'
+            ),
+        ),
     ],
     responses=ProductCatalogListSerializer(many=True),
 )

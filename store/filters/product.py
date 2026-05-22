@@ -16,13 +16,25 @@ class ProductCatalogFilter(django_filters.FilterSet):
         ),
     )
     genre = django_filters.CharFilter(method='filter_genre')
+    ordering = django_filters.CharFilter(method='filter_ordering')
 
     class Meta:
         model = Product
         fields = (
             'type',
             'genre',
+            'ordering',
         )
+
+    def filter_ordering(self, queryset, name, value):
+        """Сортирует товары каталога."""
+        if value == 'random':
+            return queryset.order_by('?')
+
+        if value == 'created_at':
+            return queryset.order_by('catalog_created_at', 'pk')
+
+        return queryset.order_by('-catalog_created_at', '-pk')
 
     def filter_type(self, queryset, name, value):
         """Фильтрует товары по типу."""

@@ -23,4 +23,5 @@ class ProductCatalogListView(ListAPIView):
             .visible_for_catalog()
             .with_content()
             .with_is_favorite(user=self.request.user)
+            .with_catalog_created_at()
         )

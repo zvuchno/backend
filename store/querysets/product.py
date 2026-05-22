@@ -53,3 +53,19 @@ class ProductQuerySet(models.QuerySet):
         return self.annotate(
             is_favorite=Exists(favorite_variants),
         )
+
+    def with_catalog_created_at(self):
+        """Добавляет дату для сортировки каталога."""
+        return self.annotate(
+            catalog_created_at=models.Case(
+                models.When(
+                    product_type='album',
+                    then=models.F('album__created_at'),
+                ),
+                models.When(
+                    product_type='merch',
+                    then=models.F('merch__created_at'),
+                ),
+                output_field=models.DateTimeField(),
+            ),
+        )
