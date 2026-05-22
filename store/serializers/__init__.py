@@ -21,6 +21,7 @@ from .merch import (
     VariantWriteSerializer,
 )
 from .order import OrderDetailSerializer, OrderItemSerializer, OrderSerializer
+from .promocode import PromocodeSerializer
 from .sale import ArtistSaleDetailSerializer, ArtistSaleSerializer
 from .track import (
     TrackReadDetailSerializer,
@@ -48,6 +49,7 @@ __all__ = [
     'OrderSerializer',
     'OrderItemSerializer',
     'OrderDetailSerializer',
+    'PromocodeSerializer',
     'CartReadSerializer',
     'CartWriteSerializer',
     'CartReadSerializer',
