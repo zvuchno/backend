@@ -12,6 +12,7 @@ from .views import (
     DeliveryViewSet,
     FavoritesViewSet,
     GenreViewSet,
+    MerchViewSet,
     OrderViewSet,
     TrackViewSet,
 )
@@ -22,6 +23,7 @@ app_name = 'store'
 router = DefaultRouter()
 router.register(r'genres', GenreViewSet, basename='genres')
 router.register(r'albums', AlbumViewSet, basename='albums')
+router.register(r'merch', MerchViewSet, basename='merch')
 router.register(r'tracks', TrackViewSet, basename='tracks')
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'deliveries', DeliveryViewSet, basename='deliveries')

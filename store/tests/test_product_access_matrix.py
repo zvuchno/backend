@@ -11,15 +11,23 @@ ROLE_CLIENTS = {
     'staff': 'staff_client',
 }
 
+ROUTE_NAMES = {
+    'album': 'albums',
+    'track': 'tracks',
+    'merch': 'merch',
+}
 
-@pytest.fixture(params=['album', 'track'])
+
+@pytest.fixture(params=['album', 'track', 'merch'])
 def product_meta(request):
     """Фикстура, которая переключает контекст теста между типами продукта."""
     ptype = request.param
+    route = ROUTE_NAMES[ptype]
+
     return {
         'type': ptype,
-        'list_url': reverse(f'api:store:{ptype}s-list'),
-        'detail_url_name': f'api:store:{ptype}s-detail',
+        'list_url': reverse(f'api:store:{route}-list'),
+        'detail_url_name': f'api:store:{route}-detail',
     }
 
 

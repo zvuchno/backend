@@ -78,6 +78,7 @@ jobs:
         script: |
           # Определяем ID пользователя
           CUR_UID=$(id -u)
+          CUR_GID=$(id -g)
           # Указываем путь к сокету Докера
           export DOCKER_HOST=unix:///run/user/$CUR_UID/docker.sock
           cd zvuchno
@@ -85,9 +86,8 @@ jobs:
           grep -qq "^UID=" .env || echo "UID=$(id -u)" >> .env
           grep -qq "^GID=" .env || echo "GID=$(id -g)" >> .env
           docker compose -f docker-compose.production.yml pull
-          docker compose -f docker-compose.production.yml down
           docker compose -f docker-compose.production.yml up -d --wait
-          docker image prune -a -f
+          docker image prune -f
           echo "Исправляем владельца волюмов на $CUR_UID:$CUR_GID..."
           docker run --rm \
             -v zvuchno_static:/fix_static \
