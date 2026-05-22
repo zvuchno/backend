@@ -42,10 +42,14 @@ class ProductCatalogListSerializer(
         )
 
     def get_product_kind(self, obj) -> str | None:
+        """Возвращает вид товара для карточки каталога."""
         if obj.merch:
-            return obj.merch.kind.name
+            kind = getattr(obj.merch, 'kind', None)
+            return kind.name if kind else None
+
         if obj.album:
             return 'Сингл' if obj.album.is_single else 'Альбом'
+
         return None
 
     def get_artist(self, obj) -> str:

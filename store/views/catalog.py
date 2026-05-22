@@ -18,8 +18,9 @@ class ProductCatalogListView(ListAPIView):
     filterset_class = ProductCatalogFilter
 
     def get_queryset(self):
-        queryset = Product.objects.visible_for_catalog().with_content()
-        if self.request.user.is_authenticated:
-            queryset = queryset.with_is_favorite(user=self.request.user)
-
-        return queryset
+        return (
+            Product.objects
+            .visible_for_catalog()
+            .with_content()
+            .with_is_favorite(user=self.request.user)
+        )

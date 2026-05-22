@@ -1,9 +1,6 @@
 from django.db import models
 from django.db.models import BooleanField, Exists, OuterRef, Value
 
-PRODUCT_TYPES = {'album', 'merch'}
-CATALOG_ALL = 'all'
-
 
 class ProductQuerySet(models.QuerySet):
     """QuerySet товаров."""
@@ -25,27 +22,15 @@ class ProductQuerySet(models.QuerySet):
             ),
         )
 
-    # def by_type(self, product_type):
-    #     """Фильтрует товары по типу."""
-    #     if not product_type or product_type == CATALOG_ALL:
-    #         return self
-    #
-    #     if product_type not in PRODUCT_TYPES:
-    #         return self.none()
-    #
-    #     return self.filter(product_type=product_type)
-
     def with_content(self):
         """Подтягивает связанные сущности товара."""
         return self.select_related(
             'album',
             'album__owner',
             'album__owner__artist_profile',
-            'album__genre',
             'merch',
             'merch__owner',
             'merch__owner__artist_profile',
-            'merch__album__genre',
             'merch__kind',
         ).prefetch_related(
             'merch__images_merch',
