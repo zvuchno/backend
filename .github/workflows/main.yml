@@ -10,7 +10,6 @@ on:
     branches:
       - main
       - develop
-      - chore/ci-debug
 
 jobs:
 
@@ -90,16 +89,10 @@ jobs:
           grep -qq "^UID=" .env || echo "UID=$(id -u)" >> .env
           grep -qq "^GID=" .env || echo "GID=$(id -g)" >> .env
 
-          echo "=== DOCKER INFO ==="
-          docker info | grep "Docker Root Dir" || true
-
           echo "=== BEFORE ==="
           docker images --digests | grep zvuchno || true
 
-          echo "=== PULLING ==="
-          docker pull inswty/zvuchno_gateway:latest
-          docker pull inswty/zvuchno_backend:latest
-          docker pull inswty/zvuchno_frontend:latest
+          docker compose -f docker-compose.production.yml pull
 
           echo "=== AFTER ==="
           docker images --digests | grep zvuchno || true
