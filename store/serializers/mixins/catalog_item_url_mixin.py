@@ -1,33 +1,26 @@
 from django.urls import reverse
 
+from store.models import Product
+
 
 class CatalogTargetURLMixin:
     """Миксин для формирования ссылок каталожных карточек."""
 
-    def get_album_target_url(self, album) -> str:
+    def get_target_url(self, obj) -> str | None:
         """Возвращает ссылку на карточку альбома."""
-        return reverse(
-            'api:store:albums-detail',
-            kwargs={'pk': album.pk},
-        )
-
-    def get_album_target_url_by_id(self, album_id: int) -> str:
-        """Возвращает ссылку на карточку альбома по id."""
-        return reverse(
-            'api:store:albums-detail',
-            kwargs={'pk': album_id},
-        )
-
-    def get_merch_target_url(self, merch) -> str:
-        """Возвращает ссылку на карточку мерча."""
-        # return reverse(
-        #     'api:store:merch-detail',
-        #     kwargs={'pk': merch.pk},
-        # )
-        return 'no_link_yet'
-
-    def get_artist_url(self, artist_profile) -> str:
-        return reverse(
-            'api:users:artist_public',
-            kwargs={'slug': artist_profile.slug},
-        )
+        if obj.product_type == Product.ProductType.ALBUM:
+            return reverse(
+                'api:store:albums-detail',
+                kwargs={'pk': obj.album_id},
+            )
+        if obj.product_type == Product.ProductType.MERCH:
+            return reverse(
+                'api:store:merch-detail',
+                kwargs={'pk': obj.merch_id},
+            )
+        if obj.product_type == Product.ProductType.TRACK:
+            return reverse(
+                'api:store:tracks-detail',
+                kwargs={'pk': obj.track_id},
+            )
+        return None

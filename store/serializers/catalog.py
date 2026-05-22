@@ -1,126 +1,77 @@
 from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from store.models import Product
 from store.serializers.mixins import CatalogTargetURLMixin
 
 
-class CatalogBaseSerializer(
+class ProductCatalogListSerializer(
     CatalogTargetURLMixin,
-    serializers.Serializer,
+    serializers.ModelSerializer,
 ):
-    """Базовый сериализатор карточки смешанного каталога."""
+    """Сериализатор карточки товара в каталоге."""
 
-    type = serializers.CharField()
-    id = serializers.IntegerField()
-    title = serializers.CharField()
-    subtitle = serializers.CharField(allow_blank=True, required=False)
-    image = serializers.CharField(allow_null=True)
+    type = serializers.CharField(source='product_type')
+    product_kind = serializers.SerializerMethodField()
+    object_id = serializers.IntegerField(source='content_id')
+    name = serializers.CharField()
+    image = serializers.SerializerMethodField()
+    artist = serializers.SerializerMethodField()
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
         allow_null=True,
         required=False,
     )
-    target_url = serializers.CharField()
-    created_at = serializers.DateTimeField()
+    target_url = serializers.SerializerMethodField()
+    is_favorite = serializers.BooleanField(default=False)
 
-    def get_artist_name(self, owner) -> str:
+    class Meta:
+        model = Product
+        fields = (
+            'id',
+            'type',
+            'product_kind',
+            'name',
+            'object_id',
+            'image',
+            'artist',
+            'price',
+            'target_url',
+            'is_favorite',
+        )
+
+    def get_product_kind(self, obj) -> str | None:
+        if obj.merch:
+            return obj.merch.kind.name
+        if obj.album:
+            return 'Сингл' if obj.album.is_single else 'Альбом'
+        return None
+
+    def get_artist(self, obj) -> str:
         """Возвращает имя артиста-владельца."""
-        artist = getattr(owner, 'artist_profile', None)
+        artist = getattr(obj.owner, 'artist_profile', None)
         return artist.name if artist else ''
 
-    def get_image_url(self, obj) -> str | None:
+    def get_image(self, obj) -> str | None:
         """Возвращает URL изображения карточки."""
-        # Album
-        if hasattr(obj, 'cover_image'):
-            return obj.cover_image.url if obj.cover_image else None
+        content = obj.content
 
-        # Merch
-        if hasattr(obj, 'images_merch'):
-            images = list(obj.images_merch.all())
+        if content is None:
+            return None
+
+        if hasattr(content, 'cover_image') and content.cover_image:
+            return content.cover_image.url
+
+        if hasattr(content, 'images_merch'):
+            images = list(content.images_merch.all())
             main_image = next(
                 (image for image in images if image.is_main),
                 None,
             )
             image = main_image or (images[0] if images else None)
+
             if image and image.image:
                 return image.image.url
+
         return None
-
-
-class CatalogAlbumSerializer(CatalogBaseSerializer):
-    """Сериализатор альбомов для смешанного каталога."""
-
-    type = serializers.CharField(default='album')
-    title = serializers.CharField(source='name')
-    price = serializers.DecimalField(
-        source='product.price',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        allow_null=True,
-    )
-    subtitle = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-    target_url = serializers.SerializerMethodField()
-    created_at = serializers.DateTimeField(read_only=True)
-
-    def get_subtitle(self, obj):
-        return self.get_artist_name(obj.owner)
-
-    def get_image(self, obj):
-        return self.get_image_url(obj)
-
-    def get_target_url(self, obj):
-        return self.get_album_target_url(obj)
-
-
-class CatalogCarrierSerializer(CatalogBaseSerializer):
-    """Сериализатор носителей для смешанного каталога."""
-
-    type = serializers.CharField(default='carrier')
-    title = serializers.CharField(source='name')
-    price = serializers.DecimalField(
-        source='product.price',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        allow_null=True,
-    )
-    subtitle = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-    target_url = serializers.SerializerMethodField()
-    created_at = serializers.DateTimeField(read_only=True)
-
-    def get_subtitle(self, obj):
-        return self.get_artist_name(obj.owner)
-
-    def get_image(self, obj):
-        return self.get_image_url(obj)
-
-    def get_target_url(self, obj):
-        return self.get_merch_target_url(obj)
-
-
-class CatalogMerchSerializer(CatalogBaseSerializer):
-    """Сериализатор мерча для смешанного каталога."""
-
-    type = serializers.CharField(default='merch')
-    title = serializers.CharField(source='name')
-    price = serializers.DecimalField(
-        source='product.price',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        allow_null=True,
-    )
-    subtitle = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-    target_url = serializers.SerializerMethodField()
-    created_at = serializers.DateTimeField(read_only=True)
-
-    def get_subtitle(self, obj):
-        return self.get_artist_name(obj.owner)
-
-    def get_image(self, obj):
-        return self.get_image_url(obj)
-
-    def get_target_url(self, obj):
-        return self.get_merch_target_url(obj)

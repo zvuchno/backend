@@ -14,9 +14,9 @@ from .views import (
     GenreViewSet,
     MerchViewSet,
     OrderViewSet,
+    ProductCatalogListView,
     TrackViewSet,
 )
-from .views.catalog import CatalogView
 
 app_name = 'store'
 
@@ -32,5 +32,5 @@ router.register(r'orders', OrderViewSet, basename='orders')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('catalog/', CatalogView.as_view(), name='catalog'),
+    path('catalog/', ProductCatalogListView.as_view(), name='catalog'),
 ]

@@ -16,6 +16,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_INTERNAL_PRECISION,
 )
+from store.querysets import ProductQuerySet
 
 
 class Product(models.Model):
@@ -127,6 +128,8 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         self.determine_product_type()
         super().save(*args, **kwargs)
+
+    objects = ProductQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'товар'
