@@ -17,13 +17,31 @@ class ProductCatalogFilter(django_filters.FilterSet):
     )
     genre = django_filters.CharFilter(method='filter_genre')
     ordering = django_filters.CharFilter(method='filter_ordering')
+    artist = django_filters.CharFilter(method='filter_artist')
 
     class Meta:
         model = Product
         fields = (
             'type',
             'genre',
+            'artist',
             'ordering',
+        )
+
+    def filter_artist(self, queryset, name, value):
+        """Фильтрует товары по slug артиста."""
+        if not value:
+            return queryset
+
+        return queryset.filter(
+            models.Q(
+                product_type=Product.ProductType.ALBUM,
+                album__owner__artist_profile__slug=value,
+            )
+            | models.Q(
+                product_type=Product.ProductType.MERCH,
+                merch__owner__artist_profile__slug=value,
+            ),
         )
 
     def filter_ordering(self, queryset, name, value):

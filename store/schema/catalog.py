@@ -72,6 +72,16 @@ catalog_schema = extend_schema(
                 'не предназначен для стабильной пагинации через offset.'
             ),
         ),
+        OpenApiParameter(
+            name='artist',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            required=False,
+            description=(
+                'Slug артиста. Возвращает товары, '
+                'принадлежащие указанному артисту.'
+            ),
+        ),
     ],
     responses=ProductCatalogListSerializer(many=True),
 )
