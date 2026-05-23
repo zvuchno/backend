@@ -13,10 +13,6 @@ class TestMerchList:
     """Тесты GET /merch/ — список мерча."""
 
     @pytest.fixture
-    def merch_list_url(self):
-        return reverse('api:store:merch-list')
-
-    @pytest.fixture
     def merch(self, variant_factory):
         return variant_factory(
             product_type='merch',
@@ -115,10 +111,6 @@ class TestMerchRetrieve:
 @pytest.mark.django_db
 class TestMerchCreate:
     """Тесты POST /merch/ — создание мерча."""
-
-    @pytest.fixture
-    def merch_list_url(self):
-        return reverse('api:store:merch-list')
 
     @pytest.fixture
     def merch_payload(self):
