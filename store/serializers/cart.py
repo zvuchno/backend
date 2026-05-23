@@ -127,6 +127,15 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
         existing_qty = existing_item.quantity if existing_item else 0
         total_quantity = (existing_qty + quantity) if is_adding else quantity
 
+        if product.product_type == 'track':
+            track_obj = product.content
+            # Если цена равна 0 - купить нельзя
+            if track_obj and product.price == 0:
+                raise serializers.ValidationError({
+                    'product_variant': 'Этот трек нельзя приобрести '
+                    'отдельно от альбома.',
+                })
+
         if variant.product.product_type == 'merch':
             if variant.stock is not None and total_quantity > variant.stock:
                 raise serializers.ValidationError({
