@@ -14,6 +14,7 @@ from .favorites import favorites_schema
 from .genre import genre_schema
 from .merch import merch_schema
 from .order import order_schema
+from .promocode import promocode_schema
 from .sale import artist_sale_schema
 from .track import track_schema
 
@@ -27,6 +28,7 @@ __all__ = [
     'genre_schema',
     'merch_schema',
     'order_schema',
+    'promocode_schema',
     'track_schema',
     'order_schema',
 ]

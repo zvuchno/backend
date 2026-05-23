@@ -5,6 +5,7 @@ from .favorites import FavoritesViewSet
 from .genre import GenreViewSet
 from .merch import MerchViewSet
 from .order import OrderViewSet
+from .promocode import PromocodeViewSet
 from .sale import ArtistSaleViewSet
 from .track import TrackViewSet
 
@@ -17,5 +18,6 @@ __all__ = [
     'GenreViewSet',
     'MerchViewSet',
     'OrderViewSet',
+    'PromocodeViewSet',
     'TrackViewSet',
 ]
