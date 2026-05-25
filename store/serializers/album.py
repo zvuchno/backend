@@ -10,8 +10,8 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
+from .genre import GenreSerializer
 from .image import ImageSerializer
-from .mixins import ProductVariantsMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     MAX_PRICE_DIGITS,
@@ -19,7 +19,6 @@ from store.constants import (
 )
 from store.models import (
     Album,
-    Merch,
     ProductVariant,
 )
 
@@ -28,12 +27,17 @@ class AlbumReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Album."""
 
     price = serializers.SerializerMethodField()
+    artist_name = serializers.CharField(
+        source='owner.artist_profile.name',
+        read_only=True,
+    )
 
     class Meta:
         model = Album
         fields = (
             'id',
             'name',
+            'artist_name',
             'price',
             'description',
             'cover_image',
@@ -184,75 +188,65 @@ class AlbumVariantSerializer(serializers.ModelSerializer):
         }
 
 
-class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
+class AlbumReadDetailSerializer(AlbumReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Album."""
 
     variants = serializers.SerializerMethodField()
+    genre = GenreSerializer()
+    images = serializers.SerializerMethodField()
 
     class Meta(AlbumReadSerializer.Meta):
-        fields = AlbumReadSerializer.Meta.fields + (
+        fields = (
+            'id',
+            'name',
+            'artist_name',
+            'price',
+            'description',
+            'images',
+            'visibility',
+            'is_published',
             'is_single',
             'genre',
             'release_date',
             'variants',
         )
 
+    def get_images(self, obj):
+        """Возвращает изображения альбома в формате галереи."""
+        if not obj.cover_image:
+            return []
+
+        return ImageSerializer(
+            [
+                {
+                    'image': obj.cover_image,
+                    'is_main': True,
+                },
+            ],
+            many=True,
+            context=self.context,
+        ).data
+
     def get_variants(self, obj):
         """Возвращает варианты покупки альбома."""
         variants = []
 
-        digital_variant = self._get_digital_variant(obj)
-        if digital_variant:
-            variants.append(digital_variant)
+        product = getattr(obj, 'product', None)
+        if product is not None:
+            variants.extend(getattr(product, 'active_digital_variants', []))
 
-        variants.extend(self._get_carrier_variants(obj))
+        for carrier in getattr(obj, 'active_carriers', []):
+            product = getattr(carrier, 'product', None)
+            if product is not None:
+                variants.extend(
+                    getattr(product, 'active_carriers_variants', []),
+                )
 
         return AlbumVariantSerializer(
             variants,
             many=True,
-            context={
-                **self.context,
-                'album': obj,
-            },
+            context=self.context,
         ).data
-
-    def _get_digital_variant(self, album) -> ProductVariant | None:
-        """Возвращает цифровой вариант альбома."""
-        product = getattr(album, 'product', None)
-        if product is None:
-            return None
-
-        return product.variants.filter(is_active=True).order_by('id').first()
-
-    def _get_carrier_variants(self, album) -> list[ProductVariant] | None:
-        """Возвращает физические варианты альбома."""
-        variants = []
-
-        carriers = (
-            Merch.objects
-            .filter(album=album, is_carrier=True, is_active=True)
-            .select_related('kind', 'product')
-            .prefetch_related('product__variants', 'images_merch')
-            .order_by('id')
-        )
-
-        for merch in carriers:
-            product = getattr(merch, 'product', None)
-            if product is None:
-                continue
-
-            variants.extend(
-                product.variants
-                .filter(is_active=True)
-                .select_related(
-                    'product',
-                    'product__merch',
-                    'product__merch__kind',
-                )
-                .order_by('id'),
-            )
-
-        return variants
 
 
 class AlbumWriteSerializer(serializers.ModelSerializer):

@@ -1,5 +1,6 @@
 """ViewSet для управления альбомами."""
 
+from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
@@ -8,7 +9,7 @@ from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
 
 from .mixins import ProductActionMixin, SoftDeleteMixin
 from store.filters import AlbumFilter
-from store.models import Album
+from store.models import Album, Merch, ProductVariant
 from store.schema import album_schema
 from store.serializers import (
     AlbumReadDetailSerializer,
@@ -73,7 +74,62 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
                 'genre',
                 'owner__artist_profile',
             )
-        return queryset
+        if self.action != 'retrieve':
+            return queryset
+
+        digital_active_variants = (
+            ProductVariant.objects
+            .filter(is_active=True)
+            .select_related(
+                'product',
+                'product__album',
+            )
+            .order_by('id')
+        )
+
+        carrier_active_variants = (
+            ProductVariant.objects
+            .filter(is_active=True)
+            .select_related(
+                'product',
+                'product__merch',
+                'product__merch__kind',
+                'product__merch__album',
+            )
+            .order_by('id')
+        )
+
+        carrier_qs = (
+            Merch.objects
+            .filter(is_carrier=True, is_active=True)
+            .select_related(
+                'album',
+                'kind',
+                'product',
+            )
+            .prefetch_related(
+                'images_merch',
+                Prefetch(
+                    'product__variants',
+                    queryset=carrier_active_variants,
+                    to_attr='active_carriers_variants',
+                ),
+            )
+            .order_by('id')
+        )
+
+        return queryset.prefetch_related(
+            Prefetch(
+                'product__variants',
+                queryset=digital_active_variants,
+                to_attr='active_digital_variants',
+            ),
+            Prefetch(
+                'merch',
+                queryset=carrier_qs,
+                to_attr='active_carriers',
+            ),
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
