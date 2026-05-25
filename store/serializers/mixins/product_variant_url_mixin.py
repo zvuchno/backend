@@ -22,12 +22,10 @@ class ProductVariantURLMixin:
                 kwargs={'pk': product.track_id},
             )
         elif product.merch_id:
-            # relative = reverse(
-            #'api:store:merch-detail',
-            # kwargs={'pk': product.merch_id},
-            # )
-            # TODO: заменить на reverse('merch-detail') когда маршрут появится
-            relative = f'/api/v1/store/merch/{product.merch_id}/'
+            relative = reverse(
+                'api:store:merch-detail',
+                kwargs={'pk': product.merch_id},
+            )
         else:
             return None
 

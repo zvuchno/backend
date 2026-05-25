@@ -12,6 +12,7 @@ from .checkout_schema import checkout_schema
 from .delivery import delivery_schema
 from .favorites import favorites_schema
 from .genre import genre_schema
+from .merch import merch_schema
 from .order import order_schema
 from .purchased_music import purchased_music_schema
 from .sale import artist_sale_schema
@@ -25,6 +26,7 @@ __all__ = [
     'delivery_schema',
     'favorites_schema',
     'genre_schema',
+    'merch_schema',
     'order_schema',
     'track_schema',
     'order_schema',

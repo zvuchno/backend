@@ -12,6 +12,7 @@ from .genre import GenreAdmin
 from .merch import MerchAdmin
 from .merch_kind import MerchKindAdmin
 from .order import OrderAdmin
+from .promocode import Promocode
 from .track import TrackAdmin
 
 __all__ = [
@@ -23,5 +24,6 @@ __all__ = [
     'MerchKindAdmin',
     'MerchAdmin',
     'OrderAdmin',
+    'Promocode',
     'TrackAdmin',
 ]

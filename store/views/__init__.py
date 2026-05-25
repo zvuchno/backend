@@ -3,6 +3,7 @@ from .cart import CartViewSet
 from .delivery import DeliveryViewSet
 from .favorites import FavoritesViewSet
 from .genre import GenreViewSet
+from .merch import MerchViewSet
 from .order import OrderViewSet
 from .purchased_music import PurchasedMusicView
 from .sale import ArtistSaleViewSet
@@ -15,6 +16,7 @@ __all__ = [
     'DeliveryViewSet',
     'FavoritesViewSet',
     'GenreViewSet',
+    'MerchViewSet',
     'OrderViewSet',
     'TrackViewSet',
     'PurchasedMusicView',
