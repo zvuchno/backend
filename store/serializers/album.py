@@ -5,54 +5,40 @@
 Используются в API для создания и обновления альбомов и их товарных данных.
 """
 
-from decimal import Decimal
-
 from django.utils import timezone
 from rest_framework import serializers
 
-from .mixins import ProductVariantsMixin
+from .mixins import BaseCatalogItemSerializerMixin, ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Album
 
 
-class AlbumReadSerializer(serializers.ModelSerializer):
+class AlbumReadSerializer(
+    BaseCatalogItemSerializerMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор для чтения Album."""
 
+    artist_name = serializers.SerializerMethodField()
+    kind = serializers.SerializerMethodField()
+    year = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
+    image = serializers.ImageField(source='cover_image', read_only=True)
+    product_type = serializers.CharField(
+        source='product.product_type',
+        read_only=True,
+    )
 
-    class Meta:
+    class Meta(BaseCatalogItemSerializerMixin.Meta):
         model = Album
-        fields = (
-            'id',
-            'name',
-            'price',
-            'description',
-            'cover_image',
-            'visibility',
-            'is_published',
-        )
 
-    def get_price(self, obj) -> Decimal | None:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.price
+    def get_kind(self, obj):
+        return 'Сингл' if obj.is_single else 'Альбом'
+
+    def get_year(self, obj):
+        if obj.release_date:
+            return obj.release_date.year
         return None
-
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        user = (
-            self.context.get('request').user
-            if self.context.get('request')
-            else None
-        )
-
-        # Скрываем поля, если юзера нет, если не владелец и не админ
-        if not user or not (
-            user.is_authenticated and (user == instance.owner or user.is_staff)
-        ):
-            ret.pop('visibility', None)
-            ret.pop('is_published', None)
-        return ret
 
 
 class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
@@ -65,9 +51,12 @@ class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
         fields = AlbumReadSerializer.Meta.fields + (
             'is_single',
             'genre',
+            'description',
             'release_date',
             'allow_overpay',
             'variants',
+            'visibility',
+            'is_published',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -75,6 +64,22 @@ class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
         if product:
             return product.allow_overpay
         return False
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        user = (
+            self.context.get('request').user
+            if self.context.get('request')
+            else None
+        )
+
+        # Скрываем поля, если юзера нет, если не владелец и не админ
+        if not user or not (
+            user.is_authenticated and (user == instance.owner or user.is_staff)
+        ):
+            data.pop('visibility', None)
+            data.pop('is_published', None)
+        return data
 
 
 class AlbumWriteSerializer(serializers.ModelSerializer):
