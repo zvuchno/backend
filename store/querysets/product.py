@@ -5,6 +5,34 @@ from django.db.models import Prefetch
 class ProductQuerySet(models.QuerySet):
     """QuerySet товаров."""
 
+    def active_content(self):
+        """Возвращает товары с активным связанным контентом."""
+        return self.filter(
+            models.Q(
+                album__isnull=False,
+                album__is_active=True,
+            )
+            | models.Q(
+                merch__isnull=False,
+                merch__is_active=True,
+            ),
+        )
+
+    def published_content(self):
+        """Возвращает товары с опубликованным связанным контентом."""
+        return self.filter(
+            models.Q(
+                album__isnull=False,
+                album__is_active=True,
+                album__is_published=True,
+            )
+            | models.Q(
+                merch__isnull=False,
+                merch__is_active=True,
+                merch__is_published=True,
+            ),
+        )
+
     def with_content(self):
         """Подтягивает связанные контентные объекты товара."""
         return self.select_related(
@@ -34,7 +62,3 @@ class ProductQuerySet(models.QuerySet):
                 to_attr='active_variants',
             ),
         )
-
-    def active(self):
-        """Возвращает активные товары."""
-        return self.filter(is_active=True)

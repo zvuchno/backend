@@ -1,3 +1,4 @@
+from django.urls import reverse
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -9,12 +10,15 @@ class CatalogCardDetailSerializer(serializers.Serializer):
     """Сериализатор блока перехода на detail-страницу.
 
     type - тип для выбора detail ручки.
+    id - идентификатор объекта detail-ручки.
+    target_url - URL detail-ручки.
     preselect_variant_id - для предвыбора варианта товара,
     например при переходе из card винила на detail карточку альбома.
     """
 
     type = serializers.CharField()
     id = serializers.IntegerField()
+    target_url = serializers.CharField()
     preselect_variant_id = serializers.IntegerField(
         required=False,
         allow_null=True,
@@ -39,6 +43,12 @@ class CatalogCardSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    DETAIL_URL_NAMES = {
+        'album': 'api:store:albums-detail',
+        'merch': 'api:store:merch-detail',
+        'track': 'api:store:tracks-detail',
+    }
+
     class Meta:
         model = Product
         fields = (
@@ -52,6 +62,20 @@ class CatalogCardSerializer(serializers.ModelSerializer):
             'image',
             'detail',
         )
+
+    def _get_target_url(self, obj) -> str | None:
+        """Возвращает ссылку на карточку альбома или мерча."""
+        if obj.product_type == 'album':
+            return reverse(
+                'api:store:albums-detail',
+                kwargs={'pk': obj.album_id},
+            )
+        if obj.product_type == 'merch':
+            return reverse(
+                'api:store:merch-detail',
+                kwargs={'pk': obj.merch_id},
+            )
+        return None
 
     def get_artist_name(self, obj):
         owner = getattr(obj.content, 'owner', None)
@@ -79,10 +103,8 @@ class CatalogCardSerializer(serializers.ModelSerializer):
     @extend_schema_field(CatalogCardDetailSerializer)
     def get_detail(self, obj):
         """Возвращает данные для перехода на detail-страницу."""
-        detail = {
-            'type': obj.product_type,
-            'id': obj.content.id,
-        }
+        detail_type = obj.product_type
+        detail_id = obj.content.id
 
         is_carrier = (
             obj.merch_id and obj.merch.album_id and obj.merch.is_carrier
@@ -90,8 +112,14 @@ class CatalogCardSerializer(serializers.ModelSerializer):
 
         # Носитель уйдет на detail альбома.
         if is_carrier:
-            detail['type'] = 'album'
-            detail['id'] = obj.merch.album_id
+            detail_type = 'album'
+            detail_id = obj.merch.album_id
+
+        detail = {
+            'type': detail_type,
+            'id': detail_id,
+            'target_url': self.get_target_url(detail_type, detail_id),
+        }
 
         # Если передан выбранный вариант, например из корзины или заказа.
         preselect_variant = self.context.get('preselect_variant')
@@ -120,6 +148,15 @@ class CatalogCardSerializer(serializers.ModelSerializer):
                 detail['preselect_variant_id'] = default_variant.id
 
         return detail
+
+    def get_target_url(self, detail_type, detail_id):
+        """Возвращает URL detail-ручки."""
+        url_name = self.DETAIL_URL_NAMES.get(detail_type)
+
+        if not url_name:
+            return None
+
+        return reverse(url_name, args=(detail_id,))
 
     def get_image(self, obj):
         """Возвращает изображение карточки товара."""
