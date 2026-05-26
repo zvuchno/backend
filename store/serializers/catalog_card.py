@@ -27,8 +27,32 @@ class CatalogCardDetailSerializer(serializers.Serializer):
 class CatalogCardSerializer(serializers.ModelSerializer):
     """Сериализатор единой карточки товара.
 
-    Может использоваться в списках каталога, избранного, корзины
-    и других ручках, где нужна одинаковая товарная карточка.
+    Базовая модель карточки — Product.
+
+    Сериализатор используется для списков, где фронту нужна одинаковая
+    товарная карточка: каталог, избранное, корзина, кабинет слушателя
+    и похожие витринные выдачи.
+
+    Если исходная ручка работает не с Product, а с другой сущностью,
+    нужно передать в этот сериализатор связанный Product:
+
+    - Album/Merch/Track -> instance.product;
+    - Favorite -> favorite.product;
+    - CartItem -> cart_item.product_variant.product;
+    - OrderItem -> лучше использовать сохраненный snapshot карточки.
+
+    Для корзины и других ручек с уже выбранным вариантом можно передать
+    вариант через context['preselect_variant']. Тогда его id попадет
+    в detail.preselect_variant_id.
+
+    Пример:
+        CatalogCardSerializer(
+            cart_item.product_variant.product,
+            context={
+                **self.context,
+                'preselect_variant': cart_item.product_variant,
+            },
+        ).data
     """
 
     artist_name = serializers.SerializerMethodField()
