@@ -5,7 +5,9 @@
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import F
 
+from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
 from store.models import Delivery, Order, OrderItem, Product
 from store.serializers import DeliverySerializer
@@ -26,10 +28,11 @@ class OrderService:
 
         Собирает:
         - дефолтные данные пользователя для предзаполнения формы
-        - итоговую стоимость корзины
+        - итоговую стоимость корзины (с учётом промокодов)
         - доступные способы доставки (если в корзине есть мерч)
         """
         cart = cart or (user.cart if user else None)
+        calculation_service = CartCalculationService(cart)
 
         has_merch = cart.items.filter(
             product_variant__product__product_type=Product.ProductType.MERCH,
@@ -47,7 +50,9 @@ class OrderService:
                 'email': user.email if user else '',
                 'phone': str(getattr(user, 'phone', '') or ''),
             },
-            'subtotal': cart.subtotal,
+            'subtotal': calculation_service.get_subtotal(),
+            'discount_promocode': calculation_service.get_discount_total(),
+            'total': calculation_service.get_total(),
             'deliveries': DeliverySerializer(deliveries_qs, many=True).data,
         }
 
@@ -64,11 +69,12 @@ class OrderService:
 
         Выполняет следующие шаги:
         1. Блокирует позиции корзины для предотвращения race condition.
-        2. Рассчитывает финальную стоимость - total.
-        3. Создает объект Order и OrderItem (со снапшотами данных о товарах).
+        2. Инициализирует CartCalculationService для точного расчёта скидок.
+        3. Создает объект Order и OrderItem (со снапшотами данных и скидок).
         4. Регистрирует согласие пользователя на рассылку и обработку ПДн.
         5. Очищает корзину (удаляет позиции или объект целиком для анонимов).
         """
+        # Блокируем строки корзины
         cart_items = (
             cart.items
             .select_for_update()
@@ -83,6 +89,9 @@ class OrderService:
         if not cart_items.exists():
             raise ValidationError('Нельзя оформить заказ с пустой корзиной.')
 
+        calc_service = CartCalculationService(cart)
+        item_discounts = calc_service.get_item_discounts()
+
         personal_data_consent = validated_data.pop(
             'personal_data_consent',
             None,
@@ -92,14 +101,17 @@ class OrderService:
         delivery_price = delivery.price if delivery else ZERO_MONEY
         delivery_name = delivery.name if delivery else ''
 
-        subtotal = cart.subtotal
-        total = cart.total + delivery_price
+        subtotal = calc_service.get_subtotal()
+        promocode_discount = calc_service.get_discount_total()
+        total = calc_service.get_total() + delivery_price
 
-        # Создаем заказ
+        # Создаем заказ с фиксацией промокода и его общей скидки
         order = Order.objects.create(
             user=user if user and user.is_authenticated else None,
             status=Order.Status.CREATED,
             subtotal=subtotal,
+            promocode=cart.promocode,
+            promocode_discount=promocode_discount,
             delivery_price=delivery_price,
             total=total,
             delivery=delivery_name,
@@ -109,18 +121,34 @@ class OrderService:
         # Формируем позиции заказа и собираем уникальных артистов для рассылки
         order_items = []
         artists_to_subscribe = set()
+        promocode_code = cart.promocode.code if cart.promocode else ''
 
         for item in cart_items:
             variant = item.product_variant
             product = variant.product
+            item_promocode_discount = item_discounts.get(item.id, ZERO_MONEY)
+
+            owner = getattr(product, 'owner', None)
+            artist_profile = (
+                getattr(
+                    owner,
+                    'artist_profile',
+                    None,
+                )
+                if owner
+                else None
+            )
+            artist_name = getattr(artist_profile, 'name', '')
 
             # Собираем JSON-снапшот
             product_info_snapshot = {
                 'name': variant.variant_name,
+                'artist_name': artist_name,
                 'product_type': product.product_type,
                 'property_name': product.property_name,
                 'property_value': variant.property_value,
                 'allow_overpay': product.allow_overpay,
+                'promocode': promocode_code,
                 'sku': variant.sku,
             }
 
@@ -132,14 +160,12 @@ class OrderService:
                     price_at_purchase=product.price,
                     unit_price=item.unit_price,
                     quantity=item.quantity,
-                    # TODO: Добавить promocode_discount
+                    promocode_discount=item_promocode_discount,
                     product_info=product_info_snapshot,
                 ),
             )
-            if item.is_artist_subscription:
-                artist_profile = getattr(product.owner, 'artist_profile', None)
-                if artist_profile:
-                    artists_to_subscribe.add(artist_profile)
+            if item.is_artist_subscription and artist_profile:
+                artists_to_subscribe.add(artist_profile)
 
         OrderItem.objects.bulk_create(order_items)
 
@@ -189,11 +215,27 @@ class OrderService:
                 user_agent=user_agent,
             )
 
-        # Очищаем корзину
-        cart_items.delete()
-
-        # Дропаем сессионную
-        if not user or not user.is_authenticated:
-            cart.delete()
+        OrderService._finalize_cart_and_promocode(
+            user,
+            cart,
+            order,
+            cart_items,
+        )
 
         return order
+
+    @staticmethod
+    def _finalize_cart_and_promocode(user, cart, order, cart_items) -> None:
+        """Очищает корзину, промокод, и инкрементирует счетчик."""
+        cart_items.delete()
+
+        if not user or not user.is_authenticated:
+            cart.delete()
+        else:
+            cart.promocode = None
+            cart.save()
+
+        if order.promocode_id:
+            order.promocode.__class__.objects.filter(
+                id=order.promocode_id,
+            ).update(used_count=F('used_count') + 1)
