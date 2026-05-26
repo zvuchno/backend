@@ -1,0 +1,156 @@
+from drf_spectacular.utils import extend_schema_field
+from rest_framework import serializers
+
+from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from store.models import Product
+
+
+class CatalogCardDetailSerializer(serializers.Serializer):
+    """Сериализатор блока перехода на detail-страницу.
+
+    type - тип для выбора detail ручки.
+    preselect_variant_id - для предвыбора варианта товара,
+    например при переходе из card винила на detail карточку альбома.
+    """
+
+    type = serializers.CharField()
+    id = serializers.IntegerField()
+    preselect_variant_id = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+    )
+
+
+class CatalogCardSerializer(serializers.ModelSerializer):
+    """Сериализатор единой карточки товара.
+
+    Может использоваться в списках каталога, избранного, корзины
+    и других ручках, где нужна одинаковая товарная карточка.
+    """
+
+    artist_name = serializers.SerializerMethodField()
+    kind = serializers.SerializerMethodField()
+    year = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    detail = serializers.SerializerMethodField()
+    price = serializers.DecimalField(
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
+
+    class Meta:
+        model = Product
+        fields = (
+            'id',
+            'product_type',
+            'name',
+            'artist_name',
+            'kind',
+            'year',
+            'price',
+            'image',
+            'detail',
+        )
+
+    def get_artist_name(self, obj):
+        owner = getattr(obj.content, 'owner', None)
+        artist_profile = getattr(owner, 'artist_profile', None)
+        return artist_profile.name if artist_profile else None
+
+    def get_kind(self, obj):
+        if obj.album_id:
+            return 'Сингл' if obj.album.is_single else 'Альбом'
+
+        if obj.merch_id:
+            merch = obj.merch
+            return merch.kind.name if merch.kind else None
+
+        if obj.track_id:
+            return 'Трек'
+
+        return None
+
+    def get_year(self, obj):
+        if obj.album_id and obj.album.release_date:
+            return obj.album.release_date.year
+        return None
+
+    @extend_schema_field(CatalogCardDetailSerializer)
+    def get_detail(self, obj):
+        """Возвращает данные для перехода на detail-страницу."""
+        detail = {
+            'type': obj.product_type,
+            'id': obj.content.id,
+        }
+
+        is_carrier = (
+            obj.merch_id and obj.merch.album_id and obj.merch.is_carrier
+        )
+
+        # Носитель уйдет на detail альбома.
+        if is_carrier:
+            detail['type'] = 'album'
+            detail['id'] = obj.merch.album_id
+
+        # Если передан выбранный вариант, например из корзины или заказа.
+        preselect_variant = self.context.get('preselect_variant')
+
+        if (
+            preselect_variant is not None
+            and preselect_variant.product_id == obj.id
+        ):
+            detail['preselect_variant_id'] = preselect_variant.id
+            return detail
+
+        # Свой вариант у каждого носителя как выбранный на detail альбома.
+        if obj.album_id or is_carrier:
+            active_variants = getattr(obj, 'active_variants', None)
+            # если сделан prefetch to_attr='active_variants'
+            if active_variants is not None:
+                default_variant = (
+                    active_variants[0] if active_variants else None
+                )
+            else:
+                default_variant = (
+                    obj.variants.filter(is_active=True).order_by('id').first()
+                )
+
+            if default_variant is not None:
+                detail['preselect_variant_id'] = default_variant.id
+
+        return detail
+
+    def get_image(self, obj):
+        """Возвращает изображение карточки товара."""
+        request = self.context.get('request')
+
+        if obj.album_id:
+            image = obj.album.cover_image
+            if not image:
+                return None
+            try:
+                url = image.url
+            except ValueError:
+                return None
+
+            return request.build_absolute_uri(url) if request else url
+
+        if obj.merch_id:
+            images = list(obj.merch.images_merch.all())
+            if not images:
+                return None
+
+            main_image = next(
+                (image for image in images if image.is_main),
+                images[0],
+            )
+
+            try:
+                url = main_image.image.url
+            except ValueError:
+                return None
+
+            return request.build_absolute_uri(url) if request else url
+
+        return None
