@@ -64,8 +64,9 @@ class MerchReadSerializer(
         return obj.kind.name
 
     def get_year(self, obj):
-        if obj.created_at:
-            return obj.created_at.year  # TODO: Добавить поле даты в модель?
+        if obj.is_carrier and obj.album_id:
+            if obj.album.release_date:
+                return obj.album.release_date.year
         return None
 
 
