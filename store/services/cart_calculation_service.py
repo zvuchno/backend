@@ -139,14 +139,14 @@ class CartCalculationService:
                 # Чтобы избежать 'потери копеек' из-за округлений
                 # при делении, последний товар забирает
                 # весь остаток распределяемой суммы
-                discounts[item.id] = remaining.quantize(Decimal('0.0000'))
+                discounts[item.id] = remaining.quantize(Decimal('0.01'))
             else:
                 # Расчитываем долю конкретной позиции в общем обороте
                 # применимых товаров: Share = Item_Total / Total_Applicable
                 # Скидка на позицию = Общая_Скидка * Share
                 share = item.base_line_total / total_applicable
                 item_discount = (discount_to_distribute * share).quantize(
-                    Decimal('0.0000'),
+                    Decimal('0.01'),
                 )
 
                 discounts[item.id] = item_discount
