@@ -8,6 +8,7 @@
 
 from .album import album_schema
 from .cart import cart_schema
+from .catalog import catalog_list_schema
 from .checkout_schema import checkout_schema
 from .delivery import delivery_schema
 from .favorites import favorites_schema
@@ -21,6 +22,7 @@ from .track import track_schema
 __all__ = [
     'album_schema',
     'artist_sale_schema',
+    'catalog_list_schema',
     'cart_schema',
     'checkout_schema',
     'delivery_schema',

@@ -1,5 +1,4 @@
 from django.urls import reverse
-from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
@@ -42,6 +41,7 @@ class CatalogCardSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    is_favorite = serializers.SerializerMethodField()
 
     DETAIL_URL_NAMES = {
         'album': 'api:store:albums-detail',
@@ -60,22 +60,13 @@ class CatalogCardSerializer(serializers.ModelSerializer):
             'year',
             'price',
             'image',
+            'is_favorite',
             'detail',
         )
 
-    def _get_target_url(self, obj) -> str | None:
-        """Возвращает ссылку на карточку альбома или мерча."""
-        if obj.product_type == 'album':
-            return reverse(
-                'api:store:albums-detail',
-                kwargs={'pk': obj.album_id},
-            )
-        if obj.product_type == 'merch':
-            return reverse(
-                'api:store:merch-detail',
-                kwargs={'pk': obj.merch_id},
-            )
-        return None
+    def get_is_favorite(self, obj):
+        """TODO."""
+        return False
 
     def get_artist_name(self, obj):
         owner = getattr(obj.content, 'owner', None)
@@ -100,7 +91,6 @@ class CatalogCardSerializer(serializers.ModelSerializer):
             return obj.album.release_date.year
         return None
 
-    @extend_schema_field(CatalogCardDetailSerializer)
     def get_detail(self, obj):
         """Возвращает данные для перехода на detail-страницу."""
         detail_type = obj.product_type
