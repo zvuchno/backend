@@ -1,4 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 
@@ -14,8 +15,17 @@ class ProductCatalogListView(ListAPIView):
 
     serializer_class = CatalogCardSerializer
     permission_classes = (AllowAny,)
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.SearchFilter,
+    )
     filterset_class = ProductCatalogFilter
+    search_fields = (
+        'album__name',
+        'merch__name',
+        'album__owner__artist_profile__name',
+        'merch__owner__artist_profile__name',
+    )
 
     def get_queryset(self):
         return (
