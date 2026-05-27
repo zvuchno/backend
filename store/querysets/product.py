@@ -43,9 +43,6 @@ class ProductQuerySet(models.QuerySet):
             'merch__owner',
             'merch__owner__artist_profile',
             'merch__kind',
-            'track',
-            'track__owner',
-            'track__owner__artist_profile',
         )
 
     def with_card_data(self):
