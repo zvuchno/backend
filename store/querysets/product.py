@@ -5,19 +5,6 @@ from django.db.models import Prefetch
 class ProductQuerySet(models.QuerySet):
     """QuerySet товаров."""
 
-    def active_content(self):
-        """Возвращает товары с активным связанным контентом."""
-        return self.filter(
-            models.Q(
-                album__isnull=False,
-                album__is_active=True,
-            )
-            | models.Q(
-                merch__isnull=False,
-                merch__is_active=True,
-            ),
-        )
-
     def published_content(self):
         """Возвращает товары с опубликованным связанным контентом."""
         return self.filter(
