@@ -224,6 +224,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
                 'stock': 'Нельзя указывать stock вместе с variants. '
                 'Укажите stock внутри каждого варианта.',
             })
+
         return attrs
 
     def to_representation(self, instance):
