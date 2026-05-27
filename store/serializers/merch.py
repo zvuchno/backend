@@ -1,3 +1,4 @@
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -38,12 +39,14 @@ class MerchReadSerializer(serializers.ModelSerializer):
             'main_image',
         )
 
+    @extend_schema_field(OpenApiTypes.DECIMAL)
     def get_price(self, obj):
         product = getattr(obj, 'product', None)
         if product:
             return product.price
         return None
 
+    @extend_schema_field(OpenApiTypes.URI)
     def get_main_image(self, obj):
         request = self.context.get('request')
         images = list(obj.images_merch.all())
@@ -105,6 +108,7 @@ class MerchDetailSerializer(MerchReadSerializer):
                 data[field] = getattr(instance, field)
         return data
 
+    @extend_schema_field(OpenApiTypes.INT)
     def get_stock(self, obj):
         product = getattr(obj, 'product', None)
         if not product:
@@ -129,6 +133,7 @@ class MerchDetailSerializer(MerchReadSerializer):
             if v.is_active and v.property_value != CHAR_PRESET_SIMPLE
         )
 
+    @extend_schema_field(OpenApiTypes.BOOL)
     def get_allow_overpay(self, obj):
         product = getattr(obj, 'product', None)
         if product:

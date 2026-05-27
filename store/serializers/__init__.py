@@ -12,6 +12,15 @@ from .checkout import CheckoutSerializer
 from .delivery import DeliverySerializer
 from .favorites import FavoritesSerializer
 from .genre import GenreSerializer
+from .image import ImageSerializer
+from .merch import (
+    MerchDetailSerializer,
+    MerchReadSerializer,
+    MerchWriteSerializer,
+    VariantReadSerializer,
+    VariantWriteSerializer,
+)
+from .merch_kind import MerchKindSerializer
 from .order import OrderDetailSerializer, OrderItemSerializer, OrderSerializer
 from .sale import ArtistSaleDetailSerializer, ArtistSaleSerializer
 from .track import (
@@ -31,6 +40,13 @@ __all__ = [
     'FavoritesSerializer',
     'DeliverySerializer',
     'GenreSerializer',
+    'ImageSerializer',
+    'MerchDetailSerializer',
+    'MerchKindSerializer',
+    'MerchReadSerializer',
+    'MerchWriteSerializer',
+    'VariantReadSerializer',
+    'VariantWriteSerializer',
     'OrderSerializer',
     'OrderItemSerializer',
     'OrderDetailSerializer',

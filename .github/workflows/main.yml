@@ -78,20 +78,34 @@ jobs:
         script: |
           # Определяем ID пользователя
           CUR_UID=$(id -u)
+          CUR_GID=$(id -g)
+
           # Указываем путь к сокету Докера
           export DOCKER_HOST=unix:///run/user/$CUR_UID/docker.sock
+
           cd zvuchno
+
           # Проверяем наличие UID/GID в .env, если их нет — записываем
           grep -qq "^UID=" .env || echo "UID=$(id -u)" >> .env
           grep -qq "^GID=" .env || echo "GID=$(id -g)" >> .env
+
+          echo "=== BEFORE ==="
+          docker images --digests | grep zvuchno || true
+
           docker compose -f docker-compose.production.yml pull
-          docker compose -f docker-compose.production.yml down
+
+          echo "=== AFTER ==="
+          docker images --digests | grep zvuchno || true
+
           docker compose -f docker-compose.production.yml up -d --wait
-          docker image prune -a -f
+
+          docker image prune -f
+
           echo "Исправляем владельца волюмов на $CUR_UID:$CUR_GID..."
           docker run --rm \
             -v zvuchno_static:/fix_static \
             -v zvuchno_media:/fix_media \
             alpine chown -R $CUR_UID:$CUR_GID /fix_static /fix_media
+
           docker compose -f docker-compose.production.yml exec backend python manage.py migrate --noinput
           docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --noinput
