@@ -1,6 +1,9 @@
+"""Сериализаторы для обработки данных мерча."""
+
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from .mixins import BaseCatalogItemSerializerMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     CHAR_PRESET_SIMPLE,
@@ -22,29 +25,26 @@ def validate_not_reserved(value):
     return value
 
 
-class MerchReadSerializer(serializers.ModelSerializer):
+class MerchReadSerializer(
+    BaseCatalogItemSerializerMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор для чтения Merch."""
 
+    artist_name = serializers.SerializerMethodField()
+    kind = serializers.SerializerMethodField()
+    year = serializers.SerializerMethodField()
     price = serializers.SerializerMethodField()
-    main_image = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    product_type = serializers.CharField(
+        source='product.product_type',
+        read_only=True,
+    )
 
-    class Meta:
+    class Meta(BaseCatalogItemSerializerMixin.Meta):
         model = Merch
-        fields = (
-            'id',
-            'name',
-            'description',
-            'price',
-            'main_image',
-        )
 
-    def get_price(self, obj):
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.price
-        return None
-
-    def get_main_image(self, obj):
+    def get_image(self, obj):
         request = self.context.get('request')
         images = list(obj.images_merch.all())
 
@@ -58,6 +58,15 @@ class MerchReadSerializer(serializers.ModelSerializer):
             url = first.image.url
             return request.build_absolute_uri(url) if request else url
 
+        return None
+
+    def get_kind(self, obj):
+        return obj.kind.name
+
+    def get_year(self, obj):
+        if obj.is_carrier and obj.album_id:
+            if obj.album.release_date:
+                return obj.album.release_date.year
         return None
 
 
@@ -76,7 +85,6 @@ class MerchDetailSerializer(MerchReadSerializer):
 
     allow_overpay = serializers.SerializerMethodField()
     images_merch = ImageSerializer(many=True, read_only=True)
-    kind = serializers.StringRelatedField()
     album = serializers.StringRelatedField()
     variants = serializers.SerializerMethodField()
     property_name = serializers.CharField(
@@ -89,20 +97,28 @@ class MerchDetailSerializer(MerchReadSerializer):
         fields = MerchReadSerializer.Meta.fields + (
             'allow_overpay',
             'images_merch',
-            'kind',
             'album',
+            'description',
             'property_name',
             'stock',
             'variants',
+            'visibility',
+            'is_published',
         )
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data.pop('main_image', None)
+        data.pop('image', None)
+
         request = self.context.get('request')
-        if request and request.user == instance.owner:
-            for field in ('visibility', 'is_published'):
-                data[field] = getattr(instance, field)
+        user = request.user if request else None
+
+        if not user or not (
+            user.is_authenticated and (user == instance.owner or user.is_staff)
+        ):
+            data.pop('visibility', None)
+            data.pop('is_published', None)
+
         return data
 
     def get_stock(self, obj):

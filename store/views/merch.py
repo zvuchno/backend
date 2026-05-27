@@ -68,6 +68,8 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         if self.action == 'list':
             queryset = queryset.select_related(
                 'product',
+                'kind',
+                'owner__artist_profile',
             ).prefetch_related(
                 'images_merch',
             )
