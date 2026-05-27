@@ -66,17 +66,33 @@ class CatalogCardSerializer(serializers.ModelSerializer):
         ).data
     """
 
-    artist_name = serializers.SerializerMethodField()
-    kind = serializers.SerializerMethodField()
-    year = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-    detail = serializers.SerializerMethodField()
+    artist_name = serializers.SerializerMethodField(
+        help_text='Имя артиста-владельца товара.',
+    )
+    kind = serializers.SerializerMethodField(
+        help_text=(
+            'Человекочитаемый вид карточки: Альбом, Сингл, '
+            'Винил, Футболка и т.п.'
+        ),
+    )
+    year = serializers.SerializerMethodField(
+        help_text='Год релиза для музыкального контента.',
+    )
+    image = serializers.SerializerMethodField(
+        help_text='Основное изображение карточки товара.',
+    )
+    is_favorite = serializers.SerializerMethodField(
+        help_text='Признак добавления товара в избранное. ',
+    )
+    detail = serializers.SerializerMethodField(
+        help_text='Данные для перехода из карточки товара на detail-ручку.',
+    )
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
+        help_text='Базовая цена товара.',
     )
-    is_favorite = serializers.SerializerMethodField()
 
     DETAIL_URL_NAMES = {
         'album': 'api:store:albums-detail',
