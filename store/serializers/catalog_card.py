@@ -1,4 +1,5 @@
 from django.urls import reverse
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
@@ -15,12 +16,22 @@ class CatalogCardDetailSerializer(serializers.Serializer):
     например при переходе из card винила на detail карточку альбома.
     """
 
-    type = serializers.CharField()
-    id = serializers.IntegerField()
-    target_url = serializers.CharField()
+    type = serializers.CharField(
+        help_text='Тип detail-ручки, которую должен открыть фронт.',
+    )
+    id = serializers.IntegerField(
+        help_text='Идентификатор объекта detail-ручки.',
+    )
+    target_url = serializers.CharField(
+        allow_null=True,
+        help_text='URL detail-ручки.',
+    )
     preselect_variant_id = serializers.IntegerField(
         required=False,
         allow_null=True,
+        help_text=(
+            'ID варианта товара, который нужно предвыбрать на detail-странице.'
+        ),
     )
 
 
@@ -115,6 +126,7 @@ class CatalogCardSerializer(serializers.ModelSerializer):
             return obj.album.release_date.year
         return None
 
+    @extend_schema_field(CatalogCardDetailSerializer)
     def get_detail(self, obj):
         """Возвращает данные для перехода на detail-страницу."""
         detail_type = obj.product_type

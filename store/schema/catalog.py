@@ -1,3 +1,5 @@
+"""Схемы OpenAPI для каталога товаров."""
+
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiExample,
@@ -18,15 +20,12 @@ catalog_list_schema = extend_schema(
         'Возвращает список товарных карточек каталога в едином формате.\n\n'
         'Карточка строится на основе Product и может представлять альбом, '
         'сингл, носитель, обычный мерч или другой товарный тип.\n\n'
-        'Поле detail содержит данные для перехода на detail-ручку:\n'
-        '- type — тип detail-ручки, которую должен открыть фронт;\n'
-        '- id — идентификатор объекта detail-ручки;\n'
-        '- target_url — URL detail-ручки;\n'
-        '- preselect_variant_id — вариант товара, который нужно '
-        'предвыбрать на detail-странице.\n\n'
+        'Поле detail содержит данные для перехода на detail-ручку. '
         'Например, карточка винила технически является merch-продуктом, '
         'но ведет на detail альбома и передает preselect_variant_id '
         'варианта винила.\n\n'
+        'Поле is_favorite пока возвращает false до согласования финальной '
+        'модели избранного.'
     ),
     parameters=[
         OpenApiParameter(
@@ -70,15 +69,6 @@ catalog_list_schema = extend_schema(
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description='Фильтр по slug артиста.',
-        ),
-        OpenApiParameter(
-            name='search',
-            type=OpenApiTypes.STR,
-            location=OpenApiParameter.QUERY,
-            description=(
-                'Поиск по названию товара и имени артиста. '
-                'Набор полей зависит от реализации view.'
-            ),
         ),
         OpenApiParameter(
             name='ordering',
@@ -151,7 +141,7 @@ catalog_list_schema = extend_schema(
                 'kind': 'Футболка',
                 'year': None,
                 'price': '1500.00',
-                'image': 'https://zvucho.ru/media/merch/tshirt.jpg',
+                'image': 'https://zvuchno.ru/media/merch/tshirt.jpg',
                 'is_favorite': False,
                 'detail': {
                     'type': 'merch',
