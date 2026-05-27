@@ -47,8 +47,8 @@ class CartCalculationService:
 
         self._subtotal = sum(
             (item.base_line_total for item in self.items),
-            Decimal('0.0000'),
-        ).quantize(Decimal('0.0000'))
+            ZERO_MONEY,
+        ).quantize(ZERO_MONEY)
 
         return self._subtotal
 
@@ -58,18 +58,7 @@ class CartCalculationService:
         Необходимо для проверки применимости промокода, так как промокоды
         выпущены конкретными артистами для своих товаров.
         """
-        product = item.product_variant.product
-
-        if product.product_type == product.ProductType.ALBUM:
-            return product.album.owner_id
-
-        if product.product_type == product.ProductType.TRACK:
-            return product.track.owner_id
-
-        if product.product_type == product.ProductType.MERCH:
-            return product.merch.owner_id
-
-        return None
+        return item.product_variant.product.content.owner_id
 
     def get_item_discounts(self) -> dict[int, Decimal]:
         """Рассчитывает и возвращает скидку для каждой позиции корзины.
@@ -116,7 +105,7 @@ class CartCalculationService:
             discounts[item.id] = min(
                 calculated_discount,
                 item.base_line_total,
-            ).quantize(Decimal('0.0000'))
+            ).quantize(ZERO_MONEY)
 
     def _calculate_fixed_discount(self, discounts, applicable_items) -> None:
         """Метод для распределения фиксированной скидки."""
@@ -159,8 +148,8 @@ class CartCalculationService:
 
         self._discount_total = sum(
             self.get_item_discounts().values(),
-            Decimal('0.0000'),
-        ).quantize(Decimal('0.0000'))
+            ZERO_MONEY,
+        ).quantize(ZERO_MONEY)
 
         return self._discount_total
 
@@ -171,7 +160,7 @@ class CartCalculationService:
 
         self._total = (
             self.get_subtotal() - self.get_discount_total()
-        ).quantize(Decimal('0.0000'))
+        ).quantize(ZERO_MONEY)
 
         return self._total
 
@@ -179,7 +168,7 @@ class CartCalculationService:
         """Чистая стоимость конкретной позиции после применения скидки."""
         discount = self.get_item_discounts().get(item.id, ZERO_MONEY)
 
-        return (item.base_line_total - discount).quantize(Decimal('0.0000'))
+        return (item.base_line_total - discount).quantize(ZERO_MONEY)
 
     def get_serializer_context(self) -> dict:
         """Контекст для сериализаторов."""
