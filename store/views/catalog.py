@@ -28,7 +28,9 @@ class ProductCatalogListView(ListAPIView):
     )
 
     def get_queryset(self):
-        return Product.objects.for_catalog_cards()
+        """Возвращает товары каталога."""
+        catalog_type = self.request.query_params.get('type')
+        return Product.objects.for_catalog_type(catalog_type)
 
     def get_serializer_context(self):
         """Возвращает контекст сериализатора."""
