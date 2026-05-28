@@ -4,7 +4,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 
 from store.filters import ProductCatalogFilter
-from store.models import Product
+from store.models import Favorite, Product
 from store.schema import catalog_list_schema
 from store.serializers import CatalogCardSerializer
 
@@ -28,9 +28,23 @@ class ProductCatalogListView(ListAPIView):
     )
 
     def get_queryset(self):
-        return (
-            Product.objects
-            .published_content()
-            .with_card_data()
-            .with_catalog_created_at()
-        )
+        return Product.objects.for_catalog_cards()
+
+    def get_serializer_context(self):
+        """Возвращает контекст сериализатора."""
+        context = super().get_serializer_context()
+        user = self.request.user
+
+        if user.is_authenticated:
+            context['favorite_product_ids'] = set(
+                Favorite.objects.filter(
+                    user=user,
+                ).values_list(
+                    'product_variant__product_id',
+                    flat=True,
+                ),
+            )
+        else:
+            context['favorite_product_ids'] = set()
+
+        return context

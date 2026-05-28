@@ -18,14 +18,12 @@ catalog_list_schema = extend_schema(
     summary='Список товаров каталога',
     description=(
         'Возвращает список товарных карточек каталога в едином формате.\n\n'
-        'Карточка строится на основе Product и может представлять альбом, '
-        'сингл, носитель, обычный мерч или другой товарный тип.\n\n'
-        'Поле detail содержит данные для перехода на detail-ручку. '
-        'Например, карточка винила технически является merch-продуктом, '
-        'но ведет на detail альбома и передает preselect_variant_id '
-        'варианта винила.\n\n'
-        'Поле is_favorite пока возвращает false до согласования финальной '
-        'модели избранного.'
+        'Карточка может представлять альбом, сингл, носитель или обычный '
+        'мерч. Для перехода по клику фронтенд использует блок target.\n\n'
+        'Важно: product_type показывает технический тип товара, а target '
+        'показывает, какую detail-ручку нужно открыть. Например, винил '
+        'технически является merch-товаром, '
+        'но вести может на detail альбома.'
     ),
     parameters=[
         OpenApiParameter(
@@ -46,13 +44,14 @@ catalog_list_schema = extend_schema(
             location=OpenApiParameter.QUERY,
             enum=[
                 'all',
-                'album',
+                'music',
                 'merch',
             ],
             description=(
-                'Фильтр по типу продукта. '
-                'all — все товары, album — альбомы/синглы, '
-                'merch — мерч и носители, если они хранятся как merch.'
+                'Фильтр по типу витрины. '
+                'all — все товары каталога, '
+                'music — музыкальные товары по макету, '
+                'merch — мерч по макету.'
             ),
         ),
         OpenApiParameter(
@@ -92,7 +91,6 @@ catalog_list_schema = extend_schema(
         OpenApiExample(
             name='Альбом',
             value={
-                'id': 1,
                 'product_type': 'album',
                 'name': 'Название релиза',
                 'artist_name': 'Артист',
@@ -101,11 +99,10 @@ catalog_list_schema = extend_schema(
                 'price': '500.00',
                 'image': 'https://zvuchno.ru/media/albums/cover.jpg',
                 'is_favorite': False,
-                'detail': {
+                'target': {
                     'type': 'album',
                     'id': 10,
-                    'target_url': '/api/v1/store/albums/10/',
-                    'preselect_variant_id': 101,
+                    'url': '/api/v1/store/albums/10/',
                 },
             },
             response_only=True,
@@ -113,7 +110,6 @@ catalog_list_schema = extend_schema(
         OpenApiExample(
             name='Носитель',
             value={
-                'id': 2,
                 'product_type': 'merch',
                 'name': 'Название релиза — винил',
                 'artist_name': 'Артист',
@@ -122,11 +118,10 @@ catalog_list_schema = extend_schema(
                 'price': '2500.00',
                 'image': 'https://zvuchno.ru/media/merch/vinyl.jpg',
                 'is_favorite': False,
-                'detail': {
+                'target': {
                     'type': 'album',
                     'id': 10,
-                    'target_url': '/api/v1/store/albums/10/',
-                    'preselect_variant_id': 202,
+                    'url': '/api/v1/store/albums/10/',
                 },
             },
             response_only=True,
@@ -134,7 +129,6 @@ catalog_list_schema = extend_schema(
         OpenApiExample(
             name='Обычный мерч',
             value={
-                'id': 3,
                 'product_type': 'merch',
                 'name': 'Футболка',
                 'artist_name': 'Артист',
@@ -143,10 +137,10 @@ catalog_list_schema = extend_schema(
                 'price': '1500.00',
                 'image': 'https://zvuchno.ru/media/merch/tshirt.jpg',
                 'is_favorite': False,
-                'detail': {
+                'target': {
                     'type': 'merch',
                     'id': 20,
-                    'target_url': '/api/v1/store/merch/20/',
+                    'url': '/api/v1/store/merch/20/',
                 },
             },
             response_only=True,

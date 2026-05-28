@@ -6,32 +6,23 @@ from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Product
 
 
-class CatalogCardDetailSerializer(serializers.Serializer):
+class CatalogCardTargetSerializer(serializers.Serializer):
     """Сериализатор блока перехода на detail-страницу.
 
     type - тип для выбора detail ручки.
     id - идентификатор объекта detail-ручки.
-    target_url - URL detail-ручки.
-    preselect_variant_id - для предвыбора варианта товара,
-    например при переходе из card винила на detail карточку альбома.
+    url - URL detail-ручки.
     """
 
     type = serializers.CharField(
-        help_text='Тип detail-ручки, которую должен открыть фронт.',
+        help_text='Тип detail-ручки для перехода.',
     )
     id = serializers.IntegerField(
         help_text='Идентификатор объекта detail-ручки.',
     )
-    target_url = serializers.CharField(
+    url = serializers.CharField(
         allow_null=True,
         help_text='URL detail-ручки.',
-    )
-    preselect_variant_id = serializers.IntegerField(
-        required=False,
-        allow_null=True,
-        help_text=(
-            'ID варианта товара, который нужно предвыбрать на detail-странице.'
-        ),
     )
 
 
@@ -66,32 +57,58 @@ class CatalogCardSerializer(serializers.ModelSerializer):
         ).data
     """
 
-    artist_name = serializers.SerializerMethodField(
-        help_text='Имя артиста-владельца товара.',
-    )
-    kind = serializers.SerializerMethodField(
+    product_type = serializers.CharField(
+        read_only=True,
         help_text=(
-            'Человекочитаемый вид карточки: Альбом, Сингл, '
-            'Винил, Футболка и т.п.'
+            'Технический тип товара: album, merch или track. '
+            'Для перехода по клику использовать target.'
         ),
     )
-    year = serializers.SerializerMethodField(
-        help_text='Год релиза для музыкального контента.',
+    name = serializers.CharField(
+        read_only=True,
+        help_text='Название товара.',
     )
-    image = serializers.SerializerMethodField(
-        help_text='Основное изображение карточки товара.',
+    artist_name = serializers.CharField(
+        read_only=True,
+        allow_null=True,
+        help_text='Имя артиста-владельца товара.',
     )
-    is_favorite = serializers.SerializerMethodField(
-        help_text='Признак добавления товара в избранное. ',
+    kind = serializers.CharField(
+        read_only=True,
+        allow_null=True,
+        help_text=(
+            'Человекочитаемый вид карточки: Альбом, Сингл, '
+            'Винил, Футболка, Трек и т.п.'
+        ),
     )
-    detail = serializers.SerializerMethodField(
-        help_text='Данные для перехода из карточки товара на detail-ручку.',
+    year = serializers.IntegerField(
+        read_only=True,
+        allow_null=True,
+        help_text=(
+            'Год релиза для музыкального контента. '
+            'Для обычного мерча возвращается null.'
+        ),
     )
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
         help_text='Базовая цена товара.',
+    )
+    image = serializers.SerializerMethodField(
+        help_text=(
+            'Основное изображение карточки товара. '
+            'Для трека временно используется обложка родительского альбома.'
+        ),
+    )
+    is_favorite = serializers.SerializerMethodField(
+        help_text=('Признак добавления товара в избранное. '),
+    )
+    target = serializers.SerializerMethodField(
+        help_text=(
+            'Данные для перехода по клику. '
+            'Например, карточка носителя может вести на detail альбома.'
+        ),
     )
 
     DETAIL_URL_NAMES = {
@@ -103,7 +120,6 @@ class CatalogCardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = (
-            'id',
             'product_type',
             'name',
             'artist_name',
@@ -112,86 +128,24 @@ class CatalogCardSerializer(serializers.ModelSerializer):
             'price',
             'image',
             'is_favorite',
-            'detail',
+            'target',
         )
 
     def get_is_favorite(self, obj):
-        """TODO."""
-        return False
+        """Возвращает признак добавления товара в избранное."""
+        favorite_product_ids = self.context.get('favorite_product_ids', set())
+        return obj.id in favorite_product_ids
 
-    def get_artist_name(self, obj):
-        owner = getattr(obj.content, 'owner', None)
-        artist_profile = getattr(owner, 'artist_profile', None)
-        return artist_profile.name if artist_profile else None
-
-    def get_kind(self, obj):
-        if obj.album_id:
-            return 'Сингл' if obj.album.is_single else 'Альбом'
-
-        if obj.merch_id:
-            merch = obj.merch
-            return merch.kind.name if merch.kind else None
-
-        if obj.track_id:
-            return 'Трек'
-
-        return None
-
-    def get_year(self, obj):
-        if obj.album_id and obj.album.release_date:
-            return obj.album.release_date.year
-        return None
-
-    @extend_schema_field(CatalogCardDetailSerializer)
-    def get_detail(self, obj):
-        """Возвращает данные для перехода на detail-страницу."""
-        detail_type = obj.product_type
-        detail_id = obj.content.id
-
-        is_carrier = (
-            obj.merch_id and obj.merch.album_id and obj.merch.is_carrier
-        )
-
-        # Носитель уйдет на detail альбома.
-        if is_carrier:
-            detail_type = 'album'
-            detail_id = obj.merch.album_id
-
-        detail = {
-            'type': detail_type,
-            'id': detail_id,
-            'target_url': self.get_target_url(detail_type, detail_id),
+    @extend_schema_field(CatalogCardTargetSerializer)
+    def get_target(self, obj):
+        """Возвращает данные для перехода из карточки товара."""
+        return {
+            'type': obj.target_type,
+            'id': obj.target_id,
+            'url': self._get_target_url(obj.target_type, obj.target_id),
         }
 
-        # Если передан выбранный вариант, например из корзины или заказа.
-        preselect_variant = self.context.get('preselect_variant')
-
-        if (
-            preselect_variant is not None
-            and preselect_variant.product_id == obj.id
-        ):
-            detail['preselect_variant_id'] = preselect_variant.id
-            return detail
-
-        # Свой вариант у каждого носителя как выбранный на detail альбома.
-        if obj.album_id or is_carrier:
-            active_variants = getattr(obj, 'active_variants', None)
-            # если сделан prefetch to_attr='active_variants'
-            if active_variants is not None:
-                default_variant = (
-                    active_variants[0] if active_variants else None
-                )
-            else:
-                default_variant = (
-                    obj.variants.filter(is_active=True).order_by('id').first()
-                )
-
-            if default_variant is not None:
-                detail['preselect_variant_id'] = default_variant.id
-
-        return detail
-
-    def get_target_url(self, detail_type, detail_id):
+    def _get_target_url(self, detail_type, detail_id) -> str | None:
         """Возвращает URL detail-ручки."""
         url_name = self.DETAIL_URL_NAMES.get(detail_type)
 

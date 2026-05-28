@@ -51,29 +51,19 @@ class ProductQuerySet(models.QuerySet):
 
     def with_album_card_data(self):
         """Подтягивает данные для карточек альбомов."""
-        return self.select_related(
-            'album',
-            'album__owner',
-            'album__owner__artist_profile',
-        )
+        return self.select_related('album')
 
     def with_track_card_data(self):
         """Подтягивает данные для карточек треков."""
         return self.select_related(
             'track',
             'track__album',
-            'track__owner',
-            'track__owner__artist_profile',
         )
 
     def with_merch_card_data(self):
         """Подтягивает данные для карточек мерча и носителей."""
         return self.select_related(
             'merch',
-            'merch__owner',
-            'merch__owner__artist_profile',
-            'merch__kind',
-            'merch__album',
         ).prefetch_related(
             'merch__images_merch',
         )
