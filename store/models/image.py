@@ -18,7 +18,7 @@ class Image(ActivatableModel, TimestampModel):
     image = models.ImageField(
         'Фото',
         upload_to='photos_merch/',
-        validators=(validate_file_size,)
+        validators=(validate_file_size,),
     )
     is_main = models.BooleanField('Главное фото', default=False)
 
@@ -29,13 +29,22 @@ class Image(ActivatableModel, TimestampModel):
             models.UniqueConstraint(
                 fields=['merch'],
                 condition=Q(is_main=True),
-                name='unique_main_image_per_merch'
-            )
+                name='unique_main_image_per_merch',
+            ),
         ]
 
     def save(self, *args, **kwargs):
+
+        if not self.pk:
+            if not Image.objects.filter(
+                merch=self.merch,
+                is_main=True,
+            ).exists():
+                self.is_main = True
+
         if self.is_main:
             Image.objects.filter(
-                merch=self.merch, is_main=True
-                ).update(is_main=False)
+                merch=self.merch,
+                is_main=True,
+            ).update(is_main=False)
         super().save(*args, **kwargs)
