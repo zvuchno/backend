@@ -10,23 +10,96 @@ class CatalogCardTargetSerializer(serializers.Serializer):
     """Сериализатор блока перехода на detail-страницу.
 
     type - тип для выбора detail ручки.
-    id - идентификатор объекта detail-ручки.
-    url - URL detail-ручки.
+    url - URL detail endpoint.
     """
 
     type = serializers.CharField(
-        help_text='Тип detail-ручки для перехода.',
-    )
-    id = serializers.IntegerField(
-        help_text='Идентификатор объекта detail-ручки.',
+        help_text='Тип detail endpoint для перехода.',
     )
     url = serializers.CharField(
         allow_null=True,
-        help_text='URL detail-ручки.',
+        help_text='URL detail endpoint.',
     )
 
 
-class CatalogCardSerializer(serializers.ModelSerializer):
+class BaseCardSerializer(serializers.Serializer):
+    """Базовый сериализатор единой карточки товара."""
+
+    product_type = serializers.CharField(
+        read_only=True,
+        help_text=(
+            'Технический тип товара: album, merch или track. '
+            'Для перехода по клику использовать target.'
+        ),
+    )
+    name = serializers.CharField(
+        read_only=True,
+        help_text='Название товара.',
+    )
+    artist_name = serializers.CharField(
+        read_only=True,
+        allow_null=True,
+        help_text='Имя артиста-владельца товара.',
+    )
+    kind = serializers.CharField(
+        read_only=True,
+        allow_null=True,
+        help_text=(
+            'Человекочитаемый вид карточки: Альбом, Сингл, '
+            'Винил, Футболка, Трек и т.п.'
+        ),
+    )
+    year = serializers.IntegerField(
+        read_only=True,
+        allow_null=True,
+        help_text=(
+            'Год релиза для музыкального контента. '
+            'Для обычного мерча возвращается null.'
+        ),
+    )
+    price = serializers.DecimalField(
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+        help_text='Базовая цена товара.',
+    )
+    image = serializers.SerializerMethodField(
+        help_text=(
+            'Основное изображение карточки товара. '
+            'Для трека временно используется обложка родительского альбома.'
+        ),
+    )
+    is_favorite = serializers.SerializerMethodField(
+        help_text=('Признак добавления товара в избранное. '),
+    )
+    target = serializers.SerializerMethodField(
+        help_text=(
+            'Данные для перехода по клику. '
+            'Например, карточка носителя может вести на detail альбома.'
+        ),
+    )
+
+    DETAIL_URL_NAMES = {
+        'album': 'api:store:albums-detail',
+        'merch': 'api:store:merch-detail',
+        'track': 'api:store:tracks-detail',
+    }
+
+    class Meta:
+        fields = (
+            'product_type',
+            'name',
+            'artist_name',
+            'kind',
+            'year',
+            'price',
+            'image',
+            'is_favorite',
+            'target',
+        )
+
+
+class CatalogCardSerializer(BaseCardSerializer):
     """Сериализатор единой карточки товара.
 
     Базовая модель карточки — Product.
@@ -102,7 +175,7 @@ class CatalogCardSerializer(serializers.ModelSerializer):
         ),
     )
     is_favorite = serializers.SerializerMethodField(
-        help_text=('Признак добавления товара в избранное. '),
+        help_text='Признак добавления товара в избранное.',
     )
     target = serializers.SerializerMethodField(
         help_text=(
@@ -117,19 +190,8 @@ class CatalogCardSerializer(serializers.ModelSerializer):
         'track': 'api:store:tracks-detail',
     }
 
-    class Meta:
+    class Meta(BaseCardSerializer.Meta):
         model = Product
-        fields = (
-            'product_type',
-            'name',
-            'artist_name',
-            'kind',
-            'year',
-            'price',
-            'image',
-            'is_favorite',
-            'target',
-        )
 
     def get_is_favorite(self, obj):
         """Возвращает признак добавления товара в избранное."""

@@ -21,7 +21,7 @@ catalog_list_schema = extend_schema(
         'Карточка может представлять альбом, сингл, носитель или обычный '
         'мерч. Для перехода по клику фронтенд использует блок target.\n\n'
         'Важно: product_type показывает технический тип товара, а target '
-        'показывает, какую detail-ручку нужно открыть. Например, винил '
+        'показывает на detail endpoint. Например, винил '
         'технически является merch-товаром, '
         'но вести может на detail альбома.'
     ),
@@ -44,7 +44,7 @@ catalog_list_schema = extend_schema(
             location=OpenApiParameter.QUERY,
             enum=[
                 'all',
-                'music',
+                'album',
                 'merch',
             ],
             description=(
