@@ -225,9 +225,6 @@ class MerchWriteSerializer(serializers.ModelSerializer):
                 'Укажите stock внутри каждого варианта.',
             })
 
-        variants = attrs.get('variants')
-        if variants is not None and not variants:
-            attrs['property_name'] = ''
         return attrs
 
     def to_representation(self, instance):
