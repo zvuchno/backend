@@ -12,9 +12,10 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MAX_PROMOCODE_LENGTH,
     MONEY_DISPLAY_PRECISION,
+    ZERO_MONEY,
 )
 from store.models import Cart, CartItem, ProductVariant, Promocode
-from store.services.cart_service import CartService
+from store.services.cart_service import CartCalculationService, CartService
 from store.validators import (
     validate_price_with_donation,
     validate_promocode_format,
@@ -220,8 +221,8 @@ class ApplyPromocodeSerializer(serializers.Serializer):
         validators=[validate_promocode_format],
     )
 
-    def validate_code(self, value):
-        """Проверяет существование промокода и его доступность."""
+    def validate_code(self, value) -> str:
+        """Проверяет существование промокода и его применимость к корзине."""
         error_msg = 'Промокод не найден или неактивен'
 
         try:
@@ -231,6 +232,15 @@ class ApplyPromocodeSerializer(serializers.Serializer):
 
         if not promocode.is_available:
             raise serializers.ValidationError(error_msg)
+
+        cart = self.context.get('cart')
+        cart.promocode = promocode
+        calculation_service = CartCalculationService(cart)
+
+        if calculation_service.get_discount_total() == ZERO_MONEY:
+            raise serializers.ValidationError(
+                'Этот промокод невозможно применить к товарам в корзине.',
+            )
 
         self.context['promocode'] = promocode
         return value

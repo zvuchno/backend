@@ -173,14 +173,20 @@ class CartViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['post'], url_path='apply-promocode')
     def apply_promocode(self, request):
         """Применить промокод."""
-        serializer = ApplyPromocodeSerializer(data=request.data)
+        cart = self.get_instance()
+
+        context = self.get_serializer_context()
+        context['cart'] = cart
+        serializer = ApplyPromocodeSerializer(
+            data=request.data,
+            context=context,
+        )
         serializer.is_valid(raise_exception=True)
 
         promocode = serializer.context['promocode']
-        cart = self.get_instance()
 
         cart.promocode = promocode
-        cart.save()
+        cart.save(update_fields=['promocode'])
 
         cart = self.get_queryset().get(pk=cart.pk)
         self._cached_cart = cart

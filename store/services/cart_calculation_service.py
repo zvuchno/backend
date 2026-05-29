@@ -10,6 +10,9 @@ from decimal import Decimal
 from store.constants import ZERO_MONEY
 from store.models import Promocode
 
+ZERO_DISCOUNT = Decimal('0.00')
+DISCOUNT_PRECISION = Decimal('0.01')
+
 
 class CartCalculationService:
     """Сервис расчёта корзины.
@@ -27,9 +30,9 @@ class CartCalculationService:
 
         self.items = list(
             cart.items.with_prices().select_related(
-                'product_variant__product__album__owner',
-                'product_variant__product__track__owner',
-                'product_variant__product__merch__owner',
+                'product_variant__product__album',
+                'product_variant__product__track',
+                'product_variant__product__merch',
             ),
         )
 
@@ -69,7 +72,7 @@ class CartCalculationService:
         if self._discounts is not None:
             return self._discounts
 
-        discounts = {item.id: ZERO_MONEY for item in self.items}
+        discounts = {item.id: ZERO_DISCOUNT for item in self.items}
 
         if not self.promocode or not self.promocode.is_available:
             self._discounts = discounts
@@ -79,7 +82,10 @@ class CartCalculationService:
         applicable_items = [
             item
             for item in self.items
-            if self._get_item_owner_id(item) == self.promocode.owner_id
+            if (
+                self._get_item_owner_id(item) == self.promocode.owner_id
+                and item.base_line_total > ZERO_DISCOUNT
+            )
         ]
 
         if not applicable_items:
@@ -105,7 +111,7 @@ class CartCalculationService:
             discounts[item.id] = min(
                 calculated_discount,
                 item.base_line_total,
-            ).quantize(ZERO_MONEY)
+            ).quantize(DISCOUNT_PRECISION)
 
     def _calculate_fixed_discount(self, discounts, applicable_items) -> None:
         """Метод для распределения фиксированной скидки."""
@@ -114,7 +120,7 @@ class CartCalculationService:
         )
 
         # Если общая сумма подходящих товаров равна 0 → нечего распределять
-        if total_applicable == ZERO_MONEY:
+        if total_applicable <= ZERO_DISCOUNT:
             return
 
         discount_to_distribute = min(
@@ -128,14 +134,14 @@ class CartCalculationService:
                 # Чтобы избежать 'потери копеек' из-за округлений
                 # при делении, последний товар забирает
                 # весь остаток распределяемой суммы
-                discounts[item.id] = remaining.quantize(Decimal('0.01'))
+                discounts[item.id] = remaining.quantize(DISCOUNT_PRECISION)
             else:
                 # Расчитываем долю конкретной позиции в общем обороте
                 # применимых товаров: Share = Item_Total / Total_Applicable
                 # Скидка на позицию = Общая_Скидка * Share
                 share = item.base_line_total / total_applicable
                 item_discount = (discount_to_distribute * share).quantize(
-                    Decimal('0.01'),
+                    DISCOUNT_PRECISION,
                 )
 
                 discounts[item.id] = item_discount
@@ -166,7 +172,7 @@ class CartCalculationService:
 
     def get_item_line_total(self, item) -> Decimal:
         """Чистая стоимость конкретной позиции после применения скидки."""
-        discount = self.get_item_discounts().get(item.id, ZERO_MONEY)
+        discount = self.get_item_discounts().get(item.id, ZERO_DISCOUNT)
 
         return (item.base_line_total - discount).quantize(ZERO_MONEY)
 
