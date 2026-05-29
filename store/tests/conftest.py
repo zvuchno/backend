@@ -206,3 +206,9 @@ def favorites_url():
 def checkout_url():
     """Возвращает URL-адрес эндпоинта создания заказа."""
     return reverse('api:store:orders-checkout')
+
+
+@pytest.fixture
+def merch_list_url():
+    """Возвращает URL-адрес эндпоинта для списка мерча."""
+    return reverse('api:store:merch-list')
