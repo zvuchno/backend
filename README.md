@@ -267,6 +267,9 @@ python manage.py import_test_server_music \
 ```
 
 ### Импорт через HTTP API
+```
+python -m scripts.import_test_server_music   --base-url https://myhost/api/v1
+```
 
 Этот вариант подходит для локального dev-сервера, staging или тестового сервера.
 В `--base-url` указывается базовый адрес API v1.
