@@ -89,8 +89,31 @@ class OrderService:
         if not cart_items.exists():
             raise ValidationError('Нельзя оформить заказ с пустой корзиной.')
 
+        if cart.promocode_id:
+            # Блокируем запись промокода в БД до конца транзакции
+            promocode = (
+                cart.promocode.__class__.objects
+                .select_for_update()
+                .filter(id=cart.promocode_id)
+                .first()
+            )
+
+            # Проверяем актуальный статус из базы данных
+            if not promocode or not promocode.is_available:
+                raise ValidationError(
+                    'Применённый промокод больше не активен.',
+                )
+
+            # Обновляем инстанс в корзине
+            cart.promocode = promocode
+
         calc_service = CartCalculationService(cart)
         item_discounts = calc_service.get_item_discounts()
+
+        if cart.promocode and calc_service.get_discount_total() == ZERO_MONEY:
+            raise ValidationError(
+                'Этот промокод невозможно применить к товарам в корзине.',
+            )
 
         personal_data_consent = validated_data.pop(
             'personal_data_consent',
@@ -118,10 +141,43 @@ class OrderService:
             **validated_data,  # full_name, email, phone, адресные поля
         )
 
-        # Формируем позиции заказа и собираем уникальных артистов для рассылки
+        artists_to_subscribe = OrderService._create_order_items(
+            order,
+            cart_items,
+            item_discounts,
+            cart.promocode,
+        )
+
+        OrderService._process_user_consents(
+            user,
+            order,
+            validated_data.get('email'),
+            artists_to_subscribe,
+            personal_data_consent,
+            ip_address,
+            user_agent,
+        )
+
+        OrderService._finalize_cart_and_promocode(
+            user,
+            cart,
+            order,
+            cart_items,
+        )
+
+        return order
+
+    @staticmethod
+    def _create_order_items(
+        order,
+        cart_items,
+        item_discounts,
+        promocode,
+    ) -> set:
+        """Создает позиции заказа и возвращает наборы артистов для подписки."""
         order_items = []
         artists_to_subscribe = set()
-        promocode_code = cart.promocode.code if cart.promocode else ''
+        promocode_code = promocode.code if promocode else ''
 
         for item in cart_items:
             variant = item.product_variant
@@ -168,7 +224,20 @@ class OrderService:
                 artists_to_subscribe.add(artist_profile)
 
         OrderItem.objects.bulk_create(order_items)
+        return artists_to_subscribe
 
+    @staticmethod
+    def _process_user_consents(
+        user,
+        order,
+        email,
+        artists_to_subscribe,
+        personal_data_consent,
+        ip_address,
+        user_agent,
+    ) -> None:
+        """Регистрирует юридические согласия пользователя."""
+        authenticated_user = user if user and user.is_authenticated else None
         # Согласие на рассылку
         if artists_to_subscribe:
             newsletter_doc = ConsentDocument.objects.filter(
@@ -183,8 +252,8 @@ class OrderService:
 
             UserConsent.objects.bulk_create([
                 UserConsent(
-                    email=validated_data.get('email'),
-                    user=user if user and user.is_authenticated else None,
+                    email=email,
+                    user=authenticated_user,
                     order=order,
                     artist=artist,
                     document=newsletter_doc,
@@ -207,22 +276,13 @@ class OrderService:
                 )
 
             UserConsent.objects.create(
-                email=validated_data.get('email'),
-                user=user if user and user.is_authenticated else None,
+                email=email,
+                user=authenticated_user,
                 order=order,
                 document=personal_doc,
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
-
-        OrderService._finalize_cart_and_promocode(
-            user,
-            cart,
-            order,
-            cart_items,
-        )
-
-        return order
 
     @staticmethod
     def _finalize_cart_and_promocode(user, cart, order, cart_items) -> None:
