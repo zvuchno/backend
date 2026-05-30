@@ -1,0 +1,1071 @@
+{
+  "genres": [
+    {
+      "name": "Garage Rock",
+      "slug": "garage-rock"
+    },
+    {
+      "name": "Post Punk",
+      "slug": "post-punk"
+    },
+    {
+      "name": "Indie Rock",
+      "slug": "indie-rock"
+    },
+    {
+      "name": "Noise Pop",
+      "slug": "noise-pop"
+    },
+    {
+      "name": "Synth Punk",
+      "slug": "synth-punk"
+    },
+    {
+      "name": "Alt Folk",
+      "slug": "alt-folk"
+    },
+    {
+      "name": "Math Rock",
+      "slug": "math-rock"
+    },
+    {
+      "name": "Shoegaze",
+      "slug": "shoegaze"
+    },
+    {
+      "name": "Lo-Fi Pop",
+      "slug": "lo-fi-pop"
+    },
+    {
+      "name": "Underground Rap",
+      "slug": "underground-rap"
+    }
+  ],
+  "merch_kinds": [
+    {
+      "name": "Cassette",
+      "slug": "cassette"
+    },
+    {
+      "name": "Cap",
+      "slug": "cap"
+    },
+    {
+      "name": "CD",
+      "slug": "cd"
+    },
+    {
+      "name": "T-Shirt",
+      "slug": "tshirt"
+    },
+    {
+      "name": "Vinyl",
+      "slug": "vinyl"
+    }
+  ],
+  "merch_templates": [
+    {
+      "name": "{artist} Logo Tee",
+      "kind_slug": "tshirt",
+      "price": "1590.00",
+      "description": "Fixture футболка {artist} с логотипом.",
+      "property_name": "Размер",
+      "variants": [
+        { "value": "S", "stock": 8 },
+        { "value": "M", "stock": 12 },
+        { "value": "L", "stock": 12 },
+        { "value": "XL", "stock": 7 }
+      ]
+    },
+    {
+      "name": "{artist} Backprint Tee",
+      "kind_slug": "tshirt",
+      "price": "1790.00",
+      "description": "Fixture футболка {artist} с принтом на спине.",
+      "property_name": "Размер",
+      "variants": [
+        { "value": "S", "stock": 5 },
+        { "value": "M", "stock": 10 },
+        { "value": "L", "stock": 10 },
+        { "value": "XL", "stock": 6 }
+      ]
+    },
+    {
+      "name": "{artist} Black Tee",
+      "kind_slug": "tshirt",
+      "price": "1690.00",
+      "description": "Fixture черная футболка {artist}.",
+      "property_name": "Размер",
+      "variants": [
+        { "value": "S", "stock": 6 },
+        { "value": "M", "stock": 11 },
+        { "value": "L", "stock": 11 },
+        { "value": "XL", "stock": 6 }
+      ]
+    },
+    {
+      "name": "{artist} White Tee",
+      "kind_slug": "tshirt",
+      "price": "1690.00",
+      "description": "Fixture белая футболка {artist}.",
+      "property_name": "Размер",
+      "variants": [
+        { "value": "S", "stock": 6 },
+        { "value": "M", "stock": 10 },
+        { "value": "L", "stock": 10 },
+        { "value": "XL", "stock": 5 }
+      ]
+    },
+    {
+      "name": "{artist} Tour Tee",
+      "kind_slug": "tshirt",
+      "price": "1890.00",
+      "description": "Fixture туровая футболка {artist}.",
+      "property_name": "Размер",
+      "variants": [
+        { "value": "S", "stock": 4 },
+        { "value": "M", "stock": 9 },
+        { "value": "L", "stock": 9 },
+        { "value": "XL", "stock": 5 }
+      ]
+    },
+    {
+      "name": "{artist} Logo Cap",
+      "kind_slug": "cap",
+      "price": "1190.00",
+      "description": "Fixture кепка {artist} с логотипом.",
+      "property_name": "Цвет",
+      "variants": [
+        { "value": "Black", "stock": 9 },
+        { "value": "Graphite", "stock": 7 },
+        { "value": "Sand", "stock": 5 }
+      ]
+    },
+    {
+      "name": "{artist} Patch Cap",
+      "kind_slug": "cap",
+      "price": "1290.00",
+      "description": "Fixture кепка {artist} с нашивкой.",
+      "property_name": "Цвет",
+      "variants": [
+        { "value": "Black", "stock": 8 },
+        { "value": "Blue", "stock": 6 },
+        { "value": "Olive", "stock": 5 }
+      ]
+    },
+    {
+      "name": "{artist} Washed Cap",
+      "kind_slug": "cap",
+      "price": "1390.00",
+      "description": "Fixture вареная кепка {artist}.",
+      "property_name": "Цвет",
+      "variants": [
+        { "value": "Washed Black", "stock": 7 },
+        { "value": "Washed Grey", "stock": 7 },
+        { "value": "Washed Green", "stock": 4 }
+      ]
+    },
+    {
+      "name": "{artist} Studio Cap",
+      "kind_slug": "cap",
+      "price": "1490.00",
+      "description": "Fixture студийная кепка {artist}.",
+      "property_name": "Цвет",
+      "variants": [
+        { "value": "Black", "stock": 6 },
+        { "value": "Brown", "stock": 5 },
+        { "value": "Navy", "stock": 5 }
+      ]
+    },
+    {
+      "name": "{artist} Night Cap",
+      "kind_slug": "cap",
+      "price": "1490.00",
+      "description": "Fixture ночная кепка {artist}.",
+      "property_name": "Цвет",
+      "variants": [
+        { "value": "Black", "stock": 7 },
+        { "value": "Burgundy", "stock": 4 },
+        { "value": "Steel", "stock": 5 }
+      ]
+    },
+    {
+      "name": "{artist} Album 1 CD",
+      "kind_slug": "cd",
+      "price": "990.00",
+      "description": "Fixture CD первого альбома {artist}.",
+      "album_index": 1,
+      "property_name": "Издание",
+      "variants": [
+        { "value": "Jewel Case", "stock": 12 },
+        { "value": "Digipak", "stock": 8 }
+      ]
+    },
+    {
+      "name": "{artist} Album 1 Cassette",
+      "kind_slug": "cassette",
+      "price": "790.00",
+      "description": "Fixture кассета первого альбома {artist}.",
+      "album_index": 1,
+      "stock": 10
+    },
+    {
+      "name": "{artist} Album 1 Vinyl",
+      "kind_slug": "vinyl",
+      "price": "2490.00",
+      "description": "Fixture винил первого альбома {artist}.",
+      "album_index": 1,
+      "property_name": "Формат",
+      "variants": [
+        { "value": "Black LP", "stock": 7 },
+        { "value": "Color LP", "stock": 4 }
+      ]
+    },
+    {
+      "name": "{artist} Album 2 CD",
+      "kind_slug": "cd",
+      "price": "990.00",
+      "description": "Fixture CD второго альбома {artist}.",
+      "album_index": 2,
+      "property_name": "Издание",
+      "variants": [
+        { "value": "Jewel Case", "stock": 12 },
+        { "value": "Digipak", "stock": 8 }
+      ]
+    },
+    {
+      "name": "{artist} Album 2 Cassette",
+      "kind_slug": "cassette",
+      "price": "790.00",
+      "description": "Fixture кассета второго альбома {artist}.",
+      "album_index": 2,
+      "stock": 10
+    },
+    {
+      "name": "{artist} Album 2 Vinyl",
+      "kind_slug": "vinyl",
+      "price": "2490.00",
+      "description": "Fixture винил второго альбома {artist}.",
+      "album_index": 2,
+      "property_name": "Формат",
+      "variants": [
+        { "value": "Black LP", "stock": 7 },
+        { "value": "Color LP", "stock": 4 }
+      ]
+    },
+    {
+      "name": "{artist} Album 3 CD",
+      "kind_slug": "cd",
+      "price": "990.00",
+      "description": "Fixture CD третьего альбома {artist}.",
+      "album_index": 3,
+      "property_name": "Издание",
+      "variants": [
+        { "value": "Jewel Case", "stock": 12 },
+        { "value": "Digipak", "stock": 8 }
+      ]
+    },
+    {
+      "name": "{artist} Album 3 Cassette",
+      "kind_slug": "cassette",
+      "price": "790.00",
+      "description": "Fixture кассета третьего альбома {artist}.",
+      "album_index": 3,
+      "stock": 10
+    },
+    {
+      "name": "{artist} Album 3 Vinyl",
+      "kind_slug": "vinyl",
+      "price": "2490.00",
+      "description": "Fixture винил третьего альбома {artist}.",
+      "album_index": 3,
+      "property_name": "Формат",
+      "variants": [
+        { "value": "Black LP", "stock": 7 },
+        { "value": "Color LP", "stock": 4 }
+      ]
+    }
+  ],
+  "artists": [
+    {
+      "name": "Северный Шум",
+      "slug": "severny-shum",
+      "city": "Вологда",
+      "genre_slug": "garage-rock",
+      "albums": [
+        {
+          "name": "Провода над рекой",
+          "release_date": "2019-03-14",
+          "genre_slug": "garage-rock",
+          "tracks": ["Ржавый май", "Пятый подъезд", "Снег на усилителе", "Лампы горят"]
+        },
+        {
+          "name": "Крыши без антенн",
+          "release_date": "2021-06-18",
+          "genre_slug": "indie-rock",
+          "tracks": ["Тихий двор", "Дождь на кассете", "После репетиции", "Северный мост"]
+        },
+        {
+          "name": "Город спит стоя",
+          "release_date": "2023-10-06",
+          "genre_slug": "post-punk",
+          "tracks": ["Поворот к депо", "Белые стены", "Вечерний шум", "Ноль часов"]
+        }
+      ]
+    },
+    {
+      "name": "Лунный Подвал",
+      "slug": "lunny-podval",
+      "city": "Нижний Новгород",
+      "genre_slug": "post-punk",
+      "albums": [
+        {
+          "name": "Сырой свет",
+          "release_date": "2018-09-21",
+          "genre_slug": "post-punk",
+          "tracks": ["Плитка", "Ночной киоск", "Сырые стены", "Маршрут домой"]
+        },
+        {
+          "name": "Тени в проходной",
+          "release_date": "2020-11-13",
+          "genre_slug": "shoegaze",
+          "tracks": ["Мутное стекло", "Лестница вниз", "Пустой цех", "После смены"]
+        },
+        {
+          "name": "Неоновый чердак",
+          "release_date": "2024-02-16",
+          "genre_slug": "synth-punk",
+          "tracks": ["Синяя лампа", "Дворовый ток", "Панельный сон", "Фаза луны"]
+        }
+      ]
+    },
+    {
+      "name": "Степные Провода",
+      "slug": "stepnye-provoda",
+      "city": "Астана",
+      "genre_slug": "indie-rock",
+      "albums": [
+        {
+          "name": "Ветер на линии",
+          "release_date": "2017-05-26",
+          "genre_slug": "indie-rock",
+          "tracks": ["Желтая степь", "Теплый кабель", "Башня связи", "Поздний автобус"]
+        },
+        {
+          "name": "Станция без названия",
+          "release_date": "2020-04-10",
+          "genre_slug": "alt-folk",
+          "tracks": ["Пыльный перрон", "Три куплета", "Сухая трава", "Окно вагона"]
+        },
+        {
+          "name": "Пульс горизонта",
+          "release_date": "2022-08-19",
+          "genre_slug": "math-rock",
+          "tracks": ["Семь долей", "Ровный ветер", "Пауза в такте", "Круги над полем"]
+        }
+      ]
+    },
+    {
+      "name": "Тихий Разряд",
+      "slug": "tihiy-razryad",
+      "city": "Минск",
+      "genre_slug": "synth-punk",
+      "albums": [
+        {
+          "name": "Низкое напряжение",
+          "release_date": "2018-02-09",
+          "genre_slug": "synth-punk",
+          "tracks": ["Старый блок", "Теплый экран", "Кнопка сна", "Ток по стене"]
+        },
+        {
+          "name": "После сигнала",
+          "release_date": "2021-01-22",
+          "genre_slug": "post-punk",
+          "tracks": ["Проводник", "Немые окна", "Пустой канал", "Серый импульс"]
+        },
+        {
+          "name": "Контур двора",
+          "release_date": "2023-05-12",
+          "genre_slug": "noise-pop",
+          "tracks": ["Белый гул", "На паузе", "Линия крыш", "Сонный модуль"]
+        }
+      ]
+    },
+    {
+      "name": "Пыльные Окна",
+      "slug": "pylnye-okna",
+      "city": "Пермь",
+      "genre_slug": "lo-fi-pop",
+      "albums": [
+        {
+          "name": "Комната с эхо",
+          "release_date": "2019-07-12",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Пленка", "Стол у окна", "Крошки света", "Соседи сверху"]
+        },
+        {
+          "name": "Суббота на полу",
+          "release_date": "2021-09-03",
+          "genre_slug": "noise-pop",
+          "tracks": ["Плохой микрофон", "Чай остыл", "Пятна на стене", "Домофон"]
+        },
+        {
+          "name": "Зима в наушниках",
+          "release_date": "2024-01-19",
+          "genre_slug": "indie-rock",
+          "tracks": ["Варежки", "Короткий день", "Светофоры", "Не выключай"]
+        }
+      ]
+    },
+    {
+      "name": "Каспийский Чердак",
+      "slug": "kaspiyskiy-cherdak",
+      "city": "Актау",
+      "genre_slug": "alt-folk",
+      "albums": [
+        {
+          "name": "Соль на струнах",
+          "release_date": "2017-10-20",
+          "genre_slug": "alt-folk",
+          "tracks": ["Береговой дом", "Сухой причал", "Камни поют", "Письмо с моря"]
+        },
+        {
+          "name": "Пыльный компас",
+          "release_date": "2020-03-27",
+          "genre_slug": "indie-rock",
+          "tracks": ["Южный ветер", "Песок в кармане", "Ночной маяк", "Где вода"]
+        },
+        {
+          "name": "Медленный прилив",
+          "release_date": "2022-12-02",
+          "genre_slug": "shoegaze",
+          "tracks": ["Тихая волна", "Следы соли", "Сонный берег", "Белый шум"]
+        }
+      ]
+    },
+    {
+      "name": "Янтарный Гараж",
+      "slug": "yantarny-garazh",
+      "city": "Калининград",
+      "genre_slug": "garage-rock",
+      "albums": [
+        {
+          "name": "Ключ на двенадцать",
+          "release_date": "2018-06-01",
+          "genre_slug": "garage-rock",
+          "tracks": ["Масляный пол", "Старая педаль", "Портовый вечер", "Шумный ключ"]
+        },
+        {
+          "name": "Песок в усилке",
+          "release_date": "2020-08-28",
+          "genre_slug": "noise-pop",
+          "tracks": ["Гул гаражей", "Радио двор", "Рваный ремень", "Пляжный кабель"]
+        },
+        {
+          "name": "Два моста назад",
+          "release_date": "2023-04-07",
+          "genre_slug": "indie-rock",
+          "tracks": ["Фары", "Карта района", "После дождя", "Теплый бетон"]
+        }
+      ]
+    },
+    {
+      "name": "Каменный Лифт",
+      "slug": "kamenny-lift",
+      "city": "Ереван",
+      "genre_slug": "math-rock",
+      "albums": [
+        {
+          "name": "Пятый этаж вверх",
+          "release_date": "2019-04-05",
+          "genre_slug": "math-rock",
+          "tracks": ["Неровная кнопка", "Семь ступеней", "Теплый камень", "Свет в шахте"]
+        },
+        {
+          "name": "Город на склоне",
+          "release_date": "2021-05-28",
+          "genre_slug": "indie-rock",
+          "tracks": ["Утренний склон", "Сухой фонтан", "Красная крыша", "Долгая улица"]
+        },
+        {
+          "name": "Ритм ступеней",
+          "release_date": "2023-09-15",
+          "genre_slug": "post-punk",
+          "tracks": ["Три пролета", "Скрип троса", "Над городом", "Эхо дверей"]
+        }
+      ]
+    },
+    {
+      "name": "Ночная Смена",
+      "slug": "nochnaya-smena",
+      "city": "Киров",
+      "genre_slug": "post-punk",
+      "albums": [
+        {
+          "name": "Смена начинается",
+          "release_date": "2017-12-08",
+          "genre_slug": "post-punk",
+          "tracks": ["Табель", "Снег у проходной", "Пустой автобус", "До рассвета"]
+        },
+        {
+          "name": "Кофе из автомата",
+          "release_date": "2020-10-16",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Стаканчик", "Третий час", "Лампа мигает", "Разговор в курилке"]
+        },
+        {
+          "name": "Домой по серой ветке",
+          "release_date": "2022-11-11",
+          "genre_slug": "synth-punk",
+          "tracks": ["Шум турникета", "Пустое метро", "Карманный билет", "Сон после смены"]
+        }
+      ]
+    },
+    {
+      "name": "Электро Двор",
+      "slug": "elektro-dvor",
+      "city": "Самара",
+      "genre_slug": "synth-punk",
+      "albums": [
+        {
+          "name": "Сеть у подъезда",
+          "release_date": "2018-03-30",
+          "genre_slug": "synth-punk",
+          "tracks": ["Пять вольт", "Пульт соседей", "Дворовой вайб", "Пластиковый бас"]
+        },
+        {
+          "name": "Модуль сна",
+          "release_date": "2021-02-05",
+          "genre_slug": "noise-pop",
+          "tracks": ["Шумный экран", "Синий блок", "Сонная плата", "Автоответчик"]
+        },
+        {
+          "name": "Проводная весна",
+          "release_date": "2024-03-01",
+          "genre_slug": "indie-rock",
+          "tracks": ["Мартовский ток", "Теплая розетка", "Сигнал во дворе", "После грозы"]
+        }
+      ]
+    },
+    {
+      "name": "Гулкий Переулок",
+      "slug": "gulkiy-pereulok",
+      "city": "Томск",
+      "genre_slug": "noise-pop",
+      "albums": [
+        {
+          "name": "Стены отвечают",
+          "release_date": "2019-01-25",
+          "genre_slug": "noise-pop",
+          "tracks": ["Гул арки", "Почтовый ящик", "Следы шин", "Вечерний дворник"]
+        },
+        {
+          "name": "Мелкий снег",
+          "release_date": "2021-12-10",
+          "genre_slug": "shoegaze",
+          "tracks": ["Белый экран", "Шаги под окнами", "Тихий звон", "Заметает"]
+        },
+        {
+          "name": "Не закрывай ворота",
+          "release_date": "2023-06-23",
+          "genre_slug": "garage-rock",
+          "tracks": ["Скрип", "Двор без света", "Банка краски", "Поздний звук"]
+        }
+      ]
+    },
+    {
+      "name": "Сосновый Бас",
+      "slug": "sosnovy-bas",
+      "city": "Новосибирск",
+      "genre_slug": "indie-rock",
+      "albums": [
+        {
+          "name": "Лесная репетиция",
+          "release_date": "2018-08-17",
+          "genre_slug": "indie-rock",
+          "tracks": ["Сосны", "Комары и бас", "Поляна", "До электрички"]
+        },
+        {
+          "name": "Сибирский тембр",
+          "release_date": "2020-09-25",
+          "genre_slug": "garage-rock",
+          "tracks": ["Холодный комбик", "Пыльный футляр", "Длинный кабель", "Соседний гараж"]
+        },
+        {
+          "name": "Трасса за город",
+          "release_date": "2022-07-08",
+          "genre_slug": "post-punk",
+          "tracks": ["Фары в тумане", "Километр сна", "Заправка", "Тишина после"]
+        }
+      ]
+    },
+    {
+      "name": "Белый Подъезд",
+      "slug": "bely-podezd",
+      "city": "Уфа",
+      "genre_slug": "post-punk",
+      "albums": [
+        {
+          "name": "Этаж без номера",
+          "release_date": "2017-09-15",
+          "genre_slug": "post-punk",
+          "tracks": ["Белая дверь", "Свет на лестнице", "Новый сосед", "Код домофона"]
+        },
+        {
+          "name": "Тихие батареи",
+          "release_date": "2020-01-31",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Теплая труба", "Письмо в щели", "Пыльный коврик", "Старый лифт"]
+        },
+        {
+          "name": "Девять окон",
+          "release_date": "2023-03-24",
+          "genre_slug": "shoegaze",
+          "tracks": ["Окно напротив", "Дымный двор", "Снег на перилах", "Тихий звонок"]
+        }
+      ]
+    },
+    {
+      "name": "Медный Снег",
+      "slug": "medny-sneg",
+      "city": "Красноярск",
+      "genre_slug": "shoegaze",
+      "albums": [
+        {
+          "name": "Тяжелые хлопья",
+          "release_date": "2019-11-29",
+          "genre_slug": "shoegaze",
+          "tracks": ["Медный свет", "Глухой январь", "Снег на проводах", "Белая педаль"]
+        },
+        {
+          "name": "Река подо льдом",
+          "release_date": "2021-12-24",
+          "genre_slug": "noise-pop",
+          "tracks": ["Тонкий лед", "Дальние огни", "Карта холода", "Шорох воды"]
+        },
+        {
+          "name": "Солнечная пыль",
+          "release_date": "2024-04-12",
+          "genre_slug": "indie-rock",
+          "tracks": ["Апрельский склон", "Пыль в луче", "Стеклянный день", "Греется город"]
+        }
+      ]
+    },
+    {
+      "name": "Радио Туман",
+      "slug": "radio-tuman",
+      "city": "Псков",
+      "genre_slug": "lo-fi-pop",
+      "albums": [
+        {
+          "name": "Частота окна",
+          "release_date": "2018-05-04",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Шипение", "Старый приемник", "Туман с реки", "Позывные"]
+        },
+        {
+          "name": "Плохая антенна",
+          "release_date": "2020-06-19",
+          "genre_slug": "noise-pop",
+          "tracks": ["Помехи", "Ночной сигнал", "Слова сквозь шум", "Станция молчит"]
+        },
+        {
+          "name": "Мягкий эфир",
+          "release_date": "2022-10-28",
+          "genre_slug": "indie-rock",
+          "tracks": ["Пятница", "Влажный асфальт", "Белый мост", "Перед рассветом"]
+        }
+      ]
+    },
+    {
+      "name": "Пластиковый Май",
+      "slug": "plastikovy-may",
+      "city": "Барнаул",
+      "genre_slug": "synth-punk",
+      "albums": [
+        {
+          "name": "Цветной пакет",
+          "release_date": "2019-05-17",
+          "genre_slug": "synth-punk",
+          "tracks": ["Майский бит", "Пластик", "Рынок утром", "Скользкий синт"]
+        },
+        {
+          "name": "Кислотный двор",
+          "release_date": "2021-07-30",
+          "genre_slug": "garage-rock",
+          "tracks": ["Салатовый шум", "Розовый гараж", "Барабан из ведра", "До темноты"]
+        },
+        {
+          "name": "После дискеты",
+          "release_date": "2023-08-18",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Файл не найден", "Теплый пиксель", "Старый монитор", "Май вернется"]
+        }
+      ]
+    },
+    {
+      "name": "Алматинский Склон",
+      "slug": "almatinskiy-sklon",
+      "city": "Алматы",
+      "genre_slug": "alt-folk",
+      "albums": [
+        {
+          "name": "Горы за окном",
+          "release_date": "2017-04-14",
+          "genre_slug": "alt-folk",
+          "tracks": ["Утренний склон", "Теплый чай", "Трамвай в гору", "Снег далеко"]
+        },
+        {
+          "name": "Зеленый маршрут",
+          "release_date": "2020-05-22",
+          "genre_slug": "indie-rock",
+          "tracks": ["Листья", "Садовая линия", "Город дышит", "До остановки"]
+        },
+        {
+          "name": "Тихая высота",
+          "release_date": "2023-02-03",
+          "genre_slug": "shoegaze",
+          "tracks": ["Голубой воздух", "Над крышами", "Сквозь облака", "Высота молчит"]
+        }
+      ]
+    },
+    {
+      "name": "Волжский Контур",
+      "slug": "volzhskiy-kontur",
+      "city": "Казань",
+      "genre_slug": "math-rock",
+      "albums": [
+        {
+          "name": "Схема берега",
+          "release_date": "2018-10-05",
+          "genre_slug": "math-rock",
+          "tracks": ["Пять мостов", "Неровный берег", "Счет до семи", "Карта воды"]
+        },
+        {
+          "name": "Белые катера",
+          "release_date": "2021-04-23",
+          "genre_slug": "indie-rock",
+          "tracks": ["Причал", "Светлый след", "Вода и провод", "Поздний рейс"]
+        },
+        {
+          "name": "Геометрия ветра",
+          "release_date": "2023-11-17",
+          "genre_slug": "post-punk",
+          "tracks": ["Угол улицы", "Холодный рисунок", "Три линии", "Контур"]
+        }
+      ]
+    },
+    {
+      "name": "Глиняный Синт",
+      "slug": "glinyany-sint",
+      "city": "Ташкент",
+      "genre_slug": "synth-punk",
+      "albums": [
+        {
+          "name": "Теплая плата",
+          "release_date": "2019-06-07",
+          "genre_slug": "synth-punk",
+          "tracks": ["Глина", "Солнечный модуль", "Рынок частот", "Пульс арыка"]
+        },
+        {
+          "name": "Пыльная каскада",
+          "release_date": "2021-08-13",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Кассета в тени", "Сухой бит", "Окно в жару", "Переулок"]
+        },
+        {
+          "name": "Низкое солнце",
+          "release_date": "2024-05-03",
+          "genre_slug": "noise-pop",
+          "tracks": ["Песок в динамике", "Тень провода", "Теплый шум", "Вечерний ток"]
+        }
+      ]
+    },
+    {
+      "name": "Кирпичный Хор",
+      "slug": "kirpichny-hor",
+      "city": "Рязань",
+      "genre_slug": "garage-rock",
+      "albums": [
+        {
+          "name": "Песни у стены",
+          "release_date": "2017-11-03",
+          "genre_slug": "garage-rock",
+          "tracks": ["Красный кирпич", "Хор во дворе", "Старый мяч", "Ворота"]
+        },
+        {
+          "name": "Пятый корпус",
+          "release_date": "2020-02-14",
+          "genre_slug": "post-punk",
+          "tracks": ["Коридор", "План эвакуации", "Смена караула", "Окна цеха"]
+        },
+        {
+          "name": "Ровный гул",
+          "release_date": "2022-05-20",
+          "genre_slug": "noise-pop",
+          "tracks": ["Стена звучит", "Пыль в горле", "Бетонный бас", "Хор молчит"]
+        }
+      ]
+    },
+    {
+      "name": "Горная Пауза",
+      "slug": "gornaya-pauza",
+      "city": "Бишкек",
+      "genre_slug": "alt-folk",
+      "albums": [
+        {
+          "name": "Перед перевалом",
+          "release_date": "2018-07-27",
+          "genre_slug": "alt-folk",
+          "tracks": ["Тропа", "Камень у ручья", "Сухой костер", "Пауза ветра"]
+        },
+        {
+          "name": "Серебряный склон",
+          "release_date": "2020-12-18",
+          "genre_slug": "shoegaze",
+          "tracks": ["Снег далеко", "Тонкий воздух", "Серебро", "Вершина спит"]
+        },
+        {
+          "name": "Ручной компас",
+          "release_date": "2023-07-21",
+          "genre_slug": "indie-rock",
+          "tracks": ["Карта в рюкзаке", "Ночь в палатке", "Горный шум", "Назад к огням"]
+        }
+      ]
+    },
+    {
+      "name": "Серый Магнит",
+      "slug": "sery-magnit",
+      "city": "Челябинск",
+      "genre_slug": "post-punk",
+      "albums": [
+        {
+          "name": "Поле притяжения",
+          "release_date": "2019-09-06",
+          "genre_slug": "post-punk",
+          "tracks": ["Магнитный двор", "Металл и снег", "Серый свет", "Смена полюсов"]
+        },
+        {
+          "name": "Пыль завода",
+          "release_date": "2021-03-19",
+          "genre_slug": "garage-rock",
+          "tracks": ["Железный день", "Грохот ворот", "Пятно масла", "Пыльная смена"]
+        },
+        {
+          "name": "Линия поля",
+          "release_date": "2024-02-09",
+          "genre_slug": "math-rock",
+          "tracks": ["Плюс и минус", "Семь шагов", "Сетка", "Контур поля"]
+        }
+      ]
+    },
+    {
+      "name": "Светлый Подвал",
+      "slug": "svetly-podval",
+      "city": "Саратов",
+      "genre_slug": "lo-fi-pop",
+      "albums": [
+        {
+          "name": "Лампа под потолком",
+          "release_date": "2018-01-12",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Лампа", "Низкий стол", "Гул холодильника", "Теплый плед"]
+        },
+        {
+          "name": "Демо на кухне",
+          "release_date": "2020-07-03",
+          "genre_slug": "indie-rock",
+          "tracks": ["Кухонный дубль", "Плохой дубль", "Чайник", "Записано ночью"]
+        },
+        {
+          "name": "Солнечная сторона",
+          "release_date": "2023-05-26",
+          "genre_slug": "noise-pop",
+          "tracks": ["Луч на полу", "Окно открыто", "Пыль танцует", "Мягкий шум"]
+        }
+      ]
+    },
+    {
+      "name": "Мягкий Бетон",
+      "slug": "myagkiy-beton",
+      "city": "Омск",
+      "genre_slug": "shoegaze",
+      "albums": [
+        {
+          "name": "Стена дышит",
+          "release_date": "2017-06-30",
+          "genre_slug": "shoegaze",
+          "tracks": ["Мягкая стена", "Дворовой сон", "Бетон теплый", "Шумные листья"]
+        },
+        {
+          "name": "Спальный район",
+          "release_date": "2021-10-01",
+          "genre_slug": "post-punk",
+          "tracks": ["Панель", "Переход", "Магазин у дома", "Ночь на районе"]
+        },
+        {
+          "name": "Тонкая крыша",
+          "release_date": "2023-12-08",
+          "genre_slug": "noise-pop",
+          "tracks": ["Капли", "Чердак шумит", "Антенна", "Белый рассвет"]
+        }
+      ]
+    },
+    {
+      "name": "Зеленый Усилитель",
+      "slug": "zeleny-usilitel",
+      "city": "Тула",
+      "genre_slug": "garage-rock",
+      "albums": [
+        {
+          "name": "Громкость на два",
+          "release_date": "2019-02-22",
+          "genre_slug": "garage-rock",
+          "tracks": ["Зеленый канал", "Сосед стучит", "Гудит лампа", "Перегруз"]
+        },
+        {
+          "name": "Педаль из гаража",
+          "release_date": "2021-06-04",
+          "genre_slug": "noise-pop",
+          "tracks": ["Пружина", "Кнопка", "Длинный хвост", "Фонит"]
+        },
+        {
+          "name": "Три аккорда позже",
+          "release_date": "2024-04-26",
+          "genre_slug": "indie-rock",
+          "tracks": ["После трех", "Гитара у окна", "Маршрутка", "Вечерний аккорд"]
+        }
+      ]
+    },
+    {
+      "name": "Солнечный Шифер",
+      "slug": "solnechny-shifer",
+      "city": "Астрахань",
+      "genre_slug": "indie-rock",
+      "albums": [
+        {
+          "name": "Крыша в июле",
+          "release_date": "2018-07-13",
+          "genre_slug": "indie-rock",
+          "tracks": ["Горячий шифер", "Река блестит", "Жаркий двор", "Тень от антенны"]
+        },
+        {
+          "name": "Песок на струнах",
+          "release_date": "2020-08-07",
+          "genre_slug": "alt-folk",
+          "tracks": ["Сухая песня", "Берег вечером", "Тростник", "Короткий ветер"]
+        },
+        {
+          "name": "Свет до полуночи",
+          "release_date": "2023-09-29",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Оранжевый час", "Комната тепла", "Пыльный луч", "Полночь близко"]
+        }
+      ]
+    },
+    {
+      "name": "Тонкий Лес",
+      "slug": "tonkiy-les",
+      "city": "Петрозаводск",
+      "genre_slug": "alt-folk",
+      "albums": [
+        {
+          "name": "Мхи и провода",
+          "release_date": "2017-05-05",
+          "genre_slug": "alt-folk",
+          "tracks": ["Мох", "Лесная линия", "Северный чай", "Камень у воды"]
+        },
+        {
+          "name": "Озеро в петле",
+          "release_date": "2021-05-14",
+          "genre_slug": "math-rock",
+          "tracks": ["Петля", "Круги воды", "Тонкий счет", "Береговая пауза"]
+        },
+        {
+          "name": "Дальний костер",
+          "release_date": "2023-10-20",
+          "genre_slug": "shoegaze",
+          "tracks": ["Искры", "Сонный лес", "Черный берег", "Гул сосен"]
+        }
+      ]
+    },
+    {
+      "name": "Полярный Переход",
+      "slug": "polyarny-perehod",
+      "city": "Мурманск",
+      "genre_slug": "post-punk",
+      "albums": [
+        {
+          "name": "Северный зебра",
+          "release_date": "2019-12-13",
+          "genre_slug": "post-punk",
+          "tracks": ["Полярный свет", "Пустой переход", "Ледяной автобус", "Ночь длинная"]
+        },
+        {
+          "name": "Окна в порт",
+          "release_date": "2021-11-26",
+          "genre_slug": "shoegaze",
+          "tracks": ["Синий порт", "Ветер с воды", "Глухой маяк", "Снег на тросах"]
+        },
+        {
+          "name": "Короткое лето",
+          "release_date": "2024-06-14",
+          "genre_slug": "indie-rock",
+          "tracks": ["Два дня тепла", "Белые ночи", "Трава у дома", "Солнце низко"]
+        }
+      ]
+    },
+    {
+      "name": "Теплый Радар",
+      "slug": "teply-radar",
+      "city": "Гродно",
+      "genre_slug": "synth-punk",
+      "albums": [
+        {
+          "name": "Сигнал у парка",
+          "release_date": "2018-09-07",
+          "genre_slug": "synth-punk",
+          "tracks": ["Радар", "Парк вечером", "Теплый сигнал", "Точка на карте"]
+        },
+        {
+          "name": "Мелодия двора",
+          "release_date": "2020-10-30",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Качели", "Соседи поют", "Пленочный бит", "Фонарный свет"]
+        },
+        {
+          "name": "После дождя",
+          "release_date": "2023-08-04",
+          "genre_slug": "noise-pop",
+          "tracks": ["Лужи", "Мокрый сигнал", "Открытый балкон", "Легкий гул"]
+        }
+      ]
+    },
+    {
+      "name": "Сухой Океан",
+      "slug": "suhoy-okean",
+      "city": "Улан-Удэ",
+      "genre_slug": "shoegaze",
+      "albums": [
+        {
+          "name": "Волны без воды",
+          "release_date": "2017-08-11",
+          "genre_slug": "shoegaze",
+          "tracks": ["Сухая волна", "Песок звучит", "Океан во сне", "Дальний берег"]
+        },
+        {
+          "name": "Степной прилив",
+          "release_date": "2020-09-18",
+          "genre_slug": "alt-folk",
+          "tracks": ["Широкий ветер", "Трава", "Горизонт", "Путь домой"]
+        },
+        {
+          "name": "Мираж кассеты",
+          "release_date": "2022-12-16",
+          "genre_slug": "lo-fi-pop",
+          "tracks": ["Пленка в жару", "Мираж", "Сонный ритм", "Сухой закат"]
+        }
+      ]
+    }
+  ]
+}

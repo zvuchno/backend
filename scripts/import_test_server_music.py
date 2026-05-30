@@ -56,7 +56,7 @@ def parse_args() -> argparse.Namespace:
         default=str(
             Path(__file__).resolve().parent
             / 'data'
-            / 'test_server_music_payload.json',
+            / 'test_server_friendly_indie_payload.json',
         ),
         help='Путь к JSON-датасету импорта.',
     )

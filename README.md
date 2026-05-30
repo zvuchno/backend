@@ -231,7 +231,7 @@ python manage.py check
 Оба варианта используют один JSON-источник по умолчанию:
 
 ```
-scripts/data/test_server_music_payload.json
+scripts/data/test_server_friendly_indie_payload.json
 ```
 
 Структура JSON описана рядом:
@@ -256,7 +256,7 @@ python manage.py import_test_server_music
 
 ```
 python manage.py import_test_server_music \
-  --payload scripts/data/test_server_music_payload.json
+  --payload scripts/data/test_server_friendly_indie_payload.json
 ```
 
 Указать пароль для fixture-аккаунтов артистов:
@@ -283,7 +283,7 @@ python scripts/import_test_server_music.py \
 ```
 python scripts/import_test_server_music.py \
   --base-url https://example.com/api/v1 \
-  --payload scripts/data/test_server_music_payload.json \
+  --payload scripts/data/test_server_friendly_indie_payload.json \
   --password 'TestPass123!@#'
 ```
 

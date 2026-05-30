@@ -39,7 +39,7 @@ class Command(BaseCommand):
                 Path(__file__).resolve().parents[3]
                 / 'scripts'
                 / 'data'
-                / 'test_server_music_payload.json',
+                / 'test_server_friendly_indie_payload.json',
             ),
             help='Путь к JSON-датасету.',
         )
