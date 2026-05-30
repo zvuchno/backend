@@ -206,3 +206,9 @@ def favorites_url():
 def checkout_url():
     """Возвращает URL-адрес эндпоинта создания заказа."""
     return reverse('api:store:orders-checkout')
+
+
+@pytest.fixture
+def apply_promocode_url():
+    """Возвращает URL-адрес эндпоинта применения промокода."""
+    return reverse('api:store:cart-apply-promocode')

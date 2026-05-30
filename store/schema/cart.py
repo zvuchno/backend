@@ -52,7 +52,7 @@ cart_schema = extend_schema_view(
         extend_schema(
             methods=['PATCH'],
             summary='Частичное обновление корзины',
-            description='Обновляет только переданные поля (например, купон).',
+            description='Обновляет только переданные поля.',
             tags=CART_TAGS,
             request=CartWriteSerializer,
             responses={200: CartReadSerializer},
