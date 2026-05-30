@@ -17,13 +17,16 @@ catalog_list_schema = extend_schema(
     auth=[],
     summary='Список товаров каталога',
     description=(
-        'Возвращает список товарных карточек каталога в едином формате.\n\n'
+        'Возвращает список витринных карточек товаров.\n\n'
         'Карточка может представлять альбом, сингл, носитель или обычный '
         'мерч. Для перехода по клику фронтенд использует блок target.\n\n'
         'Важно: product_type показывает технический тип товара, а target '
-        'показывает на detail endpoint. Например, винил '
-        'технически является merch-товаром, '
-        'но вести может на detail альбома.'
+        'показывает, куда нужно перейти. Например, винил технически является '
+        'merch-товаром, но вести может на detail альбома.\n\n'
+        'Поле is_favorite показывает, добавлен ли товар в избранное. '
+        'Сейчас избранное связано с вариантом товара, поэтому карточка '
+        'считается избранной, если в избранном есть '
+        'любой вариант этого товара.'
     ),
     parameters=[
         OpenApiParameter(
@@ -48,10 +51,10 @@ catalog_list_schema = extend_schema(
                 'merch',
             ],
             description=(
-                'Фильтр по типу витрины. '
-                'all — все товары каталога, '
-                'music — музыкальные товары по макету, '
-                'merch — мерч по макету.'
+                'Тип витрины. '
+                'all или отсутствие параметра — альбомы и мерч; '
+                'album — только альбомы/синглы; '
+                'merch — только мерч и носители.'
             ),
         ),
         OpenApiParameter(
@@ -59,15 +62,20 @@ catalog_list_schema = extend_schema(
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description=(
-                'Фильтр по slug жанра. '
+                'Фильтр по slug жанров. Можно передать несколько значений '
+                'через запятую: genre=rock,jazz. '
                 'Применяется к альбомам и носителям, связанным с альбомом.'
             ),
         ),
         OpenApiParameter(
-            name='artist',
+            name='kind',
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
-            description='Фильтр по slug артиста.',
+            description=(
+                'Фильтр по slug типов мерча. Можно передать несколько '
+                'значений через запятую: kind=vinyl,tshirt. '
+                'Применяется к merch-товарам.'
+            ),
         ),
         OpenApiParameter(
             name='ordering',
@@ -80,8 +88,8 @@ catalog_list_schema = extend_schema(
             ],
             description=(
                 'Сортировка товаров. '
-                'created_at — сначала старые, '
-                '-created_at или отсутствие параметра — сначала новые, '
+                'created_at — сначала старые; '
+                '-created_at или отсутствие параметра — сначала новые; '
                 'random — случайный порядок.'
             ),
         ),
@@ -101,7 +109,6 @@ catalog_list_schema = extend_schema(
                 'is_favorite': False,
                 'target': {
                     'type': 'album',
-                    'id': 10,
                     'url': '/api/v1/store/albums/10/',
                 },
             },
@@ -120,7 +127,6 @@ catalog_list_schema = extend_schema(
                 'is_favorite': False,
                 'target': {
                     'type': 'album',
-                    'id': 10,
                     'url': '/api/v1/store/albums/10/',
                 },
             },
@@ -139,7 +145,6 @@ catalog_list_schema = extend_schema(
                 'is_favorite': False,
                 'target': {
                     'type': 'merch',
-                    'id': 20,
                     'url': '/api/v1/store/merch/20/',
                 },
             },

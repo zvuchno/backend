@@ -1,4 +1,5 @@
 from django.urls import reverse
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -6,24 +7,12 @@ from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Product
 
 
-class CatalogCardTargetSerializer(serializers.Serializer):
-    """Сериализатор блока перехода на detail-страницу.
-
-    type - тип для выбора detail ручки.
-    url - URL detail endpoint.
-    """
-
-    type = serializers.CharField(
-        help_text='Тип detail endpoint для перехода.',
-    )
-    url = serializers.CharField(
-        allow_null=True,
-        help_text='URL detail endpoint.',
-    )
-
-
 class BaseCardSerializer(serializers.Serializer):
-    """Базовый сериализатор единой карточки товара."""
+    """Базовый контракт витринной карточки товара.
+
+    Не привязан к конкретной модели. Описывает форму карточки,
+    которую можно собрать от Product, snapshot-а или другого источника.
+    """
 
     product_type = serializers.CharField(
         read_only=True,
@@ -72,18 +61,6 @@ class BaseCardSerializer(serializers.Serializer):
     is_favorite = serializers.SerializerMethodField(
         help_text=('Признак добавления товара в избранное. '),
     )
-    target = serializers.SerializerMethodField(
-        help_text=(
-            'Данные для перехода по клику. '
-            'Например, карточка носителя может вести на detail альбома.'
-        ),
-    )
-
-    DETAIL_URL_NAMES = {
-        'album': 'api:store:albums-detail',
-        'merch': 'api:store:merch-detail',
-        'track': 'api:store:tracks-detail',
-    }
 
     class Meta:
         fields = (
@@ -95,11 +72,10 @@ class BaseCardSerializer(serializers.Serializer):
             'price',
             'image',
             'is_favorite',
-            'target',
         )
 
 
-class CatalogCardSerializer(BaseCardSerializer):
+class ProductCardSerializer(BaseCardSerializer):
     """Сериализатор единой карточки товара.
 
     Базовая модель карточки — Product.
@@ -116,58 +92,10 @@ class CatalogCardSerializer(BaseCardSerializer):
     - CartItem -> cart_item.product_variant.product;
     - OrderItem -> лучше использовать сохраненный snapshot карточки.
 
-    Для корзины и других ручек с уже выбранным вариантом можно передать
-    вариант через context['preselect_variant']. Тогда его id попадет
-    в detail.preselect_variant_id.
-
     Пример:
-        CatalogCardSerializer(
-            cart_item.product_variant.product,
-            context={
-                **self.context,
-                'preselect_variant': cart_item.product_variant,
-            },
-        ).data
+        CatalogCardSerializer(cart_item.product_variant.product).data
     """
 
-    product_type = serializers.CharField(
-        read_only=True,
-        help_text=(
-            'Технический тип товара: album, merch или track. '
-            'Для перехода по клику использовать target.'
-        ),
-    )
-    name = serializers.CharField(
-        read_only=True,
-        help_text='Название товара.',
-    )
-    artist_name = serializers.CharField(
-        read_only=True,
-        allow_null=True,
-        help_text='Имя артиста-владельца товара.',
-    )
-    kind = serializers.CharField(
-        read_only=True,
-        allow_null=True,
-        help_text=(
-            'Человекочитаемый вид карточки: Альбом, Сингл, '
-            'Винил, Футболка, Трек и т.п.'
-        ),
-    )
-    year = serializers.IntegerField(
-        read_only=True,
-        allow_null=True,
-        help_text=(
-            'Год релиза для музыкального контента. '
-            'Для обычного мерча возвращается null.'
-        ),
-    )
-    price = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-        help_text='Базовая цена товара.',
-    )
     image = serializers.SerializerMethodField(
         help_text=(
             'Основное изображение карточки товара. '
@@ -177,45 +105,17 @@ class CatalogCardSerializer(BaseCardSerializer):
     is_favorite = serializers.SerializerMethodField(
         help_text='Признак добавления товара в избранное.',
     )
-    target = serializers.SerializerMethodField(
-        help_text=(
-            'Данные для перехода по клику. '
-            'Например, карточка носителя может вести на detail альбома.'
-        ),
-    )
-
-    DETAIL_URL_NAMES = {
-        'album': 'api:store:albums-detail',
-        'merch': 'api:store:merch-detail',
-        'track': 'api:store:tracks-detail',
-    }
 
     class Meta(BaseCardSerializer.Meta):
         model = Product
 
+    @extend_schema_field(OpenApiTypes.BOOL)
     def get_is_favorite(self, obj):
         """Возвращает признак добавления товара в избранное."""
         favorite_product_ids = self.context.get('favorite_product_ids', set())
         return obj.id in favorite_product_ids
 
-    @extend_schema_field(CatalogCardTargetSerializer)
-    def get_target(self, obj):
-        """Возвращает данные для перехода из карточки товара."""
-        return {
-            'type': obj.target_type,
-            'id': obj.target_id,
-            'url': self._get_target_url(obj.target_type, obj.target_id),
-        }
-
-    def _get_target_url(self, detail_type, detail_id) -> str | None:
-        """Возвращает URL detail-ручки."""
-        url_name = self.DETAIL_URL_NAMES.get(detail_type)
-
-        if not url_name:
-            return None
-
-        return reverse(url_name, args=(detail_id,))
-
+    @extend_schema_field(OpenApiTypes.STR)
     def get_image(self, obj):
         """Возвращает изображение карточки товара."""
         request = self.context.get('request')
@@ -248,4 +148,67 @@ class CatalogCardSerializer(BaseCardSerializer):
 
             return request.build_absolute_uri(url) if request else url
 
+        if obj.track_id:
+            image = obj.track.album.cover_image
+            if not image:
+                return None
+
+            try:
+                url = image.url
+            except ValueError:
+                return None
+
+            return request.build_absolute_uri(url) if request else url
+
         return None
+
+
+class CatalogCardTargetSerializer(serializers.Serializer):
+    """Данные для перехода из карточки товара."""
+
+    type = serializers.CharField(
+        help_text=(
+            'Тип endpoint для перехода. Например: album, merch или track.'
+        ),
+    )
+    url = serializers.CharField(
+        allow_null=True,
+        help_text='URL endpoint для перехода.',
+    )
+
+
+class CatalogCardSerializer(ProductCardSerializer):
+    """Сериализатор карточки товара для публичного каталога."""
+
+    target = serializers.SerializerMethodField(
+        help_text=(
+            'Данные для перехода по клику. '
+            'Например, карточка носителя может вести на detail альбома.'
+        ),
+    )
+
+    DETAIL_URL_NAMES = {
+        'album': 'api:store:albums-detail',
+        'merch': 'api:store:merch-detail',
+        'track': 'api:store:tracks-detail',
+    }
+
+    class Meta:
+        fields = BaseCardSerializer.Meta.fields + ('target',)
+
+    @extend_schema_field(CatalogCardTargetSerializer)
+    def get_target(self, obj):
+        """Возвращает данные для перехода из карточки товара."""
+        return {
+            'type': obj.target_type,
+            'url': self._get_target_url(obj.target_type, obj.target_id),
+        }
+
+    def _get_target_url(self, detail_type, detail_id) -> str | None:
+        """Возвращает URL detail-ручки."""
+        url_name = self.DETAIL_URL_NAMES.get(detail_type)
+
+        if not url_name:
+            return None
+
+        return reverse(url_name, args=(detail_id,))

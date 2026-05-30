@@ -12,6 +12,7 @@ from .catalog_card import (
     BaseCardSerializer,
     CatalogCardSerializer,
     CatalogCardTargetSerializer,
+    ProductCardSerializer,
 )
 from .checkout import CheckoutSerializer
 from .delivery import DeliverySerializer
@@ -57,6 +58,7 @@ __all__ = [
     'OrderDetailSerializer',
     'BaseCardSerializer',
     'CatalogCardTargetSerializer',
+    'ProductCardSerializer',
     'CatalogCardSerializer',
     'CartReadSerializer',
     'CartWriteSerializer',

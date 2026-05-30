@@ -4,6 +4,10 @@ from django.db import models
 from store.models import Product
 
 
+class CharInFilter(django_filters.BaseInFilter, django_filters.CharFilter):
+    """Фильтр по списку строк через запятую."""
+
+
 class ProductCatalogFilter(django_filters.FilterSet):
     """Фильтры каталога товаров."""
 
@@ -15,7 +19,8 @@ class ProductCatalogFilter(django_filters.FilterSet):
             (Product.ProductType.MERCH, 'Мерч'),
         ),
     )
-    genre = django_filters.CharFilter(method='filter_genre')
+    genre = CharInFilter(method='filter_genre')
+    kind = CharInFilter(method='filter_kind')
     ordering = django_filters.CharFilter(method='filter_ordering')
     artist = django_filters.CharFilter(method='filter_artist')
 
@@ -24,6 +29,7 @@ class ProductCatalogFilter(django_filters.FilterSet):
         fields = (
             'type',
             'genre',
+            'kind',
             'artist',
             'ordering',
         )
@@ -61,19 +67,34 @@ class ProductCatalogFilter(django_filters.FilterSet):
 
         return queryset.filter(product_type=value)
 
-    def filter_genre(self, queryset, name, value):
-        """Фильтрует товары по жанру музыкального контента."""
-        if not value:
+    def filter_genre(self, queryset, name, values):
+        """Фильтрует товары по slug жанров музыкального контента.
+
+        Для альбомов жанр берется с album.genre.
+        Для носителей жанр берется с привязанного merch.album.genre.
+        Обычный мерч без альбома при фильтре по жанру не попадает.
+        """
+        if not values:
             return queryset
 
         return queryset.filter(
             models.Q(
                 product_type=Product.ProductType.ALBUM,
-                album__genre__slug=value,
+                album__genre__slug__in=values,
             )
             | models.Q(
                 product_type=Product.ProductType.MERCH,
                 merch__is_carrier=True,
-                merch__album__genre__slug=value,
+                merch__album__genre__slug__in=values,
             ),
+        )
+
+    def filter_kind(self, queryset, name, values):
+        """Фильтрует мерч по slug типа товара."""
+        if not values:
+            return queryset
+
+        return queryset.filter(
+            product_type=Product.ProductType.MERCH,
+            merch__kind__slug__in=values,
         )
