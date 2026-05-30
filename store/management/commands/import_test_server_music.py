@@ -20,12 +20,9 @@ from django.test.utils import override_settings
 from rest_framework.test import APIClient
 from rest_framework.views import APIView
 
-from scripts.import_test_server_music import (
-    AUDIO_FIXTURE,
-    FIXTURE_NAMESPACE,
-    generated_png_bytes,
-    match_merch_kinds,
-)
+from scripts.test_content.constants import AUDIO_FIXTURE, FIXTURE_NAMESPACE
+from scripts.test_content.images import generated_png_bytes
+from scripts.test_content.matching import match_merch_kinds
 
 from store.models import Genre, MerchKind
 
@@ -221,7 +218,11 @@ class Command(BaseCommand):
                         client,
                         token,
                         merch_id,
-                        merch,
+                        {
+                            **merch,
+                            'artist_slug': artist['slug'],
+                            'album_seed': album_id,
+                        },
                     )
                     if image_created:
                         merch_images_created += 1
@@ -655,7 +656,16 @@ class Command(BaseCommand):
             data={
                 'is_main': True,
                 'image': self._image_upload(
-                    str(merch_id),
+                    ':'.join(
+                        str(part)
+                        for part in (
+                            merch.get('artist_slug'),
+                            merch.get('album_seed'),
+                            merch.get('name'),
+                            merch_id,
+                        )
+                        if part
+                    ),
                     merch.get('kind_slug', 'merch'),
                     f'merch-{merch_id}.png',
                 ),
