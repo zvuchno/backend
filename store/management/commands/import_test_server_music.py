@@ -9,12 +9,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management.base import BaseCommand, CommandError
 from django.test.utils import override_settings
 from rest_framework.test import APIClient
+from rest_framework.views import APIView
 
 from scripts.import_test_server_music import (
     AUDIO_FIXTURE,
@@ -22,6 +24,20 @@ from scripts.import_test_server_music import (
     generated_png_bytes,
     match_merch_kinds,
 )
+
+from store.models import Genre, MerchKind
+
+
+@contextmanager
+def disabled_api_throttling():
+    """Временно отключает DRF throttling на время импорта через APIClient."""
+    original_get_throttles = APIView.get_throttles
+
+    try:
+        APIView.get_throttles = lambda self: []
+        yield
+    finally:
+        APIView.get_throttles = original_get_throttles
 
 
 class Command(BaseCommand):
@@ -57,12 +73,14 @@ class Command(BaseCommand):
 
         data = json.loads(payload_path.read_text(encoding='utf-8'))
 
-        with override_settings(
-            ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'],
+        with (
+            override_settings(
+                ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'],
+            ),
+            disabled_api_throttling(),
         ):
             client = APIClient()
             genres_by_slug = self._ensure_genres(
-                client,
                 data.get('genres', []),
             )
 
@@ -72,7 +90,9 @@ class Command(BaseCommand):
             merch_created = 0
             merch_images_created = 0
             merch_skipped = 0
-            merch_kinds_by_slug = self._match_merch_kinds(client)
+            merch_kinds_by_slug = self._ensure_merch_kinds(
+                data.get('merch_kinds', []),
+            )
             merch_templates = data.get('merch_templates', [])
 
             for artist in data.get('artists', []):
@@ -265,55 +285,44 @@ class Command(BaseCommand):
 
     def _ensure_genres(
         self,
-        client: APIClient,
         genres_payload: list[dict],
     ) -> dict[str, int]:
-        genres = self._paginated_get(client, '/api/v1/store/genres/')
-        genres_by_slug = {
-            genre['slug']: genre['id']
-            for genre in genres
-            if isinstance(genre, dict) and 'slug' in genre and 'id' in genre
-        }
+        genres_by_slug: dict[str, int] = {}
         for genre in genres_payload:
-            if genre['slug'] in genres_by_slug:
-                continue
-            response = self._api_json(
-                client,
-                'post',
-                '/api/v1/store/genres/',
-                data=genre,
-                format='json',
+            existing = (
+                Genre.objects.filter(slug=genre['slug']).first()
+                or Genre.objects.filter(name__iexact=genre['name']).first()
             )
-            if response.status_code in (200, 201):
-                payload = response.json()
-                genres_by_slug[payload['slug']] = payload['id']
-                continue
-            if response.status_code == 400:
-                # Повторный запуск: объект мог быть создан ранее.
-                refreshed = self._paginated_get(
-                    client,
-                    '/api/v1/store/genres/',
+            if existing is None:
+                existing = Genre.objects.create(
+                    name=genre['name'],
+                    slug=genre['slug'],
                 )
-                refreshed_map = {
-                    item['slug']: item['id']
-                    for item in refreshed
-                    if isinstance(item, dict)
-                    and 'slug' in item
-                    and 'id' in item
-                }
-                existing_id = refreshed_map.get(genre['slug'])
-                if existing_id is not None:
-                    genres_by_slug = refreshed_map
-                    continue
-            raise CommandError(
-                f"Genre create failed for '{genre.get('name')}': "
-                f'HTTP {response.status_code} {response.content.decode()}',
-            )
+            genres_by_slug[genre['slug']] = existing.id
         return genres_by_slug
 
-    def _match_merch_kinds(self, client: APIClient) -> dict[str, int]:
-        merch_kinds = self._paginated_get(client, '/api/v1/store/merch-kinds/')
-        return match_merch_kinds(merch_kinds)
+    @staticmethod
+    def _merch_kind_items() -> list[dict]:
+        return [
+            {'id': item.id, 'name': item.name, 'slug': item.slug}
+            for item in MerchKind.objects.all()
+        ]
+
+    def _ensure_merch_kinds(
+        self,
+        merch_kinds_payload: list[dict],
+    ) -> dict[str, int]:
+        matched = match_merch_kinds(self._merch_kind_items())
+        for merch_kind in merch_kinds_payload:
+            canonical_slug = merch_kind['slug']
+            if canonical_slug in matched:
+                continue
+            MerchKind.objects.get_or_create(
+                slug=canonical_slug,
+                defaults={'name': merch_kind['name']},
+            )
+            matched = match_merch_kinds(self._merch_kind_items())
+        return matched
 
     def _register_or_login_artist(
         self,
@@ -493,7 +502,7 @@ class Command(BaseCommand):
                 'name': track_name,
                 'album': str(album_id),
                 'position': str(position),
-                'price': '49.00',
+                'price': album.get('track_price', '49.00'),
                 'allow_overpay': 'false',
                 'description': f'{artist["name"]} / '
                 f'{album["name"]} / {track_name}',

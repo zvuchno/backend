@@ -238,6 +238,90 @@ def match_merch_kinds(items: list[dict]) -> dict[str, int]:
     return matched
 
 
+def build_normalized_candidates(
+    items: list[dict],
+) -> list[tuple[int, list[str]]]:
+    """Готовит список кандидатов для сопоставления по slug/name."""
+    candidates = []
+
+    for item in items:
+        item_id = item.get('id')
+        if not item_id:
+            continue
+
+        values = [
+            str(item.get('slug', '')),
+            str(item.get('name', '')),
+        ]
+        normalized_values = [
+            normalize_merch_kind(value) for value in values if value
+        ]
+        candidates.append((item_id, normalized_values))
+
+    return candidates
+
+
+def find_genre_match(
+    candidates: list[tuple[int, list[str]]],
+    normalized_aliases: set[str],
+) -> int | None:
+    """Ищет жанр сначала по точному, потом по частичному совпадению."""
+    for item_id, normalized_values in candidates:
+        if any(value in normalized_aliases for value in normalized_values):
+            return item_id
+
+    for item_id, normalized_values in candidates:
+        if any(
+            alias in value or value in alias
+            for value in normalized_values
+            for alias in normalized_aliases
+        ):
+            return item_id
+
+    return None
+
+
+def fallback_genre_id(
+    candidates: list[tuple[int, list[str]]],
+    genre_slug: str,
+) -> int:
+    """Возвращает стабильный fallback id жанра по slug."""
+    digest = hashlib.sha256(genre_slug.encode('utf-8')).hexdigest()
+    fallback_index = int(digest[:8], 16) % len(candidates)
+    return candidates[fallback_index][0]
+
+
+def match_genres(
+    items: list[dict],
+    genres_payload: list[dict],
+) -> dict[str, int]:
+    """Сопоставляет жанры payload с жанрами, доступными через API."""
+    candidates = build_normalized_candidates(items)
+
+    if not candidates:
+        raise RuntimeError(
+            'No genres found in API. Create genres before HTTP import.',
+        )
+
+    matched: dict[str, int] = {}
+
+    for genre in genres_payload:
+        genre_slug = genre['slug']
+        normalized_aliases = {
+            normalize_merch_kind(str(genre.get('slug', ''))),
+            normalize_merch_kind(str(genre.get('name', ''))),
+        }
+        normalized_aliases.discard('')
+
+        genre_id = find_genre_match(candidates, normalized_aliases)
+        if genre_id is None:
+            genre_id = fallback_genre_id(candidates, genre_slug)
+
+        matched[genre_slug] = genre_id
+
+    return matched
+
+
 def generated_png_bytes(  # noqa: C901
     seed: str,
     subject: str,
@@ -311,8 +395,9 @@ def generated_png_bytes(  # noqa: C901
         for y in range(1, 7):
             for x in range(4):
                 bit_index = (y - 1) * 4 + x
-                color = main if digest[9 + bit_index] % 2 else accent
-                if digest[9 + bit_index] % 3:
+                digest_byte = digest[(9 + bit_index) % len(digest)]
+                color = main if digest_byte % 2 else accent
+                if digest_byte % 3:
                     rect(x, y, 1, 1, color)
                     rect(7 - x, y, 1, 1, color)
 
@@ -448,62 +533,6 @@ def update_artist_profile(
         cover_response,
         f"upload artist cover '{artist['name']}'",
     )
-
-
-def ensure_slugged_objects(
-    session: requests.Session,
-    base_url: str,
-    path: str,
-    objects_payload: list[dict],
-    timeout: int,
-    context: str,
-    token: str | None = None,
-    request_delay: float = 0.0,
-) -> dict[str, int]:
-    items = paginated_get(session, base_url, path, timeout, token=token)
-    objects_by_slug = {
-        item['slug']: item['id']
-        for item in items
-        if isinstance(item, dict) and 'slug' in item and 'id' in item
-    }
-
-    for item in objects_payload:
-        if item['slug'] in objects_by_slug:
-            continue
-        headers = {'Authorization': f'Bearer {token}'} if token else {}
-        create_response = request_with_retry(
-            session,
-            'POST',
-            api_url(base_url, path),
-            headers=headers,
-            json=item,
-            timeout=timeout,
-            request_delay=request_delay,
-        )
-        if create_response.status_code in (200, 201):
-            created = create_response.json()
-            objects_by_slug[created['slug']] = created['id']
-            continue
-        if create_response.status_code == 400:
-            refreshed = paginated_get(
-                session,
-                base_url,
-                path,
-                timeout,
-                token=token,
-            )
-            objects_by_slug = {
-                obj['slug']: obj['id']
-                for obj in refreshed
-                if isinstance(obj, dict) and 'slug' in obj and 'id' in obj
-            }
-            if item['slug'] in objects_by_slug:
-                continue
-        raise RuntimeError(
-            f"{context} create '{item.get('name')}' failed: "
-            f'HTTP {create_response.status_code} {create_response.text}',
-        )
-    return objects_by_slug
 
 
 def create_album(
@@ -684,14 +713,14 @@ def main() -> int:  # noqa: C901
     timeout = args.timeout
     request_delay = args.request_delay
 
-    genres_by_slug = ensure_slugged_objects(
-        session=session,
-        base_url=args.base_url,
-        path='/store/genres/',
-        objects_payload=data.get('genres', []),
-        timeout=timeout,
-        context='genre',
-        request_delay=request_delay,
+    genres_by_slug = match_genres(
+        paginated_get(
+            session,
+            args.base_url,
+            '/store/genres/',
+            timeout,
+        ),
+        data.get('genres', []),
     )
 
     with tempfile.NamedTemporaryFile(
