@@ -9,6 +9,12 @@ from .cart import (
     CartReadSerializer,
     CartWriteSerializer,
 )
+from .catalog_card import (
+    BaseCardSerializer,
+    CatalogCardSerializer,
+    CatalogCardTargetSerializer,
+    ProductCardSerializer,
+)
 from .checkout import CheckoutSerializer
 from .delivery import DeliverySerializer
 from .favorites import FavoritesSerializer
@@ -52,6 +58,10 @@ __all__ = [
     'OrderSerializer',
     'OrderItemSerializer',
     'OrderDetailSerializer',
+    'BaseCardSerializer',
+    'CatalogCardTargetSerializer',
+    'ProductCardSerializer',
+    'CatalogCardSerializer',
     'CartReadSerializer',
     'CartWriteSerializer',
     'CartReadSerializer',
