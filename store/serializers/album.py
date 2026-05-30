@@ -60,6 +60,7 @@ class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
 
     allow_overpay = serializers.SerializerMethodField()
     variants = serializers.SerializerMethodField()
+    genre = serializers.StringRelatedField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (

@@ -66,8 +66,8 @@ class CartItem(models.Model):
         return product.price
 
     @property
-    def line_total(self):
-        """Сумма по позиции."""
+    def base_line_total(self):
+        """Исходная стоимость позиции (с донатом) до применения промокода."""
         if hasattr(self, '_line_total'):
             return self._line_total
         # Юзаем unit_price
@@ -86,8 +86,8 @@ class CartItem(models.Model):
         if product.product_type in ['album', 'track'] and self.quantity > 1:
             raise ValidationError(
                 {
-                    'quantity': 'Ненормально покупать цифровые товары '
-                    'в количестве больше одного. Одумайтесь.',
+                    'quantity': 'Цифровые товары можно '
+                    'приобрести только в одном экземпляре.',
                 },
             )
 

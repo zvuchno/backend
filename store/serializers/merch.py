@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -38,13 +40,13 @@ class MerchReadSerializer(serializers.ModelSerializer):
             'main_image',
         )
 
-    def get_price(self, obj):
+    def get_price(self, obj) -> Decimal | None:
         product = getattr(obj, 'product', None)
         if product:
             return product.price
         return None
 
-    def get_main_image(self, obj):
+    def get_main_image(self, obj) -> str | None:
         request = self.context.get('request')
         images = list(obj.images_merch.all())
 
@@ -105,7 +107,7 @@ class MerchDetailSerializer(MerchReadSerializer):
                 data[field] = getattr(instance, field)
         return data
 
-    def get_stock(self, obj):
+    def get_stock(self, obj) -> int:
         product = getattr(obj, 'product', None)
         if not product:
             return 0
@@ -129,7 +131,7 @@ class MerchDetailSerializer(MerchReadSerializer):
             if v.is_active and v.property_value != CHAR_PRESET_SIMPLE
         )
 
-    def get_allow_overpay(self, obj):
+    def get_allow_overpay(self, obj) -> bool:
         product = getattr(obj, 'product', None)
         if product:
             return product.allow_overpay
@@ -224,6 +226,9 @@ class MerchWriteSerializer(serializers.ModelSerializer):
                 'stock': 'Нельзя указывать stock вместе с variants. '
                 'Укажите stock внутри каждого варианта.',
             })
+        variants = attrs.get('variants')
+        if variants is not None and not variants:
+            attrs['property_name'] = ''
         return attrs
 
     def to_representation(self, instance):
