@@ -4,6 +4,7 @@ from .album import (
     AlbumWriteSerializer,
 )
 from .cart import (
+    ApplyPromocodeSerializer,
     CartItemWriteSerializer,
     CartReadSerializer,
     CartWriteSerializer,
@@ -20,6 +21,7 @@ from .merch import (
     VariantReadSerializer,
     VariantWriteSerializer,
 )
+from .merch_kind import MerchKindSerializer
 from .order import OrderDetailSerializer, OrderItemSerializer, OrderSerializer
 from .sale import ArtistSaleDetailSerializer, ArtistSaleSerializer
 from .track import (
@@ -32,6 +34,7 @@ __all__ = [
     'AlbumReadSerializer',
     'AlbumWriteSerializer',
     'AlbumReadDetailSerializer',
+    'ApplyPromocodeSerializer',
     'ArtistSaleDetailSerializer',
     'ArtistSaleSerializer',
     'CartItemWriteSerializer',
@@ -41,6 +44,7 @@ __all__ = [
     'GenreSerializer',
     'ImageSerializer',
     'MerchDetailSerializer',
+    'MerchKindSerializer',
     'MerchReadSerializer',
     'MerchWriteSerializer',
     'VariantReadSerializer',

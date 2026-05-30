@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.db import transaction
 
 from store.models import Cart, CartItem, ProductVariant
+from store.services import CartCalculationService
 
 
 class CartService:
@@ -143,6 +144,20 @@ class CartService:
         deleted_count, _ = cart.items.filter(
             product_variant_id=variant_id,
         ).delete()
+
+        if deleted_count > 0 and cart.promocode:
+            cart.refresh_from_db(fields=['items'])
+            calculation_service = CartCalculationService(cart)
+            # Проверяем, остался ли хоть один товар владельца промокода
+            has_applicable_items = any(
+                calculation_service._get_item_owner_id(item)
+                == cart.promocode.owner_id
+                for item in calculation_service.items
+            )
+            # Если подходящих товаров нет — дропаем промокод
+            if not has_applicable_items:
+                cart.promocode = None
+                cart.save()
         return deleted_count > 0
 
     @staticmethod
