@@ -144,5 +144,6 @@ backend/user_media
 user_media
 dump.json
 logs/
+tmp/
 
 *:Zone.Identifier

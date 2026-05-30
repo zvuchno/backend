@@ -83,15 +83,28 @@ class Product(models.Model):
     )
 
     @property
+    def content(self):
+        """Возвращает связанный объект контента на основе типа продукта."""
+        if not self.product_type:
+            return None
+        return getattr(self, self.product_type, None)
+
+    @property
+    def content_id(self):
+        """Возвращает ID связанного контента без обращения к БД."""
+        if not self.product_type:
+            return None
+        return getattr(self, f'{self.product_type}_id', None)
+
+    @property
+    def name(self):
+        """Возвращает имя связанного контента."""
+        return self.content.name if self.content else ''
+
+    @property
     def owner(self):
         """Возвращает владельца на основе типа продукта."""
-        if self.product_type == self.ProductType.ALBUM and self.album:
-            return self.album.owner
-        if self.product_type == self.ProductType.TRACK and self.track:
-            return self.track.owner
-        if self.product_type == self.ProductType.MERCH and self.merch:
-            return self.merch.owner
-        return None
+        return self.content.owner if self.content else None
 
     def determine_product_type(self):
         """Автозаполнение поля product_type.
@@ -145,7 +158,6 @@ class Product(models.Model):
         ]
 
     def __str__(self):
-        content_object = self.album or self.track or self.merch
-        if not content_object:
+        if not self.content:
             return f'Новый товар ({self.get_product_type_display()})'
-        return f'{self.get_product_type_display()}: {content_object}'
+        return f'{self.get_product_type_display()}: {self.content}'

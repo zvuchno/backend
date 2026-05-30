@@ -41,7 +41,7 @@ class TrackAdmin(
         'get_allow_overpay',
         'is_active',
     )
-    search_fields = ('album__name', 'lyrics', 'name')
+    search_fields = ('album__name', 'description', 'name')
     list_filter = (
         'is_active',
         'created_at',
@@ -58,7 +58,7 @@ class TrackAdmin(
     list_editable = ('is_active',)
     fieldsets = (
         (
-            'Основные данные',
+            'Основная информация',
             {
                 'fields': (
                     'name',
@@ -66,9 +66,17 @@ class TrackAdmin(
                     'is_active',
                     'audio_file',
                     'formatted_duration',
-                    'lyrics',
+                    'description',
                     'get_sku',
                     'owner',
+                ),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'classes': ('collapse',),
+                'fields': (
                     'created_at',
                     'updated_at',
                 ),

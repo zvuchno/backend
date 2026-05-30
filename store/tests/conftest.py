@@ -35,7 +35,7 @@ from users.models import ConsentDocument
 # Content fixtures
 # =================================
 @pytest.fixture
-def variant_factory(user):
+def variant_factory(artist_user):
     """Фабрика для создания ProductVariant с разными типами продуктов."""
 
     def create_variant(
@@ -52,7 +52,7 @@ def variant_factory(user):
     ) -> ProductVariant:
 
         common_fields = {
-            'owner': kwargs.get('owner') or user,
+            'owner': kwargs.get('owner') or artist_user,
             'is_active': is_active,
             'is_published': is_published,
             'visibility': visibility,
@@ -73,7 +73,7 @@ def variant_factory(user):
             )
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
-                owner=kwargs.get('owner') or user,
+                owner=kwargs.get('owner') or artist_user,
                 album=album,
                 audio_file=ContentFile(
                     b'fake mp3 content',
@@ -206,3 +206,9 @@ def favorites_url():
 def checkout_url():
     """Возвращает URL-адрес эндпоинта создания заказа."""
     return reverse('api:store:orders-checkout')
+
+
+@pytest.fixture
+def apply_promocode_url():
+    """Возвращает URL-адрес эндпоинта применения промокода."""
+    return reverse('api:store:cart-apply-promocode')

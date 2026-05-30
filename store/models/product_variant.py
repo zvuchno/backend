@@ -51,14 +51,12 @@ class ProductVariant(ActivatableModel, TimestampModel):
 
         Пример: ALB-12-V1 (Альбом №12, Вариант 1).
         """
-        if not self.product:
+        if not self.product or not self.product.product_type:
             return f'TMP-{uuid.uuid4().hex[:6].upper()}'
+
         p_type = self.product.product_type[:3].upper()  # ALB, TRA, MER
-        p_id = (
-            self.product.album_id
-            or self.product.track_id
-            or self.product.merch_id
-        )
+        p_id = self.product.content_id
+
         new_sku = f'{p_type}-{p_id}-V{self.id}'
         # Проверка на уникальность (на случай коллизий или ручного ввода)
         if ProductVariant.objects.filter(sku=new_sku).exists():
@@ -87,26 +85,13 @@ class ProductVariant(ActivatableModel, TimestampModel):
 
     @property
     def variant_name(self):
-        """Генерирует информативное имя варианта продукта."""
-        parts = []
-        # Тип продукта
-        p_type = getattr(self.product, 'product_type', None)
-        if p_type:
-            parts.append(str(p_type))
-        # Название
-        name = None
-        if hasattr(self.product, 'album') and self.product.album:
-            name = self.product.album.name
-        elif hasattr(self.product, 'track') and self.product.track:
-            name = self.product.track.name
-        elif hasattr(self.product, 'merch') and self.product.merch:
-            name = self.product.merch.name
-        if name:
-            parts.append(f'"{name}"')
-        # Свойства
+        """Генерирует имя варианта продукта: имя контента (свойство)."""
+        if not self.product:
+            return ''
+        product_name = self.product.name
         if self.property_value:
-            parts.append(f'({self.property_value})')
-        return ' '.join(parts)
+            return f'{product_name} ({self.property_value})'
+        return product_name
 
     def __str__(self):
-        return f'SKU: {self.sku} | {self.variant_name}'
+        return f'{self.variant_name}'

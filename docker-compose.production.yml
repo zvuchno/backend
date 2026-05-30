@@ -2,6 +2,7 @@ volumes:
   pg_data:
   static:
   media:
+  next_image_cache:
 
 services:
   db:
@@ -31,6 +32,15 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+  frontend:
+    image: inswty/zvuchno_frontend:latest
+    env_file:
+      - .env.frontend
+    volumes:
+      - next_image_cache:/app/.next/cache/images
+    expose:
+      - "3000"
+    restart: unless-stopped
   gateway:
     image: inswty/zvuchno_gateway:latest
     env_file: .env
@@ -42,3 +52,4 @@ services:
         condition: service_started
     ports:
       - "127.0.0.1:8000:80"
+    restart: unless-stopped

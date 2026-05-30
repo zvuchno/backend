@@ -6,7 +6,9 @@
 """
 
 from .commerce import ProductActionMixin
+from .soft_delete import SoftDeleteMixin
 
 __all__ = [
     'ProductActionMixin',
+    'SoftDeleteMixin',
 ]

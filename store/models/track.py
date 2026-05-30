@@ -9,6 +9,7 @@ from store.constants import (
 )
 from store.models.abstract import BaseContent
 from store.querysets.track_visibility import TrackQuerySet
+from store.validators import validate_audiofile_size
 
 
 class Track(BaseContent):
@@ -30,6 +31,7 @@ class Track(BaseContent):
             FileExtensionValidator(
                 allowed_extensions=ALLOWED_AUDIO_EXTENSIONS,
             ),
+            validate_audiofile_size,
         ],
         help_text='Аудиофайл',
     )
@@ -45,7 +47,6 @@ class Track(BaseContent):
         blank=True,
         help_text='Порядковый номер трека в альбоме',
     )
-    lyrics = models.TextField('Текст трека', blank=True, default='')
 
     objects = TrackQuerySet.as_manager()
 

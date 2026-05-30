@@ -102,6 +102,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = (
         'order_number',
         'email',
+        'is_authorized',
         'status',
         'delivery',
         'display_total',
@@ -135,7 +136,7 @@ class OrderAdmin(admin.ModelAdmin):
     )
     fieldsets = (
         (
-            None,
+            'Основная информация',
             {
                 'fields': (
                     'order_number',
@@ -176,6 +177,7 @@ class OrderAdmin(admin.ModelAdmin):
         (
             'Системная информация',
             {
+                'classes': ('collapse',),
                 'fields': (
                     'created_at',
                     'updated_at',
@@ -206,6 +208,11 @@ class OrderAdmin(admin.ModelAdmin):
             f'кв/оф. {obj.apartment}' if obj.apartment else None,
         ]
         return ', '.join(filter(None, parts)) or '-'
+
+    @admin.display(description='Авторизован', boolean=True)
+    def is_authorized(self, obj):
+        """Проверяет, привязан ли заказ к профилю пользователя."""
+        return obj.user_id is not None
 
     def get_queryset(self, request):
         return (

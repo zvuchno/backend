@@ -3,13 +3,23 @@
 Содержит классы для чтения и записи данных моделей Cart, CartItem.
 """
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from .mixins import ProductVariantURLMixin
-from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
-from store.models import Cart, CartItem, ProductVariant
-from store.services.cart_service import CartService
-from store.validators import validate_price_with_donation
+from store.constants import (
+    MAX_PRICE_DIGITS,
+    MAX_PROMOCODE_LENGTH,
+    MONEY_DISPLAY_PRECISION,
+    ZERO_MONEY,
+)
+from store.models import Cart, CartItem, ProductVariant, Promocode
+from store.services.cart_service import CartCalculationService, CartService
+from store.validators import (
+    validate_price_with_donation,
+    validate_promocode_format,
+)
 
 
 class CartItemReadSerializer(
@@ -33,11 +43,8 @@ class CartItemReadSerializer(
         read_only=True,
     )
     stock = serializers.SerializerMethodField()
-    line_total = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
+    discount = serializers.SerializerMethodField()
+    line_total = serializers.SerializerMethodField()
     target_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -47,6 +54,7 @@ class CartItemReadSerializer(
             'name',
             'price',
             'quantity',
+            'discount',
             'line_total',
             'comment',
             'stock',
@@ -62,33 +70,65 @@ class CartItemReadSerializer(
             return 1
         return variant.stock
 
+    def get_discount(self, obj) -> str:
+        """Возвращает сумму скидки на позицию по применённому промокоду."""
+        raw_discount = self.context.get('discounts', {}).get(
+            obj.id,
+            Decimal('0.0000'),
+        )
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_discount)
 
-class CartReadSerializer(serializers.ModelSerializer):
+    def get_line_total(self, obj) -> str:
+        """Возвращает финальную стоимость позиции из сервиса расчёта."""
+        raw_line_total = self.context['cart_service'].get_item_line_total(obj)
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_line_total)
+
+
+class CartReadSerializer(serializers.Serializer):
     """Сериализатор корзины покупок пользователя - чтение."""
 
     items = CartItemReadSerializer(
         many=True,
         read_only=True,
     )
-    subtotal = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
-    discount_promocode = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
-    total = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
+    subtotal = serializers.SerializerMethodField()
+    discount_promocode = serializers.SerializerMethodField()
+    total = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Cart
-        fields = ('items', 'subtotal', 'discount_promocode', 'total')
+    def get_subtotal(self, obj) -> str:
+        """Возвращает базовую сумму корзины до применения скидок."""
+        raw_subtotal = self.context['subtotal']
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_subtotal)
+
+    def get_discount_promocode(self, obj) -> str:
+        """Возвращает общую сумму скидки по применённому промокоду."""
+        raw_discount = self.context['discount_promocode']
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_discount)
+
+    def get_total(self, obj) -> str:
+        """Возвращает финальную сумму корзины к оплате после вычета скидок."""
+        raw_total = self.context['total']
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_total)
 
 
 class CartItemWriteSerializer(serializers.ModelSerializer):
@@ -170,3 +210,37 @@ class CartWriteSerializer(serializers.ModelSerializer):
             )
 
         return instance
+
+
+class ApplyPromocodeSerializer(serializers.Serializer):
+    """Сериализатор входящего промокода."""
+
+    code = serializers.CharField(
+        max_length=MAX_PROMOCODE_LENGTH,
+        required=True,
+        validators=[validate_promocode_format],
+    )
+
+    def validate_code(self, value) -> str:
+        """Проверяет существование промокода и его применимость к корзине."""
+        error_msg = 'Промокод не найден или неактивен'
+
+        try:
+            promocode = Promocode.objects.get(code=value)
+        except Promocode.DoesNotExist:
+            raise serializers.ValidationError(error_msg)
+
+        if not promocode.is_available:
+            raise serializers.ValidationError(error_msg)
+
+        cart = self.context.get('cart')
+        cart.promocode = promocode
+        calculation_service = CartCalculationService(cart)
+
+        if calculation_service.get_discount_total() == ZERO_MONEY:
+            raise serializers.ValidationError(
+                'Этот промокод невозможно применить к товарам в корзине.',
+            )
+
+        self.context['promocode'] = promocode
+        return value
