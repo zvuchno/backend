@@ -4,7 +4,6 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
-from store.models import Product
 
 
 class BaseCardSerializer(serializers.Serializer):
@@ -52,14 +51,14 @@ class BaseCardSerializer(serializers.Serializer):
         read_only=True,
         help_text='Базовая цена товара.',
     )
-    image = serializers.SerializerMethodField(
-        help_text=(
-            'Основное изображение карточки товара. '
-            'Для трека временно используется обложка родительского альбома.'
-        ),
+    image = serializers.CharField(
+        read_only=True,
+        allow_null=True,
+        help_text='Основное изображение карточки товара.',
     )
-    is_favorite = serializers.SerializerMethodField(
-        help_text=('Признак добавления товара в избранное. '),
+    is_favorite = serializers.BooleanField(
+        read_only=True,
+        help_text='Признак добавления товара в избранное.',
     )
 
     class Meta:
@@ -105,9 +104,6 @@ class ProductCardSerializer(BaseCardSerializer):
     is_favorite = serializers.SerializerMethodField(
         help_text='Признак добавления товара в избранное.',
     )
-
-    class Meta(BaseCardSerializer.Meta):
-        model = Product
 
     @extend_schema_field(OpenApiTypes.BOOL)
     def get_is_favorite(self, obj):
@@ -193,8 +189,8 @@ class CatalogCardSerializer(ProductCardSerializer):
         'track': 'api:store:tracks-detail',
     }
 
-    class Meta:
-        fields = BaseCardSerializer.Meta.fields + ('target',)
+    class Meta(ProductCardSerializer.Meta):
+        fields = ProductCardSerializer.Meta.fields + ('target',)
 
     @extend_schema_field(CatalogCardTargetSerializer)
     def get_target(self, obj):
