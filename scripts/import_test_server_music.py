@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Импорт тестовых музыкальных данных через API.
+# ruff: noqa: D103
+"""Импорт тестового контента через публичный API.
 
-Скрипт создает:
+Скрипт создает и переиспользует:
 - жанры;
-- артистов (регистрация + логин);
+- типы мерча;
+- артистов;
+- обложки артистов и альбомов;
 - альбомы;
-- треки (с multipart-загрузкой аудиофайла).
+- треки;
+- мерч с вариантами и изображениями.
 """
 
 from __future__ import annotations
@@ -15,15 +19,27 @@ import hashlib
 import json
 import tempfile
 import time
+from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import requests
+from PIL import Image, ImageDraw
+
+FIXTURE_NAMESPACE = 'test_server_content'
+AUDIO_FIXTURE = b'ID3\x03\x00\x00\x00\x00\x00\x21TEST_FIXTURE_AUDIO'
+MERCH_KIND_ALIASES = {
+    'cassette': ('cassette', 'audio-cassette', 'tape', 'кассета'),
+    'cap': ('cap', 'baseball-cap', 'hat', 'kepka', 'кепка', 'бейсболка'),
+    'cd': ('cd', 'compact-disc', 'compactdisc', 'audio-cd', 'disc', 'диск'),
+    'tshirt': ('tshirt', 't-shirt', 'shirt', 'tee', 'футболка'),
+    'vinyl': ('vinyl', 'vinyl-record', 'record', 'lp', 'винил', 'пластинка'),
+}
 
 
 def parse_args() -> argparse.Namespace:
-    """Todo: docstring."""
     parser = argparse.ArgumentParser(
-        description='Импорт тестового музыкального набора через API.',
+        description='Импорт тестового контента через API.',
     )
     parser.add_argument(
         '--base-url',
@@ -33,8 +49,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--password',
         default='TestPass123!@#',
-        help='Пароль для всех создаваемых артистов '
-        '(по умолчанию безопасный тестовый).',
+        help='Пароль для всех fixture-аккаунтов артистов.',
     )
     parser.add_argument(
         '--payload',
@@ -51,26 +66,40 @@ def parse_args() -> argparse.Namespace:
         default=20,
         help='Таймаут HTTP-запросов в секундах.',
     )
+    parser.add_argument(
+        '--request-delay',
+        type=float,
+        default=0.0,
+        help='Пауза после успешного изменяющего запроса, секунды.',
+    )
     return parser.parse_args()
 
 
 def api_url(base_url: str, path: str) -> str:
-    """Todo: docstring."""
     return f'{base_url.rstrip("/")}/{path.lstrip("/")}'
 
 
-def post_with_retry(
+def request_with_retry(
     session: requests.Session,
+    method: str,
     url: str,
     timeout: int,
     max_attempts: int = 5,
+    request_delay: float = 0.0,
     **kwargs,
 ) -> requests.Response:
-    """POST с retry на 429 Too Many Requests."""
+    """HTTP-запрос с retry на 429 Too Many Requests."""
     response = None
     for attempt in range(max_attempts):
-        response = session.post(url, timeout=timeout, **kwargs)
+        response = session.request(method, url, timeout=timeout, **kwargs)
         if response.status_code != 429:
+            if request_delay > 0 and method.upper() in {
+                'POST',
+                'PATCH',
+                'PUT',
+                'DELETE',
+            }:
+                time.sleep(request_delay)
             return response
 
         retry_after = response.headers.get('Retry-After')
@@ -78,14 +107,12 @@ def post_with_retry(
             sleep_seconds = int(retry_after)
         else:
             sleep_seconds = min(2**attempt, 10)
-
         time.sleep(sleep_seconds)
 
     return response
 
 
 def ensure_response_ok(response: requests.Response, context: str) -> dict:
-    """Todo: docstring."""
     if response.ok:
         if response.text.strip():
             return response.json()
@@ -96,19 +123,214 @@ def ensure_response_ok(response: requests.Response, context: str) -> dict:
 
 
 def extract_results(data: dict | list) -> list:
-    """Todo: docstring."""
     if isinstance(data, list):
         return data
-    if isinstance(data, dict) and 'results' in data:
+    if isinstance(data, dict) and isinstance(data.get('results'), list):
         return data['results']
     return []
 
 
+def paginated_get(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    timeout: int,
+    token: str | None = None,
+) -> list[dict]:
+    items: list[dict] = []
+    limit = 200
+    offset = 0
+    headers = {'Authorization': f'Bearer {token}'} if token else {}
+    while True:
+        separator = '&' if '?' in path else '?'
+        response = request_with_retry(
+            session,
+            'GET',
+            api_url(
+                base_url,
+                f'{path}{separator}limit={limit}&offset={offset}',
+            ),
+            headers=headers,
+            timeout=timeout,
+        )
+        payload = ensure_response_ok(response, f'GET {path}')
+        if isinstance(payload, list):
+            items.extend(payload)
+            break
+        batch = payload.get('results', [])
+        if not isinstance(batch, list):
+            raise RuntimeError(f'Unexpected payload for {path}: {payload}')
+        items.extend(batch)
+        if not payload.get('next'):
+            break
+        offset += limit
+    return items
+
+
 def normalize_username(source: str) -> str:
-    """Todo: docstring."""
     return ''.join(
         char if char.isalnum() else '-' for char in source.lower()
     ).strip('-')
+
+
+def marker(kind: str, *parts: object) -> str:
+    raw = ':'.join(str(part) for part in parts)
+    return f'[fixture:{FIXTURE_NAMESPACE}:{kind}:{raw}]'
+
+
+def marker_id_by_description(
+    items: list[dict],
+    kind: str,
+) -> dict[str, int]:
+    prefix = f'[fixture:{FIXTURE_NAMESPACE}:{kind}:'
+    result: dict[str, int] = {}
+    for item in items:
+        description = str(item.get('description', ''))
+        item_id = item.get('id')
+        if not item_id:
+            continue
+        start = description.find(prefix)
+        end = description.find(']', start + 1)
+        if start >= 0 and end > start:
+            result[description[start : end + 1]] = item_id
+    return result
+
+
+def normalize_merch_kind(value: str) -> str:
+    return ''.join(char for char in value.lower() if char.isalnum())
+
+
+def match_merch_kinds(items: list[dict]) -> dict[str, int]:
+    """Сопоставляет канонические типы мерча с типами, найденными в API."""
+    candidates = []
+    for item in items:
+        item_id = item.get('id')
+        if not item_id:
+            continue
+        values = [
+            str(item.get('slug', '')),
+            str(item.get('name', '')),
+        ]
+        candidates.append((
+            item_id,
+            [normalize_merch_kind(value) for value in values if value],
+        ))
+
+    matched: dict[str, int] = {}
+    for canonical, aliases in MERCH_KIND_ALIASES.items():
+        normalized_aliases = {
+            normalize_merch_kind(alias) for alias in (canonical, *aliases)
+        }
+        for item_id, normalized_values in candidates:
+            if any(value in normalized_aliases for value in normalized_values):
+                matched[canonical] = item_id
+                break
+        if canonical in matched:
+            continue
+        for item_id, normalized_values in candidates:
+            if any(
+                alias in value or value in alias
+                for value in normalized_values
+                for alias in normalized_aliases
+            ):
+                matched[canonical] = item_id
+                break
+    return matched
+
+
+def generated_png_bytes(  # noqa: C901
+    seed: str,
+    subject: str,
+    size: int = 64,
+) -> bytes:
+    """Генерирует GitHub-identicon-like pixel art PNG."""
+    digest = hashlib.sha256(f'{subject}:{seed}'.encode('utf-8')).digest()
+    bg = (238 + digest[0] % 14, 238 + digest[1] % 14, 238 + digest[2] % 14)
+    main = (40 + digest[3] % 170, 40 + digest[4] % 170, 40 + digest[5] % 170)
+    accent = (
+        30 + digest[6] % 190,
+        30 + digest[7] % 190,
+        30 + digest[8] % 190,
+    )
+
+    img = Image.new('RGB', (size, size), bg)
+    draw = ImageDraw.Draw(img)
+    cell = size // 8
+
+    def rect(x: int, y: int, w: int, h: int, color=main) -> None:
+        draw.rectangle(
+            (x * cell, y * cell, (x + w) * cell - 1, (y + h) * cell - 1),
+            fill=color,
+        )
+
+    normalized = subject.lower()
+    if (
+        't-shirt' in normalized
+        or 'shirt' in normalized
+        or 'футбол' in normalized
+    ):
+        rect(2, 1, 4, 1)
+        rect(1, 2, 2, 2)
+        rect(5, 2, 2, 2)
+        rect(2, 2, 4, 5)
+        rect(3, 3, 2, 1, accent)
+    elif 'mug' in normalized or 'круж' in normalized:
+        rect(2, 2, 4, 4)
+        rect(6, 3, 1, 2, accent)
+        rect(3, 6, 2, 1)
+    elif 'cap' in normalized or 'кеп' in normalized:
+        rect(2, 2, 4, 1)
+        rect(1, 3, 5, 1)
+        rect(3, 1, 2, 1, accent)
+    elif 'poster' in normalized or 'плакат' in normalized:
+        rect(2, 1, 4, 6)
+        rect(3, 2, 2, 1, accent)
+        rect(3, 5, 2, 1, accent)
+    elif 'cd' in normalized or 'disc' in normalized or 'диск' in normalized:
+        rect(2, 1, 4, 1)
+        rect(1, 2, 6, 4)
+        rect(2, 6, 4, 1)
+        rect(3, 3, 2, 2, bg)
+        rect(4, 4, 1, 1, accent)
+    elif (
+        'vinyl' in normalized
+        or 'cassette' in normalized
+        or 'media' in normalized
+        or 'носител' in normalized
+    ):
+        rect(1, 1, 6, 6)
+        rect(3, 3, 2, 2, bg)
+        rect(4, 4, 1, 1, accent)
+    elif 'artist' in normalized or 'артист' in normalized:
+        rect(3, 1, 2, 2)
+        rect(2, 3, 4, 4)
+        rect(1, 4, 1, 2, accent)
+        rect(6, 4, 1, 2, accent)
+    else:
+        # Симметричная сетка в духе identicon для обложек альбомов.
+        for y in range(1, 7):
+            for x in range(4):
+                bit_index = (y - 1) * 4 + x
+                color = main if digest[9 + bit_index] % 2 else accent
+                if digest[9 + bit_index] % 3:
+                    rect(x, y, 1, 1, color)
+                    rect(7 - x, y, 1, 1, color)
+
+    buffer = BytesIO()
+    img.save(buffer, format='PNG')
+    return buffer.getvalue()
+
+
+def png_file_tuple(
+    seed: str,
+    subject: str,
+    name: str,
+) -> tuple[str, BytesIO, str]:
+    return (
+        name,
+        BytesIO(generated_png_bytes(seed, subject)),
+        'image/png',
+    )
 
 
 def register_or_login_artist(
@@ -117,8 +339,8 @@ def register_or_login_artist(
     artist: dict,
     password: str,
     timeout: int,
+    request_delay: float,
 ) -> str:
-    """Todo: docstring."""
     username_seed = normalize_username(artist['slug'])
     username = f'fixture-{username_seed}'
     email = f'{username_seed}@fixtures.zvuchno.local'
@@ -126,18 +348,19 @@ def register_or_login_artist(
     phone_suffix = f'{int(digest[:12], 16) % 10_000_000_000:010d}'
     phone = f'+7{phone_suffix}'
 
-    register_payload = {
-        'username': username,
-        'email': email,
-        'phone': phone,
-        'name': artist['name'],
-        'password': password,
-    }
-    register_response = post_with_retry(
-        session=session,
-        url=api_url(base_url, '/auth/register/artist/'),
-        json=register_payload,
+    register_response = request_with_retry(
+        session,
+        'POST',
+        api_url(base_url, '/auth/register/artist/'),
+        json={
+            'username': username,
+            'email': email,
+            'phone': phone,
+            'name': artist['name'],
+            'password': password,
+        },
         timeout=timeout,
+        request_delay=request_delay,
     )
     if register_response.status_code not in (200, 201, 400):
         raise RuntimeError(
@@ -145,11 +368,13 @@ def register_or_login_artist(
             f'HTTP {register_response.status_code} {register_response.text}',
         )
 
-    token_response = post_with_retry(
-        session=session,
-        url=api_url(base_url, '/auth/token/create/'),
+    token_response = request_with_retry(
+        session,
+        'POST',
+        api_url(base_url, '/auth/token/create/'),
         json={'email': email, 'password': password},
         timeout=timeout,
+        request_delay=request_delay,
     )
     token_data = ensure_response_ok(
         token_response,
@@ -169,9 +394,11 @@ def update_artist_profile(
     artist: dict,
     token: str,
     timeout: int,
+    request_delay: float,
 ) -> None:
-    """Todo: docstring."""
-    response = session.patch(
+    response = request_with_retry(
+        session,
+        'PATCH',
         api_url(base_url, '/artists/me/'),
         headers={'Authorization': f'Bearer {token}'},
         json={
@@ -184,86 +411,142 @@ def update_artist_profile(
             'url': f'https://fixtures.zvuchno.local/artists/{artist["slug"]}',
         },
         timeout=timeout,
+        request_delay=request_delay,
     )
     ensure_response_ok(response, f"update artist profile '{artist['name']}'")
 
-
-def ensure_genres(
-    session: requests.Session,
-    base_url: str,
-    genres_payload: list[dict],
-    timeout: int,
-) -> dict[str, int]:
-    """Todo: docstring."""
-    list_response = session.get(
-        api_url(base_url, '/store/genres/'),
+    current_response = request_with_retry(
+        session,
+        'GET',
+        api_url(base_url, '/artists/me/'),
+        headers={'Authorization': f'Bearer {token}'},
         timeout=timeout,
     )
-    list_data = ensure_response_ok(list_response, 'list genres')
-    genre_items = extract_results(list_data)
-    genres_by_slug = {
+    current = ensure_response_ok(
+        current_response,
+        f"get artist profile '{artist['name']}'",
+    )
+    if current.get('cover'):
+        return
+
+    cover_response = request_with_retry(
+        session,
+        'PATCH',
+        api_url(base_url, '/artists/me/cover/'),
+        headers={'Authorization': f'Bearer {token}'},
+        files={
+            'cover': png_file_tuple(
+                artist['slug'],
+                'artist',
+                f'{artist["slug"]}-artist.png',
+            ),
+        },
+        timeout=timeout,
+        request_delay=request_delay,
+    )
+    ensure_response_ok(
+        cover_response,
+        f"upload artist cover '{artist['name']}'",
+    )
+
+
+def ensure_slugged_objects(
+    session: requests.Session,
+    base_url: str,
+    path: str,
+    objects_payload: list[dict],
+    timeout: int,
+    context: str,
+    token: str | None = None,
+    request_delay: float = 0.0,
+) -> dict[str, int]:
+    items = paginated_get(session, base_url, path, timeout, token=token)
+    objects_by_slug = {
         item['slug']: item['id']
-        for item in genre_items
+        for item in items
         if isinstance(item, dict) and 'slug' in item and 'id' in item
     }
 
-    for genre in genres_payload:
-        if genre['slug'] in genres_by_slug:
+    for item in objects_payload:
+        if item['slug'] in objects_by_slug:
             continue
-        create_response = session.post(
-            api_url(base_url, '/store/genres/'),
-            json=genre,
+        headers = {'Authorization': f'Bearer {token}'} if token else {}
+        create_response = request_with_retry(
+            session,
+            'POST',
+            api_url(base_url, path),
+            headers=headers,
+            json=item,
             timeout=timeout,
+            request_delay=request_delay,
         )
         if create_response.status_code in (200, 201):
             created = create_response.json()
-            genres_by_slug[created['slug']] = created['id']
+            objects_by_slug[created['slug']] = created['id']
             continue
         if create_response.status_code == 400:
-            # Возможен конфликт уникальности из-за
-            # параллельного/повторного запуска.
-            refresh_response = session.get(
-                api_url(base_url, '/store/genres/'),
-                timeout=timeout,
+            refreshed = paginated_get(
+                session,
+                base_url,
+                path,
+                timeout,
+                token=token,
             )
-            refreshed = ensure_response_ok(
-                refresh_response,
-                'refresh genres after conflict',
-            )
-            refreshed_items = extract_results(refreshed)
-            genres_by_slug = {
-                item['slug']: item['id']
-                for item in refreshed_items
-                if isinstance(item, dict) and 'slug' in item and 'id' in item
+            objects_by_slug = {
+                obj['slug']: obj['id']
+                for obj in refreshed
+                if isinstance(obj, dict) and 'slug' in obj and 'id' in obj
             }
-            if genre['slug'] in genres_by_slug:
+            if item['slug'] in objects_by_slug:
                 continue
         raise RuntimeError(
-            f"genre create '{genre['name']}' failed: "
+            f"{context} create '{item.get('name')}' failed: "
             f'HTTP {create_response.status_code} {create_response.text}',
         )
-
-    return genres_by_slug
+    return objects_by_slug
 
 
 def create_album(
     session: requests.Session,
     base_url: str,
-    album_payload: dict,
+    artist: dict,
+    album: dict,
+    genre_id: int,
+    album_marker: str,
     token: str,
     timeout: int,
+    request_delay: float,
 ) -> int:
-    """Todo: docstring."""
-    response = session.post(
+    response = request_with_retry(
+        session,
+        'POST',
         api_url(base_url, '/store/albums/'),
         headers={'Authorization': f'Bearer {token}'},
-        json=album_payload,
+        data={
+            'name': album['name'],
+            'is_single': 'false',
+            'release_date': album['release_date'],
+            'genre': str(genre_id),
+            'price': str(album.get('price', '199.00')),
+            'description': (
+                f'{album_marker} {artist["name"]} / {album["name"]} / '
+                'test import fixture'
+            ),
+            'allow_overpay': str(album.get('allow_overpay', False)).lower(),
+            'visibility': album.get('visibility', 'public'),
+            'is_published': str(album.get('is_published', True)).lower(),
+        },
+        files={
+            'cover_image': png_file_tuple(
+                f'{artist["slug"]}:{album["name"]}',
+                'album',
+                f'{artist["slug"]}-{normalize_username(album["name"])}.png',
+            ),
+        },
         timeout=timeout,
+        request_delay=request_delay,
     )
-    data = ensure_response_ok(
-        response,
-        f"create album '{album_payload['name']}'",
-    )
+    data = ensure_response_ok(response, f"create album '{album['name']}'")
     return data['id']
 
 
@@ -274,11 +557,13 @@ def create_track(
     audio_path: Path,
     token: str,
     timeout: int,
+    request_delay: float,
 ) -> None:
-    """Todo: docstring."""
     with audio_path.open('rb') as audio_file:
-        response = session.post(
-            api_url(base_url, '/store/track/'),
+        response = request_with_retry(
+            session,
+            'POST',
+            api_url(base_url, '/store/tracks/'),
             headers={'Authorization': f'Bearer {token}'},
             data={
                 'name': track_payload['name'],
@@ -290,12 +575,105 @@ def create_track(
             },
             files={'audio_file': (audio_path.name, audio_file, 'audio/mpeg')},
             timeout=timeout,
+            request_delay=request_delay,
         )
     ensure_response_ok(response, f"create track '{track_payload['name']}'")
 
 
-def main() -> int:
-    """Todo: docstring."""
+def format_merch(raw: dict, artist: dict) -> dict:
+    result = dict(raw)
+    for key in ('name', 'description', 'property_name'):
+        if isinstance(result.get(key), str):
+            result[key] = result[key].format(
+                artist=artist['name'],
+                artist_slug=artist['slug'],
+            )
+    return result
+
+
+def create_merch(
+    session: requests.Session,
+    base_url: str,
+    merch: dict,
+    merch_marker: str,
+    kind_id: int,
+    album_id: int | None,
+    token: str,
+    timeout: int,
+    request_delay: float,
+) -> int:
+    data: dict[str, Any] = {
+        'name': merch['name'],
+        'kind': kind_id,
+        'price': str(merch.get('price', '999.00')),
+        'description': f'{merch_marker} {merch.get("description", "")}',
+        'allow_overpay': merch.get('allow_overpay', False),
+        'visibility': merch.get('visibility', 'public'),
+        'is_published': merch.get('is_published', True),
+    }
+    if album_id is not None:
+        data['album'] = album_id
+    if 'property_name' in merch:
+        data['property_name'] = merch.get('property_name', '')
+    if merch.get('variants'):
+        data['variants'] = merch['variants']
+    else:
+        data['stock'] = merch.get('stock', 10)
+
+    response = request_with_retry(
+        session,
+        'POST',
+        api_url(base_url, '/store/merch/'),
+        headers={'Authorization': f'Bearer {token}'},
+        json=data,
+        timeout=timeout,
+        request_delay=request_delay,
+    )
+    created = ensure_response_ok(response, f"create merch '{merch['name']}'")
+    return created['id']
+
+
+def ensure_merch_image(
+    session: requests.Session,
+    base_url: str,
+    merch_id: int,
+    merch: dict,
+    token: str,
+    timeout: int,
+    request_delay: float,
+) -> bool:
+    detail_response = request_with_retry(
+        session,
+        'GET',
+        api_url(base_url, f'/store/merch/{merch_id}/'),
+        headers={'Authorization': f'Bearer {token}'},
+        timeout=timeout,
+    )
+    detail = ensure_response_ok(detail_response, f'get merch {merch_id}')
+    if detail.get('main_image') or detail.get('images_merch'):
+        return False
+
+    response = request_with_retry(
+        session,
+        'POST',
+        api_url(base_url, f'/store/merch/{merch_id}/images/'),
+        headers={'Authorization': f'Bearer {token}'},
+        data={'is_main': 'true'},
+        files={
+            'image': png_file_tuple(
+                str(merch_id),
+                merch.get('kind_slug', 'merch'),
+                f'merch-{merch_id}.png',
+            ),
+        },
+        timeout=timeout,
+        request_delay=request_delay,
+    )
+    ensure_response_ok(response, f"upload merch image '{merch.get('name')}'")
+    return True
+
+
+def main() -> int:  # noqa: C901
     args = parse_args()
     payload_path = Path(args.payload)
     if not payload_path.exists():
@@ -304,11 +682,16 @@ def main() -> int:
     data = json.loads(payload_path.read_text(encoding='utf-8'))
     session = requests.Session()
     timeout = args.timeout
-    genres_by_slug = ensure_genres(
+    request_delay = args.request_delay
+
+    genres_by_slug = ensure_slugged_objects(
         session=session,
         base_url=args.base_url,
-        genres_payload=data['genres'],
+        path='/store/genres/',
+        objects_payload=data.get('genres', []),
         timeout=timeout,
+        context='genre',
+        request_delay=request_delay,
     )
 
     with tempfile.NamedTemporaryFile(
@@ -316,82 +699,197 @@ def main() -> int:
         suffix='.mp3',
         delete=False,
     ) as audio_tmp:
-        audio_tmp.write(b'ID3\x03\x00\x00\x00\x00\x00\x21TEST_FIXTURE_AUDIO')
+        audio_tmp.write(AUDIO_FIXTURE)
         audio_path = Path(audio_tmp.name)
 
-    album_count = 0
-    track_count = 0
-    artist_count = 0
+    counters = {
+        'artists_seen': 0,
+        'albums_created': 0,
+        'tracks_created': 0,
+        'merch_created': 0,
+        'merch_images_created': 0,
+        'merch_skipped': 0,
+    }
+    merch_kinds_by_slug = match_merch_kinds(
+        paginated_get(
+            session,
+            args.base_url,
+            '/store/merch-kinds/',
+            timeout,
+        ),
+    )
+    merch_templates = data.get('merch_templates', [])
+
     try:
-        for artist in data['artists']:
+        for artist in data.get('artists', []):
             token = register_or_login_artist(
                 session=session,
                 base_url=args.base_url,
                 artist=artist,
                 password=args.password,
                 timeout=timeout,
+                request_delay=request_delay,
             )
+            counters['artists_seen'] += 1
             update_artist_profile(
                 session=session,
                 base_url=args.base_url,
                 artist=artist,
                 token=token,
                 timeout=timeout,
+                request_delay=request_delay,
             )
-            artist_count += 1
-            for album in artist['albums']:
-                genre_id = genres_by_slug[album['genre_slug']]
-                album_id = create_album(
-                    session=session,
-                    base_url=args.base_url,
-                    token=token,
-                    timeout=timeout,
-                    album_payload={
-                        'name': album['name'],
-                        'is_single': False,
-                        'release_date': album['release_date'],
-                        'genre': genre_id,
-                        'price': '199.00',
-                        'description': (
-                            f'{artist["name"]} / {album["name"]} / '
-                            f'test import fixture'
-                        ),
-                        'allow_overpay': False,
-                        'visibility': 'public',
-                        'is_published': True,
-                        'is_active': True,
-                    },
-                )
-                album_count += 1
+            existing_albums = paginated_get(
+                session,
+                args.base_url,
+                '/store/albums/',
+                timeout,
+                token=token,
+            )
+            album_id_by_marker = marker_id_by_description(
+                existing_albums,
+                'album',
+            )
+            album_ids_by_index: dict[int, int] = {}
+
+            for album_index, album in enumerate(
+                artist.get('albums', []),
+                start=1,
+            ):
+                album_marker = marker('album', artist['slug'], album_index)
+                album_id = album_id_by_marker.get(album_marker)
+                if album_id is None:
+                    album_id = create_album(
+                        session=session,
+                        base_url=args.base_url,
+                        artist=artist,
+                        album=album,
+                        genre_id=genres_by_slug[album['genre_slug']],
+                        album_marker=album_marker,
+                        token=token,
+                        timeout=timeout,
+                        request_delay=request_delay,
+                    )
+                    counters['albums_created'] += 1
+                    album_id_by_marker[album_marker] = album_id
+                album_ids_by_index[album_index] = album_id
+
+            existing_tracks = paginated_get(
+                session,
+                args.base_url,
+                '/store/tracks/',
+                timeout,
+                token=token,
+            )
+            track_keys = {
+                (track.get('album'), track.get('position'), track.get('name'))
+                for track in existing_tracks
+                if isinstance(track, dict)
+            }
+            for album_index, album in enumerate(
+                artist.get('albums', []),
+                start=1,
+            ):
+                album_id = album_ids_by_index[album_index]
                 for position, track_name in enumerate(
-                    album['tracks'],
+                    album.get('tracks', []),
                     start=1,
                 ):
+                    track_key = (album_id, position, track_name)
+                    if track_key in track_keys:
+                        continue
                     create_track(
                         session=session,
                         base_url=args.base_url,
                         token=token,
                         timeout=timeout,
+                        request_delay=request_delay,
                         audio_path=audio_path,
                         track_payload={
                             'name': track_name,
                             'album': album_id,
                             'position': position,
-                            'price': '49.00',
+                            'price': album.get('track_price', '49.00'),
                             'description': (
                                 f'{artist["name"]} / '
                                 f'{album["name"]} / {track_name}'
                             ),
                         },
                     )
-                    track_count += 1
+                    counters['tracks_created'] += 1
+                    track_keys.add(track_key)
+
+            existing_merch = paginated_get(
+                session,
+                args.base_url,
+                '/store/merch/',
+                timeout,
+                token=token,
+            )
+            merch_id_by_marker = marker_id_by_description(
+                existing_merch,
+                'merch',
+            )
+            merch_payloads = [
+                format_merch(item, artist)
+                for item in [*merch_templates, *artist.get('merch', [])]
+            ]
+            for merch_index, merch in enumerate(merch_payloads, start=1):
+                kind_slug = merch['kind_slug']
+                kind_id = merch_kinds_by_slug.get(kind_slug)
+                if kind_id is None:
+                    counters['merch_skipped'] += 1
+                    continue
+                merch_marker = marker(
+                    'merch',
+                    artist['slug'],
+                    kind_slug,
+                    merch_index,
+                )
+                merch_id = merch_id_by_marker.get(merch_marker)
+                album_id = None
+                if merch.get('album_index'):
+                    album_id = album_ids_by_index.get(
+                        int(merch['album_index']),
+                    )
+                if merch_id is None:
+                    merch_id = create_merch(
+                        session=session,
+                        base_url=args.base_url,
+                        merch=merch,
+                        merch_marker=merch_marker,
+                        kind_id=kind_id,
+                        album_id=album_id,
+                        token=token,
+                        timeout=timeout,
+                        request_delay=request_delay,
+                    )
+                    counters['merch_created'] += 1
+                    merch_id_by_marker[merch_marker] = merch_id
+                image_created = ensure_merch_image(
+                    session=session,
+                    base_url=args.base_url,
+                    merch_id=merch_id,
+                    merch={**merch, 'kind_slug': merch['kind_slug']},
+                    token=token,
+                    timeout=timeout,
+                    request_delay=request_delay,
+                )
+                if image_created:
+                    counters['merch_images_created'] += 1
     finally:
         audio_path.unlink(missing_ok=True)
 
     print(
         'Import completed: '
-        f'artists={artist_count}, albums={album_count}, tracks={track_count}, '
-        f'genres={len(genres_by_slug)}',
+        f'artists_seen={counters["artists_seen"]}, '
+        f'albums_created={counters["albums_created"]}, '
+        f'tracks_created={counters["tracks_created"]}, '
+        f'merch_created={counters["merch_created"]}, '
+        f'merch_images_created={counters["merch_images_created"]}, '
+        f'merch_skipped={counters["merch_skipped"]}, '
+        f'genres_total={len(genres_by_slug)}, '
+        f'merch_kinds_matched={len(merch_kinds_by_slug)}',
     )
     return 0
 

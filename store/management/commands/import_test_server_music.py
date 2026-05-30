@@ -16,13 +16,20 @@ from django.core.management.base import BaseCommand, CommandError
 from django.test.utils import override_settings
 from rest_framework.test import APIClient
 
+from scripts.import_test_server_music import (
+    AUDIO_FIXTURE,
+    FIXTURE_NAMESPACE,
+    generated_png_bytes,
+    match_merch_kinds,
+)
+
 
 class Command(BaseCommand):
     """Импортирует тестовые музыкальные данные через API."""
 
     help = (
-        'Импортирует тестовые музыкальные данные через API '
-        '(жанры, артисты, альбомы, треки).'
+        'Импортирует тестовые данные через API '
+        '(жанры, типы мерча, артисты, альбомы, треки, мерч).'
     )
 
     def add_arguments(self, parser):
@@ -42,7 +49,7 @@ class Command(BaseCommand):
             help='Пароль для fixture-аккаунтов артистов.',
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: C901
         payload_path = Path(options['payload'])
         password = options['password']
         if not payload_path.exists():
@@ -62,6 +69,11 @@ class Command(BaseCommand):
             artists_created = 0
             albums_created = 0
             tracks_created = 0
+            merch_created = 0
+            merch_images_created = 0
+            merch_skipped = 0
+            merch_kinds_by_slug = self._match_merch_kinds(client)
+            merch_templates = data.get('merch_templates', [])
 
             for artist in data.get('artists', []):
                 token, artist_was_created = self._register_or_login_artist(
@@ -74,7 +86,11 @@ class Command(BaseCommand):
                 self._update_artist_profile(client, artist, token)
 
                 existing_albums = self._list_albums(client, token)
-                album_id_by_marker = self._albums_by_marker(existing_albums)
+                album_id_by_marker = self._ids_by_marker(
+                    existing_albums,
+                    'album',
+                )
+                album_ids_by_index = {}
 
                 for album_index, album in enumerate(
                     artist.get('albums', []),
@@ -97,17 +113,23 @@ class Command(BaseCommand):
                         )
                         albums_created += 1
                         album_id_by_marker[album_marker] = album_id
+                    album_ids_by_index[album_index] = album_id
 
-                    existing_tracks = self._list_tracks(client, token)
-                    track_keys = {
-                        (
-                            track.get('album'),
-                            track.get('position'),
-                            track.get('name'),
-                        )
-                        for track in existing_tracks
-                        if isinstance(track, dict)
-                    }
+                existing_tracks = self._list_tracks(client, token)
+                track_keys = {
+                    (
+                        track.get('album'),
+                        track.get('position'),
+                        track.get('name'),
+                    )
+                    for track in existing_tracks
+                    if isinstance(track, dict)
+                }
+                for album_index, album in enumerate(
+                    artist.get('albums', []),
+                    start=1,
+                ):
+                    album_id = album_ids_by_index[album_index]
                     for position, track_name in enumerate(
                         album.get('tracks', []),
                         start=1,
@@ -127,13 +149,63 @@ class Command(BaseCommand):
                         tracks_created += 1
                         track_keys.add(track_key)
 
+                existing_merch = self._list_merch(client, token)
+                merch_id_by_marker = self._ids_by_marker(
+                    existing_merch,
+                    'merch',
+                )
+                merch_payloads = [
+                    self._format_merch(item, artist)
+                    for item in [*merch_templates, *artist.get('merch', [])]
+                ]
+                for merch_index, merch in enumerate(merch_payloads, start=1):
+                    kind_slug = merch['kind_slug']
+                    kind_id = merch_kinds_by_slug.get(kind_slug)
+                    if kind_id is None:
+                        merch_skipped += 1
+                        continue
+                    merch_marker = self._merch_marker(
+                        artist['slug'],
+                        kind_slug,
+                        merch_index,
+                    )
+                    merch_id = merch_id_by_marker.get(merch_marker)
+                    album_id = None
+                    if merch.get('album_index'):
+                        album_id = album_ids_by_index.get(
+                            int(merch['album_index']),
+                        )
+                    if merch_id is None:
+                        merch_id = self._create_merch(
+                            client=client,
+                            token=token,
+                            merch=merch,
+                            merch_marker=merch_marker,
+                            kind_id=kind_id,
+                            album_id=album_id,
+                        )
+                        merch_created += 1
+                        merch_id_by_marker[merch_marker] = merch_id
+                    image_created = self._ensure_merch_image(
+                        client,
+                        token,
+                        merch_id,
+                        merch,
+                    )
+                    if image_created:
+                        merch_images_created += 1
+
             self.stdout.write(
                 self.style.SUCCESS(
                     'Import completed: '
                     f'artists_created={artists_created}, '
                     f'albums_created={albums_created}, '
                     f'tracks_created={tracks_created}, '
-                    f'genres_total={len(genres_by_slug)}',
+                    f'merch_created={merch_created}, '
+                    f'merch_images_created={merch_images_created}, '
+                    f'merch_skipped={merch_skipped}, '
+                    f'genres_total={len(genres_by_slug)}, '
+                    f'merch_kinds_matched={len(merch_kinds_by_slug)}',
                 ),
             )
 
@@ -151,7 +223,32 @@ class Command(BaseCommand):
 
     @staticmethod
     def _album_marker(artist_slug: str, album_index: int) -> str:
-        return f'[fixture:test_server_music:{artist_slug}:{album_index}]'
+        return (
+            f'[fixture:{FIXTURE_NAMESPACE}:album:{artist_slug}:{album_index}]'
+        )
+
+    @staticmethod
+    def _merch_marker(
+        artist_slug: str,
+        kind_slug: str,
+        merch_index: int,
+    ) -> str:
+        return (
+            f'[fixture:{FIXTURE_NAMESPACE}:merch:{artist_slug}:'
+            f'{kind_slug}:{merch_index}]'
+        )
+
+    @staticmethod
+    def _image_upload(
+        seed: str,
+        subject: str,
+        filename: str,
+    ) -> SimpleUploadedFile:
+        return SimpleUploadedFile(
+            name=filename,
+            content=generated_png_bytes(seed, subject),
+            content_type='image/png',
+        )
 
     @staticmethod
     def _api_json(
@@ -213,6 +310,10 @@ class Command(BaseCommand):
                 f'HTTP {response.status_code} {response.content.decode()}',
             )
         return genres_by_slug
+
+    def _match_merch_kinds(self, client: APIClient) -> dict[str, int]:
+        merch_kinds = self._paginated_get(client, '/api/v1/store/merch-kinds/')
+        return match_merch_kinds(merch_kinds)
 
     def _register_or_login_artist(
         self,
@@ -292,6 +393,39 @@ class Command(BaseCommand):
                 f"Artist profile update failed for '{artist['name']}': "
                 f'HTTP {response.status_code} {response.content.decode()}',
             )
+        current_response = self._api_json(
+            client,
+            'get',
+            '/api/v1/artists/me/',
+            token=token,
+        )
+        if current_response.status_code != 200:
+            raise CommandError(
+                f"Artist profile read failed for '{artist['name']}': "
+                f'HTTP {current_response.status_code} '
+                f'{current_response.content.decode()}',
+            )
+        if current_response.json().get('cover'):
+            return
+        cover_response = self._api_json(
+            client,
+            'patch',
+            '/api/v1/artists/me/cover/',
+            token=token,
+            data={
+                'cover': self._image_upload(
+                    artist['slug'],
+                    'artist',
+                    f'{artist["slug"]}-artist.png',
+                ),
+            },
+        )
+        if cover_response.status_code != 200:
+            raise CommandError(
+                f"Artist cover upload failed for '{artist['name']}': "
+                f'HTTP {cover_response.status_code} '
+                f'{cover_response.content.decode()}',
+            )
 
     def _create_album(
         self,
@@ -312,17 +446,21 @@ class Command(BaseCommand):
                 'is_single': False,
                 'release_date': album['release_date'],
                 'genre': genre_id,
-                'price': '199.00',
+                'price': album.get('price', '199.00'),
                 'description': (
                     f'{album_marker} {artist["name"]} / {album["name"]} / '
                     'test import fixture'
                 ),
-                'allow_overpay': False,
-                'visibility': 'public',
-                'is_published': True,
+                'cover_image': self._image_upload(
+                    f'{artist["slug"]}:{album["name"]}',
+                    'album',
+                    f'{artist["slug"]}-album.png',
+                ),
+                'allow_overpay': album.get('allow_overpay', False),
+                'visibility': album.get('visibility', 'public'),
+                'is_published': album.get('is_published', True),
                 'is_active': True,
             },
-            format='json',
         )
         if response.status_code not in (200, 201):
             raise CommandError(
@@ -343,13 +481,13 @@ class Command(BaseCommand):
     ) -> None:
         dummy_audio = SimpleUploadedFile(
             name='fixture.mp3',
-            content=b'ID3\x03\x00\x00\x00\x00\x00\x21TEST_FIXTURE_AUDIO',
+            content=AUDIO_FIXTURE,
             content_type='audio/mpeg',
         )
         response = self._api_json(
             client,
             'post',
-            '/api/v1/store/track/',
+            '/api/v1/store/tracks/',
             token=token,
             data={
                 'name': track_name,
@@ -376,23 +514,128 @@ class Command(BaseCommand):
         )
 
     def _list_tracks(self, client: APIClient, token: str) -> list[dict]:
-        return self._paginated_get(client, '/api/v1/store/track/', token=token)
+        return self._paginated_get(
+            client,
+            '/api/v1/store/tracks/',
+            token=token,
+        )
 
     @staticmethod
-    def _albums_by_marker(albums: list[dict]) -> dict[str, int]:
+    def _format_merch(raw: dict, artist: dict) -> dict:
+        result = dict(raw)
+        for key in ('name', 'description', 'property_name'):
+            if isinstance(result.get(key), str):
+                result[key] = result[key].format(
+                    artist=artist['name'],
+                    artist_slug=artist['slug'],
+                )
+        return result
+
+    def _create_merch(
+        self,
+        client: APIClient,
+        token: str,
+        merch: dict,
+        merch_marker: str,
+        kind_id: int,
+        album_id: int | None,
+    ) -> int:
+        data = {
+            'name': merch['name'],
+            'kind': kind_id,
+            'price': merch.get('price', '999.00'),
+            'description': f'{merch_marker} {merch.get("description", "")}',
+            'allow_overpay': merch.get('allow_overpay', False),
+            'visibility': merch.get('visibility', 'public'),
+            'is_published': merch.get('is_published', True),
+        }
+        if album_id is not None:
+            data['album'] = album_id
+        if 'property_name' in merch:
+            data['property_name'] = merch.get('property_name', '')
+        if merch.get('variants'):
+            data['variants'] = merch['variants']
+        else:
+            data['stock'] = merch.get('stock', 10)
+
+        response = self._api_json(
+            client,
+            'post',
+            '/api/v1/store/merch/',
+            token=token,
+            data=data,
+            format='json',
+        )
+        if response.status_code not in (200, 201):
+            raise CommandError(
+                f"Merch create failed for '{merch['name']}': "
+                f'HTTP {response.status_code} {response.content.decode()}',
+            )
+        return response.json()['id']
+
+    def _ensure_merch_image(
+        self,
+        client: APIClient,
+        token: str,
+        merch_id: int,
+        merch: dict,
+    ) -> bool:
+        detail_response = self._api_json(
+            client,
+            'get',
+            f'/api/v1/store/merch/{merch_id}/',
+            token=token,
+        )
+        if detail_response.status_code != 200:
+            raise CommandError(
+                f'Merch read failed for id={merch_id}: '
+                f'HTTP {detail_response.status_code} '
+                f'{detail_response.content.decode()}',
+            )
+        detail = detail_response.json()
+        if detail.get('main_image') or detail.get('images_merch'):
+            return False
+
+        response = self._api_json(
+            client,
+            'post',
+            f'/api/v1/store/merch/{merch_id}/images/',
+            token=token,
+            data={
+                'is_main': True,
+                'image': self._image_upload(
+                    str(merch_id),
+                    merch.get('kind_slug', 'merch'),
+                    f'merch-{merch_id}.png',
+                ),
+            },
+        )
+        if response.status_code not in (200, 201):
+            raise CommandError(
+                f"Merch image upload failed for '{merch.get('name')}': "
+                f'HTTP {response.status_code} {response.content.decode()}',
+            )
+        return True
+
+    def _list_merch(self, client: APIClient, token: str) -> list[dict]:
+        return self._paginated_get(client, '/api/v1/store/merch/', token=token)
+
+    @staticmethod
+    def _ids_by_marker(items: list[dict], kind: str) -> dict[str, int]:
+        prefix = f'[fixture:{FIXTURE_NAMESPACE}:{kind}:'
         result = {}
-        for album in albums:
-            if not isinstance(album, dict):
+        for item in items:
+            if not isinstance(item, dict):
                 continue
-            description = str(album.get('description', ''))
-            album_id = album.get('id')
-            if not album_id:
+            description = str(item.get('description', ''))
+            item_id = item.get('id')
+            if not item_id:
                 continue
-            start = description.find('[fixture:test_server_music:')
+            start = description.find(prefix)
             end = description.find(']', start + 1)
             if start >= 0 and end > start:
                 marker = description[start : end + 1]
-                result[marker] = album_id
+                result[marker] = item_id
         return result
 
     def _paginated_get(

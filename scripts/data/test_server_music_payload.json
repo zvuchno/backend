@@ -37,6 +37,106 @@
       "slug": "russian-punk-rock"
     }
   ],
+  "merch_kinds": [
+    {
+      "name": "Cassette",
+      "slug": "cassette"
+    },
+    {
+      "name": "Cap",
+      "slug": "cap"
+    },
+    {
+      "name": "CD",
+      "slug": "cd"
+    },
+    {
+      "name": "T-Shirt",
+      "slug": "tshirt"
+    },
+    {
+      "name": "Vinyl",
+      "slug": "vinyl"
+    }
+  ],
+  "merch_templates": [
+    {
+      "name": "{artist} Logo T-Shirt",
+      "kind_slug": "tshirt",
+      "price": "1490.00",
+      "description": "Fixture футболка артиста {artist}.",
+      "property_name": "Размер",
+      "variants": [
+        {
+          "value": "S",
+          "stock": 8
+        },
+        {
+          "value": "M",
+          "stock": 12
+        },
+        {
+          "value": "L",
+          "stock": 10
+        },
+        {
+          "value": "XL",
+          "stock": 6
+        }
+      ]
+    },
+    {
+      "name": "{artist} Logo Cap",
+      "kind_slug": "cap",
+      "price": "1190.00",
+      "description": "Fixture кепка артиста {artist}.",
+      "stock": 14
+    },
+    {
+      "name": "{artist} First Album CD",
+      "kind_slug": "cd",
+      "price": "990.00",
+      "description": "Fixture CD первого альбома артиста {artist}.",
+      "album_index": 1,
+      "property_name": "Издание",
+      "variants": [
+        {
+          "value": "Jewel Case",
+          "stock": 12
+        },
+        {
+          "value": "Digipak",
+          "stock": 7
+        }
+      ]
+    },
+    {
+      "name": "{artist} First Album Cassette",
+      "kind_slug": "cassette",
+      "price": "790.00",
+      "description": "Fixture кассета первого альбома артиста {artist}.",
+      "album_index": 1,
+      "stock": 8
+    },
+    {
+      "name": "{artist} First Album Vinyl",
+      "kind_slug": "vinyl",
+      "price": "2490.00",
+      "description": "Fixture винил первого альбома артиста {artist}.",
+      "album_index": 1,
+      "property_name": "Формат",
+      "variants": [
+        {
+          "value": "Black LP",
+          "stock": 7
+        },
+        {
+          "value": "Color LP",
+          "stock": 4
+        }
+      ]
+    }
+  ],
   "artists": [
     {
       "name": "Kyuss",
