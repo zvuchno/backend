@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from contextlib import contextmanager
+import re
+import time
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -64,10 +66,19 @@ class Command(BaseCommand):
             default='TestPass123!@#',
             help='Пароль для fixture-аккаунтов артистов.',
         )
+        parser.add_argument(
+            '--disable-throttling',
+            action='store_true',
+            help=(
+                'Отключить DRF throttling на время импорта. '
+                'Без флага команда ждет и повторяет запросы при HTTP 429.'
+            ),
+        )
 
     def handle(self, *args, **options):  # noqa: C901
         payload_path = Path(options['payload'])
         password = options['password']
+        disable_throttling = options['disable_throttling']
         if not payload_path.exists():
             raise CommandError(f'Payload file not found: {payload_path}')
 
@@ -77,7 +88,7 @@ class Command(BaseCommand):
             override_settings(
                 ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'],
             ),
-            disabled_api_throttling(),
+            disabled_api_throttling() if disable_throttling else nullcontext(),
         ):
             client = APIClient()
             genres_by_slug = self._ensure_genres(
@@ -271,17 +282,48 @@ class Command(BaseCommand):
         )
 
     @staticmethod
+    def _throttle_wait_seconds(response) -> int:
+        """Возвращает время ожидания для повторного запроса после 429."""
+        retry_after = response.headers.get('Retry-After')
+        if retry_after and retry_after.isdigit():
+            return max(1, int(retry_after))
+
+        match = re.search(
+            r'Expected available in (\d+) seconds?',
+            response.content.decode(errors='ignore'),
+        )
+        if match:
+            return max(1, int(match.group(1)))
+
+        return 1
+
+    @classmethod
     def _api_json(
+        cls,
         client: APIClient,
         method: str,
         path: str,
         token: str | None = None,
+        max_attempts: int = 5,
         **kwargs,
     ) -> APIClient.response_class:
+        """Выполняет API-запрос и повторяет его при DRF throttling."""
         headers = {}
         if token:
             headers['HTTP_AUTHORIZATION'] = f'Bearer {token}'
-        return getattr(client, method)(path, **headers, **kwargs)
+
+        response = None
+        for attempt in range(max_attempts):
+            response = getattr(client, method)(path, **headers, **kwargs)
+            if response.status_code != 429:
+                return response
+
+            if attempt == max_attempts - 1:
+                return response
+
+            time.sleep(cls._throttle_wait_seconds(response))
+
+        return response
 
     def _ensure_genres(
         self,

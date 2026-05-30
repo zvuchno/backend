@@ -79,19 +79,42 @@ def api_url(base_url: str, path: str) -> str:
     return f'{base_url.rstrip("/")}/{path.lstrip("/")}'
 
 
+def throttle_wait_seconds(response: requests.Response, attempt: int) -> int:
+    """Определяет паузу перед повтором после 429."""
+    retry_after = response.headers.get('Retry-After')
+    if retry_after and retry_after.isdigit():
+        return int(retry_after)
+
+    try:
+        detail = str(response.json().get('detail', ''))
+    except ValueError:
+        detail = response.text
+
+    marker = 'Expected available in '
+    if marker in detail:
+        tail = detail.split(marker, 1)[1]
+        seconds = tail.split(' seconds', 1)[0]
+        if seconds.isdigit():
+            return int(seconds) + 1
+
+    return min(2**attempt, 10)
+
+
 def request_with_retry(
     session: requests.Session,
     method: str,
     url: str,
     timeout: int,
-    max_attempts: int = 5,
+    max_attempts: int = 8,
     request_delay: float = 0.0,
     **kwargs,
 ) -> requests.Response:
     """HTTP-запрос с retry на 429 Too Many Requests."""
     response = None
+
     for attempt in range(max_attempts):
         response = session.request(method, url, timeout=timeout, **kwargs)
+
         if response.status_code != 429:
             if request_delay > 0 and method.upper() in {
                 'POST',
@@ -102,11 +125,7 @@ def request_with_retry(
                 time.sleep(request_delay)
             return response
 
-        retry_after = response.headers.get('Retry-After')
-        if retry_after and retry_after.isdigit():
-            sleep_seconds = int(retry_after)
-        else:
-            sleep_seconds = min(2**attempt, 10)
+        sleep_seconds = throttle_wait_seconds(response, attempt)
         time.sleep(sleep_seconds)
 
     return response

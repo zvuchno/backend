@@ -249,7 +249,7 @@ scripts/data/test_server_content_payload.schema.json
 Команда работает внутри проекта через API-слой Django:
 
 ```
-python manage.py import_test_server_music
+python manage.py import_test_server_music --disable-throttling
 ```
 
 Указать другой JSON-источник:
