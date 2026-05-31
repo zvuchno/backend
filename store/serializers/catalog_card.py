@@ -13,13 +13,6 @@ class BaseCardSerializer(serializers.Serializer):
     которую можно собрать от Product, snapshot-а или другого источника.
     """
 
-    product_type = serializers.CharField(
-        read_only=True,
-        help_text=(
-            'Технический тип товара: album, merch или track. '
-            'Для перехода по клику использовать target.'
-        ),
-    )
     name = serializers.CharField(
         read_only=True,
         help_text='Название товара.',
@@ -59,11 +52,11 @@ class BaseCardSerializer(serializers.Serializer):
     is_favorite = serializers.BooleanField(
         read_only=True,
         help_text='Признак добавления товара в избранное.',
+        default=False,
     )
 
     class Meta:
         fields = (
-            'product_type',
             'name',
             'artist_name',
             'kind',
@@ -103,6 +96,7 @@ class ProductCardSerializer(BaseCardSerializer):
     )
     is_favorite = serializers.SerializerMethodField(
         help_text='Признак добавления товара в избранное.',
+        default=False,
     )
 
     @extend_schema_field(OpenApiTypes.BOOL)
@@ -173,6 +167,20 @@ class CatalogCardTargetSerializer(serializers.Serializer):
     )
 
 
+class VariantKeySerializer(serializers.Serializer):
+    """Ключ варианта покупки.
+
+    Для сопоставления карточки варианта на детальной странице.
+    """
+
+    type = serializers.CharField(
+        help_text='Тип исходной сущности варианта: album, merch или track.',
+    )
+    id = serializers.IntegerField(
+        help_text='ID исходной сущности варианта.',
+    )
+
+
 class CatalogCardSerializer(ProductCardSerializer):
     """Сериализатор карточки товара для публичного каталога."""
 
@@ -183,6 +191,12 @@ class CatalogCardSerializer(ProductCardSerializer):
         ),
     )
 
+    selected_variant_key = serializers.SerializerMethodField(
+        help_text=(
+            'Ключ варианта, который предвыбрать после перехода в detail.'
+        ),
+    )
+
     DETAIL_URL_NAMES = {
         'album': 'api:store:albums-detail',
         'merch': 'api:store:merch-detail',
@@ -190,7 +204,22 @@ class CatalogCardSerializer(ProductCardSerializer):
     }
 
     class Meta(ProductCardSerializer.Meta):
-        fields = ProductCardSerializer.Meta.fields + ('target',)
+        fields = ProductCardSerializer.Meta.fields + (
+            'target',
+            'selected_variant_key',
+        )
+
+    @extend_schema_field(VariantKeySerializer)
+    def get_selected_variant_key(self, obj):
+        """Возвращает ключ для предвыбора варианта."""
+        content = getattr(obj, 'content', None)
+        if content is None:
+            return None
+
+        return {
+            'type': obj.product_type,
+            'id': obj.content_id,
+        }
 
     @extend_schema_field(CatalogCardTargetSerializer)
     def get_target(self, obj):
