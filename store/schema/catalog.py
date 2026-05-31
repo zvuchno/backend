@@ -20,9 +20,11 @@ catalog_list_schema = extend_schema(
         'Возвращает список витринных карточек товаров.\n\n'
         'Карточка может представлять альбом, сингл, носитель или обычный '
         'мерч. Для перехода по клику фронтенд использует блок target.\n\n'
-        'Важно: product_type показывает технический тип товара, а target '
-        'показывает, куда нужно перейти. Например, винил технически является '
-        'merch-товаром, но вести может на detail альбома.\n\n'
+        'Важно: target показывает, куда нужно перейти по клику. '
+        'Например, карточка носителя может вести на detail альбома.\n\n'
+        'Если карточка должна открыть detail с заранее выбранным вариантом, '
+        'фронтенд может использовать selected_variant_key для сопоставления '
+        'с variant_key в detail endpoint.\n\n'
         'Поле is_favorite показывает, добавлен ли товар в избранное. '
         'Сейчас избранное связано с вариантом товара, поэтому карточка '
         'считается избранной, если в избранном есть '
@@ -99,7 +101,6 @@ catalog_list_schema = extend_schema(
         OpenApiExample(
             name='Альбом',
             value={
-                'product_type': 'album',
                 'name': 'Название релиза',
                 'artist_name': 'Артист',
                 'kind': 'Альбом',
@@ -111,13 +112,16 @@ catalog_list_schema = extend_schema(
                     'type': 'album',
                     'url': '/api/v1/store/albums/10/',
                 },
+                'selected_variant_key': {
+                    'type': 'album',
+                    'id': 10,
+                },
             },
             response_only=True,
         ),
         OpenApiExample(
             name='Носитель',
             value={
-                'product_type': 'merch',
                 'name': 'Название релиза — винил',
                 'artist_name': 'Артист',
                 'kind': 'Винил',
@@ -129,23 +133,30 @@ catalog_list_schema = extend_schema(
                     'type': 'album',
                     'url': '/api/v1/store/albums/10/',
                 },
+                'selected_variant_key': {
+                    'type': 'merch',
+                    'id': 20,
+                },
             },
             response_only=True,
         ),
         OpenApiExample(
-            name='Обычный мерч',
+            name='Носитель',
             value={
-                'product_type': 'merch',
-                'name': 'Футболка',
+                'name': 'Название релиза — винил',
                 'artist_name': 'Артист',
-                'kind': 'Футболка',
+                'kind': 'Винил',
                 'year': None,
-                'price': '1500.00',
-                'image': 'https://zvuchno.ru/media/merch/tshirt.jpg',
+                'price': '2500.00',
+                'image': 'https://zvuchno.ru/media/merch/vinyl.jpg',
                 'is_favorite': False,
                 'target': {
+                    'type': 'album',
+                    'url': '/api/v1/store/albums/10/',
+                },
+                'selected_variant_key': {
                     'type': 'merch',
-                    'url': '/api/v1/store/merch/20/',
+                    'id': 20,
                 },
             },
             response_only=True,
