@@ -1123,6 +1123,39 @@ def _draw_cap(size: int, style: VisualStyle, seed: str) -> Image.Image:
     return img
 
 
+def _subject_image_kind(subject: str) -> str:
+    """Определяет тип по subject без случайных substring-совпадений."""
+    normalized = ''.join(char for char in subject.lower() if char.isalnum())
+
+    if normalized in {'tshirt', 'tee', 'shirt', 'футболка'}:
+        return 'tshirt'
+    if normalized in {
+        'cap',
+        'hat',
+        'baseballcap',
+        'kepka',
+        'кепка',
+        'бейсболка',
+    }:
+        return 'cap'
+    if normalized in {'cassette', 'audiocassette', 'tape', 'кассета'}:
+        return 'cassette'
+    if normalized in {'cd', 'disc', 'compactdisc', 'audiocd', 'диск'}:
+        return 'cd'
+    if normalized in {
+        'vinyl',
+        'vinylrecord',
+        'record',
+        'lp',
+        'media',
+        'носитель',
+    }:
+        return 'vinyl'
+    if normalized in {'artist', 'артист'}:
+        return 'artist'
+    return 'album'
+
+
 def generated_png_bytes(
     seed: str,
     subject: str,
@@ -1130,27 +1163,19 @@ def generated_png_bytes(
 ) -> bytes:
     """Генерирует связанную PNG-заглушку для артиста, альбома или товара."""
     style = _build_style(seed)
-    normalized = subject.lower()
+    kind = _subject_image_kind(subject)
 
-    if (
-        't-shirt' in normalized
-        or 'shirt' in normalized
-        or 'футбол' in normalized
-    ):
+    if kind == 'tshirt':
         img = _draw_tshirt(size, style, seed)
-    elif 'cap' in normalized or 'кеп' in normalized:
+    elif kind == 'cap':
         img = _draw_cap(size, style, seed)
-    elif 'cassette' in normalized or 'кассет' in normalized:
+    elif kind == 'cassette':
         img = _draw_cassette(size, style, seed)
-    elif 'cd' in normalized or 'disc' in normalized or 'диск' in normalized:
+    elif kind == 'cd':
         img = _draw_cd(size, style, seed)
-    elif (
-        'vinyl' in normalized
-        or 'media' in normalized
-        or 'носител' in normalized
-    ):
+    elif kind == 'vinyl':
         img = _draw_vinyl(size, style, seed)
-    elif 'artist' in normalized or 'артист' in normalized:
+    elif kind == 'artist':
         img = _draw_artist_cover(size, style, seed)
     else:
         img = _draw_album_cover(size, style, seed)
