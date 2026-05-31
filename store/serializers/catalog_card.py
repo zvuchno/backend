@@ -168,7 +168,10 @@ class CatalogCardTargetSerializer(serializers.Serializer):
 
 
 class VariantKeySerializer(serializers.Serializer):
-    """Ключ варианта покупки для сопоставления карточки и detail-ручки."""
+    """Ключ варианта покупки.
+
+    Для сопоставления карточки варианта на детальной странице.
+    """
 
     type = serializers.CharField(
         help_text='Тип исходной сущности варианта: album, merch или track.',
@@ -215,7 +218,7 @@ class CatalogCardSerializer(ProductCardSerializer):
 
         return {
             'type': obj.product_type,
-            'id': content.id,
+            'id': obj.content_id,
         }
 
     @extend_schema_field(CatalogCardTargetSerializer)
