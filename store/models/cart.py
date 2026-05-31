@@ -30,6 +30,15 @@ class Cart(TimestampModel):
         null=True,
         blank=True,
     )
+    promocode = models.ForeignKey(
+        'store.Promocode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Примененный промокод',
+        related_name='carts',
+    )
+
     objects = CartQuerySet.as_manager()
 
     @property
@@ -42,16 +51,6 @@ class Cart(TimestampModel):
         return self.items.with_prices().aggregate(
             total=Coalesce(Sum('_line_total'), Decimal('0.0000')),
         )['total']
-
-    @property
-    def discount_promocode(self):
-        """Сумма скидки по промокоду."""
-        return Decimal('0.0000')  # TODO: Пока не реализованы промокоды
-
-    @property
-    def total(self):
-        """Сумма корзины с учетом промокода."""
-        return self.subtotal  # TODO: Пока не реализованы промокоды, доделать
 
     def clean(self):
         super().clean()

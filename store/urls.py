@@ -12,8 +12,10 @@ from .views import (
     DeliveryViewSet,
     FavoritesViewSet,
     GenreViewSet,
+    MerchKindViewSet,
     MerchViewSet,
     OrderViewSet,
+    ProductCatalogListView,
     TrackViewSet,
 )
 
@@ -22,6 +24,7 @@ app_name = 'store'
 router = DefaultRouter()
 router.register(r'genres', GenreViewSet, basename='genres')
 router.register(r'albums', AlbumViewSet, basename='albums')
+router.register(r'merch-kinds', MerchKindViewSet, basename='merch-kinds')
 router.register(r'merch', MerchViewSet, basename='merch')
 router.register(r'tracks', TrackViewSet, basename='tracks')
 router.register(r'cart', CartViewSet, basename='cart')
@@ -31,4 +34,5 @@ router.register(r'orders', OrderViewSet, basename='orders')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('catalog/', ProductCatalogListView.as_view(), name='catalog'),
 ]

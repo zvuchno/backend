@@ -91,7 +91,6 @@ class AlbumVariantSerializer(serializers.ModelSerializer):
             'name',
             'product_variant',
             'price',
-            'allow_overpay',
             'stock',
             'description',
             'images',
@@ -192,6 +191,7 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Album."""
 
     variants = serializers.SerializerMethodField()
+    genre = serializers.StringRelatedField()
     genre = GenreSerializer()
     images = serializers.SerializerMethodField()
 
