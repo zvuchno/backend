@@ -116,11 +116,11 @@ class MerchAdmin(
                 'fields': (
                     'kind',
                     'name',
+                    'display_is_carrier',
                     'description',
                     'image_preview',
                     'album',
                     'is_published',
-                    'display_is_carrier',
                     'visibility',
                     'owner',
                     'is_active',
