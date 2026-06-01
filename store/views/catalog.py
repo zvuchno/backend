@@ -93,7 +93,7 @@ class CatalogReleaseDetailView(RetrieveAPIView):
         carrier_qs = (
             Merch.objects
             .filter(
-                is_carrier=True,
+                kind__is_carrier=True,
                 is_active=True,
                 is_published=True,
                 visibility=Merch.Visibility.PUBLIC,
@@ -158,7 +158,7 @@ class CatalogMerchDetailView(RetrieveAPIView):
         return (
             Merch.objects
             .filter(
-                is_carrier=False,
+                kind__is_carrier=False,
                 is_published=True,
                 visibility=Merch.Visibility.PUBLIC,
             )

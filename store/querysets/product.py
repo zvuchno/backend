@@ -71,6 +71,7 @@ class ProductQuerySet(models.QuerySet):
         """Подтягивает данные для карточек мерча и носителей."""
         return self.select_related(
             'merch',
+            'merch__kind',
         ).prefetch_related(
             'merch__images_merch',
         )
@@ -89,7 +90,7 @@ class ProductQuerySet(models.QuerySet):
             ),
             year=ExtractYear('album__release_date'),
             target_type=models.Value(
-                'album',
+                'release',
                 output_field=models.CharField(),
             ),
             target_id=models.F('album_id'),
@@ -107,16 +108,16 @@ class ProductQuerySet(models.QuerySet):
             ),
             target_type=models.Case(
                 models.When(
-                    merch__is_carrier=True,
+                    merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
-                    then=models.Value('album'),
+                    then=models.Value('release'),
                 ),
                 default=models.Value('merch'),
                 output_field=models.CharField(),
             ),
             target_id=models.Case(
                 models.When(
-                    merch__is_carrier=True,
+                    merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
                     then=models.F('merch__album_id'),
                 ),
@@ -189,10 +190,14 @@ class ProductQuerySet(models.QuerySet):
             ),
             target_type=models.Case(
                 models.When(
+                    product_type='album',
+                    then=models.Value('release'),
+                ),
+                models.When(
                     product_type='merch',
-                    merch__is_carrier=True,
+                    merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
-                    then=models.Value('album'),
+                    then=models.Value('release'),
                 ),
                 default=models.F('product_type'),
                 output_field=models.CharField(),
@@ -200,7 +205,7 @@ class ProductQuerySet(models.QuerySet):
             target_id=models.Case(
                 models.When(
                     product_type='merch',
-                    merch__is_carrier=True,
+                    merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
                     then=models.F('merch__album_id'),
                 ),

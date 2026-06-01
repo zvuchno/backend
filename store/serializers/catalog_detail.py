@@ -10,18 +10,45 @@ from store.constants import (
 )
 from store.models import ProductVariant
 from store.serializers import (
-    GenreSerializer,
     ImageSerializer,
     VariantKeySerializer,
 )
 
 
+class CatalogDetailBaseSerializer(serializers.Serializer):
+    """Базовый сериализатор витринной detail-карточки."""
+
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    artist_name = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+    description = serializers.CharField()
+    images = serializers.SerializerMethodField()
+
+    def get_images(self, obj):
+        """Возвращает изображения detail-карточки."""
+        raise NotImplementedError
+
+    def get_artist_name(self, obj) -> str | None:
+        """Возвращает имя артиста-владельца."""
+        artist = getattr(obj.owner, 'artist_profile', None)
+        if artist is None:
+            return None
+        return artist.name
+
+    def get_price(self, obj):
+        """Возвращает цену связанного продукта."""
+        product = getattr(obj, 'product', None)
+        if product is None:
+            return None
+        return product.price
+
+
 class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
-    """Вариант покупки релиза в витринной detail-ручке."""
+    """Вариант покупки релиза в витринной detail карточке."""
 
     variant_key = serializers.SerializerMethodField(
-        help_text='Ключ варианта для сопоставления '
-        'с variant_key карточки каталога.',
+        help_text='Ключ для сопоставления с selected_variant_key каталога.',
     )
     format = serializers.SerializerMethodField(
         help_text='Формат покупки: диджитал, винил, кассета и т.п.',
@@ -156,38 +183,37 @@ class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
 
         return product.merch.description
 
-    def get_format(self, obj) -> str:
+    def get_format(self, obj) -> dict:
         """Возвращает формат варианта покупки."""
         product = obj.product
 
         if product.album_id:
-            return 'Диджитал'
+            return {
+                'name': 'Диджитал',
+                'slug': 'digital',
+            }
 
         merch = product.merch
         kind = getattr(merch, 'kind', None)
 
         if not kind:
-            return 'Физический носитель'
+            return {
+                'name': 'Физический носитель',
+                'slug': 'carrier',
+            }
 
-        return kind.name
+        return {
+            'name': kind.name,
+            'slug': kind.slug,
+        }
 
 
-class CatalogReleaseDetailSerializer(serializers.Serializer):
+class CatalogReleaseDetailSerializer(CatalogDetailBaseSerializer):
     """Витринная detail-карточка релиза."""
 
-    id = serializers.IntegerField(read_only=True)
-    name = serializers.CharField(read_only=True)
-    artist_name = serializers.CharField(read_only=True)
-    price = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
-    description = serializers.CharField(read_only=True)
-    images = serializers.SerializerMethodField()
-    is_single = serializers.BooleanField(read_only=True)
-    genre = GenreSerializer(read_only=True)
-    release_date = serializers.DateField(read_only=True)
+    is_single = serializers.BooleanField()
+    genre = serializers.CharField()
+    release_date = serializers.DateField()
     variants = serializers.SerializerMethodField()
 
     def get_images(self, obj) -> list[dict]:
@@ -196,12 +222,7 @@ class CatalogReleaseDetailSerializer(serializers.Serializer):
             return []
 
         return ImageSerializer(
-            [
-                {
-                    'image': obj.cover_image,
-                    'is_main': True,
-                },
-            ],
+            [{'image': obj.cover_image, 'is_main': True}],
             many=True,
             context=self.context,
         ).data
@@ -231,45 +252,31 @@ class CatalogReleaseDetailSerializer(serializers.Serializer):
 class CatalogMerchVariantSerializer(serializers.ModelSerializer):
     """Вариант обычного мерча в витринной detail странице."""
 
-    product_variant_id = serializers.IntegerField(
+    variant_id = serializers.IntegerField(
         source='id',
-        read_only=True,
         help_text='ID ProductVariant для добавления в корзину.',
     )
-    value = serializers.CharField(
-        source='property_value',
-        read_only=True,
+    property_value = serializers.CharField(
         help_text='Значение варианта: размер, цвет и т.п.',
     )
 
     class Meta:
         model = ProductVariant
         fields = (
-            'product_variant_id',
+            'variant_id',
             'sku',
             'stock',
-            'value',
+            'property_value',
         )
         read_only_fields = fields
 
 
-class CatalogMerchDetailSerializer(serializers.Serializer):
+class CatalogMerchDetailSerializer(CatalogDetailBaseSerializer):
     """Витринная detail-карточка обычного мерча."""
 
-    id = serializers.IntegerField(read_only=True)
-    name = serializers.CharField(read_only=True)
-    artist_name = serializers.CharField(read_only=True)
-    price = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
-    description = serializers.CharField(read_only=True)
-    images = serializers.SerializerMethodField()
     kind = serializers.SerializerMethodField()
     property_name = serializers.CharField(
         source='product.property_name',
-        read_only=True,
     )
     stock = serializers.SerializerMethodField()
     variants = serializers.SerializerMethodField()
@@ -295,17 +302,14 @@ class CatalogMerchDetailSerializer(serializers.Serializer):
             context=self.context,
         ).data
 
-    def get_kind(self, obj) -> dict | None:
+    def get_kind(self, obj) -> str | None:
         """Возвращает вид мерча."""
         kind = getattr(obj, 'kind', None)
 
         if not kind:
             return None
 
-        return {
-            'name': kind.name,
-            'slug': kind.slug,
-        }
+        return kind.name
 
     def get_stock(self, obj) -> int:
         """Возвращает общий доступный остаток мерча."""
@@ -343,7 +347,7 @@ class CatalogMerchDetailSerializer(serializers.Serializer):
                 simple,
                 context=self.context,
             ).data
-            data['value'] = ''
+            data['property_value'] = ''
             return [data]
 
         variants = [
