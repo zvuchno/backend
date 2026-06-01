@@ -187,7 +187,8 @@ class CatalogCardSerializer(ProductCardSerializer):
     target = serializers.SerializerMethodField(
         help_text=(
             'Данные для перехода по клику. '
-            'Например, карточка носителя может вести на detail альбома.'
+            'Например, карточка носителя может вести '
+            'на детальную карточку релиза.'
         ),
     )
 
@@ -198,9 +199,8 @@ class CatalogCardSerializer(ProductCardSerializer):
     )
 
     DETAIL_URL_NAMES = {
-        'album': 'api:store:albums-detail',
-        'merch': 'api:store:merch-detail',
-        'track': 'api:store:tracks-detail',
+        'release': 'api:store:catalog-release-detail',
+        'merch': 'api:store:catalog-merch-detail',
     }
 
     class Meta(ProductCardSerializer.Meta):

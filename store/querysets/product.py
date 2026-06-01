@@ -71,7 +71,6 @@ class ProductQuerySet(models.QuerySet):
         """Подтягивает данные для карточек мерча и носителей."""
         return self.select_related(
             'merch',
-            'merch__kind',
         ).prefetch_related(
             'merch__images_merch',
         )

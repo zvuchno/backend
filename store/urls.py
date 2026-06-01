@@ -39,9 +39,9 @@ urlpatterns = [
     path('', include(router.urls)),
     path('catalog/', ProductCatalogListView.as_view(), name='catalog'),
     path(
-        'catalog/album/<int:pk>/',
+        'catalog/release/<int:pk>/',
         CatalogReleaseDetailView.as_view(),
-        name='catalog-album-detail',
+        name='catalog-release-detail',
     ),
     path(
         'catalog/merch/<int:pk>/',

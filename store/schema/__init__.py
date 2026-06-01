@@ -13,6 +13,10 @@ from .cart_promocode import (
     cart_remove_promocode_schema,
 )
 from .catalog import catalog_list_schema
+from .catalog_datail import (
+    catalog_merch_detail_schema,
+    catalog_release_detail_schema,
+)
 from .checkout_schema import checkout_schema
 from .delivery import delivery_schema
 from .favorites import favorites_schema
@@ -27,6 +31,8 @@ __all__ = [
     'album_schema',
     'artist_sale_schema',
     'catalog_list_schema',
+    'catalog_release_detail_schema',
+    'catalog_merch_detail_schema',
     'cart_apply_promocode_schema',
     'cart_remove_promocode_schema',
     'cart_schema',

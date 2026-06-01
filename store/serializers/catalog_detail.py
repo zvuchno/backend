@@ -50,7 +50,7 @@ class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
     variant_key = serializers.SerializerMethodField(
         help_text='Ключ для сопоставления с selected_variant_key каталога.',
     )
-    format = serializers.SerializerMethodField(
+    property_value = serializers.SerializerMethodField(
         help_text='Формат покупки: диджитал, винил, кассета и т.п.',
     )
     name = serializers.CharField(
@@ -84,9 +84,9 @@ class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
         model = ProductVariant
         fields = (
             'variant_key',
-            'format',
-            'name',
+            'property_value',
             'variant_id',
+            'name',
             'price',
             'stock',
             'description',
@@ -149,7 +149,7 @@ class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
         Если у носителя нет собственных изображений, возвращает
         обложку связанного альбома как fallback.
         """
-        images = list(merch.images_merch.all())
+        images = list(getattr(merch, 'prefetched_images', []))
 
         if not images:
             album = getattr(merch, 'album', None)
@@ -183,29 +183,20 @@ class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
 
         return product.merch.description
 
-    def get_format(self, obj) -> dict:
+    def get_property_value(self, obj) -> str:
         """Возвращает формат варианта покупки."""
         product = obj.product
 
         if product.album_id:
-            return {
-                'name': 'Диджитал',
-                'slug': 'digital',
-            }
+            return 'Диджитал'
 
         merch = product.merch
         kind = getattr(merch, 'kind', None)
 
         if not kind:
-            return {
-                'name': 'Физический носитель',
-                'slug': 'carrier',
-            }
+            return 'Физический носитель'
 
-        return {
-            'name': kind.name,
-            'slug': kind.slug,
-        }
+        return kind.name
 
 
 class CatalogReleaseDetailSerializer(CatalogDetailBaseSerializer):
@@ -214,6 +205,7 @@ class CatalogReleaseDetailSerializer(CatalogDetailBaseSerializer):
     is_single = serializers.BooleanField()
     genre = serializers.CharField()
     release_date = serializers.DateField()
+    property_name = serializers.CharField(default='Формат')
     variants = serializers.SerializerMethodField()
 
     def get_images(self, obj) -> list[dict]:
@@ -239,7 +231,7 @@ class CatalogReleaseDetailSerializer(CatalogDetailBaseSerializer):
             product = getattr(carrier, 'product', None)
             if product is not None:
                 variants.extend(
-                    getattr(product, 'active_carrier_variants', []),
+                    getattr(product, 'active_carriers_variants', []),
                 )
 
         return CatalogReleaseVariantSerializer(
@@ -283,7 +275,7 @@ class CatalogMerchDetailSerializer(CatalogDetailBaseSerializer):
 
     def get_images(self, obj) -> list[dict]:
         """Возвращает изображения мерча."""
-        images = list(obj.images_merch.all())
+        images = list(getattr(obj, 'prefetched_images', []))
 
         if not images:
             return []
