@@ -15,13 +15,25 @@ class MerchKindAdmin(admin.ModelAdmin):
     list_display = (
         'name',
         'slug',
+        'is_carrier',
     )
     list_filter = (
         'created_at',
+        'is_carrier',
         'is_active',
     )
     search_fields = ('name',)
     search_help_text = 'Поиск по имени'
     fieldsets = (
-        ('Основная информация', {'fields': ('name', 'slug', 'is_active')}),
+        (
+            'Основная информация',
+            {
+                'fields': (
+                    'name',
+                    'slug',
+                    'is_carrier',
+                    'is_active',
+                ),
+            },
+        ),
     )
