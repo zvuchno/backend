@@ -26,7 +26,10 @@ class Merch(BaseContent, VisibilityModel):
         related_name='merch',
     )
 
-    is_carrier = models.BooleanField('Носитель', default=False)
+    @property
+    def is_carrier(self):
+        """Возвращает True, если тип мерча является носителем."""
+        return self.kind is not None and self.kind.is_carrier
 
     objects = VisibilityQuerySet.as_manager()
 
