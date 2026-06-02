@@ -16,6 +16,7 @@ from .views import (
     MerchViewSet,
     OrderViewSet,
     ProductCatalogListView,
+    PromocodeViewSet,
     TrackViewSet,
 )
 
@@ -31,6 +32,7 @@ router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'deliveries', DeliveryViewSet, basename='deliveries')
 router.register(r'me/favorites', FavoritesViewSet, basename='me-favorites')
 router.register(r'orders', OrderViewSet, basename='orders')
+router.register(r'promocodes', PromocodeViewSet, basename='promocodes')
 
 urlpatterns = [
     path('', include(router.urls)),

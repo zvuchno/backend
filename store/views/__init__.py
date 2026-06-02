@@ -7,6 +7,7 @@ from .genre import GenreViewSet
 from .merch import MerchViewSet
 from .merch_kind import MerchKindViewSet
 from .order import OrderViewSet
+from .promocode import PromocodeViewSet
 from .sale import ArtistSaleViewSet
 from .track import TrackViewSet
 
@@ -20,6 +21,7 @@ __all__ = [
     'MerchKindViewSet',
     'MerchViewSet',
     'OrderViewSet',
-    'TrackViewSet',
     'ProductCatalogListView',
+    'PromocodeViewSet',
+    'TrackViewSet',
 ]
