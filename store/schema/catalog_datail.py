@@ -21,7 +21,7 @@ catalog_release_detail_schema = extend_schema(
         'Поле property_name показывает название свойства, по которому '
         'выбирается вариант. Для релиза это формат.\n\n'
         'Если пользователь перешел из карточки носителя, фронтенд может '
-        'сопоставить selected_variant_key из карточки каталога с variant_key '
+        'сопоставить selected_variant_id из карточки каталога с variant_id '
         'одного из вариантов в этом ответе и сразу выбрать нужный вариант.\n\n'
         'Для добавления в корзину используется variant_id выбранного варианта.'
     ),
@@ -47,10 +47,6 @@ catalog_release_detail_schema = extend_schema(
                 'property_name': 'Формат',
                 'variants': [
                     {
-                        'variant_key': {
-                            'type': 'album',
-                            'id': 10,
-                        },
                         'property_value': 'Диджитал',
                         'name': 'Название релиза',
                         'variant_id': 101,
@@ -68,10 +64,6 @@ catalog_release_detail_schema = extend_schema(
                         'sku': 'ALB-10-V101',
                     },
                     {
-                        'variant_key': {
-                            'type': 'merch',
-                            'id': 20,
-                        },
                         'property_value': 'Винил',
                         'name': 'Название релиза — винил',
                         'variant_id': 202,

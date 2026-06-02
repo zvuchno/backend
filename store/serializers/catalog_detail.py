@@ -9,10 +9,7 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import ProductVariant
-from store.serializers import (
-    ImageSerializer,
-    VariantKeySerializer,
-)
+from store.serializers.mixins import ProductImagesMixin
 
 
 class CatalogDetailBaseSerializer(serializers.Serializer):
@@ -44,12 +41,12 @@ class CatalogDetailBaseSerializer(serializers.Serializer):
         return product.price
 
 
-class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
+class CatalogReleaseVariantSerializer(
+    ProductImagesMixin,
+    serializers.ModelSerializer,
+):
     """Вариант покупки релиза в витринной detail карточке."""
 
-    variant_key = serializers.SerializerMethodField(
-        help_text='Ключ для сопоставления с selected_variant_key каталога.',
-    )
     property_value = serializers.SerializerMethodField(
         help_text='Формат покупки: диджитал, винил, кассета и т.п.',
     )
@@ -83,7 +80,6 @@ class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductVariant
         fields = (
-            'variant_key',
             'property_value',
             'variant_id',
             'name',
@@ -95,77 +91,23 @@ class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
-    @extend_schema_field(VariantKeySerializer)
-    def get_variant_key(self, obj) -> dict:
-        """Возвращает ключ варианта покупки."""
-        product = obj.product
-
-        if product.album_id:
-            return {
-                'type': 'album',
-                'id': product.album_id,
-            }
-
-        return {
-            'type': 'merch',
-            'id': product.merch_id,
-        }
-
     def get_images(self, obj) -> list[dict]:
         """Возвращает изображения варианта покупки."""
-        images = self._get_image_items(obj)
-
-        return ImageSerializer(
-            images,
-            many=True,
-            context=self.context,
-        ).data
-
-    def _get_image_items(self, obj) -> list[dict]:
-        """Возвращает изображения в едином формате."""
         product = obj.product
 
         if product.album_id:
-            return self._get_album_image_items(product.album)
+            items = self.get_album_image_items(product.album)
+            return self.serialize_image_items(items)
 
-        return self._get_merch_image_items(product.merch)
+        merch = product.merch
+        items = self.get_merch_image_items(
+            getattr(merch, 'prefetched_images', []),
+        )
 
-    @staticmethod
-    def _get_album_image_items(album) -> list[dict]:
-        """Возвращает обложку альбома как список изображений."""
-        if not album.cover_image:
-            return []
+        if not items:
+            items = self.get_album_image_items(getattr(merch, 'album', None))
 
-        return [
-            {
-                'image': album.cover_image,
-                'is_main': True,
-            },
-        ]
-
-    def _get_merch_image_items(self, merch) -> list[dict]:
-        """Возвращает изображения мерча.
-
-        Если у носителя нет собственных изображений, возвращает
-        обложку связанного альбома как fallback.
-        """
-        images = list(getattr(merch, 'prefetched_images', []))
-
-        if not images:
-            album = getattr(merch, 'album', None)
-            if album:
-                return self._get_album_image_items(album)
-            return []
-
-        has_main = any(image.is_main for image in images)
-
-        return [
-            {
-                'image': image.image,
-                'is_main': image.is_main or (index == 0 and not has_main),
-            }
-            for index, image in enumerate(images)
-        ]
+        return self.serialize_image_items(items)
 
     def get_stock(self, obj) -> int | None:
         """Возвращает остаток варианта. Для цифрового варианта — None."""
@@ -199,7 +141,10 @@ class CatalogReleaseVariantSerializer(serializers.ModelSerializer):
         return kind.name
 
 
-class CatalogReleaseDetailSerializer(CatalogDetailBaseSerializer):
+class CatalogReleaseDetailSerializer(
+    ProductImagesMixin,
+    CatalogDetailBaseSerializer,
+):
     """Витринная detail-карточка релиза."""
 
     is_single = serializers.BooleanField()
@@ -210,14 +155,8 @@ class CatalogReleaseDetailSerializer(CatalogDetailBaseSerializer):
 
     def get_images(self, obj) -> list[dict]:
         """Возвращает изображения альбома в формате галереи."""
-        if not obj.cover_image:
-            return []
-
-        return ImageSerializer(
-            [{'image': obj.cover_image, 'is_main': True}],
-            many=True,
-            context=self.context,
-        ).data
+        items = self.get_album_image_items(obj)
+        return self.serialize_image_items(items)
 
     def get_variants(self, obj) -> list[dict]:
         """Возвращает варианты покупки релиза."""
@@ -263,7 +202,10 @@ class CatalogMerchVariantSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class CatalogMerchDetailSerializer(CatalogDetailBaseSerializer):
+class CatalogMerchDetailSerializer(
+    ProductImagesMixin,
+    CatalogDetailBaseSerializer,
+):
     """Витринная detail-карточка обычного мерча."""
 
     kind = serializers.SerializerMethodField()
@@ -275,24 +217,10 @@ class CatalogMerchDetailSerializer(CatalogDetailBaseSerializer):
 
     def get_images(self, obj) -> list[dict]:
         """Возвращает изображения мерча."""
-        images = list(getattr(obj, 'prefetched_images', []))
-
-        if not images:
-            return []
-
-        has_main = any(image.is_main for image in images)
-
-        return ImageSerializer(
-            [
-                {
-                    'image': image.image,
-                    'is_main': image.is_main or (index == 0 and not has_main),
-                }
-                for index, image in enumerate(images)
-            ],
-            many=True,
-            context=self.context,
-        ).data
+        items = self.get_merch_image_items(
+            getattr(obj, 'prefetched_images', []),
+        )
+        return self.serialize_image_items(items)
 
     def get_kind(self, obj) -> str | None:
         """Возвращает вид мерча."""
