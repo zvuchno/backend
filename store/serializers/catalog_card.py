@@ -137,9 +137,7 @@ class CatalogCardTargetSerializer(serializers.Serializer):
     """Данные для перехода из карточки товара."""
 
     type = serializers.CharField(
-        help_text=(
-            'Тип endpoint для перехода. Например: album, merch или track.'
-        ),
+        help_text=('Тип детальной карточки: release или merch.'),
     )
     url = serializers.CharField(
         allow_null=True,
@@ -159,7 +157,8 @@ class CatalogCardSerializer(ProductCardSerializer):
     )
 
     selected_variant_id = serializers.IntegerField(
-        help_text='Id варианта, который предвыбрать после перехода в detail.',
+        help_text='Id варианта, который предвыбрать после перехода.',
+        allow_null=True,
         default=None,
     )
 
