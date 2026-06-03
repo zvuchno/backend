@@ -14,6 +14,7 @@ from store.constants import (
     DISCOUNT_VALUE_PRECISION,
     MAX_PRICE_DIGITS,
     MAX_PROMOCODE_LENGTH,
+    ZERO_MONEY,
 )
 from store.models import Promocode
 from store.validators import validate_promocode_format
@@ -28,6 +29,7 @@ class PromocodeReadSerializer(serializers.ModelSerializer):
             'id',
             'code',
             'discount_value',
+            'discount_type',
             'start_at',
             'end_at',
             'usage_limit',
@@ -44,10 +46,7 @@ class PromocodeReadDetailSerializer(PromocodeReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Promocode."""
 
     class Meta(PromocodeReadSerializer.Meta):
-        fields = PromocodeReadSerializer.Meta.fields + (
-            'description',
-            'discount_type',
-        )
+        fields = PromocodeReadSerializer.Meta.fields + ('description',)
 
 
 class PromocodeWriteSerializer(serializers.ModelSerializer):
@@ -140,6 +139,11 @@ class PromocodeWriteSerializer(serializers.ModelSerializer):
                 'discount_value': (
                     'Скидка в процентах не может быть больше 100.'
                 ),
+            })
+
+        if discount_value is not None and discount_value <= ZERO_MONEY:
+            raise serializers.ValidationError({
+                'discount_value': ('Скидка должна быть больше 0.'),
             })
 
         if start_at and end_at and start_at >= end_at:
