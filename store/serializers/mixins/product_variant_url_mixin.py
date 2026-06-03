@@ -5,25 +5,23 @@ class ProductVariantURLMixin:
     """Миксин для формирования target_url."""
 
     def get_target_url(self, obj) -> str | None:
-        """Возвращает URL для объекта в API."""
-        if hasattr(obj, 'product_variant'):
-            obj = obj.product_variant
 
-        product = obj.product
+        target_type = getattr(obj, 'target_type', None)
+        target_id = getattr(obj, 'target_id', None)
 
-        if product.album_id:
+        if not target_type or not target_id:
+            return None
+
+        if target_type == 'album':
             return reverse(
                 'api:store:albums-detail',
-                kwargs={'pk': product.album_id},
+                kwargs={'pk': target_id},
             )
-        if product.track_id:
-            return reverse(
-                'api:store:tracks-detail',
-                kwargs={'pk': product.track_id},
-            )
-        if product.merch_id:
+
+        if target_type == 'merch':
             return reverse(
                 'api:store:merch-detail',
-                kwargs={'pk': product.merch_id},
+                kwargs={'pk': target_id},
             )
+
         return None

@@ -5,10 +5,9 @@
 
 from decimal import Decimal
 
-from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .catalog_card import CatalogCardTargetSerializer, VariantKeySerializer
+from .base_variant_list_item import BaseVariantListItemSerializer
 from .mixins import ProductVariantURLMixin
 from store.constants import (
     MAX_PRICE_DIGITS,
@@ -25,8 +24,8 @@ from store.validators import (
 
 
 class CartItemReadSerializer(
+    BaseVariantListItemSerializer,
     ProductVariantURLMixin,
-    serializers.ModelSerializer,
 ):
     """Сериализатор товаров в корзине пользователя - чтение."""
 
@@ -60,20 +59,6 @@ class CartItemReadSerializer(
     stock = serializers.SerializerMethodField()
     discount = serializers.SerializerMethodField()
     line_total = serializers.SerializerMethodField()
-    target = serializers.SerializerMethodField(
-        help_text=(
-            'Данные для перехода по клику. '
-            'Например, карточка носителя может вести на detail альбома.'
-        ),
-        read_only=True,
-    )
-
-    selected_variant_key = serializers.SerializerMethodField(
-        help_text=(
-            'Ключ варианта, который предвыбрать после перехода в detail.'
-        ),
-        read_only=True,
-    )
 
     class Meta:
         model = CartItem
@@ -121,26 +106,6 @@ class CartItemReadSerializer(
             decimal_places=MONEY_DISPLAY_PRECISION,
         )
         return field.to_representation(raw_line_total)
-
-    @extend_schema_field(CatalogCardTargetSerializer)
-    def get_target(self, obj):
-        """Возвращает данные для перехода из карточки товара."""
-        return {
-            'type': obj.target_type,
-            'url': self.get_target_url(obj),
-        }
-
-    @extend_schema_field(VariantKeySerializer)
-    def get_selected_variant_key(self, obj):
-        """Возвращает ключ для предвыбора варианта."""
-        content = getattr(obj.product_variant.product, 'content', None)
-        if content is None:
-            return None
-
-        return {
-            'type': obj.product_variant.product.product_type,
-            'id': obj.product_variant.product.content_id,
-        }
 
 
 class CartReadSerializer(serializers.Serializer):

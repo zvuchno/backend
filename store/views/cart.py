@@ -57,7 +57,7 @@ class CartViewSet(viewsets.GenericViewSet):
                 # Оптимизируем вложенные айтемы через CartItemQuerySet
                 queryset=CartItem.objects
                 .with_prices()
-                .with_item_cart_annotations()
+                .with_target_annotations()
                 .select_related(
                     'product_variant__product__track',
                     'product_variant__product__album',

@@ -6,7 +6,6 @@ from django.db.models import (
     DecimalField,
     ExpressionWrapper,
     F,
-    Value,
     When,
 )
 from django.db.models.functions import Coalesce
@@ -15,6 +14,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_INTERNAL_PRECISION,
 )
+from store.querysets.variant_annotations import build_target_annotations
 
 
 class CartItemQuerySet(models.QuerySet):
@@ -74,76 +74,8 @@ class CartItemQuerySet(models.QuerySet):
             )
         )
 
-    def with_item_cart_annotations(self):
-        """Добавляет вычисляемые поля позиций корзины."""
-        p = 'product_variant__product'
-
-        carrier_album_condition = {
-            f'{p}__product_type': 'merch',
-            'is_carrier': True,
-            f'{p}__merch__album_id__isnull': False,
-        }
-
+    def with_target_annotations(self):
+        """Добавляет данные для перехода на целевую карточку."""
         return self.annotate(
-            is_carrier=Coalesce(
-                F(f'{p}__merch__kind__is_carrier'),
-                Value(False),
-            ),
-            artist_name=Coalesce(
-                F(f'{p}__album__owner__artist_profile__name'),
-                F(f'{p}__track__owner__artist_profile__name'),
-                F(f'{p}__merch__owner__artist_profile__name'),
-            ),
-            kind=Case(
-                When(
-                    **{
-                        f'{p}__product_type': 'album',
-                        f'{p}__album__is_single': True,
-                    },
-                    then=Value('Сингл'),
-                ),
-                When(
-                    **{
-                        f'{p}__product_type': 'album',
-                        f'{p}__album__is_single': False,
-                    },
-                    then=Value('Альбом'),
-                ),
-                When(
-                    **{f'{p}__product_type': 'track'},
-                    then=Value('Трек'),
-                ),
-                When(
-                    **{f'{p}__product_type': 'merch'},
-                    then=F(f'{p}__merch__kind__name'),
-                ),
-                output_field=models.CharField(),
-            ),
-            target_type=Case(
-                When(
-                    **carrier_album_condition,
-                    then=Value('album'),
-                ),
-                default=F(f'{p}__product_type'),
-                output_field=models.CharField(),
-            ),
-            target_id=Case(
-                When(
-                    **carrier_album_condition,
-                    then=F(f'{p}__merch__album_id'),
-                ),
-                When(
-                    **{f'{p}__product_type': 'album'},
-                    then=F(f'{p}__album_id'),
-                ),
-                When(
-                    **{f'{p}__product_type': 'merch'},
-                    then=F(f'{p}__merch_id'),
-                ),
-                When(
-                    **{f'{p}__product_type': 'track'},
-                    then=F(f'{p}__track_id'),
-                ),
-                output_field=models.IntegerField(),
-            ),
+            **build_target_annotations('product_variant__product'),
         )
