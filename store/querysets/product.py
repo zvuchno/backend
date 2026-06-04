@@ -4,7 +4,10 @@ from django.db.models.functions import ExtractYear
 
 
 class ProductQuerySet(models.QuerySet):
-    """QuerySet товаров."""
+    """QuerySet товаров.
+
+    TODO Убрать лишнее, использовать фабрику.
+    """
 
     CATALOG_TYPE_ALL = 'all'
     CATALOG_TYPE_ALBUM = 'album'
@@ -20,6 +23,7 @@ class ProductQuerySet(models.QuerySet):
             track__is_active=True,
             track__album__is_active=True,
             track__album__is_published=True,
+            track__album__visibility='public',
         )
 
     def published_albums(self):
@@ -28,6 +32,7 @@ class ProductQuerySet(models.QuerySet):
             album__isnull=False,
             album__is_active=True,
             album__is_published=True,
+            album__visibility='public',
         )
 
     def published_merch(self):
@@ -36,6 +41,7 @@ class ProductQuerySet(models.QuerySet):
             merch__isnull=False,
             merch__is_active=True,
             merch__is_published=True,
+            merch__visibility='public',
         )
 
     def published_catalog_content(self):
@@ -49,11 +55,13 @@ class ProductQuerySet(models.QuerySet):
                 album__isnull=False,
                 album__is_active=True,
                 album__is_published=True,
+                album__visibility='public',
             )
             | models.Q(
                 merch__isnull=False,
                 merch__is_active=True,
                 merch__is_published=True,
+                merch__visibility='public',
             ),
         )
 
@@ -124,7 +132,7 @@ class ProductQuerySet(models.QuerySet):
             ),
             year=ExtractYear('album__release_date'),
             target_type=models.Value(
-                'album',
+                'release',
                 output_field=models.CharField(),
             ),
             target_id=models.F('album_id'),
@@ -144,7 +152,7 @@ class ProductQuerySet(models.QuerySet):
                 models.When(
                     merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
-                    then=models.Value('album'),
+                    then=models.Value('release'),
                 ),
                 default=models.Value('merch'),
                 output_field=models.CharField(),
@@ -224,10 +232,14 @@ class ProductQuerySet(models.QuerySet):
             ),
             target_type=models.Case(
                 models.When(
+                    product_type='album',
+                    then=models.Value('release'),
+                ),
+                models.When(
                     product_type='merch',
                     merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
-                    then=models.Value('album'),
+                    then=models.Value('release'),
                 ),
                 default=models.F('product_type'),
                 output_field=models.CharField(),
@@ -289,7 +301,6 @@ class ProductQuerySet(models.QuerySet):
             .published_tracks()
             .with_track_card_data()
             .with_track_card_annotations()
-            .with_selected_variant_id()
         )
 
     def for_catalog_cards(self):
@@ -304,6 +315,7 @@ class ProductQuerySet(models.QuerySet):
             .with_album_card_data()
             .with_merch_card_data()
             .with_catalog_card_annotations()
+            .with_selected_variant_id()
         )
 
     def for_catalog_type(self, catalog_type):

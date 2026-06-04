@@ -1,6 +1,10 @@
 from .album import AlbumViewSet
 from .cart import CartViewSet
-from .catalog import ProductCatalogListView
+from .catalog import (
+    CatalogMerchDetailView,
+    CatalogReleaseDetailView,
+    ProductCatalogListView,
+)
 from .delivery import DeliveryViewSet
 from .favorites import FavoritesViewSet
 from .genre import GenreViewSet
@@ -21,7 +25,9 @@ __all__ = [
     'MerchKindViewSet',
     'MerchViewSet',
     'OrderViewSet',
-    'ProductCatalogListView',
     'PromocodeViewSet',
     'TrackViewSet',
+    'ProductCatalogListView',
+    'CatalogReleaseDetailView',
+    'CatalogMerchDetailView',
 ]
