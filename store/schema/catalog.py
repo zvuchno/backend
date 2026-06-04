@@ -18,17 +18,18 @@ catalog_list_schema = extend_schema(
     summary='Список товаров каталога',
     description=(
         'Возвращает список витринных карточек товаров.\n\n'
-        'Карточка может представлять альбом, сингл, носитель или обычный '
-        'мерч. Для перехода по клику фронтенд использует блок target.\n\n'
-        'Важно: target показывает, куда нужно перейти по клику. '
-        'Например, карточка носителя может вести на detail альбома.\n\n'
-        'Если карточка должна открыть detail с заранее выбранным вариантом, '
-        'фронтенд может использовать selected_variant_id для сопоставления '
-        'с variant_key в detail endpoint.\n\n'
+        'Карточка может представлять релиз, носитель или обычный мерч. '
+        'Для перехода по клику фронтенд использует target.url.\n\n'
+        'Важно: target показывает, какую детальную карточку нужно открыть. '
+        'Например, карточка носителя может вести на детальную карточку '
+        'релиза.\n\n'
+        'Если карточка должна открыть детальную карточку с заранее выбранным '
+        'вариантом, фронтенд может использовать selected_variant_id для '
+        'сопоставления с variant_id в детальной карточке.\n\n'
         'Поле is_favorite показывает, добавлен ли товар в избранное. '
         'Сейчас избранное связано с вариантом товара, поэтому карточка '
-        'считается избранной, если в избранном есть '
-        'любой вариант этого товара.'
+        'считается избранной, если в избранном есть любой вариант этого '
+        'товара.'
     ),
     parameters=[
         OpenApiParameter(
@@ -54,8 +55,8 @@ catalog_list_schema = extend_schema(
             ],
             description=(
                 'Тип витрины. '
-                'all или отсутствие параметра — альбомы и мерч; '
-                'album — только альбомы/синглы; '
+                'all или отсутствие параметра — релизы и мерч; '
+                'album — только релизы; '
                 'merch — только мерч и носители.'
             ),
         ),
@@ -66,7 +67,7 @@ catalog_list_schema = extend_schema(
             description=(
                 'Фильтр по slug жанров. Можно передать несколько значений '
                 'через запятую: genre=rock,jazz. '
-                'Применяется к альбомам и носителям, связанным с альбомом.'
+                'Применяется к релизам и носителям, связанным с релизом.'
             ),
         ),
         OpenApiParameter(
@@ -76,7 +77,7 @@ catalog_list_schema = extend_schema(
             description=(
                 'Фильтр по slug типов мерча. Можно передать несколько '
                 'значений через запятую: kind=vinyl,tshirt. '
-                'Применяется к merch-товарам.'
+                'Применяется к мерчу.'
             ),
         ),
         OpenApiParameter(
@@ -99,7 +100,7 @@ catalog_list_schema = extend_schema(
     responses=CatalogCardSerializer(many=True),
     examples=[
         OpenApiExample(
-            name='Альбом',
+            name='Релиз',
             value={
                 'name': 'Название релиза',
                 'artist_name': 'Артист',
@@ -109,8 +110,8 @@ catalog_list_schema = extend_schema(
                 'image': 'https://zvuchno.ru/media/albums/cover.jpg',
                 'is_favorite': False,
                 'target': {
-                    'type': 'album',
-                    'url': '/api/v1/store/albums/10/',
+                    'type': 'release',
+                    'url': '/api/v1/store/catalog/releases/10/',
                 },
                 'selected_variant_id': 111,
             },
@@ -127,17 +128,17 @@ catalog_list_schema = extend_schema(
                 'image': 'https://zvuchno.ru/media/merch/vinyl.jpg',
                 'is_favorite': False,
                 'target': {
-                    'type': 'album',
-                    'url': '/api/v1/store/albums/10/',
+                    'type': 'release',
+                    'url': '/api/v1/store/catalog/releases/10/',
                 },
                 'selected_variant_id': 112,
             },
             response_only=True,
         ),
         OpenApiExample(
-            name='Носитель',
+            name='Обычный мерч',
             value={
-                'name': 'Название релиза — винил',
+                'name': 'Футболка',
                 'artist_name': 'Артист',
                 'kind': 'Винил',
                 'year': None,

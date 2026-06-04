@@ -137,7 +137,7 @@ class CatalogCardTargetSerializer(serializers.Serializer):
     """Данные для перехода из карточки товара."""
 
     type = serializers.CharField(
-        help_text=('Тип детальной карточки: album или merch.'),
+        help_text=('Тип детальной карточки: release или merch.'),
     )
     url = serializers.CharField(
         allow_null=True,
@@ -163,8 +163,8 @@ class CatalogCardSerializer(ProductCardSerializer):
     )
 
     DETAIL_URL_NAMES = {
-        'album': 'api:store:albums-detail',
-        'merch': 'api:store:merch-detail',
+        'release': 'api:store:catalog-release-detail',
+        'merch': 'api:store:catalog-merch-detail',
     }
 
     class Meta(ProductCardSerializer.Meta):

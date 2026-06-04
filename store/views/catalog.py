@@ -1,12 +1,16 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
-from rest_framework.generics import ListAPIView
+from drf_spectacular.utils import extend_schema
+from rest_framework import filters, status
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from store.filters import ProductCatalogFilter
 from store.models import Favorite, Product
 from store.schema import catalog_list_schema
 from store.serializers import CatalogCardSerializer
+from users.serializers import EmptySerializer
 
 
 @catalog_list_schema
@@ -26,6 +30,7 @@ class ProductCatalogListView(ListAPIView):
         'album__owner__artist_profile__name',
         'merch__owner__artist_profile__name',
     )
+    throttle_classes = (AnonRateThrottle, UserRateThrottle)
 
     def get_queryset(self):
         """Возвращает товары каталога."""
@@ -53,3 +58,31 @@ class ProductCatalogListView(ListAPIView):
             context['favorite_product_ids'] = set()
 
         return context
+
+
+@extend_schema(tags=['Catalog'])
+class CatalogReleaseDetailView(RetrieveAPIView):
+    """Витринная detail-карточка релиза."""
+
+    serializer_class = EmptySerializer
+
+    def get(self, request, *args, **kwargs):
+        """Возвращает ответ о том, что функционал еще не реализован."""
+        return Response(
+            {'detail': 'Функционал еще не реализован.'},
+            status=status.HTTP_501_NOT_IMPLEMENTED,
+        )
+
+
+@extend_schema(tags=['Catalog'])
+class CatalogMerchDetailView(RetrieveAPIView):
+    """Витринная detail-карточка обычного мерча."""
+
+    serializer_class = EmptySerializer
+
+    def get(self, request, *args, **kwargs):
+        """Возвращает ответ о том, что функционал еще не реализован."""
+        return Response(
+            {'detail': 'Функционал еще не реализован.'},
+            status=status.HTTP_501_NOT_IMPLEMENTED,
+        )
