@@ -23,7 +23,7 @@ catalog_list_schema = extend_schema(
         'Важно: target показывает, куда нужно перейти по клику. '
         'Например, карточка носителя может вести на detail альбома.\n\n'
         'Если карточка должна открыть detail с заранее выбранным вариантом, '
-        'фронтенд может использовать selected_variant_key для сопоставления '
+        'фронтенд может использовать selected_variant_id для сопоставления '
         'с variant_key в detail endpoint.\n\n'
         'Поле is_favorite показывает, добавлен ли товар в избранное. '
         'Сейчас избранное связано с вариантом товара, поэтому карточка '
@@ -112,10 +112,7 @@ catalog_list_schema = extend_schema(
                     'type': 'album',
                     'url': '/api/v1/store/albums/10/',
                 },
-                'selected_variant_key': {
-                    'type': 'album',
-                    'id': 10,
-                },
+                'selected_variant_id': 111,
             },
             response_only=True,
         ),
@@ -133,10 +130,7 @@ catalog_list_schema = extend_schema(
                     'type': 'album',
                     'url': '/api/v1/store/albums/10/',
                 },
-                'selected_variant_key': {
-                    'type': 'merch',
-                    'id': 20,
-                },
+                'selected_variant_id': 112,
             },
             response_only=True,
         ),
@@ -154,10 +148,7 @@ catalog_list_schema = extend_schema(
                     'type': 'album',
                     'url': '/api/v1/store/albums/10/',
                 },
-                'selected_variant_key': {
-                    'type': 'merch',
-                    'id': 20,
-                },
+                'selected_variant_id': 113,
             },
             response_only=True,
         ),

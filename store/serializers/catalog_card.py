@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from store.serializers.mixins import ProductImagesMixin
 
 
 class BaseCardSerializer(serializers.Serializer):
@@ -67,7 +68,10 @@ class BaseCardSerializer(serializers.Serializer):
         )
 
 
-class ProductCardSerializer(BaseCardSerializer):
+class ProductCardSerializer(
+    ProductImagesMixin,
+    BaseCardSerializer,
+):
     """Сериализатор единой карточки товара.
 
     Базовая модель карточки — Product.
@@ -108,47 +112,23 @@ class ProductCardSerializer(BaseCardSerializer):
     @extend_schema_field(OpenApiTypes.STR)
     def get_image(self, obj):
         """Возвращает изображение карточки товара."""
-        request = self.context.get('request')
-
         if obj.album_id:
-            image = obj.album.cover_image
-            if not image:
-                return None
-            try:
-                url = image.url
-            except ValueError:
-                return None
-
-            return request.build_absolute_uri(url) if request else url
+            items = self.get_album_image_items(obj.album)
+            return self.get_main_image_url(items)
 
         if obj.merch_id:
-            images = list(obj.merch.images_merch.all())
-            if not images:
-                return None
-
-            main_image = next(
-                (image for image in images if image.is_main),
-                images[0],
+            items = self.get_merch_image_items(
+                getattr(
+                    obj.merch,
+                    'prefetched_images',
+                    obj.merch.images_merch.all(),
+                ),
             )
-
-            try:
-                url = main_image.image.url
-            except ValueError:
-                return None
-
-            return request.build_absolute_uri(url) if request else url
+            return self.get_main_image_url(items)
 
         if obj.track_id:
-            image = obj.track.album.cover_image
-            if not image:
-                return None
-
-            try:
-                url = image.url
-            except ValueError:
-                return None
-
-            return request.build_absolute_uri(url) if request else url
+            items = self.get_album_image_items(obj.track.album)
+            return self.get_main_image_url(items)
 
         return None
 
@@ -157,27 +137,11 @@ class CatalogCardTargetSerializer(serializers.Serializer):
     """Данные для перехода из карточки товара."""
 
     type = serializers.CharField(
-        help_text=(
-            'Тип endpoint для перехода. Например: album, merch или track.'
-        ),
+        help_text=('Тип детальной карточки: album или merch.'),
     )
     url = serializers.CharField(
         allow_null=True,
         help_text='URL endpoint для перехода.',
-    )
-
-
-class VariantKeySerializer(serializers.Serializer):
-    """Ключ варианта покупки.
-
-    Для сопоставления карточки варианта на детальной странице.
-    """
-
-    type = serializers.CharField(
-        help_text='Тип исходной сущности варианта: album, merch или track.',
-    )
-    id = serializers.IntegerField(
-        help_text='ID исходной сущности варианта.',
     )
 
 
@@ -187,39 +151,27 @@ class CatalogCardSerializer(ProductCardSerializer):
     target = serializers.SerializerMethodField(
         help_text=(
             'Данные для перехода по клику. '
-            'Например, карточка носителя может вести на detail альбома.'
+            'Например, карточка носителя может вести '
+            'на детальную карточку релиза.'
         ),
     )
 
-    selected_variant_key = serializers.SerializerMethodField(
-        help_text=(
-            'Ключ варианта, который предвыбрать после перехода в detail.'
-        ),
+    selected_variant_id = serializers.IntegerField(
+        help_text='Id варианта, который предвыбрать после перехода.',
+        allow_null=True,
+        default=None,
     )
 
     DETAIL_URL_NAMES = {
         'album': 'api:store:albums-detail',
         'merch': 'api:store:merch-detail',
-        'track': 'api:store:tracks-detail',
     }
 
     class Meta(ProductCardSerializer.Meta):
         fields = ProductCardSerializer.Meta.fields + (
             'target',
-            'selected_variant_key',
+            'selected_variant_id',
         )
-
-    @extend_schema_field(VariantKeySerializer)
-    def get_selected_variant_key(self, obj):
-        """Возвращает ключ для предвыбора варианта."""
-        content = getattr(obj, 'content', None)
-        if content is None:
-            return None
-
-        return {
-            'type': obj.product_type,
-            'id': obj.content_id,
-        }
 
     @extend_schema_field(CatalogCardTargetSerializer)
     def get_target(self, obj):

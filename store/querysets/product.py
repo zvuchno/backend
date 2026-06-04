@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import OuterRef, Prefetch, Subquery
 from django.db.models.functions import ExtractYear
 
 
@@ -56,6 +57,37 @@ class ProductQuerySet(models.QuerySet):
             ),
         )
 
+    def with_selected_variant_id(self):
+        """Добавляет ID варианта для предвыбора в детальной карточке."""
+        from store.models.product_variant import ProductVariant
+
+        active_variant_id = (
+            ProductVariant.objects
+            .filter(
+                product_id=OuterRef('pk'),
+                is_active=True,
+            )
+            .order_by('id')
+            .values('id')[:1]
+        )
+
+        return self.annotate(
+            selected_variant_id=models.Case(
+                models.When(
+                    product_type='album',
+                    then=Subquery(active_variant_id),
+                ),
+                models.When(
+                    product_type='merch',
+                    merch__kind__is_carrier=True,
+                    merch__album_id__isnull=False,
+                    then=Subquery(active_variant_id),
+                ),
+                default=models.Value(None),
+                output_field=models.IntegerField(),
+            ),
+        )
+
     def with_album_card_data(self):
         """Подтягивает данные для карточек альбомов."""
         return self.select_related('album')
@@ -72,7 +104,10 @@ class ProductQuerySet(models.QuerySet):
         return self.select_related(
             'merch',
         ).prefetch_related(
-            'merch__images_merch',
+            Prefetch(
+                'merch__images_merch',
+                to_attr='prefetched_images',
+            ),
         )
 
     def with_album_card_annotations(self):
@@ -107,7 +142,7 @@ class ProductQuerySet(models.QuerySet):
             ),
             target_type=models.Case(
                 models.When(
-                    merch__is_carrier=True,
+                    merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
                     then=models.Value('album'),
                 ),
@@ -116,7 +151,7 @@ class ProductQuerySet(models.QuerySet):
             ),
             target_id=models.Case(
                 models.When(
-                    merch__is_carrier=True,
+                    merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
                     then=models.F('merch__album_id'),
                 ),
@@ -190,7 +225,7 @@ class ProductQuerySet(models.QuerySet):
             target_type=models.Case(
                 models.When(
                     product_type='merch',
-                    merch__is_carrier=True,
+                    merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
                     then=models.Value('album'),
                 ),
@@ -200,7 +235,7 @@ class ProductQuerySet(models.QuerySet):
             target_id=models.Case(
                 models.When(
                     product_type='merch',
-                    merch__is_carrier=True,
+                    merch__kind__is_carrier=True,
                     merch__album_id__isnull=False,
                     then=models.F('merch__album_id'),
                 ),
@@ -234,6 +269,7 @@ class ProductQuerySet(models.QuerySet):
             .published_albums()
             .with_album_card_data()
             .with_album_card_annotations()
+            .with_selected_variant_id()
         )
 
     def for_merch_cards(self):
@@ -243,6 +279,7 @@ class ProductQuerySet(models.QuerySet):
             .published_merch()
             .with_merch_card_data()
             .with_merch_card_annotations()
+            .with_selected_variant_id()
         )
 
     def for_track_cards(self):
@@ -252,6 +289,7 @@ class ProductQuerySet(models.QuerySet):
             .published_tracks()
             .with_track_card_data()
             .with_track_card_annotations()
+            .with_selected_variant_id()
         )
 
     def for_catalog_cards(self):
