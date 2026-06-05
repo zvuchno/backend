@@ -122,6 +122,7 @@ class CatalogReleaseVariantSerializer(
 class CatalogReleaseDetailSerializer(
     ProductImagesMixin,
     AlbumReadDetailSerializer,
+    CatalogDetailBaseSerializer,
 ):
     """Витринная detail-карточка релиза."""
 
@@ -139,6 +140,7 @@ class CatalogReleaseDetailSerializer(
             if field != 'cover_image' and field != 'variants'
         )
         fields = old_fields + (
+            'artist_name',
             'default_variant_id',
             'images',
             'property_name',
@@ -188,8 +190,8 @@ class CatalogReleaseDetailSerializer(
 
 
 class CatalogMerchDetailSerializer(
-    CatalogDetailBaseSerializer,
     MerchDetailSerializer,
+    CatalogDetailBaseSerializer,
 ):
     """Вариант обычного мерча в витринной detail странице."""
 
@@ -203,3 +205,6 @@ class CatalogMerchDetailSerializer(
             variant['property_value'] = variant.pop('value', '')
 
         return data
+
+    class Meta(MerchDetailSerializer.Meta):
+        fields = MerchDetailSerializer.Meta.fields + ('artist_name',)
