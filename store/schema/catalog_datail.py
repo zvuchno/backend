@@ -20,13 +20,14 @@ catalog_release_detail_schema = extend_schema(
         'вариант и связанные носители.\n\n'
         'Поле property_name показывает название свойства, по которому '
         'выбирается вариант. Для релиза это формат.\n\n'
-        'Если пользователь перешел из карточки носителя, фронтенд может '
+        'Поле default_variant_id содержит ID цифрового варианта, который '
+        'можно выбрать по умолчанию при открытии карточки релиза.\n\n'
+        'Если пользователь перешёл из карточки носителя, фронтенд может '
         'сопоставить selected_variant_id из карточки каталога с variant_id '
-        'одного из вариантов в этом ответе и сразу выбрать нужный вариант.\n\n'
+        'одного из вариантов в этом ответе '
+        'и сразу выбрать нужный вариант.\n\n'
         'Для добавления в корзину используется '
         'variant_id выбранного варианта.'
-        'default_variant_id - для обозначения варианта по умолчанию'
-        '(цифровая версия альбома).'
     ),
     responses=CatalogReleaseDetailSerializer,
     examples=[
@@ -35,27 +36,32 @@ catalog_release_detail_schema = extend_schema(
             value={
                 'id': 10,
                 'name': 'Название релиза',
-                'artist_name': 'Артист',
                 'price': '500.00',
                 'description': 'Описание релиза.',
+                'visibility': 'public',
+                'is_published': True,
+                'artist_name': 'Артист',
+                'is_single': False,
+                'genre': 'Rock',
+                'release_date': '2026-06-01',
+                'allow_overpay': False,
+                'default_variant_id': 101,
                 'images': [
                     {
                         'image': 'https://zvuchno.ru/media/albums/cover.jpg',
                         'is_main': True,
                     },
                 ],
-                'is_single': False,
-                'genre': 'Rock',
-                'release_date': '2026-06-01',
                 'property_name': 'Формат',
                 'variants': [
                     {
-                        'value': 'Диджитал',
-                        'name': 'Название релиза',
-                        'id': 101,
-                        'price': '500.00',
+                        'variant_id': 101,
+                        'sku': 'ALB-10-V101',
                         'stock': None,
-                        'description': '',
+                        'property_value': 'Диджитал',
+                        'name': 'Название релиза',
+                        'price': '500.00',
+                        'description': 'Описание релиза.',
                         'images': [
                             {
                                 'image': (
@@ -64,14 +70,14 @@ catalog_release_detail_schema = extend_schema(
                                 'is_main': True,
                             },
                         ],
-                        'sku': 'ALB-10-V101',
                     },
                     {
-                        'value': 'Винил',
-                        'name': 'Название релиза — винил',
-                        'id': 202,
-                        'price': '2500.00',
+                        'variant_id': 202,
+                        'sku': 'MER-20-V202',
                         'stock': 4,
+                        'property_value': 'Винил',
+                        'name': 'Название релиза — винил',
+                        'price': '2500.00',
                         'description': 'Описание винила.',
                         'images': [
                             {
@@ -81,7 +87,6 @@ catalog_release_detail_schema = extend_schema(
                                 'is_main': True,
                             },
                         ],
-                        'sku': 'MER-20-V202',
                     },
                 ],
             },
@@ -101,8 +106,7 @@ catalog_merch_detail_schema = extend_schema(
         'в детальной карточке релиза.\n\n'
         'Поле property_name показывает название свойства, по которому '
         'выбирается вариант: например размер или цвет.\n\n'
-        'Для добавления в корзину используется '
-        'variants.id выбранного варианта.'
+        'Для добавления в корзину используется variant_id выбранного варианта.'
     ),
     responses=CatalogMerchDetailSerializer,
     examples=[
@@ -111,30 +115,34 @@ catalog_merch_detail_schema = extend_schema(
             value={
                 'id': 20,
                 'name': 'Футболка',
-                'artist_name': 'Артист',
                 'price': '1500.00',
                 'description': 'Описание футболки.',
+                'visibility': 'public',
+                'is_published': True,
+                'artist_name': 'Артист',
+                'kind': 'Футболка',
+                'album': None,
+                'property_name': 'Размер',
+                'stock': 7,
+                'allow_overpay': False,
                 'images': [
                     {
                         'image': 'https://zvuchno.ru/media/merch/tshirt.jpg',
                         'is_main': True,
                     },
                 ],
-                'kind': 'Футболка',
-                'property_name': 'Размер',
-                'stock': 7,
                 'variants': [
                     {
                         'variant_id': 301,
                         'sku': 'MER-20-V301',
                         'stock': 3,
-                        'value': 'M',
+                        'property_value': 'M',
                     },
                     {
                         'variant_id': 302,
                         'sku': 'MER-20-V302',
                         'stock': 4,
-                        'value': 'L',
+                        'property_value': 'L',
                     },
                 ],
             },

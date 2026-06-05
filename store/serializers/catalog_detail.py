@@ -31,14 +31,15 @@ class CatalogReleaseVariantSerializer(
 ):
     """Вариант покупки релиза в витринной detail карточке."""
 
-    value = serializers.SerializerMethodField(
+    property_value = serializers.SerializerMethodField(
         help_text='Формат покупки: диджитал, винил, кассета и т.п.',
     )
     name = serializers.CharField(
         source='product.name',
         help_text='Название варианта покупки.',
     )
-    id = serializers.IntegerField(
+    variant_id = serializers.IntegerField(
+        source='id',
         help_text='ID Variant для добавления в корзину.',
     )
     price = serializers.DecimalField(
@@ -60,10 +61,10 @@ class CatalogReleaseVariantSerializer(
     class Meta:
         model = ProductVariant
         fields = (
-            'id',
+            'variant_id',
             'sku',
             'stock',
-            'value',
+            'property_value',
             'name',
             'price',
             'description',
@@ -100,9 +101,9 @@ class CatalogReleaseVariantSerializer(
         """Возвращает описание варианта покупки."""
         product = obj.product
 
-        return product.merch.description
+        return product.content.description
 
-    def get_value(self, obj) -> str:
+    def get_property_value(self, obj) -> str:
         """Возвращает формат варианта покупки."""
         product = obj.product
 
@@ -135,7 +136,7 @@ class CatalogReleaseDetailSerializer(
         old_fields = tuple(
             field
             for field in AlbumReadDetailSerializer.Meta.fields
-            if field != 'cover_image'
+            if field != 'cover_image' and field != 'variants'
         )
         fields = old_fields + (
             'default_variant_id',
@@ -191,3 +192,14 @@ class CatalogMerchDetailSerializer(
     MerchDetailSerializer,
 ):
     """Вариант обычного мерча в витринной detail странице."""
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        data['images'] = data.pop('images_merch', [])
+
+        for variant in data.get('variants', []):
+            variant['variant_id'] = variant.pop('id', None)
+            variant['property_value'] = variant.pop('value', '')
+
+        return data

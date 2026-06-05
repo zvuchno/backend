@@ -1,6 +1,6 @@
 from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema_view
 from rest_framework import filters
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
@@ -15,7 +15,11 @@ from store.models import (
     Product,
     ProductVariant,
 )
-from store.schema import catalog_list_schema
+from store.schema import (
+    catalog_list_schema,
+    catalog_merch_detail_schema,
+    catalog_release_detail_schema,
+)
 from store.serializers import CatalogCardSerializer
 from store.serializers.catalog_detail import (
     CatalogMerchDetailSerializer,
@@ -72,7 +76,7 @@ class ProductCatalogListView(ListAPIView):
         return context
 
 
-@extend_schema(tags=['Catalog'])
+@extend_schema_view(retrieve=catalog_release_detail_schema)
 class CatalogReleaseDetailView(AlbumViewSet):
     """Витринная detail-карточка релиза."""
 
@@ -166,7 +170,7 @@ class CatalogReleaseDetailView(AlbumViewSet):
         )
 
 
-@extend_schema(tags=['Catalog'])
+@extend_schema_view(retrieve=catalog_merch_detail_schema)
 class CatalogMerchDetailView(MerchViewSet):
     """Витринная detail-карточка обычного мерча."""
 
@@ -180,3 +184,13 @@ class CatalogMerchDetailView(MerchViewSet):
     def get_serializer_class(self):
         """Возвращает сериализатор витринной карточки мерча."""
         return CatalogMerchDetailSerializer
+
+    def get_queryset(self):
+        """Не брать носители."""
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                kind__is_carrier=False,
+            )
+        )
