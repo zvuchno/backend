@@ -163,8 +163,8 @@ class CatalogCardSerializer(ProductCardSerializer):
     )
 
     DETAIL_URL_NAMES = {
-        'release': 'api:store:catalog-release-detail',
-        'merch': 'api:store:catalog-merch-detail',
+        'release': 'api:store:albums-detail',
+        'merch': 'api:store:merch-detail',
     }
 
     class Meta(ProductCardSerializer.Meta):

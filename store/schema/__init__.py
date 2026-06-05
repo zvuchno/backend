@@ -27,10 +27,10 @@ from .track import track_schema
 __all__ = [
     'album_schema',
     'artist_sale_schema',
-    'catalog_list_schema',
     'cart_apply_promocode_schema',
     'cart_remove_promocode_schema',
     'cart_schema',
+    'catalog_list_schema',
     'checkout_schema',
     'delivery_schema',
     'favorites_schema',

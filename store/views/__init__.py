@@ -19,6 +19,9 @@ __all__ = [
     'AlbumViewSet',
     'ArtistSaleViewSet',
     'CartViewSet',
+    'ProductCatalogListView',
+    'CatalogReleaseDetailView',
+    'CatalogMerchDetailView',
     'DeliveryViewSet',
     'FavoritesViewSet',
     'GenreViewSet',
@@ -28,6 +31,4 @@ __all__ = [
     'PromocodeViewSet',
     'TrackViewSet',
     'ProductCatalogListView',
-    'CatalogReleaseDetailView',
-    'CatalogMerchDetailView',
 ]
