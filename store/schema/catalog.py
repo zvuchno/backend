@@ -20,12 +20,14 @@ catalog_list_schema = extend_schema(
         'Возвращает список витринных карточек товаров.\n\n'
         'Карточка может представлять релиз, носитель или обычный мерч. '
         'Для перехода по клику фронтенд использует target.url.\n\n'
-        'Важно: target показывает, какую детальную карточку нужно открыть. '
+        'target показывает, какую детальную карточку нужно открыть. '
         'Например, карточка носителя может вести на детальную карточку '
         'релиза.\n\n'
         'Если карточка должна открыть детальную карточку с заранее выбранным '
         'вариантом, фронтенд может использовать selected_variant_id для '
         'сопоставления с variant_id в детальной карточке.\n\n'
+        'selected_variant_id может быть null. Например, для обычного мерча '
+        'вариант может выбираться уже на детальной карточке.\n\n'
         'Поле is_favorite показывает, добавлен ли товар в избранное. '
         'Сейчас избранное связано с вариантом товара, поэтому карточка '
         'считается избранной, если в избранном есть любой вариант этого '
@@ -55,9 +57,9 @@ catalog_list_schema = extend_schema(
             ],
             description=(
                 'Тип витрины. '
-                'all или отсутствие параметра — релизы и мерч; '
-                'album — только релизы; '
-                'merch — только мерч и носители.'
+                'all или отсутствие параметра — релизы, носители и мерч; '
+                'album — музыкальные релизы; '
+                'merch — мерч и физические носители.'
             ),
         ),
         OpenApiParameter(
@@ -77,8 +79,14 @@ catalog_list_schema = extend_schema(
             description=(
                 'Фильтр по slug типов мерча. Можно передать несколько '
                 'значений через запятую: kind=vinyl,tshirt. '
-                'Применяется к мерчу.'
+                'Применяется к мерчу и носителям.'
             ),
+        ),
+        OpenApiParameter(
+            name='artist',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Фильтр по slug артиста.',
         ),
         OpenApiParameter(
             name='ordering',
@@ -96,6 +104,12 @@ catalog_list_schema = extend_schema(
                 'random — случайный порядок.'
             ),
         ),
+        OpenApiParameter(
+            name='search',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Поиск по названию товара и имени артиста.',
+        ),
     ],
     responses=CatalogCardSerializer(many=True),
     examples=[
@@ -111,9 +125,9 @@ catalog_list_schema = extend_schema(
                 'is_favorite': False,
                 'target': {
                     'type': 'release',
-                    'url': '/api/v1/store/catalog/releases/10/',
+                    'url': '/api/v1/store/catalog/release/10/',
+                    'selected_variant_id': 111,
                 },
-                'selected_variant_id': 111,
             },
             response_only=True,
         ),
@@ -129,9 +143,9 @@ catalog_list_schema = extend_schema(
                 'is_favorite': False,
                 'target': {
                     'type': 'release',
-                    'url': '/api/v1/store/catalog/releases/10/',
+                    'url': '/api/v1/store/catalog/release/10/',
+                    'selected_variant_id': 112,
                 },
-                'selected_variant_id': 112,
             },
             response_only=True,
         ),
@@ -148,8 +162,8 @@ catalog_list_schema = extend_schema(
                 'target': {
                     'type': 'merch',
                     'url': '/api/v1/store/catalog/merch/20/',
+                    'selected_variant_id': None,
                 },
-                'selected_variant_id': 113,
             },
             response_only=True,
         ),

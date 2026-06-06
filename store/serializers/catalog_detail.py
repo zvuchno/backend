@@ -6,8 +6,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
-from store.models import ProductVariant
-from store.serializers.album import AlbumReadDetailSerializer
+from store.models import Album, ProductVariant
 from store.serializers.merch import MerchDetailSerializer
 from store.serializers.mixins import ProductImagesMixin
 
@@ -32,10 +31,9 @@ class CatalogReleaseVariantSerializer(
     """Вариант покупки релиза в витринной detail карточке."""
 
     property_value = serializers.SerializerMethodField(
-        help_text='Формат покупки: диджитал, винил, кассета и т.п.',
+        help_text='Формат носителя: диджитал, винил, кассета и т.п.',
     )
-    name = serializers.CharField(
-        source='product.name',
+    name = serializers.SerializerMethodField(
         help_text='Название варианта покупки.',
     )
     variant_id = serializers.IntegerField(
@@ -47,6 +45,9 @@ class CatalogReleaseVariantSerializer(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
         help_text='Цена варианта покупки.',
+    )
+    allow_overpay = serializers.SerializerMethodField(
+        help_text='Возможность переплаты.',
     )
     stock = serializers.SerializerMethodField(
         help_text='Остаток. Для цифрового варианта возвращается null.',
@@ -67,10 +68,25 @@ class CatalogReleaseVariantSerializer(
             'property_value',
             'name',
             'price',
+            'allow_overpay',
             'description',
             'images',
         )
         read_only_fields = fields
+
+    def get_allow_overpay(self, obj) -> bool:
+        """Возвращает доступность переплаты."""
+        product = getattr(obj, 'product', None)
+        if product:
+            return product.allow_overpay
+        return False
+
+    def get_name(self, obj) -> str:
+        """Возвращает название варианта покупки."""
+        product = getattr(obj, 'product', None)
+        if product.album_id:
+            return ''
+        return product.name
 
     def get_images(self, obj) -> list[dict]:
         """Возвращает изображения варианта покупки."""
@@ -100,6 +116,8 @@ class CatalogReleaseVariantSerializer(
     def get_description(self, obj) -> str:
         """Возвращает описание варианта покупки."""
         product = obj.product
+        if product.album_id:
+            return ''
 
         return product.content.description
 
@@ -121,51 +139,32 @@ class CatalogReleaseVariantSerializer(
 
 class CatalogReleaseDetailSerializer(
     ProductImagesMixin,
-    AlbumReadDetailSerializer,
     CatalogDetailBaseSerializer,
+    serializers.ModelSerializer,
 ):
     """Витринная detail-карточка релиза."""
 
-    images = serializers.SerializerMethodField()
-    property_name = serializers.CharField(default='Формат')
-    default_variant_id = serializers.SerializerMethodField(
-        help_text='ID цифрового варианта, выбранного по умолчанию.',
+    album_name = serializers.CharField(
+        source='name',
+        help_text='Название альбома.',
     )
-    variants = serializers.SerializerMethodField()
+    artist_name = serializers.SerializerMethodField(
+        help_text='Имя артиста или коллектива.',
+    )
+    variants = serializers.SerializerMethodField(
+        help_text='Варианты покупки альбома.',
+    )
 
-    class Meta(AlbumReadDetailSerializer.Meta):
-        old_fields = tuple(
-            field
-            for field in AlbumReadDetailSerializer.Meta.fields
-            if field != 'cover_image' and field != 'variants'
-        )
-        fields = old_fields + (
+    class Meta:
+        model = Album
+        fields = (
+            'id',
             'artist_name',
-            'default_variant_id',
-            'images',
-            'property_name',
+            'album_name',
+            'is_single',
+            'description',
             'variants',
         )
-
-    def get_default_variant_id(self, obj) -> int | None:
-        """Возвращает ID цифрового варианта релиза по умолчанию."""
-        product = getattr(obj, 'product', None)
-        if product is None:
-            return None
-
-        variants = getattr(product, 'active_digital_variants', None)
-        if variants is not None:
-            return variants[0].id if variants else None
-
-        variant = (
-            product.variants.filter(is_active=True).order_by('id').first()
-        )
-        return variant.id if variant else None
-
-    def get_images(self, obj) -> list[dict]:
-        """Возвращает изображения альбома в формате галереи."""
-        items = self.get_album_image_items(obj)
-        return self.serialize_image_items(items)
 
     def get_variants(self, obj) -> list[dict]:
         """Возвращает варианты покупки релиза."""
@@ -195,16 +194,19 @@ class CatalogMerchDetailSerializer(
 ):
     """Вариант обычного мерча в витринной detail странице."""
 
+    class Meta(MerchDetailSerializer.Meta):
+        fields = MerchDetailSerializer.Meta.fields + ('artist_name',)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
         data['images'] = data.pop('images_merch', [])
+        data.pop('album', None)
+        data.pop('visibility', None)
+        data.pop('is_published', None)
 
         for variant in data.get('variants', []):
             variant['variant_id'] = variant.pop('id', None)
             variant['property_value'] = variant.pop('value', '')
 
         return data
-
-    class Meta(MerchDetailSerializer.Meta):
-        fields = MerchDetailSerializer.Meta.fields + ('artist_name',)

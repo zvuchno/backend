@@ -16,18 +16,17 @@ catalog_release_detail_schema = extend_schema(
     summary='Детальная карточка релиза в каталоге',
     description=(
         'Возвращает данные релиза для публичной витрины.\n\n'
-        'В ответ входит сам релиз и список вариантов покупки: цифровой '
-        'вариант и связанные носители.\n\n'
-        'Поле property_name показывает название свойства, по которому '
-        'выбирается вариант. Для релиза это формат.\n\n'
-        'Поле default_variant_id содержит ID цифрового варианта, который '
-        'можно выбрать по умолчанию при открытии карточки релиза.\n\n'
+        'В корне ответа находятся данные самого релиза: название альбома, '
+        'имя артиста, признак сингла и описание.\n\n'
+        'Коммерческие данные находятся в variants. Каждый вариант содержит '
+        'цену, остаток, возможность переплаты, изображения и variant_id '
+        'для добавления в корзину.\n\n'
+        'Первый элемент variants считается вариантом по умолчанию. '
+        'Обычно это цифровая версия альбома.\n\n'
         'Если пользователь перешёл из карточки носителя, фронтенд может '
         'сопоставить selected_variant_id из карточки каталога с variant_id '
-        'одного из вариантов в этом ответе '
-        'и сразу выбрать нужный вариант.\n\n'
-        'Для добавления в корзину используется '
-        'variant_id выбранного варианта.'
+        'одного из вариантов в этом ответе и сразу выбрать нужный вариант.\n\n'
+        'Для добавления в корзину используется variant_id выбранного варианта.'
     ),
     responses=CatalogReleaseDetailSerializer,
     examples=[
@@ -35,33 +34,20 @@ catalog_release_detail_schema = extend_schema(
             name='Релиз с цифровым вариантом и винилом',
             value={
                 'id': 10,
-                'name': 'Название релиза',
-                'price': '500.00',
-                'description': 'Описание релиза.',
-                'visibility': 'public',
-                'is_published': True,
                 'artist_name': 'Артист',
+                'album_name': 'Название релиза',
                 'is_single': False,
-                'genre': 'Rock',
-                'release_date': '2026-06-01',
-                'allow_overpay': False,
-                'default_variant_id': 101,
-                'images': [
-                    {
-                        'image': 'https://zvuchno.ru/media/albums/cover.jpg',
-                        'is_main': True,
-                    },
-                ],
-                'property_name': 'Формат',
+                'description': 'Описание релиза.',
                 'variants': [
                     {
                         'variant_id': 101,
                         'sku': 'ALB-10-V101',
                         'stock': None,
                         'property_value': 'Диджитал',
-                        'name': 'Название релиза',
+                        'name': '',
                         'price': '500.00',
-                        'description': 'Описание релиза.',
+                        'allow_overpay': True,
+                        'description': '',
                         'images': [
                             {
                                 'image': (
@@ -78,6 +64,7 @@ catalog_release_detail_schema = extend_schema(
                         'property_value': 'Винил',
                         'name': 'Название релиза — винил',
                         'price': '2500.00',
+                        'allow_overpay': False,
                         'description': 'Описание винила.',
                         'images': [
                             {
@@ -117,11 +104,8 @@ catalog_merch_detail_schema = extend_schema(
                 'name': 'Футболка',
                 'price': '1500.00',
                 'description': 'Описание футболки.',
-                'visibility': 'public',
-                'is_published': True,
                 'artist_name': 'Артист',
                 'kind': 'Футболка',
-                'album': None,
                 'property_name': 'Размер',
                 'stock': 7,
                 'allow_overpay': False,
