@@ -9,6 +9,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AlbumViewSet,
     CartViewSet,
+    CatalogMerchDetailView,
+    CatalogReleaseDetailView,
     DeliveryViewSet,
     FavoritesViewSet,
     GenreViewSet,
@@ -37,4 +39,14 @@ router.register(r'promocodes', PromocodeViewSet, basename='promocodes')
 urlpatterns = [
     path('', include(router.urls)),
     path('catalog/', ProductCatalogListView.as_view(), name='catalog'),
+    path(
+        'catalog/release/<int:pk>/',
+        CatalogReleaseDetailView.as_view(),
+        name='catalog-release-detail',
+    ),
+    path(
+        'catalog/merch/<int:pk>/',
+        CatalogMerchDetailView.as_view(),
+        name='catalog-merch-detail',
+    ),
 ]

@@ -84,7 +84,7 @@ class ProductCatalogFilter(django_filters.FilterSet):
             )
             | models.Q(
                 product_type=Product.ProductType.MERCH,
-                merch__is_carrier=True,
+                merch__kind__is_carrier=True,
                 merch__album__genre__slug__in=values,
             ),
         )
