@@ -143,6 +143,11 @@ class CatalogCardTargetSerializer(serializers.Serializer):
         allow_null=True,
         help_text='URL endpoint для перехода.',
     )
+    selected_variant_id = serializers.IntegerField(
+        help_text='Id варианта, который предвыбрать после перехода.',
+        allow_null=True,
+        default=None,
+    )
 
 
 class CatalogCardSerializer(ProductCardSerializer):
@@ -156,22 +161,13 @@ class CatalogCardSerializer(ProductCardSerializer):
         ),
     )
 
-    selected_variant_id = serializers.IntegerField(
-        help_text='Id варианта, который предвыбрать после перехода.',
-        allow_null=True,
-        default=None,
-    )
-
     DETAIL_URL_NAMES = {
         'release': 'api:store:catalog-release-detail',
         'merch': 'api:store:catalog-merch-detail',
     }
 
     class Meta(ProductCardSerializer.Meta):
-        fields = ProductCardSerializer.Meta.fields + (
-            'target',
-            'selected_variant_id',
-        )
+        fields = ProductCardSerializer.Meta.fields + ('target',)
 
     @extend_schema_field(CatalogCardTargetSerializer)
     def get_target(self, obj):
@@ -179,6 +175,7 @@ class CatalogCardSerializer(ProductCardSerializer):
         return {
             'type': obj.target_type,
             'url': self._get_target_url(obj.target_type, obj.target_id),
+            'selected_variant_id': obj.selected_variant_id,
         }
 
     def _get_target_url(self, detail_type, detail_id) -> str | None:

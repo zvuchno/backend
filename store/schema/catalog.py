@@ -126,8 +126,8 @@ catalog_list_schema = extend_schema(
                 'target': {
                     'type': 'release',
                     'url': '/api/v1/store/catalog/release/10/',
+                    'selected_variant_id': 111,
                 },
-                'selected_variant_id': 111,
             },
             response_only=True,
         ),
@@ -144,8 +144,8 @@ catalog_list_schema = extend_schema(
                 'target': {
                     'type': 'release',
                     'url': '/api/v1/store/catalog/release/10/',
+                    'selected_variant_id': 112,
                 },
-                'selected_variant_id': 112,
             },
             response_only=True,
         ),
@@ -162,8 +162,8 @@ catalog_list_schema = extend_schema(
                 'target': {
                     'type': 'merch',
                     'url': '/api/v1/store/catalog/merch/20/',
+                    'selected_variant_id': None,
                 },
-                'selected_variant_id': None,
             },
             response_only=True,
         ),
