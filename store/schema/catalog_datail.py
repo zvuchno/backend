@@ -35,9 +35,7 @@ catalog_release_detail_schema = extend_schema(
             value={
                 'id': 10,
                 'artist_name': 'Артист',
-                'album_name': 'Название релиза',
                 'is_single': False,
-                'description': 'Описание релиза.',
                 'variants': [
                     {
                         'variant_id': 101,

@@ -84,8 +84,6 @@ class CatalogReleaseVariantSerializer(
     def get_name(self, obj) -> str:
         """Возвращает название варианта покупки."""
         product = getattr(obj, 'product', None)
-        if product.album_id:
-            return ''
         return product.name
 
     def get_images(self, obj) -> list[dict]:
@@ -116,9 +114,6 @@ class CatalogReleaseVariantSerializer(
     def get_description(self, obj) -> str:
         """Возвращает описание варианта покупки."""
         product = obj.product
-        if product.album_id:
-            return ''
-
         return product.content.description
 
     def get_property_value(self, obj) -> str:
@@ -144,13 +139,6 @@ class CatalogReleaseDetailSerializer(
 ):
     """Витринная detail-карточка релиза."""
 
-    album_name = serializers.CharField(
-        source='name',
-        help_text='Название альбома.',
-    )
-    artist_name = serializers.SerializerMethodField(
-        help_text='Имя артиста или коллектива.',
-    )
     variants = serializers.SerializerMethodField(
         help_text='Варианты покупки альбома.',
     )
@@ -160,9 +148,7 @@ class CatalogReleaseDetailSerializer(
         fields = (
             'id',
             'artist_name',
-            'album_name',
             'is_single',
-            'description',
             'variants',
         )
 
