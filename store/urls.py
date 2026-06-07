@@ -9,6 +9,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AlbumViewSet,
     CartViewSet,
+    CatalogMerchDetailView,
+    CatalogReleaseDetailView,
     DeliveryViewSet,
     FavoritesViewSet,
     GenreViewSet,
@@ -16,6 +18,7 @@ from .views import (
     MerchViewSet,
     OrderViewSet,
     ProductCatalogListView,
+    PromocodeViewSet,
     TrackViewSet,
 )
 
@@ -31,8 +34,19 @@ router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'deliveries', DeliveryViewSet, basename='deliveries')
 router.register(r'me/favorites', FavoritesViewSet, basename='me-favorites')
 router.register(r'orders', OrderViewSet, basename='orders')
+router.register(r'promocodes', PromocodeViewSet, basename='promocodes')
 
 urlpatterns = [
     path('', include(router.urls)),
     path('catalog/', ProductCatalogListView.as_view(), name='catalog'),
+    path(
+        'catalog/release/<int:pk>/',
+        CatalogReleaseDetailView.as_view(),
+        name='catalog-release-detail',
+    ),
+    path(
+        'catalog/merch/<int:pk>/',
+        CatalogMerchDetailView.as_view(),
+        name='catalog-merch-detail',
+    ),
 ]

@@ -18,17 +18,20 @@ catalog_list_schema = extend_schema(
     summary='Список товаров каталога',
     description=(
         'Возвращает список витринных карточек товаров.\n\n'
-        'Карточка может представлять альбом, сингл, носитель или обычный '
-        'мерч. Для перехода по клику фронтенд использует блок target.\n\n'
-        'Важно: target показывает, куда нужно перейти по клику. '
-        'Например, карточка носителя может вести на detail альбома.\n\n'
-        'Если карточка должна открыть detail с заранее выбранным вариантом, '
-        'фронтенд может использовать selected_variant_key для сопоставления '
-        'с variant_key в detail endpoint.\n\n'
+        'Карточка может представлять релиз, носитель или обычный мерч. '
+        'Для перехода по клику фронтенд использует target.url.\n\n'
+        'target показывает, какую детальную карточку нужно открыть. '
+        'Например, карточка носителя может вести на детальную карточку '
+        'релиза.\n\n'
+        'Если карточка должна открыть детальную карточку с заранее выбранным '
+        'вариантом, фронтенд может использовать selected_variant_id для '
+        'сопоставления с variant_id в детальной карточке.\n\n'
+        'selected_variant_id может быть null. Например, для обычного мерча '
+        'вариант может выбираться уже на детальной карточке.\n\n'
         'Поле is_favorite показывает, добавлен ли товар в избранное. '
         'Сейчас избранное связано с вариантом товара, поэтому карточка '
-        'считается избранной, если в избранном есть '
-        'любой вариант этого товара.'
+        'считается избранной, если в избранном есть любой вариант этого '
+        'товара.'
     ),
     parameters=[
         OpenApiParameter(
@@ -54,9 +57,9 @@ catalog_list_schema = extend_schema(
             ],
             description=(
                 'Тип витрины. '
-                'all или отсутствие параметра — альбомы и мерч; '
-                'album — только альбомы/синглы; '
-                'merch — только мерч и носители.'
+                'all или отсутствие параметра — релизы, носители и мерч; '
+                'album — музыкальные релизы; '
+                'merch — мерч и физические носители.'
             ),
         ),
         OpenApiParameter(
@@ -66,7 +69,7 @@ catalog_list_schema = extend_schema(
             description=(
                 'Фильтр по slug жанров. Можно передать несколько значений '
                 'через запятую: genre=rock,jazz. '
-                'Применяется к альбомам и носителям, связанным с альбомом.'
+                'Применяется к релизам и носителям, связанным с релизом.'
             ),
         ),
         OpenApiParameter(
@@ -76,8 +79,14 @@ catalog_list_schema = extend_schema(
             description=(
                 'Фильтр по slug типов мерча. Можно передать несколько '
                 'значений через запятую: kind=vinyl,tshirt. '
-                'Применяется к merch-товарам.'
+                'Применяется к мерчу и носителям.'
             ),
+        ),
+        OpenApiParameter(
+            name='artist',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Фильтр по slug артиста.',
         ),
         OpenApiParameter(
             name='ordering',
@@ -95,11 +104,17 @@ catalog_list_schema = extend_schema(
                 'random — случайный порядок.'
             ),
         ),
+        OpenApiParameter(
+            name='search',
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description='Поиск по названию товара и имени артиста.',
+        ),
     ],
     responses=CatalogCardSerializer(many=True),
     examples=[
         OpenApiExample(
-            name='Альбом',
+            name='Релиз',
             value={
                 'name': 'Название релиза',
                 'artist_name': 'Артист',
@@ -109,12 +124,9 @@ catalog_list_schema = extend_schema(
                 'image': 'https://zvuchno.ru/media/albums/cover.jpg',
                 'is_favorite': False,
                 'target': {
-                    'type': 'album',
-                    'url': '/api/v1/store/albums/10/',
-                },
-                'selected_variant_key': {
-                    'type': 'album',
-                    'id': 10,
+                    'type': 'release',
+                    'url': '/api/v1/store/catalog/release/10/',
+                    'selected_variant_id': 111,
                 },
             },
             response_only=True,
@@ -130,33 +142,27 @@ catalog_list_schema = extend_schema(
                 'image': 'https://zvuchno.ru/media/merch/vinyl.jpg',
                 'is_favorite': False,
                 'target': {
-                    'type': 'album',
-                    'url': '/api/v1/store/albums/10/',
-                },
-                'selected_variant_key': {
-                    'type': 'merch',
-                    'id': 20,
+                    'type': 'release',
+                    'url': '/api/v1/store/catalog/release/10/',
+                    'selected_variant_id': 112,
                 },
             },
             response_only=True,
         ),
         OpenApiExample(
-            name='Носитель',
+            name='Обычный мерч',
             value={
-                'name': 'Название релиза — винил',
+                'name': 'Футболка',
                 'artist_name': 'Артист',
-                'kind': 'Винил',
+                'kind': 'Футболка',
                 'year': None,
-                'price': '2500.00',
-                'image': 'https://zvuchno.ru/media/merch/vinyl.jpg',
+                'price': '1500.00',
+                'image': 'https://zvuchno.ru/media/merch/tshirt.jpg',
                 'is_favorite': False,
                 'target': {
-                    'type': 'album',
-                    'url': '/api/v1/store/albums/10/',
-                },
-                'selected_variant_key': {
                     'type': 'merch',
-                    'id': 20,
+                    'url': '/api/v1/store/catalog/merch/20/',
+                    'selected_variant_id': None,
                 },
             },
             response_only=True,
