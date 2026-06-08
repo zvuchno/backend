@@ -1,9 +1,11 @@
 """Сценарии создания тестовых данных магазина."""
 
+from datetime import datetime
 from decimal import Decimal
 
 from django.utils import timezone
 
+from store.models import Album, Merch
 from store.tests.factories import (
     AlbumFactory,
     AlbumProductFactory,
@@ -170,50 +172,36 @@ def create_catalog_type_dataset():
     }
 
 
-def create_catalog_filter_dataset():
-    """Создает набор товаров для проверки фильтров genre и kind."""
-    rock = GenreFactory(name='Rock', slug='rock')
-    jazz = GenreFactory(name='Jazz', slug='jazz')
-    tshirt = MerchKindFactory(name='Футболка', slug='tshirt')
-    cap = MerchKindFactory(name='Кепка', slug='cap')
+def create_catalog_date_sorting_dataset():
+    """Создает набор товаров для проверки сортировки по дате контента."""
+    old_product = create_album_product(name='Old Album')
+    middle_product = create_merch_product(name='Middle Merch')
+    new_product = create_album_product(name='New Album')
 
-    rock_album = create_album_product(name='Rock Album', genre=rock)
-    jazz_album = create_album_product(name='Jazz Album', genre=jazz)
-    tshirt_merch = create_merch_product(name='T-Shirt', kind=tshirt)
-    cap_merch = create_merch_product(name='Cap', kind=cap)
+    set_content_created_at(old_product, aware_datetime(2026, 1, 1))
+    set_content_created_at(middle_product, aware_datetime(2026, 2, 1))
+    set_content_created_at(new_product, aware_datetime(2026, 3, 1))
 
     return {
-        'rock': rock,
-        'jazz': jazz,
-        'tshirt': tshirt,
-        'cap': cap,
-        'rock_album': rock_album,
-        'jazz_album': jazz_album,
-        'tshirt_merch': tshirt_merch,
-        'cap_merch': cap_merch,
+        'old': old_product,
+        'middle': middle_product,
+        'new': new_product,
     }
 
 
-# def create_catalog_sorting_dataset():
-#     """Создает набор товаров для проверки сортировок."""
-#     cheap = create_album_product(
-#         name='Cheap Album',
-#         price=Decimal('100.00'),
-#     )
-#     middle = create_merch_product(
-#         name='Middle Merch',
-#         price=Decimal('500.00'),
-#     )
-#     expensive = create_album_product(
-#         name='Expensive Album',
-#         price=Decimal('900.00'),
-#     )
-#
-#     return {
-#         'cheap': cheap,
-#         'middle': middle,
-#         'expensive': expensive,
-#     }
+def set_content_created_at(product, value):
+    """Задает created_at связанного контента товара."""
+    if product.album_id:
+        Album.objects.filter(pk=product.album_id).update(created_at=value)
+        product.album.refresh_from_db(fields=('created_at',))
+        return product.album
+
+    if product.merch_id:
+        Merch.objects.filter(pk=product.merch_id).update(created_at=value)
+        product.merch.refresh_from_db(fields=('created_at',))
+        return product.merch
+
+    raise AssertionError('У товара нет связанного album или merch.')
 
 
 def create_catalog_visibility_dataset():
@@ -269,3 +257,77 @@ def get_response_items(response):
         return response.data['results']
 
     return response.data
+
+
+def aware_datetime(year, month, day):
+    """Возвращает timezone-aware datetime для тестов."""
+    return timezone.make_aware(datetime(year, month, day))
+
+
+def create_catalog_filter_dataset():
+    """Создает набор товаров для проверки фильтров каталога."""
+    rock = GenreFactory(name='Rock', slug='rock')
+    jazz = GenreFactory(name='Jazz', slug='jazz')
+
+    tshirt = MerchKindFactory(name='Футболка', slug='tshirt')
+    cap = MerchKindFactory(name='Кепка', slug='cap')
+    vinyl = MerchKindFactory(name='Винил', slug='vinyl', is_carrier=True)
+
+    first_artist = ArtistUserFactory()
+    first_artist.artist_profile.name = 'First Artist'
+    first_artist.artist_profile.save(update_fields=('name', 'slug'))
+
+    second_artist = ArtistUserFactory()
+    second_artist.artist_profile.name = 'Second Artist'
+    second_artist.artist_profile.save(update_fields=('name', 'slug'))
+
+    rock_album = create_album_product(
+        owner=first_artist,
+        name='Rock Album',
+        genre=rock,
+    )
+    jazz_album = create_album_product(
+        owner=second_artist,
+        name='Jazz Album',
+        genre=jazz,
+    )
+
+    tshirt_merch = create_merch_product(
+        owner=first_artist,
+        name='T-Shirt',
+        kind=tshirt,
+    )
+    cap_merch = create_merch_product(
+        owner=second_artist,
+        name='Cap',
+        kind=cap,
+    )
+
+    rock_carrier = create_carrier_product(
+        owner=first_artist,
+        name='Rock Vinyl',
+        album=rock_album.album,
+        kind=vinyl,
+    )
+    jazz_carrier = create_carrier_product(
+        owner=second_artist,
+        name='Jazz Vinyl',
+        album=jazz_album.album,
+        kind=vinyl,
+    )
+
+    return {
+        'rock': rock,
+        'jazz': jazz,
+        'tshirt': tshirt,
+        'cap': cap,
+        'vinyl': vinyl,
+        'first_artist': first_artist,
+        'second_artist': second_artist,
+        'rock_album': rock_album,
+        'jazz_album': jazz_album,
+        'tshirt_merch': tshirt_merch,
+        'cap_merch': cap_merch,
+        'rock_carrier': rock_carrier,
+        'jazz_carrier': jazz_carrier,
+    }

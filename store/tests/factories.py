@@ -1,5 +1,6 @@
 """Фабрики тестовых объектов магазина."""
 
+from datetime import date
 from decimal import Decimal
 
 import factory
@@ -47,7 +48,7 @@ class AlbumFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(ArtistUserFactory)
     genre = factory.SubFactory(GenreFactory)
     name = factory.Sequence(lambda n: f'Альбом {n}')
-    release_date = '2026-01-01'
+    release_date = date(2026, 1, 1)
     is_single = False
     is_published = True
     visibility = 'public'
