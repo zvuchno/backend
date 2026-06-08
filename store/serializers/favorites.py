@@ -35,7 +35,7 @@ class FavoriteReadSerializer(BaseVariantTargetImageSerializer):
         help_text='Имя артиста-владельца товара.',
     )
     price = serializers.DecimalField(
-        source='unit_price',
+        source='product_variant.product.price',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
@@ -51,13 +51,6 @@ class FavoriteReadSerializer(BaseVariantTargetImageSerializer):
             'price',
             'product_variant',
         ) + BaseVariantTargetImageSerializer.Meta.fields
-        validators = [
-            serializers.UniqueTogetherValidator(
-                queryset=Favorite.objects.all(),
-                fields=['user', 'product_variant'],
-                message='Этот товар уже в вашем избранном.',
-            ),
-        ]
 
 
 class FavoriteWriteSerializer(serializers.ModelSerializer):
