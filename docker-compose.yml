@@ -2,6 +2,8 @@ volumes:
   pg_data:
   static:
   media:
+  celery_beat_data:
+  redis_data:
 
 services:
   db:
@@ -9,6 +11,27 @@ services:
     env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+    command:
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   backend:
     build: .
     env_file: .env
@@ -17,13 +40,46 @@ services:
       - .:/app
       - static:/app/staticfiles
       - media:/app/media/
-    depends_on:
-      - db
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
+    depends_on:
+        db:
+          condition: service_healthy
+        redis:
+          condition: service_healthy
+  celery_worker:
+    build: .
+    env_file: .env
+    command: celery -A config worker -l warning
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  celery_beat:
+    build: .
+    env_file: .env
+    command: celery -A config beat -l warning --schedule=/var/run/celery/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/var/run/celery
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
   gateway:
     build: ./nginx/
     env_file: .env

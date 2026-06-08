@@ -1,5 +1,6 @@
 asgiref==3.11.1
 attrs==25.4.0
+celery==5.6.3
 certifi==2026.2.25
 cffi==2.0.0
 charset-normalizer==3.4.5
@@ -40,6 +41,7 @@ PyJWT==2.11.0
 python-dotenv==1.2.2
 python-slugify==8.0.4
 PyYAML==6.0.3
+redis==8.0.0
 referencing==0.37.0
 rpds-py==0.30.0
 ruff==0.15.5
