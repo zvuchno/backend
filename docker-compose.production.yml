@@ -4,6 +4,7 @@ volumes:
   media:
   next_image_cache:
   celery_beat_data:
+  redis_data:
 
 services:
   db:
@@ -19,7 +20,14 @@ services:
       start_period: 10s
   redis:
     image: redis:7
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    command:
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

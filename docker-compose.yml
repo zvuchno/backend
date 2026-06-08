@@ -2,6 +2,8 @@ volumes:
   pg_data:
   static:
   media:
+  celery_beat_data:
+  redis_data:
 
 services:
   db:
@@ -17,7 +19,14 @@ services:
       start_period: 10s
   redis:
     image: redis:7
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    command:
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -56,9 +65,11 @@ services:
       redis:
         condition: service_healthy
   celery_beat:
-    build: .
+    image: inswty/zvuchno_backend:latest
     env_file: .env
-    command: celery -A config beat -l warning
+    command: celery -A config beat -l warning --schedule=/var/run/celery/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/var/run/celery
     logging:
       driver: json-file
       options:
