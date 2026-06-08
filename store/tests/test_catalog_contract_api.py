@@ -5,11 +5,11 @@ from rest_framework import status
 
 from store.models import Album, Merch, MerchKind, Product, ProductVariant
 from store.tests.assertions import (
-    assert_catalog_card_contract,
     assert_catalog_merch_detail_contract,
     assert_catalog_release_detail_contract,
-    get_response_items,
+    assert_public_product_card_contract,
 )
+from store.tests.scenarios import get_response_items
 
 pytestmark = pytest.mark.django_db
 
@@ -98,7 +98,7 @@ class TestCatalogListContract:
         items = get_response_items(response)
         assert len(items) == 1
 
-        assert_catalog_card_contract(items[0])
+        assert_public_product_card_contract(items[0])
 
     def test_catalog_cards_have_expected_contract_for_different_product_types(
         self,
@@ -116,7 +116,7 @@ class TestCatalogListContract:
         assert len(items) == 2
 
         for card in items:
-            assert_catalog_card_contract(card)
+            assert_public_product_card_contract(card)
 
 
 class TestCatalogReleaseDetailContract:

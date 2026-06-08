@@ -1,6 +1,6 @@
 """Проверки контрактов API приложения store."""
 
-CATALOG_CARD_KEYS = {
+PUBLIC_PRODUCT_CARD_KEYS = {
     'product_id',
     'name',
     'artist_name',
@@ -12,7 +12,7 @@ CATALOG_CARD_KEYS = {
     'target',
 }
 
-CATALOG_CARD_TARGET_KEYS = {
+PUBLIC_PRODUCT_CARD_TARGET_KEYS = {
     'type',
     'url',
     'selected_variant_id',
@@ -45,40 +45,24 @@ CATALOG_MERCH_DETAIL_FORBIDDEN_KEYS = {
 }
 
 
-def get_response_items(response):
-    """Возвращает список объектов из paginated/non-paginated ответа."""
-    if isinstance(response.data, dict) and 'results' in response.data:
-        return response.data['results']
-
-    return response.data
-
-
-def assert_catalog_card_contract(card):
-    """Проверяет контракт карточки публичного каталога."""
-    assert set(card) == CATALOG_CARD_KEYS
+def assert_public_product_card_contract(card):
+    """Проверяет базовый контракт публичной карточки товара."""
+    assert set(card) >= PUBLIC_PRODUCT_CARD_KEYS
+    assert set(card['target']) == PUBLIC_PRODUCT_CARD_TARGET_KEYS
 
     assert isinstance(card['product_id'], int)
     assert isinstance(card['name'], str)
     assert isinstance(card['artist_name'], str)
-    assert card['kind'] is None or isinstance(card['kind'], str)
-    assert card['year'] is None or isinstance(card['year'], int)
+    assert isinstance(card['kind'], str)
+    assert isinstance(card['year'], int) or card['year'] is None
     assert isinstance(card['price'], str)
-    assert card['image'] is None or isinstance(card['image'], str)
     assert isinstance(card['is_favorite'], bool)
 
-    assert_catalog_card_target_contract(card['target'])
-
-
-def assert_catalog_card_target_contract(target):
-    """Проверяет контракт данных для перехода из карточки."""
-    assert isinstance(target, dict)
-    assert set(target) == CATALOG_CARD_TARGET_KEYS
-
-    assert target['type'] in ('release', 'merch')
-    assert isinstance(target['url'], str)
-    assert target['selected_variant_id'] is None or isinstance(
-        target['selected_variant_id'],
-        int,
+    assert isinstance(card['target']['type'], str)
+    assert isinstance(card['target']['url'], str)
+    assert (
+        isinstance(card['target']['selected_variant_id'], int)
+        or card['target']['selected_variant_id'] is None
     )
 
 

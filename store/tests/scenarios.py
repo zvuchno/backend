@@ -194,26 +194,26 @@ def create_catalog_filter_dataset():
     }
 
 
-def create_catalog_sorting_dataset():
-    """Создает набор товаров для проверки сортировок."""
-    cheap = create_album_product(
-        name='Cheap Album',
-        price=Decimal('100.00'),
-    )
-    middle = create_merch_product(
-        name='Middle Merch',
-        price=Decimal('500.00'),
-    )
-    expensive = create_album_product(
-        name='Expensive Album',
-        price=Decimal('900.00'),
-    )
-
-    return {
-        'cheap': cheap,
-        'middle': middle,
-        'expensive': expensive,
-    }
+# def create_catalog_sorting_dataset():
+#     """Создает набор товаров для проверки сортировок."""
+#     cheap = create_album_product(
+#         name='Cheap Album',
+#         price=Decimal('100.00'),
+#     )
+#     middle = create_merch_product(
+#         name='Middle Merch',
+#         price=Decimal('500.00'),
+#     )
+#     expensive = create_album_product(
+#         name='Expensive Album',
+#         price=Decimal('900.00'),
+#     )
+#
+#     return {
+#         'cheap': cheap,
+#         'middle': middle,
+#         'expensive': expensive,
+#     }
 
 
 def create_catalog_visibility_dataset():
@@ -261,3 +261,11 @@ def get_product_ids(response):
 def get_product_titles(response):
     """Возвращает названия товаров из paginated-ответа каталога."""
     return [item['title'] for item in response.data['results']]
+
+
+def get_response_items(response):
+    """Возвращает список объектов из paginated/non-paginated ответа."""
+    if isinstance(response.data, dict) and 'results' in response.data:
+        return response.data['results']
+
+    return response.data
