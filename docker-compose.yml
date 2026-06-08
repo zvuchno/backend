@@ -65,7 +65,7 @@ services:
       redis:
         condition: service_healthy
   celery_beat:
-    image: inswty/zvuchno_backend:latest
+    build: .
     env_file: .env
     command: celery -A config beat -l warning --schedule=/var/run/celery/celerybeat-schedule
     volumes:
