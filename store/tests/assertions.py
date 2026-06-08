@@ -1,6 +1,7 @@
 """Проверки контрактов API приложения store."""
 
 CATALOG_CARD_KEYS = {
+    'product_id',
     'name',
     'artist_name',
     'kind',
@@ -56,6 +57,7 @@ def assert_catalog_card_contract(card):
     """Проверяет контракт карточки публичного каталога."""
     assert set(card) == CATALOG_CARD_KEYS
 
+    assert isinstance(card['product_id'], int)
     assert isinstance(card['name'], str)
     assert isinstance(card['artist_name'], str)
     assert card['kind'] is None or isinstance(card['kind'], str)
