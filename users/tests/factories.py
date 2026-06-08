@@ -2,6 +2,7 @@
 
 import factory
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
 
 from users.models import ArtistProfile, ListenerProfile
 
@@ -21,7 +22,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     is_active = True
     is_email_verified = True
     is_phone_verified = False
-    password = factory.PostGenerationMethodCall('set_password', 'password')
+    password = factory.LazyFunction(lambda: make_password('password'))
 
 
 class ListenerProfileFactory(factory.django.DjangoModelFactory):

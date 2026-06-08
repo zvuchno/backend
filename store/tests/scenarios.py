@@ -151,14 +151,6 @@ def create_carrier_product(
     )
 
 
-def set_created_at(instance, value=None):
-    """Принудительно задает created_at для проверки сортировок."""
-    value = value or timezone.now()
-    type(instance).objects.filter(pk=instance.pk).update(created_at=value)
-    instance.refresh_from_db(fields=('created_at',))
-    return instance
-
-
 def create_catalog_type_dataset():
     """Создает набор товаров разных типов для проверки type-фильтра."""
     album = create_album_product(name='Цифровой альбом')
@@ -244,11 +236,6 @@ def create_catalog_visibility_dataset():
 def get_product_ids(response):
     """Возвращает id товаров из paginated-ответа каталога."""
     return [item['product_id'] for item in response.data['results']]
-
-
-def get_product_titles(response):
-    """Возвращает названия товаров из paginated-ответа каталога."""
-    return [item['title'] for item in response.data['results']]
 
 
 def get_response_items(response):

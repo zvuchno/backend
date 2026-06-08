@@ -19,7 +19,7 @@ class BaseCardSerializer(serializers.Serializer):
         help_text=(
             'ID товара (Product). Используется как уникальный идентификатор '
             'карточки каталога. '
-            'Для перехода в детальную ручку используйте detail.'
+            'Для перехода в детальный эндпоинт используйте target.'
         ),
     )
     name = serializers.CharField(

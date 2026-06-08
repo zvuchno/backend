@@ -28,6 +28,8 @@ from store.models import (
     ProductVariant,
     Track,
 )
+from store.tests.factories import MerchKindFactory
+from store.tests.scenarios import create_album_product, create_merch_product
 from users.models import ConsentDocument
 
 
@@ -104,6 +106,45 @@ def variant_factory(artist_user):
         )
 
     return create_variant
+
+
+@pytest.fixture
+def public_album_product():
+    """Создает опубликованный альбом с цифровым вариантом."""
+    product = create_album_product(
+        name='Contract Album',
+        price=Decimal('1000.00'),
+        allow_overpay=True,
+    )
+
+    return {
+        'album': product.album,
+        'product': product,
+        'variant': product.variants.first(),
+    }
+
+
+@pytest.fixture
+def public_merch_product():
+    """Создает опубликованный обычный мерч с вариантом."""
+    kind = MerchKindFactory(
+        name='Футболка',
+        slug='t-shirt',
+        is_carrier=False,
+    )
+    product = create_merch_product(
+        name='Contract T-Shirt',
+        kind=kind,
+        price=Decimal('1500.00'),
+        allow_overpay=False,
+    )
+
+    return {
+        'kind': kind,
+        'merch': product.merch,
+        'product': product,
+        'variant': product.variants.first(),
+    }
 
 
 @pytest.fixture

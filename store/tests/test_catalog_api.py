@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 from rest_framework import status
 
+from store.tests.assertions import assert_public_product_card_contract
 from store.tests.scenarios import (
     create_album_product,
     create_carrier_product,
@@ -117,6 +118,7 @@ def test_catalog_album_card_has_expected_values(api_client, catalog_url):
     response = api_client.get(catalog_url)
 
     card = get_catalog_card_by_product_id(response, product.id)
+    assert_public_product_card_contract(card)
 
     assert card['product_id'] == product.id
     assert card['name'] == album.name
@@ -145,6 +147,7 @@ def test_catalog_merch_card_has_expected_values(api_client, catalog_url):
     response = api_client.get(catalog_url)
 
     card = get_catalog_card_by_product_id(response, product.id)
+    assert_public_product_card_contract(card)
 
     assert card['product_id'] == product.id
     assert card['name'] == merch.name
@@ -175,6 +178,7 @@ def test_catalog_carrier_card_has_expected_values(api_client, catalog_url):
     response = api_client.get(catalog_url)
 
     card = get_catalog_card_by_product_id(response, product.id)
+    assert_public_product_card_contract(card)
 
     assert merch.kind.is_carrier is True
     assert album is not None
