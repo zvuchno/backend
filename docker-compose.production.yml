@@ -16,6 +16,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+  redis:
+    image: redis:7
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
   backend:
     image: inswty/zvuchno_backend:latest
     env_file: .env
@@ -30,6 +39,40 @@ services:
         max-file: "5"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+  celery_worker:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: celery -A config worker -l warning
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+  celery_beat:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: celery -A config beat -l warning
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
   frontend:
