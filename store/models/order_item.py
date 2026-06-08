@@ -12,6 +12,7 @@ from store.constants import (
     MONEY_INTERNAL_PRECISION,
     ZERO_MONEY,
 )
+from store.querysets import OrderQuerySet
 
 
 class OrderItem(models.Model):
@@ -69,6 +70,8 @@ class OrderItem(models.Model):
 
     # Snapshot {name, variant_name, artist..}
     product_info = models.JSONField('Данные о товаре (snapshot)', default=dict)
+
+    objects = OrderQuerySet.as_manager()
 
     @property
     def donation(self) -> Decimal:
