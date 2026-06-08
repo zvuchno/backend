@@ -123,6 +123,8 @@ def create_carrier_product(
     with_variant=True,
 ):
     """Создает физический носитель, связанный с альбомом."""
+    if owner is None and album is not None:
+        owner = album.owner
     owner = owner or ArtistUserFactory()
 
     if album is None:

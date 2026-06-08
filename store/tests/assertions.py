@@ -1,5 +1,7 @@
 """Проверки контрактов API приложения store."""
 
+from decimal import Decimal
+
 PUBLIC_PRODUCT_CARD_KEYS = {
     'product_id',
     'name',
@@ -44,10 +46,37 @@ CATALOG_MERCH_DETAIL_FORBIDDEN_KEYS = {
     'images_merch',
 }
 
+CATALOG_MERCH_DETAIL_KEYS = {
+    'id',
+    'name',
+    'description',
+    'price',
+    'allow_overpay',
+    'kind',
+    'property_name',
+    'stock',
+    'variants',
+    'artist_name',
+    'images',
+}
+
+CATALOG_MERCH_VARIANT_KEYS = {
+    'sku',
+    'stock',
+    'variant_id',
+    'property_value',
+}
+
+CATALOG_MERCH_IMAGE_KEYS = {
+    'id',
+    'image',
+    'is_main',
+}
+
 
 def assert_public_product_card_contract(card):
     """Проверяет базовый контракт публичной карточки товара."""
-    assert set(card) >= PUBLIC_PRODUCT_CARD_KEYS
+    assert set(card) == PUBLIC_PRODUCT_CARD_KEYS
     assert set(card['target']) == PUBLIC_PRODUCT_CARD_TARGET_KEYS
 
     assert isinstance(card['product_id'], int)
@@ -95,24 +124,26 @@ def assert_catalog_release_variant_contract(variant):
 
 
 def assert_catalog_merch_detail_contract(data):
-    """Проверяет базовый контракт витринной detail-карточки мерча."""
-    for key in CATALOG_MERCH_DETAIL_FORBIDDEN_KEYS:
-        assert key not in data
-
-    assert 'id' in data
-    assert 'name' in data
-    assert 'artist_name' in data
-    assert 'images' in data
-    assert 'variants' in data
+    """Проверяет контракт витринной detail-карточки мерча."""
+    assert set(data) == CATALOG_MERCH_DETAIL_KEYS
 
     assert isinstance(data['id'], int)
     assert isinstance(data['name'], str)
-    assert data['artist_name'] is None or isinstance(
-        data['artist_name'],
-        str,
-    )
+    assert isinstance(data['description'], str)
+    assert isinstance(data['price'], Decimal)
+    assert isinstance(data['allow_overpay'], bool)
+    assert isinstance(data['kind'], str)
+    assert isinstance(data['property_name'], str)
+    assert data['stock'] is None or isinstance(data['stock'], int)
+    assert data['artist_name'] is None or isinstance(data['artist_name'], str)
     assert isinstance(data['images'], list)
     assert isinstance(data['variants'], list)
+
+    for image in data['images']:
+        assert set(image) == CATALOG_MERCH_IMAGE_KEYS
+        assert isinstance(image['id'], int)
+        assert isinstance(image['image'], str)
+        assert isinstance(image['is_main'], bool)
 
     for variant in data['variants']:
         assert_catalog_merch_variant_contract(variant)
@@ -120,11 +151,9 @@ def assert_catalog_merch_detail_contract(data):
 
 def assert_catalog_merch_variant_contract(variant):
     """Проверяет контракт варианта обычного мерча."""
-    assert 'variant_id' in variant
-    assert 'property_value' in variant
-
-    assert 'id' not in variant
-    assert 'value' not in variant
+    assert set(variant) == CATALOG_MERCH_VARIANT_KEYS
 
     assert isinstance(variant['variant_id'], int)
+    assert isinstance(variant['sku'], str)
+    assert variant['stock'] is None or isinstance(variant['stock'], int)
     assert isinstance(variant['property_value'], str)
