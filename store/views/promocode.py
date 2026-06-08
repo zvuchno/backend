@@ -23,6 +23,7 @@ class PromocodeViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     Артист видит и управляет только своими промокодами.
     """
 
+    queryset = Promocode.objects.all()
     permission_classes = (IsArtist, IsStoreObjectOwner)
     http_method_names = ('get', 'post', 'patch', 'delete')
 

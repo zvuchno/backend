@@ -54,7 +54,7 @@ class BaseVariantTargetImageSerializer(serializers.ModelSerializer):
 
         return reverse(url_name, args=(obj.target_id,))
 
-    def get_image(self, obj):
+    def get_image(self, obj) -> str | None:
         image_path = getattr(obj, 'image_path', None)
 
         if not image_path:
