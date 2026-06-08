@@ -106,7 +106,8 @@ jobs:
           docker run --rm \
             -v zvuchno_static:/fix_static \
             -v zvuchno_media:/fix_media \
-            alpine chown -R $CUR_UID:$CUR_GID /fix_static /fix_media
+            -v zvuchno_celery_beat_data:/fix_beat \
+            alpine chown -R $CUR_UID:$CUR_GID /fix_static /fix_media /fix_beat
 
           docker compose -f docker-compose.production.yml exec backend python manage.py migrate --noinput
           docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --noinput

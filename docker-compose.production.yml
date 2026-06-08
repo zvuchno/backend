@@ -3,6 +3,7 @@ volumes:
   static:
   media:
   next_image_cache:
+  celery_beat_data:
 
 services:
   db:
@@ -63,7 +64,9 @@ services:
     image: inswty/zvuchno_backend:latest
     env_file: .env
     user: "${UID}:${GID}"
-    command: celery -A config beat -l warning
+    command: celery -A config beat -l warning --schedule=/var/run/celery/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/var/run/celery
     logging:
       driver: json-file
       options:
