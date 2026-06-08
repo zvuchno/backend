@@ -5,7 +5,15 @@ CartItem, OrderItem и других моделях, работающих с ва
 """
 
 from django.db import models
-from django.db.models import Case, F, IntegerField, Value, When
+from django.db.models import (
+    Case,
+    F,
+    IntegerField,
+    OuterRef,
+    Subquery,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce
 
 
@@ -18,7 +26,8 @@ def build_target_annotations(product_path: str) -> dict:
         - kind — человекочитаемый тип карточки
           (Альбом, Сингл, Трек, Винил и т.п.);
         - target_type — тип целевого объекта для перехода;
-        - target_id — идентификатор целевого объекта для перехода.
+        - target_id — идентификатор целевого объекта для перехода;
+        - image_path — путь к изображению карточки.
 
     Args:
         product_path: ORM-путь до модели Product относительно
@@ -36,6 +45,17 @@ def build_target_annotations(product_path: str) -> dict:
         f'{product_path}__merch__kind__is_carrier': True,
         f'{product_path}__merch__album_id__isnull': False,
     }
+
+    from store.models import Image
+
+    merch_image_subquery = (
+        Image.objects
+        .filter(
+            merch_id=OuterRef(f'{product_path}__merch_id'),
+        )
+        .order_by('-is_main', 'id')
+        .values('image')[:1]
+    )
 
     return {
         'is_carrier': Coalesce(
@@ -74,12 +94,16 @@ def build_target_annotations(product_path: str) -> dict:
         ),
         'target_type': Case(
             When(
+                **{f'{product_path}__product_type': 'album'},
+                then=Value('release'),
+            ),
+            When(
                 **carrier_album_condition,
-                then=Value('album'),
+                then=Value('release'),
             ),
             When(
                 **{f'{product_path}__product_type': 'track'},
-                then=Value('album'),
+                then=Value('release'),
             ),
             default=F(f'{product_path}__product_type'),
             output_field=models.CharField(),
@@ -102,5 +126,21 @@ def build_target_annotations(product_path: str) -> dict:
                 then=F(f'{product_path}__track__album_id'),
             ),
             output_field=IntegerField(),
+        ),
+        'image_path': Case(
+            When(
+                **{f'{product_path}__product_type': 'album'},
+                then=F(f'{product_path}__album__cover_image'),
+            ),
+            When(
+                **{f'{product_path}__product_type': 'track'},
+                then=F(f'{product_path}__track__album__cover_image'),
+            ),
+            When(
+                **{f'{product_path}__product_type': 'merch'},
+                then=Subquery(merch_image_subquery),
+            ),
+            default=Value(None),
+            output_field=models.CharField(),
         ),
     }

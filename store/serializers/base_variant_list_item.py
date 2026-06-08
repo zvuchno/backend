@@ -1,23 +1,27 @@
+from django.conf import settings
+from django.urls import reverse
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from store.serializers.catalog_card import (
-    CatalogCardTargetSerializer,
-    VariantKeySerializer,
-)
+from .catalog_card import CatalogCardTargetSerializer
 
 
-class BaseVariantListItemSerializer(serializers.ModelSerializer):
+class BaseVariantTargetImageSerializer(serializers.ModelSerializer):
     """Базовый сериализатор элемента списка, связанного с ProductVariant.
 
     Применяется для list-эндпоинтов (корзина, избранное, заказы),
     где объект представлен как элемент списка товаров с логикой перехода.
-
     Добавляет общие поля представления:
-    - target: данные для перехода на целевую сущность (album / merch)
-    - selected_variant_key: ключ варианта для предвыбора на странице detail
+    - target: данные для перехода на целевую сущность (album / merch);
+    - image: изображение для отображения в списке.
     """
 
+    DETAIL_URL_NAMES = {
+        'release': 'api:store:catalog-release-detail',
+        'merch': 'api:store:catalog-merch-detail',
+    }
+
+    image = serializers.SerializerMethodField()
     target = serializers.SerializerMethodField(
         help_text=(
             'Данные для перехода по клику. '
@@ -26,29 +30,41 @@ class BaseVariantListItemSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
-    selected_variant_key = serializers.SerializerMethodField(
-        help_text=(
-            'Ключ варианта, который предвыбрать после перехода в detail.'
-        ),
-        read_only=True,
-    )
+    class Meta:
+        fields = (
+            'image',
+            'target',
+        )
 
     @extend_schema_field(CatalogCardTargetSerializer)
     def get_target(self, obj):
-        """Возвращает данные для перехода из карточки товара."""
+        """Возвращает данные для перехода на карточку товара."""
         return {
             'type': obj.target_type,
-            'url': self.get_target_url(obj),
+            'url': self._get_target_url(obj),
+            'selected_variant_id': obj.product_variant_id,
         }
 
-    @extend_schema_field(VariantKeySerializer)
-    def get_selected_variant_key(self, obj):
-        """Возвращает ключ для предвыбора варианта."""
-        content = getattr(obj.product_variant.product, 'content', None)
-        if content is None:
+    def _get_target_url(self, obj) -> str | None:
+        """Возвращает URL detail-эндпойнта."""
+        url_name = self.DETAIL_URL_NAMES.get(obj.target_type)
+
+        if not url_name:
             return None
 
-        return {
-            'type': obj.product_variant.product.product_type,
-            'id': obj.product_variant_id,
-        }
+        return reverse(url_name, args=(obj.target_id,))
+
+    def get_image(self, obj):
+        image_path = getattr(obj, 'image_path', None)
+
+        if not image_path:
+            return None
+
+        request = self.context.get('request')
+
+        if request:
+            return request.build_absolute_uri(
+                settings.MEDIA_URL + image_path,
+            )
+
+        return settings.MEDIA_URL + image_path

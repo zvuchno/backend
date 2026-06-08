@@ -3,12 +3,9 @@
 Содержит классы для чтения и записи данных моделей Cart, CartItem.
 """
 
-from decimal import Decimal
-
 from rest_framework import serializers
 
-from .base_variant_list_item import BaseVariantListItemSerializer
-from .mixins import ProductVariantURLMixin
+from .base_variant_list_item import BaseVariantTargetImageSerializer
 from store.constants import (
     MAX_PRICE_DIGITS,
     MAX_PROMOCODE_LENGTH,
@@ -23,10 +20,7 @@ from store.validators import (
 )
 
 
-class CartItemReadSerializer(
-    BaseVariantListItemSerializer,
-    ProductVariantURLMixin,
-):
+class CartItemReadSerializer(BaseVariantTargetImageSerializer):
     """Сериализатор товаров в корзине пользователя - чтение."""
 
     product_variant = serializers.IntegerField(
@@ -60,7 +54,7 @@ class CartItemReadSerializer(
     discount = serializers.SerializerMethodField()
     line_total = serializers.SerializerMethodField()
 
-    class Meta:
+    class Meta(BaseVariantTargetImageSerializer.Meta):
         model = CartItem
         fields = (
             'product_variant',
@@ -74,9 +68,7 @@ class CartItemReadSerializer(
             'comment',
             'stock',
             'is_artist_subscription',
-            'target',
-            'selected_variant_key',
-        )
+        ) + BaseVariantTargetImageSerializer.Meta.fields
 
     def get_stock(self, obj) -> int:
         """Если цифра - наличие = 1."""
@@ -90,7 +82,7 @@ class CartItemReadSerializer(
         """Возвращает сумму скидки на позицию по применённому промокоду."""
         raw_discount = self.context.get('discounts', {}).get(
             obj.id,
-            Decimal('0.0000'),
+            ZERO_MONEY,
         )
         field = serializers.DecimalField(
             max_digits=MAX_PRICE_DIGITS,
