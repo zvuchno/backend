@@ -227,6 +227,11 @@ class ProductQuerySet(models.QuerySet):
                     product_type='album',
                     then=ExtractYear('album__release_date'),
                 ),
+                models.When(
+                    product_type='merch',
+                    merch__album_id__isnull=False,
+                    then=ExtractYear('merch__album__release_date'),
+                ),
                 default=models.Value(None),
                 output_field=models.IntegerField(),
             ),
