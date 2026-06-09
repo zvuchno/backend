@@ -5,7 +5,7 @@ from django.db import models
 from store.querysets.variant_annotations import build_target_annotations
 
 
-class OrderQuerySet(models.QuerySet):
+class OrderItemQuerySet(models.QuerySet):
     """Кверисет для работы с заказами ."""
 
     def with_target_annotations(self):

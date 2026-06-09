@@ -37,7 +37,6 @@ class OrderItemSerializer(BaseVariantTargetImageSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
-    image = serializers.SerializerMethodField()
 
     class Meta(BaseVariantTargetImageSerializer.Meta):
         model = OrderItem

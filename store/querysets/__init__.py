@@ -3,7 +3,7 @@
 from .cart_items import CartItemQuerySet
 from .carts import CartQuerySet
 from .favorites import FavoriteQuerySet
-from .orders import OrderQuerySet
+from .order_items import OrderItemQuerySet
 from .product import ProductQuerySet
 from .track_visibility import TrackQuerySet
 from .variant_annotations import build_target_annotations
@@ -14,7 +14,7 @@ __all__ = [
     'CartItemQuerySet',
     'CartQuerySet',
     'FavoriteQuerySet',
-    'OrderQuerySet',
+    'OrderItemQuerySet',
     'ProductQuerySet',
     'TrackQuerySet',
     'VisibilityQuerySet',
