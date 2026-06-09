@@ -56,16 +56,21 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         if not user.is_authenticated:
             return Order.objects.none()
 
-        items_qs = OrderItem.objects.select_related(
-            'product_variant__product',
-            'product_variant__product__album',
-            'product_variant__product__track__album',
-            'product_variant__product__merch',
-        ).prefetch_related(
-            Prefetch(
-                'product_variant__product__merch__images_merch',
-                queryset=Image.objects.order_by('-is_main', 'id'),
-            ),
+        items_qs = (
+            OrderItem.objects
+            .with_target_annotations()
+            .select_related(
+                'product_variant__product',
+                'product_variant__product__album',
+                'product_variant__product__track__album',
+                'product_variant__product__merch',
+            )
+            .prefetch_related(
+                Prefetch(
+                    'product_variant__product__merch__images_merch',
+                    queryset=Image.objects.order_by('-is_main', 'id'),
+                ),
+            )
         )
         return (
             Order.objects

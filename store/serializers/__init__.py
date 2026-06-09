@@ -17,7 +17,7 @@ from .catalog_card import (
 )
 from .checkout import CheckoutSerializer
 from .delivery import DeliverySerializer
-from .favorites import FavoritesSerializer
+from .favorites import FavoriteReadSerializer, FavoriteWriteSerializer
 from .genre import GenreSerializer
 from .image import ImageSerializer
 from .merch import (
@@ -56,7 +56,8 @@ __all__ = [
     'CartWriteSerializer',
     'CheckoutSerializer',
     'DeliverySerializer',
-    'FavoritesSerializer',
+    'FavoriteReadSerializer',
+    'FavoriteWriteSerializer',
     'GenreSerializer',
     'ImageSerializer',
     'MerchDetailSerializer',
