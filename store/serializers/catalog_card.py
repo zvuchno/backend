@@ -14,6 +14,14 @@ class BaseCardSerializer(serializers.Serializer):
     которую можно собрать от Product, snapshot-а или другого источника.
     """
 
+    product_id = serializers.IntegerField(
+        source='id',
+        help_text=(
+            'ID товара (Product). Используется как уникальный идентификатор '
+            'карточки каталога. '
+            'Для перехода в детальный эндпоинт используйте target.'
+        ),
+    )
     name = serializers.CharField(
         read_only=True,
         help_text='Название товара.',
@@ -58,6 +66,7 @@ class BaseCardSerializer(serializers.Serializer):
 
     class Meta:
         fields = (
+            'product_id',
             'name',
             'artist_name',
             'kind',
