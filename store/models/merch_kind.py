@@ -17,6 +17,11 @@ class MerchKind(ActivatableModel, TimestampModel):
         max_length=MAX_SLUG_LENGTH,
         unique=True,
     )
+    is_carrier = models.BooleanField(
+        'Носитель',
+        default=False,
+        help_text='Необходимо установить флаг, если тип является носителем.',
+    )
 
     def save(self, *args, **kwargs):
         """Получение слага при его отсутствии."""

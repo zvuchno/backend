@@ -89,6 +89,14 @@ class Order(TimestampModel):
         default='',
     )
 
+    promocode = models.ForeignKey(
+        'store.Promocode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Примененный промокод',
+        related_name='orders',
+    )
     delivery = models.CharField(
         'Способ доставки',
         max_length=MAX_CHAR_LENGTH,
@@ -104,6 +112,13 @@ class Order(TimestampModel):
     )
     delivery_price = models.DecimalField(
         'Стоимость доставки (руб.)',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    promocode_discount = models.DecimalField(
+        'Сумма скидки по промокоду (руб.)',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,

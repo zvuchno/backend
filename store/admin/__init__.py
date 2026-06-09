@@ -4,6 +4,8 @@
 в интерфейсе Django Admin.
 """
 
+from django.contrib import admin
+
 from .album import AlbumAdmin
 from .cart import CartAdmin
 from .delivery import DeliveryAdmin
@@ -12,7 +14,7 @@ from .genre import GenreAdmin
 from .merch import MerchAdmin
 from .merch_kind import MerchKindAdmin
 from .order import OrderAdmin
-from .promocode import Promocode
+from .promocode import PromocodeAdmin
 from .track import TrackAdmin
 
 __all__ = [
@@ -24,6 +26,11 @@ __all__ = [
     'MerchKindAdmin',
     'MerchAdmin',
     'OrderAdmin',
-    'Promocode',
+    'PromocodeAdmin',
     'TrackAdmin',
 ]
+
+# Заголовок страницы (вкладка браузера)
+admin.site.site_title = 'ZVUCHNO'
+# Заголовок на самой странице
+admin.site.site_header = 'ZVUCHNO Администрирование'
