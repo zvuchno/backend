@@ -23,7 +23,7 @@ class LibraryAlbumCardSerializer(
         read_only=True,
     )
     artist_name = serializers.SerializerMethodField(
-        help_text='Имя артиста-владельца товара.',
+        help_text='Имя артиста-владельца релиза.',
         read_only=True,
     )
     kind = serializers.SerializerMethodField(
@@ -41,7 +41,7 @@ class LibraryAlbumCardSerializer(
         read_only=True,
     )
     image = serializers.SerializerMethodField(
-        help_text='Основное изображение карточки товара.',
+        help_text='Основное изображение карточки релиза.',
         read_only=True,
     )
     is_fully_available = serializers.BooleanField(
@@ -68,12 +68,12 @@ class LibraryAlbumCardSerializer(
 
     @extend_schema_field(OpenApiTypes.URI)
     def get_download_url(self, obj):
-        """Возвращает URL скачивания доступных треков релиза."""
+        """TODO. Возвращает URL скачивания доступных треков релиза."""
         return
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_image(self, obj):
-        """Возвращает изображение карточки товара."""
+        """Возвращает изображение карточки релиза."""
         items = self.get_album_image_items(obj.album)
         return self.get_main_image_url(items)
 

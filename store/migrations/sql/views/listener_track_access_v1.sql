@@ -1,5 +1,3 @@
-DROP VIEW IF EXISTS listener_track_access;
-
 CREATE VIEW listener_track_access AS
 
 SELECT

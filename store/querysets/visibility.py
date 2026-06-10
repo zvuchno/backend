@@ -2,10 +2,8 @@
 
 from django.db import models
 
-from store.querysets import AlbumQuerySet
 
-
-class VisibilityQuerySet(AlbumQuerySet):
+class VisibilityQuerySet(models.QuerySet):
     """QuerySet с правилами доступа и видимости объектов.
 
     Фильтрует объекты по:
