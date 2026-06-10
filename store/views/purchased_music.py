@@ -1,39 +1,28 @@
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import ListAPIView
 
 from common.permissions import IsListener
 
-from store.models import (
-    Album,
-    ListenerTrackAccess,
-    Track,
-)
+from store.models import ListenerAlbumAccess
 from store.schema import purchased_music_schema
-from store.serializers import PurchasedMusicSerializer
+from store.serializers import LibraryAlbumCardSerializer
 
 
 @purchased_music_schema
-class PurchasedMusicView(RetrieveAPIView):
-    """Библиотека купленной музыки текущего слушателя."""
+class PurchasedMusicView(ListAPIView):
+    """Список релизов, доступных текущему слушателю."""
 
     permission_classes = [IsListener]
-    serializer_class = PurchasedMusicSerializer
+    serializer_class = LibraryAlbumCardSerializer
 
-    def get_object(self):
-        track_ids = list(
-            ListenerTrackAccess.objects.filter(
-                user=self.request.user,
-            ).values_list('track_id', flat=True),
+    def get_queryset(self):
+        """Возвращает доступные текущему слушателю релизы."""
+        return (
+            ListenerAlbumAccess.objects
+            .filter(user=self.request.user)
+            .select_related(
+                'album',
+                'album__owner',
+                'album__owner__artist_profile',
+            )
+            .order_by('-album__release_date', 'album__name')
         )
-
-        albums = Album.objects.fully_available_for_track_ids(track_ids)
-
-        album_ids = list(albums.values_list('id', flat=True))
-
-        tracks = Track.objects.filter(id__in=track_ids).exclude(
-            album_id__in=album_ids,
-        )
-
-        return {
-            'albums': albums,
-            'tracks': tracks,
-        }

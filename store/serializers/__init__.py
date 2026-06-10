@@ -34,7 +34,7 @@ from .promocode import (
     PromocodeReadSerializer,
     PromocodeWriteSerializer,
 )
-from .purchased_music import PurchasedMusicSerializer
+from .purchased_music import LibraryAlbumCardSerializer
 from .sale import ArtistSaleDetailSerializer, ArtistSaleSerializer
 from .track import (
     TrackReadDetailSerializer,
@@ -60,6 +60,7 @@ __all__ = [
     'FavoritesSerializer',
     'GenreSerializer',
     'ImageSerializer',
+    'LibraryAlbumCardSerializer',
     'MerchDetailSerializer',
     'MerchKindSerializer',
     'MerchReadSerializer',
@@ -71,7 +72,6 @@ __all__ = [
     'PromocodeReadSerializer',
     'PromocodeWriteSerializer',
     'ProductCardSerializer',
-    'PurchasedMusicSerializer',
     'TrackReadDetailSerializer',
     'TrackReadSerializer',
     'TrackWriteSerializer',

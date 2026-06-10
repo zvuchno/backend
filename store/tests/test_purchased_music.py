@@ -1,4 +1,4 @@
-"""Тесты API купленной музыки слушателя."""
+"""Тесты API доступной музыки слушателя."""
 
 from decimal import Decimal
 
@@ -10,8 +10,16 @@ from store.models import Album, Order, OrderItem, Track
 pytestmark = pytest.mark.django_db
 
 
+def get_results(response):
+    """Возвращает список элементов из ответа с учетом пагинации."""
+    if isinstance(response.data, dict) and 'results' in response.data:
+        return response.data['results']
+
+    return response.data
+
+
 class TestPurchasedMusicAPI:
-    """Набор тестов для проверки библиотеки купленной музыки."""
+    """Набор тестов для проверки библиотеки доступной музыки."""
 
     @pytest.fixture(autouse=True)
     def _setup(
@@ -51,7 +59,7 @@ class TestPurchasedMusicAPI:
         return order
 
     def test_purchased_music_returns_full_album(self, listener_user):
-        """Купленный целиком альбом попадает в список альбомов."""
+        """Купленный целиком альбом попадает в список доступных релизов."""
         album_variant = self.variant_factory('album', name='Purchased Album')
         album = album_variant.product.album
 
@@ -61,15 +69,20 @@ class TestPurchasedMusicAPI:
         self.create_paid_order(listener_user, [album_variant])
 
         response = self.listener_client.get(self.purchased_music_url)
+        results = get_results(response)
 
         assert response.status_code == status.HTTP_200_OK
-        assert [item['id'] for item in response.data['albums']] == [album.id]
-        assert response.data['tracks'] == []
+        assert [item['id'] for item in results] == [album.id]
+        assert results[0]['is_fully_available'] is True
 
-    def test_purchased_music_returns_single_track(self, listener_user):
-        """Отдельно купленный трек попадает в список треков."""
+    def test_purchased_music_returns_release_for_single_track(
+        self,
+        listener_user,
+    ):
+        """Отдельно купленный трек возвращает релиз с частичным доступом."""
         track_variant = self.variant_factory('track', name='Single Track')
         track = track_variant.product.track
+
         self.variant_factory(
             'track',
             name='Second Track',
@@ -79,16 +92,17 @@ class TestPurchasedMusicAPI:
         self.create_paid_order(listener_user, [track_variant])
 
         response = self.listener_client.get(self.purchased_music_url)
+        results = get_results(response)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['albums'] == []
-        assert [item['id'] for item in response.data['tracks']] == [track.id]
+        assert [item['id'] for item in results] == [track.album.id]
+        assert results[0]['is_fully_available'] is False
 
-    def test_purchased_music_does_not_return_partial_album(
+    def test_purchased_music_returns_partial_album(
         self,
         listener_user,
     ):
-        """Частично купленный альбом не попадает в список альбомов."""
+        """Частично доступный релиз попадает в список с флагом partial."""
         owner = self.variant_factory('album').product.album.owner
         album = Album.objects.create(name='Partial Album', owner=owner)
 
@@ -97,7 +111,6 @@ class TestPurchasedMusicAPI:
             name='Bought Track',
             album=album,
         )
-        bought_track = bought_track_variant.product.track
 
         Track.objects.create(
             name='Not Bought Track',
@@ -108,12 +121,40 @@ class TestPurchasedMusicAPI:
         self.create_paid_order(listener_user, [bought_track_variant])
 
         response = self.listener_client.get(self.purchased_music_url)
+        results = get_results(response)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['albums'] == []
-        assert [item['id'] for item in response.data['tracks']] == [
-            bought_track.id,
-        ]
+        assert [item['id'] for item in results] == [album.id]
+        assert results[0]['is_fully_available'] is False
+
+    def test_purchased_music_returns_full_release_when_all_tracks_bought(
+        self,
+        listener_user,
+    ):
+        """Если куплены все треки релиза отдельно, релиз доступен полностью."""
+        first_track_variant = self.variant_factory(
+            'track',
+            name='First Track',
+        )
+        album = first_track_variant.product.track.album
+
+        second_track_variant = self.variant_factory(
+            'track',
+            name='Second Track',
+            album=album,
+        )
+
+        self.create_paid_order(
+            listener_user,
+            [first_track_variant, second_track_variant],
+        )
+
+        response = self.listener_client.get(self.purchased_music_url)
+        results = get_results(response)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert [item['id'] for item in results] == [album.id]
+        assert results[0]['is_fully_available'] is True
 
     def test_purchased_music_does_not_return_other_user_purchase(
         self,
@@ -126,9 +167,7 @@ class TestPurchasedMusicAPI:
         self.create_paid_order(other_user, [track_variant])
 
         response = self.listener_client.get(self.purchased_music_url)
+        results = get_results(response)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data == {
-            'albums': [],
-            'tracks': [],
-        }
+        assert results == []
