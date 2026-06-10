@@ -1,7 +1,5 @@
 """Проверки контрактов API приложения store."""
 
-from decimal import Decimal
-
 PUBLIC_PRODUCT_CARD_KEYS = {
     'product_id',
     'name',
@@ -23,6 +21,7 @@ PUBLIC_PRODUCT_CARD_TARGET_KEYS = {
 CATALOG_RELEASE_DETAIL_KEYS = {
     'id',
     'artist_name',
+    'artist_image',
     'is_single',
     'variants',
 }
@@ -57,6 +56,7 @@ CATALOG_MERCH_DETAIL_KEYS = {
     'stock',
     'variants',
     'artist_name',
+    'artist_image',
     'images',
 }
 
@@ -86,7 +86,7 @@ def assert_public_product_card_contract(card):
     assert isinstance(card['year'], int) or card['year'] is None
     assert isinstance(card['price'], str)
     assert isinstance(card['is_favorite'], bool)
-
+    assert card['image'] is None or isinstance(card['image'], str)
     assert isinstance(card['target']['type'], str)
     assert isinstance(card['target']['url'], str)
     assert (
@@ -101,6 +101,10 @@ def assert_catalog_release_detail_contract(data):
 
     assert isinstance(data['id'], int)
     assert isinstance(data['artist_name'], str)
+    assert data['artist_image'] is None or isinstance(
+        data['artist_image'],
+        str,
+    )
     assert isinstance(data['is_single'], bool)
     assert isinstance(data['variants'], list)
 
@@ -130,12 +134,16 @@ def assert_catalog_merch_detail_contract(data):
     assert isinstance(data['id'], int)
     assert isinstance(data['name'], str)
     assert isinstance(data['description'], str)
-    assert isinstance(data['price'], Decimal)
+    assert isinstance(data['price'], str)
     assert isinstance(data['allow_overpay'], bool)
     assert isinstance(data['kind'], str)
     assert isinstance(data['property_name'], str)
     assert data['stock'] is None or isinstance(data['stock'], int)
     assert data['artist_name'] is None or isinstance(data['artist_name'], str)
+    assert data['artist_image'] is None or isinstance(
+        data['artist_image'],
+        str,
+    )
     assert isinstance(data['images'], list)
     assert isinstance(data['variants'], list)
 
