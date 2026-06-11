@@ -10,7 +10,6 @@ from django.db.models import F
 from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
 from store.models import Delivery, Order, OrderItem, Product
-from store.serializers import DeliverySerializer
 from users.models import ConsentDocument, UserConsent
 
 
@@ -50,10 +49,8 @@ class OrderService:
                 'email': user.email if user else '',
                 'phone': str(getattr(user, 'phone', '') or ''),
             },
-            'subtotal': calculation_service.get_subtotal(),
-            'discount_promocode': calculation_service.get_discount_total(),
-            'total': calculation_service.get_total(),
-            'deliveries': DeliverySerializer(deliveries_qs, many=True).data,
+            'subtotal': calculation_service.get_total(),
+            'deliveries': deliveries_qs,
         }
 
     @staticmethod
