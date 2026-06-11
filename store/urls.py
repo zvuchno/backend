@@ -19,6 +19,7 @@ from .views import (
     OrderViewSet,
     ProductCatalogListView,
     PromocodeViewSet,
+    PurchasedMusicView,
     TrackViewSet,
 )
 
@@ -48,5 +49,10 @@ urlpatterns = [
         'catalog/merch/<int:pk>/',
         CatalogMerchDetailView.as_view({'get': 'retrieve'}),
         name='catalog-merch-detail',
+    ),
+    path(
+        'me/purchased-music',
+        PurchasedMusicView.as_view(),
+        name='purchased-music',
     ),
 ]

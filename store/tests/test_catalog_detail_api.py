@@ -125,7 +125,7 @@ class TestCatalogMerchDetail:
         assert response.data['id'] == merch.id
         assert response.data['name'] == merch.name
         assert response.data['description'] == merch.description
-        assert response.data['price'] == float(product.price)
+        assert response.data['price'] == str(product.price)
         assert response.data['allow_overpay'] == product.allow_overpay
         assert response.data['kind'] == kind.name
         assert response.data['property_name'] == product.property_name

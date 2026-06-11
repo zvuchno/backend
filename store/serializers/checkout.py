@@ -3,7 +3,12 @@
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
-from store.constants import MAX_CHAR_LENGTH
+from .delivery import DeliverySerializer
+from store.constants import (
+    MAX_CHAR_LENGTH,
+    MAX_PRICE_DIGITS,
+    MONEY_DISPLAY_PRECISION,
+)
 from store.models import Delivery, Product
 
 
@@ -129,3 +134,22 @@ class CheckoutSerializer(serializers.Serializer):
         attrs['street'] = ''
         attrs['house'] = ''
         attrs['apartment'] = ''
+
+
+class UserDefaultsSerializer(serializers.Serializer):
+    """Дефолтные данные пользователя для оформления заказа."""
+
+    full_name = serializers.CharField()
+    email = serializers.EmailField()
+    phone = serializers.CharField()
+
+
+class CheckoutInfoSerializer(serializers.Serializer):
+    """Данные для страницы оформления заказа."""
+
+    user_defaults = UserDefaultsSerializer()
+    subtotal = serializers.DecimalField(
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+    )
+    deliveries = DeliverySerializer(many=True)

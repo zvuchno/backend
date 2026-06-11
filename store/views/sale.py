@@ -58,6 +58,7 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
         # Queryset для items
         items_qs = (
             OrderItem.objects
+            .with_target_annotations()
             .filter(items_filter)
             .select_related(
                 'product_variant__product',

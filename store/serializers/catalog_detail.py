@@ -11,10 +11,11 @@ from store.serializers.merch import MerchDetailSerializer
 from store.serializers.mixins import ProductImagesMixin
 
 
-class CatalogDetailBaseSerializer(serializers.Serializer):
+class CatalogDetailBaseSerializer(ProductImagesMixin, serializers.Serializer):
     """Базовый сериализатор витринной detail-карточки."""
 
     artist_name = serializers.SerializerMethodField()
+    artist_image = serializers.SerializerMethodField()
 
     def get_artist_name(self, obj) -> str | None:
         """Возвращает имя артиста-владельца."""
@@ -22,6 +23,13 @@ class CatalogDetailBaseSerializer(serializers.Serializer):
         if artist is None:
             return None
         return artist.name
+
+    def get_artist_image(self, obj) -> str | None:
+        """Возвращает изображение артиста."""
+        artist = getattr(obj.owner, 'artist_profile', None)
+        if artist is None:
+            return None
+        return self.get_image_url(artist.cover)
 
 
 class CatalogReleaseVariantSerializer(
@@ -133,7 +141,6 @@ class CatalogReleaseVariantSerializer(
 
 
 class CatalogReleaseDetailSerializer(
-    ProductImagesMixin,
     CatalogDetailBaseSerializer,
     serializers.ModelSerializer,
 ):
@@ -148,6 +155,7 @@ class CatalogReleaseDetailSerializer(
         fields = (
             'id',
             'artist_name',
+            'artist_image',
             'is_single',
             'variants',
         )
@@ -180,8 +188,18 @@ class CatalogMerchDetailSerializer(
 ):
     """Вариант обычного мерча в витринной detail странице."""
 
+    price = serializers.DecimalField(
+        source='product.price',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
+
     class Meta(MerchDetailSerializer.Meta):
-        fields = MerchDetailSerializer.Meta.fields + ('artist_name',)
+        fields = MerchDetailSerializer.Meta.fields + (
+            'artist_name',
+            'artist_image',
+        )
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

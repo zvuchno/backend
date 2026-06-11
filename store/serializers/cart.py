@@ -44,12 +44,6 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
         allow_null=True,
         help_text='Имя артиста-владельца товара.',
     )
-    price = serializers.DecimalField(
-        source='unit_price',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
     stock = serializers.SerializerMethodField()
     discount = serializers.SerializerMethodField()
     line_total = serializers.SerializerMethodField()
@@ -61,11 +55,9 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
             'artist_name',
             'name',
             'kind',
-            'price',
             'line_total',
             'quantity',
             'discount',
-            'comment',
             'stock',
             'is_artist_subscription',
         ) + BaseVariantTargetImageSerializer.Meta.fields

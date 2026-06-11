@@ -7,8 +7,6 @@ TODO: Реализовать логику покупки аудиофайла:
 - в списке треков отдавать демку?
 """
 
-from decimal import Decimal
-
 from rest_framework import serializers
 
 from .mixins import ProductVariantsMixin
@@ -19,7 +17,12 @@ from store.models import Track
 class TrackReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Track."""
 
-    price = serializers.SerializerMethodField()
+    price = serializers.DecimalField(
+        source='product.price',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
 
     class Meta:
         model = Track
@@ -31,12 +34,6 @@ class TrackReadSerializer(serializers.ModelSerializer):
             'position',
             'price',
         )
-
-    def get_price(self, obj) -> Decimal | None:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.price
-        return None
 
 
 class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
