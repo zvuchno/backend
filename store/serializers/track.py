@@ -23,16 +23,30 @@ class TrackReadSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    artist_name = serializers.CharField(
+        source='owner.artist_profile.name',
+        read_only=True,
+        allow_null=True,
+    )
+    image = serializers.ImageField(
+        source='album.cover_image',
+        read_only=True,
+        allow_null=True,
+    )
+    is_favorite = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Track
         fields = (
             'id',
+            'artist_name',
             'name',
             'album',
             'duration',
             'position',
             'price',
+            'image',
+            'is_favorite',
         )
 
 
