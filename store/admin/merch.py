@@ -11,6 +11,7 @@ from nested_admin import (
     NestedTabularInline,
 )
 
+from .forms import MoneyForm
 from store.admin.mixins import (
     AutoOwnerAdminMixin,
     CommerceBaseMixin,
@@ -32,6 +33,7 @@ class ProductInline(NestedStackedInline):
     """Инлайн продукта с вложенными вариантами."""
 
     model = Product
+    form = MoneyForm
     inlines = (ProductVariantInline,)
     fields = ('price', 'allow_overpay', 'property_name')
     can_delete = False
