@@ -14,12 +14,14 @@ from store.serializers import (
     OrderSerializer,
 )
 
+CHECKOUT_TAGS = ['Checkout']
+
 
 def checkout_schema(view_func):
     """Декоратор для документирования экшена оформления заказа (GET и POST)."""
     return extend_schema(
         methods=['GET'],
-        tags=['Orders'],
+        tags=CHECKOUT_TAGS,
         summary='Данные для оформления заказа',
         description=(
             'Возвращает дефолтные данные пользователя, '
@@ -35,6 +37,7 @@ def checkout_schema(view_func):
                             'full_name': serializers.CharField(read_only=True),
                             'email': serializers.EmailField(read_only=True),
                             'phone': serializers.CharField(read_only=True),
+                            'city': serializers.CharField(read_only=True),
                         },
                     ),
                     'subtotal': serializers.DecimalField(
@@ -52,7 +55,7 @@ def checkout_schema(view_func):
     )(
         extend_schema(
             methods=['POST'],
-            tags=['Orders'],
+            tags=CHECKOUT_TAGS,
             summary='Создание заказа',
             description='Валидирует данные и создает заказ на основе корзины.',
             request=CheckoutSerializer,

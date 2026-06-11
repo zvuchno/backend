@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from common.permissions import IsUserObjectOwner
+from common.utils import get_client_ip
 
 from store.models import Image, Order, OrderItem
 from store.schema import checkout_schema, order_schema
@@ -14,7 +15,7 @@ from store.serializers import (
     OrderDetailSerializer,
     OrderSerializer,
 )
-from store.services import CartService, OrderService
+from store.services import CartService, LocationService, OrderService
 
 
 @order_schema
@@ -81,10 +82,18 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     def checkout(self, request):
         user = request.user if request.user.is_authenticated else None
         cart = CartService.get_or_create_cart(request)
+        ip_address = get_client_ip(request)
 
         # GET
         if request.method == 'GET':
-            return Response(OrderService.checkout_info(user=user, cart=cart))
+            city_data = LocationService().get_city_by_ip(ip_address)
+            return Response(
+                OrderService.checkout_info(
+                    user=user,
+                    cart=cart,
+                    city=city_data['city'],
+                ),
+            )
 
         # POST
         serializer = CheckoutSerializer(
@@ -97,7 +106,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             user=request.user,
             cart=cart,
             validated_data=serializer.validated_data,
-            ip_address=request.META.get('REMOTE_ADDR'),
+            ip_address=ip_address,
             user_agent=request.META.get('HTTP_USER_AGENT'),
         )
         return Response(

@@ -226,6 +226,33 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_TASK_TIME_LIMIT = 300
 
+if DEBUG:
+    # Локальная разработка: кэш в оперативной памяти
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+else:
+    # Продакшн: Redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://redis:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
+
+# Настройки CDEK
+CDEK_API_URL = os.getenv('CDEK_API_URL')
+CDEK_CLIENT_ID = os.getenv('CDEK_CLIENT_ID')
+CDEK_CLIENT_SECRET = os.getenv('CDEK_CLIENT_SECRET')
+DEFAULT_CITY = os.getenv('DEFAULT_CITY')
+GEO_PROVIDER = os.getenv('GEO_PROVIDER')
+
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
