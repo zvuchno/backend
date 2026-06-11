@@ -45,6 +45,7 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
         help_text='Имя артиста-владельца товара.',
     )
     stock = serializers.SerializerMethodField()
+    discount = serializers.SerializerMethodField()
     line_total = serializers.SerializerMethodField()
 
     class Meta(BaseVariantTargetImageSerializer.Meta):
@@ -56,6 +57,7 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
             'kind',
             'line_total',
             'quantity',
+            'discount',
             'stock',
             'is_artist_subscription',
         ) + BaseVariantTargetImageSerializer.Meta.fields
@@ -68,9 +70,8 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
             return 1
         return variant.stock
 
-    """Пока нет на макете
     def get_discount(self, obj) -> str:
-        Возвращает сумму скидки на позицию по применённому промокоду.
+        """Возвращает сумму скидки на позицию по применённому промокоду."""
         raw_discount = self.context.get('discounts', {}).get(
             obj.id,
             ZERO_MONEY,
@@ -79,7 +80,7 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
             max_digits=MAX_PRICE_DIGITS,
             decimal_places=MONEY_DISPLAY_PRECISION,
         )
-        return field.to_representation(raw_discount)"""
+        return field.to_representation(raw_discount)
 
     def get_line_total(self, obj) -> str:
         """Возвращает финальную стоимость позиции из сервиса расчёта."""
