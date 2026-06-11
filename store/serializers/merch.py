@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -27,7 +25,12 @@ def validate_not_reserved(value):
 class MerchReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Merch."""
 
-    price = serializers.SerializerMethodField()
+    price = serializers.DecimalField(
+        source='product.price',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
     main_image = serializers.SerializerMethodField()
 
     class Meta:
@@ -39,12 +42,6 @@ class MerchReadSerializer(serializers.ModelSerializer):
             'price',
             'main_image',
         )
-
-    def get_price(self, obj) -> Decimal | None:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.price
-        return None
 
     def get_main_image(self, obj) -> str | None:
         request = self.context.get('request')

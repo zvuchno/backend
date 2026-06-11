@@ -10,6 +10,7 @@ from common.permissions import IsUserObjectOwner
 from store.models import Image, Order, OrderItem
 from store.schema import checkout_schema, order_schema
 from store.serializers import (
+    CheckoutInfoSerializer,
     CheckoutSerializer,
     OrderDetailSerializer,
     OrderSerializer,
@@ -89,7 +90,9 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
 
         # GET
         if request.method == 'GET':
-            return Response(OrderService.checkout_info(user=user, cart=cart))
+            data = OrderService.checkout_info(user=user, cart=cart)
+            serializer = CheckoutInfoSerializer(data)
+            return Response(serializer.data)
 
         # POST
         serializer = CheckoutSerializer(
