@@ -28,3 +28,34 @@ class ListenerTrackAccess(models.Model):
 
     def __str__(self):
         return f'{self.user_id} - {self.track_id}'
+
+
+class ListenerAlbumAccess(models.Model):
+    """Read-only модель доступа слушателя к релизу."""
+
+    pk = models.CompositePrimaryKey('user', 'album')
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.DO_NOTHING,
+        related_name='+',
+        verbose_name='Пользователь',
+    )
+    album = models.ForeignKey(
+        'store.Album',
+        on_delete=models.DO_NOTHING,
+        related_name='+',
+        verbose_name='Альбом',
+    )
+    is_fully_available = models.BooleanField(
+        'Релиз доступен полностью',
+    )
+
+    class Meta:
+        managed = False
+        db_table = 'listener_album_access'
+        verbose_name = 'доступ к релизу'
+        verbose_name_plural = 'доступы к релизам'
+
+    def __str__(self):
+        return f'{self.user_id} - {self.album_id}'
