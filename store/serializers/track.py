@@ -77,7 +77,7 @@ class TrackWriteSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
-        required=True,
+        required=False,
     )
     allow_overpay = serializers.BooleanField(required=False)
 

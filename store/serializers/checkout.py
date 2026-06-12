@@ -142,6 +142,7 @@ class UserDefaultsSerializer(serializers.Serializer):
     full_name = serializers.CharField()
     email = serializers.EmailField()
     phone = serializers.CharField()
+    city = serializers.CharField(allow_blank=True)
 
 
 class CheckoutInfoSerializer(serializers.Serializer):

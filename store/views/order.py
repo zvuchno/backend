@@ -11,6 +11,7 @@ from common.utils import get_client_ip
 from store.models import Image, Order, OrderItem
 from store.schema import checkout_schema, order_schema
 from store.serializers import (
+    CheckoutInfoSerializer,
     CheckoutSerializer,
     OrderDetailSerializer,
     OrderSerializer,
@@ -92,13 +93,13 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         # GET
         if request.method == 'GET':
             city_data = LocationService().get_city_by_ip(ip_address)
-            return Response(
-                OrderService.checkout_info(
-                    user=user,
-                    cart=cart,
-                    city=city_data['city'],
-                ),
+
+            data = OrderService.checkout_info(
+                user=user,
+                cart=cart,
+                city=city_data.get('city', ''),
             )
+            return Response(CheckoutInfoSerializer(data).data)
 
         # POST
         serializer = CheckoutSerializer(
