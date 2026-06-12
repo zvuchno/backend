@@ -170,7 +170,7 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
         if product.product_type == 'track':
             track_obj = product.content
             # Если цена равна 0 - купить нельзя
-            if track_obj and product.price == 0:
+            if track_obj and product.price == ZERO_MONEY:
                 raise serializers.ValidationError({
                     'product_variant': 'Этот трек нельзя приобрести '
                     'отдельно от альбома.',
