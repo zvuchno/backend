@@ -22,6 +22,7 @@ FULL_NAME_FIELD_MAX_LENGTH = 254
 MAX_USER_CREATE_ATTEMPTS = 30
 MAX_CHAR_LENGTH = 255
 MAX_SLUG_LENGTH = 50
+MAX_CDEK_CODE_LENGTH = 32
 
 # Коды ошибок social auth.
 """Коды и сообщения ошибок social auth."""
