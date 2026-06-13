@@ -5,7 +5,13 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from users.admin.mixins import ImagePreviewMixin
-from users.models import ArtistContact, ArtistProfile, ArtistSocial
+from users.models import (
+    ArtistContact,
+    ArtistPickupPoint,
+    ArtistProfile,
+    ArtistShippingPoint,
+    ArtistSocial,
+)
 
 
 class ArtistContactInline(admin.TabularInline):
@@ -26,11 +32,34 @@ class ArtistSocialInline(admin.TabularInline):
     extra = 0
 
 
+class ArtistPickupPointInline(admin.TabularInline):
+    """Связанные адреса самовывоза."""
+
+    model = ArtistPickupPoint
+    can_delete = True
+    fk_name = 'artist'
+    extra = 0
+
+
+class ArtistShippingPointInline(admin.TabularInline):
+    """Связанный ShippingPoint."""
+
+    model = ArtistShippingPoint
+    can_delete = True
+    fk_name = 'artist'
+    extra = 0
+
+
 @admin.register(ArtistProfile)
 class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     """Админка профиля артиста."""
 
-    inlines = (ArtistContactInline, ArtistSocialInline)
+    inlines = (
+        ArtistContactInline,
+        ArtistPickupPointInline,
+        ArtistShippingPointInline,
+        ArtistSocialInline,
+    )
     list_display = (
         'id',
         'user',

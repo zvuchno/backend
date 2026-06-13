@@ -38,6 +38,7 @@ class OrderService:
         ).exists()
 
         deliveries_qs = Delivery.objects.none()
+        pickup_points = ArtistPickupPoint.objects.none()
         if has_merch:
             deliveries_qs = Delivery.objects.filter(is_active=True)
             pickup_points = ArtistPickupPoint.objects.filter(is_active=True)
