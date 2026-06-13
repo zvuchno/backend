@@ -145,6 +145,13 @@ class UserDefaultsSerializer(serializers.Serializer):
     city = serializers.CharField(allow_blank=True)
 
 
+class PickupPointSerializer(serializers.Serializer):
+    """Точки самовывоза мерча артиста."""
+
+    address = serializers.CharField()
+    pickup_date = serializers.DateField()
+
+
 class CheckoutInfoSerializer(serializers.Serializer):
     """Данные для страницы оформления заказа."""
 
@@ -154,3 +161,4 @@ class CheckoutInfoSerializer(serializers.Serializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
     )
     deliveries = DeliverySerializer(many=True)
+    pickup_points = PickupPointSerializer(many=True)

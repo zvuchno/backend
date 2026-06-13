@@ -12,6 +12,7 @@ from store.serializers import (
     CheckoutSerializer,
     DeliverySerializer,
     OrderSerializer,
+    PickupPointSerializer,
 )
 
 CHECKOUT_TAGS = ['Checkout']
@@ -46,6 +47,10 @@ def checkout_schema(view_func):
                         help_text='Сумма товаров в корзине без учета доставки',
                     ),
                     'deliveries': DeliverySerializer(
+                        many=True,
+                        read_only=True,
+                    ),
+                    'pickup_points': PickupPointSerializer(
                         many=True,
                         read_only=True,
                     ),

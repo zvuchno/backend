@@ -10,7 +10,7 @@ from django.db.models import F
 from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
 from store.models import Delivery, Order, OrderItem, Product
-from users.models import ConsentDocument, UserConsent
+from users.models import ArtistPickupPoint, ConsentDocument, UserConsent
 
 
 class OrderService:
@@ -40,6 +40,7 @@ class OrderService:
         deliveries_qs = Delivery.objects.none()
         if has_merch:
             deliveries_qs = Delivery.objects.filter(is_active=True)
+            pickup_points = ArtistPickupPoint.objects.filter(is_active=True)
 
         profile = getattr(user, 'listener_profile', None)
 
@@ -52,6 +53,7 @@ class OrderService:
             },
             'subtotal': calculation_service.get_total(),
             'deliveries': deliveries_qs,
+            'pickup_points': pickup_points,
         }
 
     @staticmethod
