@@ -18,12 +18,10 @@ class ArtistShippingPoint(TimestampModel):
         related_name='shipping_point',
         verbose_name='Артист',
     )
-
     pvz_code = models.CharField(
         'Код ПВЗ СДЭК для отправки',
         max_length=MAX_CDEK_CODE_LENGTH,
     )
-
     city_code = models.CharField(
         'Код населенного пункта СДЭК',
         max_length=MAX_CDEK_CODE_LENGTH,
@@ -32,7 +30,6 @@ class ArtistShippingPoint(TimestampModel):
         'Название населенного пункта',
         max_length=CITY_FIELD_MAX_LENGTH,
     )
-
     address = models.CharField(
         'Строка адреса',
         max_length=ADDRESS_FIELD_MAX_LENGTH,

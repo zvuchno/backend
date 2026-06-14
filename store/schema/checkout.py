@@ -9,6 +9,7 @@ from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.serializers import (
+    ArtistPickupPointsSerializer,
     CheckoutSerializer,
     DeliverySerializer,
     OrderSerializer,
@@ -46,6 +47,10 @@ def checkout_schema(view_func):
                         help_text='Сумма товаров в корзине без учета доставки',
                     ),
                     'deliveries': DeliverySerializer(
+                        many=True,
+                        read_only=True,
+                    ),
+                    'pickup_points': ArtistPickupPointsSerializer(
                         many=True,
                         read_only=True,
                     ),

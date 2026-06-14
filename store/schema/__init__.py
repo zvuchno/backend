@@ -17,7 +17,7 @@ from .catalog_datail import (
     catalog_merch_detail_schema,
     catalog_release_detail_schema,
 )
-from .checkout_schema import checkout_schema
+from .checkout import checkout_schema
 from .delivery import delivery_schema
 from .favorites import favorites_schema
 from .genre import genre_schema
