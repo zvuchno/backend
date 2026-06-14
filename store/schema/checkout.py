@@ -9,10 +9,10 @@ from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.serializers import (
+    ArtistPickupPointsSerializer,
     CheckoutSerializer,
     DeliverySerializer,
     OrderSerializer,
-    PickupPointSerializer,
 )
 
 CHECKOUT_TAGS = ['Checkout']
@@ -50,7 +50,7 @@ def checkout_schema(view_func):
                         many=True,
                         read_only=True,
                     ),
-                    'pickup_points': PickupPointSerializer(
+                    'pickup_points': ArtistPickupPointsSerializer(
                         many=True,
                         read_only=True,
                     ),

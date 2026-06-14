@@ -33,15 +33,47 @@ class OrderService:
         cart = cart or (user.cart if user else None)
         calculation_service = CartCalculationService(cart)
 
-        has_merch = cart.items.filter(
-            product_variant__product__product_type=Product.ProductType.MERCH,
-        ).exists()
+        # Получаем список ID уникальных артистов, чей мерч в корзине
+        cart_artist_ids = []
+        if cart:
+            cart_artist_ids = list(
+                cart.items
+                .filter(
+                    product_variant__product__product_type=Product.ProductType.MERCH,
+                    product_variant__product__merch__owner__artist_profile__isnull=False,
+                )
+                .values_list(
+                    'product_variant__product__merch__owner__artist_profile__id',
+                    flat=True,
+                )
+                .distinct(),
+            )
 
-        deliveries_qs = Delivery.objects.none()
-        pickup_points = ArtistPickupPoint.objects.none()
-        if has_merch:
+        pickup_points_data = []
+
+        if not cart_artist_ids:  # Мерч тут есть?
+            deliveries_qs = Delivery.objects.none()
+        else:
             deliveries_qs = Delivery.objects.filter(is_active=True)
-            pickup_points = ArtistPickupPoint.objects.filter(is_active=True)
+
+            if len(cart_artist_ids) == 1:
+                single_artist_id = cart_artist_ids[0]
+
+                points_qs = ArtistPickupPoint.objects.filter(
+                    is_active=True,
+                    artist_id=single_artist_id,
+                )
+
+                pickup_points_data = points_qs
+
+                # Если у артиста нет точек — скрываем самовывоз
+                if not points_qs.exists():
+                    deliveries_qs = deliveries_qs.exclude(
+                        delivery_type='pickup',
+                    )
+            else:
+                # Если артистов несколько — скрываем самовывоз
+                deliveries_qs = deliveries_qs.exclude(delivery_type='pickup')
 
         profile = getattr(user, 'listener_profile', None)
 
@@ -54,7 +86,7 @@ class OrderService:
             },
             'subtotal': calculation_service.get_total(),
             'deliveries': deliveries_qs,
-            'pickup_points': pickup_points,
+            'pickup_points': pickup_points_data,
         }
 
     @staticmethod
@@ -122,12 +154,13 @@ class OrderService:
         )
         delivery = validated_data.pop('delivery', None)
 
-        delivery_price = delivery.price if delivery else ZERO_MONEY
+        # delivery_price = delivery.price if delivery else ZERO_MONEY
+        # TODO: Переделать после реализации доставок
         delivery_name = delivery.name if delivery else ''
 
         subtotal = calc_service.get_subtotal()
         promocode_discount = calc_service.get_discount_total()
-        total = calc_service.get_total() + delivery_price
+        total = calc_service.get_total()  # TODO доработать + delivery_price
 
         # Создаем заказ с фиксацией промокода и его общей скидки
         order = Order.objects.create(
@@ -136,7 +169,7 @@ class OrderService:
             subtotal=subtotal,
             promocode=cart.promocode,
             promocode_discount=promocode_discount,
-            delivery_price=delivery_price,
+            # TODO: delivery_price=delivery_price,
             total=total,
             delivery=delivery_name,
             **validated_data,  # full_name, email, phone, адресные поля

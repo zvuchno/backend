@@ -16,9 +16,9 @@ from .catalog_card import (
     ProductCardSerializer,
 )
 from .checkout import (
+    ArtistPickupPointsSerializer,
     CheckoutInfoSerializer,
     CheckoutSerializer,
-    PickupPointSerializer,
 )
 from .delivery import DeliverySerializer
 from .favorites import FavoriteReadSerializer, FavoriteWriteSerializer
@@ -51,6 +51,7 @@ __all__ = [
     'AlbumReadSerializer',
     'AlbumWriteSerializer',
     'ApplyPromocodeSerializer',
+    'ArtistPickupPointsSerializer',
     'ArtistSaleDetailSerializer',
     'ArtistSaleSerializer',
     'BaseCardSerializer',
@@ -74,7 +75,6 @@ __all__ = [
     'OrderDetailSerializer',
     'OrderItemSerializer',
     'OrderSerializer',
-    'PickupPointSerializer',
     'PromocodeReadDetailSerializer',
     'PromocodeReadSerializer',
     'PromocodeWriteSerializer',

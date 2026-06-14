@@ -10,6 +10,7 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Delivery, Product
+from users.models import ArtistPickupPoint
 
 
 class CheckoutSerializer(serializers.Serializer):
@@ -145,11 +146,14 @@ class UserDefaultsSerializer(serializers.Serializer):
     city = serializers.CharField(allow_blank=True)
 
 
-class PickupPointSerializer(serializers.Serializer):
-    """Точки самовывоза мерча артиста."""
+class ArtistPickupPointsSerializer(serializers.ModelSerializer):
+    """Сериализатор для конкретной точки самовывоза мерча артиста."""
 
-    address = serializers.CharField()
-    pickup_date = serializers.DateField()
+    date = serializers.DateField(source='pickup_date')
+
+    class Meta:
+        model = ArtistPickupPoint
+        fields = ['id', 'address', 'date']
 
 
 class CheckoutInfoSerializer(serializers.Serializer):
@@ -161,4 +165,4 @@ class CheckoutInfoSerializer(serializers.Serializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
     )
     deliveries = DeliverySerializer(many=True)
-    pickup_points = PickupPointSerializer(many=True)
+    pickup_points = ArtistPickupPointsSerializer(many=True)
