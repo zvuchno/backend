@@ -1,3 +1,4 @@
+boto3==1.43.29
 celery==5.6.3
 Django==5.2.12
 django-allauth==65.14.3
@@ -10,6 +11,7 @@ django-redis==7.0.0
 dj_rest_auth==7.2.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
+django-storages==1.14.6
 djoser==2.3.3
 drf-spectacular==0.29.0
 djoser==2.3.3
