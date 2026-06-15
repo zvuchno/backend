@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import sentry_sdk
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -66,6 +67,7 @@ INSTALLED_APPS = [
     'admin_reorder',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -190,6 +192,59 @@ STATIC_ROOT = '/app/staticfiles'
 
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
+
+# S3
+MEDIA_LOCATION = os.getenv('MEDIA_LOCATION', 'media')
+USE_S3_MEDIA = os.getenv('USE_S3_MEDIA', 'False').lower() == 'true'
+
+def get_required_env(name: str) -> str:
+    """Возвращает обязательную переменную окружения."""
+    value = os.getenv(name)
+    if not value:
+        raise ImproperlyConfigured(
+            f'Переменная окружения {name} обязательна при USE_S3_MEDIA=True.',
+        )
+    return value
+
+if USE_S3_MEDIA:
+    AWS_ACCESS_KEY_ID = get_required_env('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = get_required_env('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = get_required_env('AWS_STORAGE_BUCKET_NAME')
+
+    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', 'https://storage.yandexcloud.net')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'ru-central1')
+    AWS_S3_ADDRESSING_STYLE = os.getenv('AWS_S3_ADDRESSING_STYLE', 'path')
+
+    AWS_QUERYSTRING_AUTH = os.getenv('AWS_QUERYSTRING_AUTH', 'False').lower() == 'true'
+    AWS_QUERYSTRING_EXPIRE = int(os.getenv('AWS_QUERYSTRING_EXPIRE', 120))
+    AWS_S3_FILE_OVERWRITE = os.getenv('AWS_S3_FILE_OVERWRITE', 'False').lower() == 'true'
+    AWS_DEFAULT_ACL = None
+
+    # Включаем S3 только для медиа, статика остается локальной
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'OPTIONS': {
+                'location': MEDIA_LOCATION,
+            },
+        },
+        'staticfiles': {
+            'BACKEND': (
+                'django.contrib.staticfiles.storage.StaticFilesStorage'
+            ),
+        },
+    }
+else:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': (
+                'django.contrib.staticfiles.storage.StaticFilesStorage'
+            ),
+        },
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
