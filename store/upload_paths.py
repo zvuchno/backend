@@ -8,10 +8,11 @@ def album_cover_upload_to(instance, filename: str) -> str:
     return f'albums/covers/{build_unique_filename(filename)}'
 
 
-def track_audio_upload_to(instance, filename: str) -> str:
+def track_audio_upload_to(instance, filename):
     """Формирует путь для оригинального аудиофайла трека."""
     return (
-        f'albums/{instance.album_id}/tracks/{build_unique_filename(filename)}'
+        f'albums/{instance.album_id}/tracks/original/'
+        f'{build_unique_filename(filename)}'
     )
 
 
