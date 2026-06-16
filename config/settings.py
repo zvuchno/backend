@@ -223,9 +223,27 @@ if USE_S3_MEDIA:
     # Включаем S3 только для медиа, статика остается локальной
     STORAGES = {
         'default': {
-            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'BACKEND': 'storages.backends.s3.S3Storage',
             'OPTIONS': {
-                'location': MEDIA_LOCATION,
+                'location': f'{MEDIA_LOCATION}/private',
+                'querystring_auth': True,
+                'default_acl': None,
+            },
+        },
+        'public_media': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                'location': f'{MEDIA_LOCATION}/public',
+                'querystring_auth': False,
+                'default_acl': None,
+            },
+        },
+        'private_media': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                'location': f'{MEDIA_LOCATION}/private',
+                'querystring_auth': True,
+                'default_acl': None,
             },
         },
         'staticfiles': {
@@ -237,6 +255,12 @@ if USE_S3_MEDIA:
 else:
     STORAGES = {
         'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'public_media': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'private_media': {
             'BACKEND': 'django.core.files.storage.FileSystemStorage',
         },
         'staticfiles': {

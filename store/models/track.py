@@ -3,12 +3,15 @@
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
+from common.storages import get_private_media_storage
+
 from store.constants import (
     ALLOWED_AUDIO_EXTENSIONS,
     MAX_STR_LENGTH,
 )
 from store.models.abstract import BaseContent
 from store.querysets.track_visibility import TrackQuerySet
+from store.upload_paths import track_audio_upload_to
 from store.validators import validate_audiofile_size
 
 
@@ -26,7 +29,8 @@ class Track(BaseContent):
     )
     audio_file = models.FileField(
         'Файл трека',
-        upload_to='tracks/',
+        upload_to=track_audio_upload_to,
+        storage=get_private_media_storage,
         validators=[
             FileExtensionValidator(
                 allowed_extensions=ALLOWED_AUDIO_EXTENSIONS,
