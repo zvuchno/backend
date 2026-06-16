@@ -6,10 +6,14 @@
 
 from django.db import models
 
+from common.storages import get_private_media_storage, get_public_media_storage
+
 from store.constants import MAX_STR_LENGTH
 from store.models.abstract import BaseContent, VisibilityModel
 from store.querysets import VisibilityQuerySet
+from store.upload_paths import album_archive_upload_to, album_cover_upload_to
 from store.validators import validate_file_size
+from users.models.abstract import TimestampModel
 
 
 class Album(BaseContent, VisibilityModel):
@@ -27,7 +31,8 @@ class Album(BaseContent, VisibilityModel):
     is_single = models.BooleanField('Сингл', default=False)
     cover_image = models.ImageField(
         'Обложка релиза',
-        upload_to='album_covers',
+        upload_to=album_cover_upload_to,
+        storage=get_public_media_storage,
         blank=True,
         null=True,
         validators=(validate_file_size,),
@@ -41,3 +46,43 @@ class Album(BaseContent, VisibilityModel):
 
     def __str__(self):
         return self.name[:MAX_STR_LENGTH]
+
+
+class AlbumArchive(TimestampModel):
+    """Подготовленный архив альбома.
+
+    `content_hash` хранит отпечаток исходных данных, из которых собран архив,
+    а не хеш самого ZIP-файла.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Ожидает сборки'
+        BUILDING = 'building', 'Собирается'
+        READY = 'ready', 'Готов'
+        FAILED = 'failed', 'Ошибка'
+
+    album = models.OneToOneField(
+        Album,
+        on_delete=models.CASCADE,
+        related_name='archive',
+    )
+    file = models.FileField(
+        upload_to=album_archive_upload_to,
+        storage=get_private_media_storage,
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    content_hash = models.CharField(
+        'Отпечаток содержимого архива',
+        max_length=64,
+        blank=True,
+        help_text=(
+            'SHA256 от нормализованного состава альбома, '
+            'используется для проверки актуальности архива.'
+        ),
+    )
+    error_message = models.TextField(blank=True)

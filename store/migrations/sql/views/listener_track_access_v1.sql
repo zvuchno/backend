@@ -48,12 +48,13 @@ FROM (
     JOIN store_productvariant pv ON pv.id = oi.product_variant_id
     JOIN store_product p ON p.id = pv.product_id
     JOIN store_merch m ON m.id = p.merch_id
-    -- Треки из альбома связанного с мерчом.
+    JOIN store_merchkind mk ON mk.id = m.kind_id
+    -- Треки из альбома, связанного с мерчом.
     JOIN store_track t ON t.album_id = m.album_id
     WHERE o.user_id IS NOT NULL
       AND o.status IN ('paid', 'shipped', 'completed')
       AND p.merch_id IS NOT NULL
       -- Куплен именно носитель альбома.
       AND m.album_id IS NOT NULL
-      AND m.is_carrier = TRUE
+      AND mk.is_carrier = TRUE
 ) listener_access;

@@ -193,8 +193,20 @@ STATIC_ROOT = '/app/staticfiles'
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
 
-# S3
-MEDIA_LOCATION = os.getenv('MEDIA_LOCATION', 'media')
+# S3 / media paths
+MEDIA_LOCATION = str(os.getenv(
+    'MEDIA_LOCATION',
+    default='media',
+).strip('/'))
+PUBLIC_MEDIA_LOCATION = f'{MEDIA_LOCATION}/public'
+PRIVATE_MEDIA_LOCATION = f'{MEDIA_LOCATION}/private'
+
+PUBLIC_MEDIA_ROOT = MEDIA_ROOT / 'public'
+PRIVATE_MEDIA_ROOT = MEDIA_ROOT / 'private'
+
+PUBLIC_MEDIA_URL = f'{MEDIA_URL}public/'
+PRIVATE_MEDIA_URL = f'{MEDIA_URL}private/'
+
 USE_S3_MEDIA = os.getenv('USE_S3_MEDIA', 'False').lower() == 'true'
 
 def get_required_env(name: str) -> str:
@@ -223,9 +235,27 @@ if USE_S3_MEDIA:
     # Включаем S3 только для медиа, статика остается локальной
     STORAGES = {
         'default': {
-            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'BACKEND': 'storages.backends.s3.S3Storage',
             'OPTIONS': {
-                'location': MEDIA_LOCATION,
+                'location': PRIVATE_MEDIA_LOCATION,
+                'querystring_auth': True,
+                'default_acl': None,
+            },
+        },
+        'public_media': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                'location': PUBLIC_MEDIA_LOCATION,
+                'querystring_auth': False,
+                'default_acl': None,
+            },
+        },
+        'private_media': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                'location': PRIVATE_MEDIA_LOCATION,
+                'querystring_auth': True,
+                'default_acl': None,
             },
         },
         'staticfiles': {
@@ -238,6 +268,24 @@ else:
     STORAGES = {
         'default': {
             'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {
+                'location': PRIVATE_MEDIA_ROOT,
+                'base_url': PRIVATE_MEDIA_URL,
+            },
+        },
+        'public_media': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {
+                'location': PUBLIC_MEDIA_ROOT,
+                'base_url': PUBLIC_MEDIA_URL,
+            },
+        },
+        'private_media': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {
+                'location': PRIVATE_MEDIA_ROOT,
+                'base_url': PRIVATE_MEDIA_URL,
+            },
         },
         'staticfiles': {
             'BACKEND': (

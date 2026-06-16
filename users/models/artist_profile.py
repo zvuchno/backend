@@ -5,6 +5,8 @@ from django.core.validators import MaxLengthValidator, MinLengthValidator
 from django.db import models
 from slugify import slugify
 
+from common.storages import get_public_media_storage
+
 from .abstract import ActivatableModel, TimestampModel
 from store.validators import validate_file_size
 from users.constants import (
@@ -15,6 +17,7 @@ from users.constants import (
     CITY_FIELD_MAX_LENGTH,
     CITY_FIELD_MIN_LENGTH,
 )
+from users.upload_paths import artist_cover_upload_to
 
 
 class ArtistProfile(ActivatableModel, TimestampModel):
@@ -59,7 +62,8 @@ class ArtistProfile(ActivatableModel, TimestampModel):
     )
     cover = models.ImageField(
         'Обложка артиста',
-        upload_to='artists/covers',
+        upload_to=artist_cover_upload_to,
+        storage=get_public_media_storage,
         blank=True,
         null=True,
         validators=(validate_file_size,),
