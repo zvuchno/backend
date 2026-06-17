@@ -9,17 +9,20 @@ from rest_framework import serializers
 
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.serializers import (
+    ArtistPickupPointsSerializer,
     CheckoutSerializer,
     DeliverySerializer,
     OrderSerializer,
 )
+
+CHECKOUT_TAGS = ['Checkout']
 
 
 def checkout_schema(view_func):
     """Декоратор для документирования экшена оформления заказа (GET и POST)."""
     return extend_schema(
         methods=['GET'],
-        tags=['Orders'],
+        tags=CHECKOUT_TAGS,
         summary='Данные для оформления заказа',
         description=(
             'Возвращает дефолтные данные пользователя, '
@@ -35,6 +38,7 @@ def checkout_schema(view_func):
                             'full_name': serializers.CharField(read_only=True),
                             'email': serializers.EmailField(read_only=True),
                             'phone': serializers.CharField(read_only=True),
+                            'city': serializers.CharField(read_only=True),
                         },
                     ),
                     'subtotal': serializers.DecimalField(
@@ -46,13 +50,17 @@ def checkout_schema(view_func):
                         many=True,
                         read_only=True,
                     ),
+                    'pickup_points': ArtistPickupPointsSerializer(
+                        many=True,
+                        read_only=True,
+                    ),
                 },
             ),
         },
     )(
         extend_schema(
             methods=['POST'],
-            tags=['Orders'],
+            tags=CHECKOUT_TAGS,
             summary='Создание заказа',
             description='Валидирует данные и создает заказ на основе корзины.',
             request=CheckoutSerializer,

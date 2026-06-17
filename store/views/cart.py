@@ -55,7 +55,10 @@ class CartViewSet(viewsets.GenericViewSet):
             Prefetch(
                 'items',
                 # Оптимизируем вложенные айтемы через CartItemQuerySet
-                queryset=CartItem.objects.with_prices().select_related(
+                queryset=CartItem.objects
+                .with_prices()
+                .with_target_annotations()
+                .select_related(
                     'product_variant__product__track',
                     'product_variant__product__album',
                     'product_variant__product__merch',
@@ -97,8 +100,8 @@ class CartViewSet(viewsets.GenericViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            cart = self.get_queryset().get(pk=cart.pk)
-            self._cached_cart = cart
+        cart = self.get_queryset().get(pk=cart.pk)
+        self._cached_cart = cart
 
         self.instance = cart
 

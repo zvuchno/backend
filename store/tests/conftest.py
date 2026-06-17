@@ -212,3 +212,35 @@ def checkout_url():
 def apply_promocode_url():
     """Возвращает URL-адрес эндпоинта применения промокода."""
     return reverse('api:store:cart-apply-promocode')
+
+
+@pytest.fixture
+def catalog_url():
+    """Возвращает URL-адрес List эндпоинта каталога."""
+    return reverse('api:store:catalog')
+
+
+@pytest.fixture
+def catalog_release_detail_url():
+    """Возвращает URL-адрес эндпоинта детальной карточки релиза."""
+
+    def _url(album) -> str:
+        return reverse('api:store:catalog-release-detail', args=(album.id,))
+
+    return _url
+
+
+@pytest.fixture
+def catalog_merch_detail_url():
+    """Возвращает URL-адрес эндпоинта детальной карточки мерча."""
+
+    def _url(merch) -> str:
+        return reverse('api:store:catalog-merch-detail', args=(merch.id,))
+
+    return _url
+
+
+@pytest.fixture
+def purchased_music_url():
+    """Возвращает URL-адрес эндпоинта купленной музыки."""
+    return reverse('api:store:purchased-music')

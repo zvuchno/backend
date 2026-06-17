@@ -1,5 +1,6 @@
 """ViewSet для работы с моделью track."""
 
+from django.db.models import BooleanField, Exists, OuterRef, Value
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
@@ -8,7 +9,7 @@ from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
 
 from .mixins import ProductActionMixin, SoftDeleteMixin
 from store.filters import TrackFilter
-from store.models import Track
+from store.models import Favorite, Track
 from store.schema import track_schema
 from store.serializers import (
     TrackReadDetailSerializer,
@@ -46,19 +47,32 @@ class TrackViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         return TrackReadSerializer
 
     def get_queryset(self):
+        user = self.request.user
+
         queryset = (
             super()
             .get_queryset()
-            .visible_for(
-                user=self.request.user,
-                action=self.action,
+            .visible_for(user=user, action=self.action)
+            .select_related(
+                'album',
+                'owner__artist_profile',
+                'product',
             )
         )
-        return queryset.select_related(
-            'album',
-            'album__genre',
-            'album__owner__artist_profile',
-        )
+
+        if user.is_authenticated:
+            favorite_subquery = Favorite.objects.filter(
+                user=user,
+                product_variant__product=OuterRef('product'),
+            )
+            queryset = queryset.annotate(
+                is_favorite=Exists(favorite_subquery),
+            )
+        else:
+            queryset = queryset.annotate(
+                is_favorite=Value(False, output_field=BooleanField()),
+            )
+        return queryset
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

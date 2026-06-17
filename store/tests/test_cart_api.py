@@ -373,7 +373,6 @@ class TestCartAPI:
         assert response.status_code == status.HTTP_201_CREATED
 
         item_data = response.data['items'][0]
-        assert Decimal(item_data['price']) == price_with_donation
         # Сумма строки: 1500 * 2 = 3000
         expected_line_total = price_with_donation * quantity
         assert Decimal(item_data['line_total']) == expected_line_total

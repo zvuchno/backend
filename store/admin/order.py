@@ -116,9 +116,11 @@ class OrderAdmin(admin.ModelAdmin):
         'phone',
         'display_subtotal',
         'display_delivery_price',
+        'display_promocode_discount',
         'delivery',
         'display_address',
         'display_total',
+        'promocode',
         'created_at',
         'updated_at',
     )
@@ -169,8 +171,10 @@ class OrderAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'display_subtotal',
+                    'display_promocode_discount',
                     'display_delivery_price',
                     'display_total',
+                    'promocode',
                 ),
             },
         ),
@@ -194,6 +198,10 @@ class OrderAdmin(admin.ModelAdmin):
     @admin.display(description='Стоимость доставки (руб.)')
     def display_delivery_price(self, obj):
         return format_money(obj.delivery_price)
+
+    @admin.display(description='Сумма скидки по промокоду (руб.)')
+    def display_promocode_discount(self, obj):
+        return format_money(obj.promocode_discount)
 
     @admin.display(description='Итого (руб.)', ordering='total')
     def display_total(self, obj):

@@ -7,8 +7,6 @@ TODO: Реализовать логику покупки аудиофайла:
 - в списке треков отдавать демку?
 """
 
-from decimal import Decimal
-
 from rest_framework import serializers
 
 from .mixins import ProductVariantsMixin
@@ -19,24 +17,37 @@ from store.models import Track
 class TrackReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Track."""
 
-    price = serializers.SerializerMethodField()
+    price = serializers.DecimalField(
+        source='product.price',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
+    artist_name = serializers.CharField(
+        source='owner.artist_profile.name',
+        read_only=True,
+        allow_null=True,
+    )
+    image = serializers.ImageField(
+        source='album.cover_image',
+        read_only=True,
+        allow_null=True,
+    )
+    is_favorite = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Track
         fields = (
             'id',
+            'artist_name',
             'name',
             'album',
             'duration',
             'position',
             'price',
+            'image',
+            'is_favorite',
         )
-
-    def get_price(self, obj) -> Decimal | None:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.price
-        return None
 
 
 class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
@@ -66,7 +77,7 @@ class TrackWriteSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
-        required=True,
+        required=False,
     )
     allow_overpay = serializers.BooleanField(required=False)
 

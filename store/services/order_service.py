@@ -5,11 +5,12 @@
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import F
 
+from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
 from store.models import Delivery, Order, OrderItem, Product
-from store.serializers import DeliverySerializer
-from users.models import ConsentDocument, UserConsent
+from users.models import ArtistPickupPoint, ConsentDocument, UserConsent
 
 
 class OrderService:
@@ -21,23 +22,58 @@ class OrderService:
     """
 
     @staticmethod
-    def checkout_info(user, cart) -> dict:
+    def checkout_info(user, cart, city) -> dict:
         """Сервис формирования данных для оформления заказа.
 
         Собирает:
         - дефолтные данные пользователя для предзаполнения формы
-        - итоговую стоимость корзины
+        - итоговую стоимость корзины (с учётом промокодов)
         - доступные способы доставки (если в корзине есть мерч)
         """
         cart = cart or (user.cart if user else None)
+        calculation_service = CartCalculationService(cart)
 
-        has_merch = cart.items.filter(
-            product_variant__product__product_type=Product.ProductType.MERCH,
-        ).exists()
+        # Получаем список ID уникальных артистов, чей мерч в корзине
+        cart_artist_ids = []
+        if cart:
+            cart_artist_ids = list(
+                cart.items
+                .filter(
+                    product_variant__product__product_type=Product.ProductType.MERCH,
+                    product_variant__product__merch__owner__artist_profile__isnull=False,
+                )
+                .values_list(
+                    'product_variant__product__merch__owner__artist_profile__id',
+                    flat=True,
+                )
+                .distinct(),
+            )
 
-        deliveries_qs = Delivery.objects.none()
-        if has_merch:
+        pickup_points_data = []
+
+        if not cart_artist_ids:  # Мерч тут есть?
+            deliveries_qs = Delivery.objects.none()
+        else:
             deliveries_qs = Delivery.objects.filter(is_active=True)
+
+            if len(cart_artist_ids) == 1:
+                single_artist_id = cart_artist_ids[0]
+
+                points_qs = ArtistPickupPoint.objects.filter(
+                    is_active=True,
+                    artist_id=single_artist_id,
+                )
+
+                pickup_points_data = points_qs
+
+                # Если у артиста нет точек — скрываем самовывоз
+                if not points_qs.exists():
+                    deliveries_qs = deliveries_qs.exclude(
+                        delivery_type='pickup',
+                    )
+            else:
+                # Если артистов несколько — скрываем самовывоз
+                deliveries_qs = deliveries_qs.exclude(delivery_type='pickup')
 
         profile = getattr(user, 'listener_profile', None)
 
@@ -46,9 +82,11 @@ class OrderService:
                 'full_name': getattr(profile, 'full_name', '') or '',
                 'email': user.email if user else '',
                 'phone': str(getattr(user, 'phone', '') or ''),
+                'city': city,
             },
-            'subtotal': cart.subtotal,
-            'deliveries': DeliverySerializer(deliveries_qs, many=True).data,
+            'subtotal': calculation_service.get_total(),
+            'deliveries': deliveries_qs,
+            'pickup_points': pickup_points_data,
         }
 
     @staticmethod
@@ -64,11 +102,12 @@ class OrderService:
 
         Выполняет следующие шаги:
         1. Блокирует позиции корзины для предотвращения race condition.
-        2. Рассчитывает финальную стоимость - total.
-        3. Создает объект Order и OrderItem (со снапшотами данных о товарах).
+        2. Инициализирует CartCalculationService для точного расчёта скидок.
+        3. Создает объект Order и OrderItem (со снапшотами данных и скидок).
         4. Регистрирует согласие пользователя на рассылку и обработку ПДн.
         5. Очищает корзину (удаляет позиции или объект целиком для анонимов).
         """
+        # Блокируем строки корзины
         cart_items = (
             cart.items
             .select_for_update()
@@ -83,44 +122,123 @@ class OrderService:
         if not cart_items.exists():
             raise ValidationError('Нельзя оформить заказ с пустой корзиной.')
 
+        if cart.promocode_id:
+            # Блокируем запись промокода в БД до конца транзакции
+            promocode = (
+                cart.promocode.__class__.objects
+                .select_for_update()
+                .filter(id=cart.promocode_id)
+                .first()
+            )
+
+            # Проверяем актуальный статус из базы данных
+            if not promocode or not promocode.is_available:
+                raise ValidationError(
+                    'Применённый промокод больше не активен.',
+                )
+
+            # Обновляем инстанс в корзине
+            cart.promocode = promocode
+
+        calc_service = CartCalculationService(cart)
+        item_discounts = calc_service.get_item_discounts()
+
+        if cart.promocode and calc_service.get_discount_total() == ZERO_MONEY:
+            raise ValidationError(
+                'Этот промокод невозможно применить к товарам в корзине.',
+            )
+
         personal_data_consent = validated_data.pop(
             'personal_data_consent',
             None,
         )
         delivery = validated_data.pop('delivery', None)
 
-        delivery_price = delivery.price if delivery else ZERO_MONEY
+        # delivery_price = delivery.price if delivery else ZERO_MONEY
+        # TODO: Переделать после реализации доставок
         delivery_name = delivery.name if delivery else ''
 
-        subtotal = cart.subtotal
-        total = cart.total + delivery_price
+        subtotal = calc_service.get_subtotal()
+        promocode_discount = calc_service.get_discount_total()
+        total = calc_service.get_total()  # TODO доработать + delivery_price
 
-        # Создаем заказ
+        # Создаем заказ с фиксацией промокода и его общей скидки
         order = Order.objects.create(
             user=user if user and user.is_authenticated else None,
             status=Order.Status.CREATED,
             subtotal=subtotal,
-            delivery_price=delivery_price,
+            promocode=cart.promocode,
+            promocode_discount=promocode_discount,
+            # TODO: delivery_price=delivery_price,
             total=total,
             delivery=delivery_name,
             **validated_data,  # full_name, email, phone, адресные поля
         )
 
-        # Формируем позиции заказа и собираем уникальных артистов для рассылки
+        artists_to_subscribe = OrderService._create_order_items(
+            order,
+            cart_items,
+            item_discounts,
+            cart.promocode,
+        )
+
+        OrderService._process_user_consents(
+            user,
+            order,
+            validated_data.get('email'),
+            artists_to_subscribe,
+            personal_data_consent,
+            ip_address,
+            user_agent,
+        )
+
+        OrderService._finalize_cart_and_promocode(
+            user,
+            cart,
+            order,
+            cart_items,
+        )
+
+        return order
+
+    @staticmethod
+    def _create_order_items(
+        order,
+        cart_items,
+        item_discounts,
+        promocode,
+    ) -> set:
+        """Создает позиции заказа и возвращает наборы артистов для подписки."""
         order_items = []
         artists_to_subscribe = set()
+        promocode_code = promocode.code if promocode else ''
 
         for item in cart_items:
             variant = item.product_variant
             product = variant.product
+            item_promocode_discount = item_discounts.get(item.id, ZERO_MONEY)
+
+            owner = getattr(product, 'owner', None)
+            artist_profile = (
+                getattr(
+                    owner,
+                    'artist_profile',
+                    None,
+                )
+                if owner
+                else None
+            )
+            artist_name = getattr(artist_profile, 'name', '')
 
             # Собираем JSON-снапшот
             product_info_snapshot = {
                 'name': variant.variant_name,
+                'artist_name': artist_name,
                 'product_type': product.product_type,
                 'property_name': product.property_name,
                 'property_value': variant.property_value,
                 'allow_overpay': product.allow_overpay,
+                'promocode': promocode_code,
                 'sku': variant.sku,
             }
 
@@ -132,17 +250,28 @@ class OrderService:
                     price_at_purchase=product.price,
                     unit_price=item.unit_price,
                     quantity=item.quantity,
-                    # TODO: Добавить promocode_discount
+                    promocode_discount=item_promocode_discount,
                     product_info=product_info_snapshot,
                 ),
             )
-            if item.is_artist_subscription:
-                artist_profile = getattr(product.owner, 'artist_profile', None)
-                if artist_profile:
-                    artists_to_subscribe.add(artist_profile)
+            if item.is_artist_subscription and artist_profile:
+                artists_to_subscribe.add(artist_profile)
 
         OrderItem.objects.bulk_create(order_items)
+        return artists_to_subscribe
 
+    @staticmethod
+    def _process_user_consents(
+        user,
+        order,
+        email,
+        artists_to_subscribe,
+        personal_data_consent,
+        ip_address,
+        user_agent,
+    ) -> None:
+        """Регистрирует юридические согласия пользователя."""
+        authenticated_user = user if user and user.is_authenticated else None
         # Согласие на рассылку
         if artists_to_subscribe:
             newsletter_doc = ConsentDocument.objects.filter(
@@ -157,8 +286,8 @@ class OrderService:
 
             UserConsent.objects.bulk_create([
                 UserConsent(
-                    email=validated_data.get('email'),
-                    user=user if user and user.is_authenticated else None,
+                    email=email,
+                    user=authenticated_user,
                     order=order,
                     artist=artist,
                     document=newsletter_doc,
@@ -181,19 +310,26 @@ class OrderService:
                 )
 
             UserConsent.objects.create(
-                email=validated_data.get('email'),
-                user=user if user and user.is_authenticated else None,
+                email=email,
+                user=authenticated_user,
                 order=order,
                 document=personal_doc,
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
 
-        # Очищаем корзину
+    @staticmethod
+    def _finalize_cart_and_promocode(user, cart, order, cart_items) -> None:
+        """Очищает корзину, промокод, и инкрементирует счетчик."""
         cart_items.delete()
 
-        # Дропаем сессионную
         if not user or not user.is_authenticated:
             cart.delete()
+        else:
+            cart.promocode = None
+            cart.save()
 
-        return order
+        if order.promocode_id:
+            order.promocode.__class__.objects.filter(
+                id=order.promocode_id,
+            ).update(used_count=F('used_count') + 1)

@@ -78,6 +78,7 @@ album_schema = extend_schema_view(
     partial_update=extend_schema(
         summary='Частично обновить альбом',
         tags=ALBUMS_TAGS,
+        description='Обновляет только переданные поля.',
         request=AlbumWriteSerializer,
         responses={200: AlbumReadDetailSerializer},
     ),

@@ -5,8 +5,6 @@
 Используются в API для создания и обновления альбомов и их товарных данных.
 """
 
-from decimal import Decimal
-
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -18,7 +16,12 @@ from store.models import Album
 class AlbumReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Album."""
 
-    price = serializers.SerializerMethodField()
+    price = serializers.DecimalField(
+        source='product.price',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
 
     class Meta:
         model = Album
@@ -31,12 +34,6 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'visibility',
             'is_published',
         )
-
-    def get_price(self, obj) -> Decimal | None:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.price
-        return None
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)

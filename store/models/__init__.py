@@ -5,9 +5,12 @@ from .delivery import Delivery
 from .favorite import Favorite
 from .genre import Genre
 from .image import Image
-from .listener_track_access import ListenerTrackAccess
 from .merch import Merch
 from .merch_kind import MerchKind
+from .music_access import (
+    ListenerAlbumAccess,
+    ListenerTrackAccess,
+)
 from .order import Order
 from .order_item import OrderItem
 from .product import Product
@@ -23,6 +26,7 @@ __all__ = [
     'Favorite',
     'Genre',
     'Image',
+    'ListenerAlbumAccess',
     'ListenerTrackAccess',
     'MerchKind',
     'Merch',
