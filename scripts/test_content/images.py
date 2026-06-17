@@ -12,6 +12,9 @@ from PIL import Image, ImageDraw
 
 RGB = tuple[int, int, int]
 
+DEFAULT_OUTPUT_SIZE = 512
+DEFAULT_RENDER_SCALE = 2
+
 
 @dataclass(frozen=True)
 class VisualStyle:
@@ -1159,29 +1162,47 @@ def _subject_image_kind(subject: str) -> str:
 def generated_png_bytes(
     seed: str,
     subject: str,
-    size: int = 128,
+    size: int = DEFAULT_OUTPUT_SIZE,
+    render_scale: int = DEFAULT_RENDER_SCALE,
 ) -> bytes:
-    """Генерирует связанную PNG-заглушку для артиста, альбома или товара."""
+    """Генерирует PNG с отрисовкой в повышенном разрешении.
+
+    Изображение рисуется на увеличенном холсте, а затем уменьшается
+    до итогового размера через LANCZOS. Это делает края и мелкие детали
+    заметно аккуратнее.
+    """
+    if size < 1:
+        raise ValueError('Размер изображения должен быть положительным.')
+    if render_scale < 1:
+        raise ValueError('Масштаб отрисовки должен быть положительным.')
+
+    render_size = size * render_scale
     style = _build_style(seed)
     kind = _subject_image_kind(subject)
 
     if kind == 'tshirt':
-        img = _draw_tshirt(size, style, seed)
+        img = _draw_tshirt(render_size, style, seed)
     elif kind == 'cap':
-        img = _draw_cap(size, style, seed)
+        img = _draw_cap(render_size, style, seed)
     elif kind == 'cassette':
-        img = _draw_cassette(size, style, seed)
+        img = _draw_cassette(render_size, style, seed)
     elif kind == 'cd':
-        img = _draw_cd(size, style, seed)
+        img = _draw_cd(render_size, style, seed)
     elif kind == 'vinyl':
-        img = _draw_vinyl(size, style, seed)
+        img = _draw_vinyl(render_size, style, seed)
     elif kind == 'artist':
-        img = _draw_artist_cover(size, style, seed)
+        img = _draw_artist_cover(render_size, style, seed)
     else:
-        img = _draw_album_cover(size, style, seed)
+        img = _draw_album_cover(render_size, style, seed)
+
+    if render_scale != 1:
+        img = img.resize(
+            (size, size),
+            Image.Resampling.LANCZOS,
+        )
 
     buffer = BytesIO()
-    img.save(buffer, format='PNG')
+    img.save(buffer, format='PNG', optimize=True)
     return buffer.getvalue()
 
 
