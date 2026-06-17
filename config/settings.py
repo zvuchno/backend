@@ -198,8 +198,6 @@ MEDIA_LOCATION = str(os.getenv(
     'MEDIA_LOCATION',
     default='media',
 ).strip('/'))
-PUBLIC_MEDIA_LOCATION = f'{MEDIA_LOCATION}/public'
-PRIVATE_MEDIA_LOCATION = f'{MEDIA_LOCATION}/private'
 
 PUBLIC_MEDIA_ROOT = MEDIA_ROOT / 'public'
 PRIVATE_MEDIA_ROOT = MEDIA_ROOT / 'private'
@@ -221,8 +219,12 @@ def get_required_env(name: str) -> str:
 if USE_S3_MEDIA:
     AWS_ACCESS_KEY_ID = get_required_env('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = get_required_env('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = get_required_env('AWS_STORAGE_BUCKET_NAME')
-
+    AWS_PUBLIC_STORAGE_BUCKET_NAME = get_required_env(
+        'AWS_PUBLIC_STORAGE_BUCKET_NAME',
+    )
+    AWS_PRIVATE_STORAGE_BUCKET_NAME = get_required_env(
+        'AWS_PRIVATE_STORAGE_BUCKET_NAME',
+    )
     AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', 'https://storage.yandexcloud.net')
     AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'ru-central1')
     AWS_S3_ADDRESSING_STYLE = os.getenv('AWS_S3_ADDRESSING_STYLE', 'path')
@@ -232,30 +234,45 @@ if USE_S3_MEDIA:
     AWS_S3_FILE_OVERWRITE = os.getenv('AWS_S3_FILE_OVERWRITE', 'False').lower() == 'true'
     AWS_DEFAULT_ACL = None
 
-    # Включаем S3 только для медиа, статика остается локальной
+    s3_common_options = {
+        'access_key': AWS_ACCESS_KEY_ID,
+        'secret_key': AWS_SECRET_ACCESS_KEY,
+        'endpoint_url': AWS_S3_ENDPOINT_URL,
+        'region_name': AWS_S3_REGION_NAME,
+        'addressing_style': AWS_S3_ADDRESSING_STYLE,
+        'default_acl': AWS_DEFAULT_ACL,
+        'file_overwrite': AWS_S3_FILE_OVERWRITE,
+    }
+
     STORAGES = {
+        # Django default storage считаем приватным.
         'default': {
             'BACKEND': 'storages.backends.s3.S3Storage',
             'OPTIONS': {
-                'location': PRIVATE_MEDIA_LOCATION,
+                **s3_common_options,
+                'bucket_name': AWS_PRIVATE_STORAGE_BUCKET_NAME,
+                'location': MEDIA_LOCATION,
                 'querystring_auth': True,
-                'default_acl': None,
+                'querystring_expire': AWS_QUERYSTRING_EXPIRE,
             },
         },
         'public_media': {
             'BACKEND': 'storages.backends.s3.S3Storage',
             'OPTIONS': {
-                'location': PUBLIC_MEDIA_LOCATION,
+                **s3_common_options,
+                'bucket_name': AWS_PUBLIC_STORAGE_BUCKET_NAME,
+                'location': MEDIA_LOCATION,
                 'querystring_auth': False,
-                'default_acl': None,
             },
         },
         'private_media': {
             'BACKEND': 'storages.backends.s3.S3Storage',
             'OPTIONS': {
-                'location': PRIVATE_MEDIA_LOCATION,
+                **s3_common_options,
+                'bucket_name': AWS_PRIVATE_STORAGE_BUCKET_NAME,
+                'location': MEDIA_LOCATION,
                 'querystring_auth': True,
-                'default_acl': None,
+                'querystring_expire': AWS_QUERYSTRING_EXPIRE,
             },
         },
         'staticfiles': {
