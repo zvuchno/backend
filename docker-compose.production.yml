@@ -78,9 +78,9 @@ services:
     image: inswty/zvuchno_backend:latest
     env_file: .env
     user: "${UID}:${GID}"
-    command: celery -A config beat -l warning --schedule=/var/run/celery/celerybeat-schedule
+    command: celery -A config beat -l warning --schedule=/data/celerybeat-schedule
     volumes:
-      - celery_beat_data:/var/run/celery
+      - celery_beat_data:/data
     logging:
       driver: json-file
       options:
