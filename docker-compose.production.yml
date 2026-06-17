@@ -47,6 +47,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    command: gunicorn --worker-tmp-dir /tmp --bind 0.0.0.0:8000 config.wsgi:application
     logging:
       driver: json-file
       options:
