@@ -5,7 +5,6 @@ import re
 import shutil
 import tempfile
 import zipfile
-from collections.abc import Sequence
 from pathlib import Path
 
 from django.core.files import File
@@ -29,7 +28,7 @@ class AlbumArchiveService:
         cls,
         *,
         album: Album,
-        tracks: Sequence[Track],
+        tracks: list[Track],
     ) -> str:
         """Возвращает отпечаток содержимого будущего архива."""
         payload = {
@@ -194,7 +193,7 @@ class AlbumArchiveService:
         cls,
         *,
         album: Album,
-        tracks: Sequence[Track],
+        tracks: list[Track],
         target_path: Path,
     ) -> None:
         """Создаёт ZIP с обложкой и оригинальными файлами треков."""
