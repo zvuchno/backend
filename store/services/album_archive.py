@@ -9,6 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from django.core.files import File
+from django.db import transaction
 from django.utils import timezone
 
 from store.models import Album, AlbumArchive, Track
@@ -62,7 +63,12 @@ class AlbumArchiveService:
         ).hexdigest()
 
     @classmethod
-    def build(cls, album_id: int) -> AlbumArchive:
+    def build(
+        cls,
+        *,
+        album_id: int,
+        expected_hash: str,
+    ) -> AlbumArchive:
         """Собирает и сохраняет актуальный архив альбома."""
         album = Album.objects.get(pk=album_id)
         tracks = list(
@@ -75,10 +81,18 @@ class AlbumArchiveService:
                 'в альбоме нет треков.',
             )
 
-        content_hash = cls.calculate_content_hash(
+        current_hash = cls.calculate_content_hash(
             album=album,
             tracks=tracks,
         )
+
+        archive = AlbumArchive.objects.get(album=album)
+
+        if (
+            current_hash != expected_hash
+            or archive.pending_hash != expected_hash
+        ):
+            return archive
 
         archive = cls._mark_as_building(album)
         old_file_name = archive.file.name or None
@@ -95,6 +109,28 @@ class AlbumArchiveService:
                     target_path=temp_zip_path,
                 )
 
+                current_album = Album.objects.get(pk=album_id)
+                current_tracks = list(
+                    current_album.tracks.order_by('position', 'id'),
+                )
+                current_hash = cls.calculate_content_hash(
+                    album=current_album,
+                    tracks=current_tracks,
+                )
+
+                archive.refresh_from_db(
+                    fields=(
+                        'pending_hash',
+                        'status',
+                    ),
+                )
+
+                if (
+                    current_hash != expected_hash
+                    or archive.pending_hash != expected_hash
+                ):
+                    return archive
+
                 with temp_zip_path.open('rb') as zip_to_upload:
                     archive.file.save(
                         cls._get_archive_filename(album),
@@ -103,13 +139,15 @@ class AlbumArchiveService:
                     )
 
                 archive.status = AlbumArchive.Status.READY
-                archive.content_hash = content_hash
+                archive.content_hash = expected_hash
+                archive.pending_hash = ''
                 archive.error_message = ''
                 archive.save(
                     update_fields=(
                         'file',
                         'status',
                         'content_hash',
+                        'pending_hash',
                         'error_message',
                         'updated_at',
                     ),
@@ -255,3 +293,70 @@ class AlbumArchiveService:
                 'Не удалось удалить старый архив %s.',
                 old_file_name,
             )
+
+
+class AlbumArchiveScheduler:
+    """Планирует отложенную пересборку архива."""
+
+    REBUILD_DELAY_SECONDS = 60
+
+    @classmethod
+    def schedule(cls, album: Album) -> bool:
+        """Ставит сборку в очередь, если содержимое архива изменилось."""
+        if not album.is_published:
+            return False
+
+        tracks = list(
+            album.tracks.order_by('position', 'id'),
+        )
+
+        if not tracks:
+            return False
+
+        expected_hash = AlbumArchiveService.calculate_content_hash(
+            album=album,
+            tracks=tracks,
+        )
+
+        archive, _ = AlbumArchive.objects.get_or_create(
+            album=album,
+        )
+
+        # Готовый архив уже соответствует текущему альбому.
+        if (
+            archive.status == AlbumArchive.Status.READY
+            and archive.content_hash == expected_hash
+        ):
+            return False
+
+        # Такая версия уже ожидает сборки или собирается.
+        if archive.pending_hash == expected_hash and archive.status in {
+            AlbumArchive.Status.PENDING,
+            AlbumArchive.Status.BUILDING,
+        }:
+            return False
+
+        archive.pending_hash = expected_hash
+        archive.status = AlbumArchive.Status.PENDING
+        archive.error_message = ''
+        archive.save(
+            update_fields=(
+                'pending_hash',
+                'status',
+                'error_message',
+                'updated_at',
+            ),
+        )
+
+        from store.tasks import build_album_archive
+
+        transaction.on_commit(
+            lambda album_id=album.pk, content_hash=expected_hash: (
+                build_album_archive.apply_async(
+                    args=(album_id, content_hash),
+                    countdown=cls.REBUILD_DELAY_SECONDS,
+                )
+            ),
+        )
+
+        return True
