@@ -42,11 +42,7 @@ services:
     volumes:
       - static:/app/staticfiles
       - media:/app/media
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+    command: gunicorn --no-control --worker-tmp-dir /tmp --bind 0.0.0.0:8000 config.wsgi:application
     logging:
       driver: json-file
       options:
@@ -78,9 +74,9 @@ services:
     image: inswty/zvuchno_backend:latest
     env_file: .env
     user: "${UID}:${GID}"
-    command: celery -A config beat -l warning --schedule=/var/run/celery/celerybeat-schedule
+    command: celery -A config beat -l warning --schedule=/data/celerybeat-schedule
     volumes:
-      - celery_beat_data:/var/run/celery
+      - celery_beat_data:/data
     logging:
       driver: json-file
       options:
