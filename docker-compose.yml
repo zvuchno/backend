@@ -58,6 +58,8 @@ services:
       -Q celery
       --hostname=default@%h
       -l info
+    volumes:
+      - .:/app
     depends_on:
       db:
         condition: service_healthy
@@ -73,6 +75,9 @@ services:
       --concurrency=1
       --hostname=archives@%h
       -l info
+    volumes:
+      - .:/app
+      - ./media:/app/media
     depends_on:
       db:
         condition: service_healthy
