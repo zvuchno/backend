@@ -40,4 +40,4 @@ class ArtistShippingPoint(TimestampModel):
         verbose_name_plural = 'точка отправки заказов'
 
     def __str__(self):
-        return f'{self.city} ({self.sdek_pvz_code})'
+        return f'{self.city} ({self.pvz_code})'
