@@ -15,7 +15,6 @@ from store.serializers import (
     AlbumReadSerializer,
     AlbumWriteSerializer,
 )
-from store.services.album_archive import AlbumArchiveScheduler
 
 
 @album_schema
@@ -103,17 +102,3 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             context=self.get_serializer_context(),
         )
         return Response(read_serializer.data)
-
-    def perform_create(self, serializer):
-        super().perform_create(serializer)
-
-        AlbumArchiveScheduler.schedule(
-            serializer.instance,
-        )
-
-    def perform_update(self, serializer):
-        super().perform_update(serializer)
-
-        AlbumArchiveScheduler.schedule(
-            serializer.instance,
-        )

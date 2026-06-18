@@ -301,6 +301,16 @@ class AlbumArchiveScheduler:
     REBUILD_DELAY_SECONDS = 60
 
     @classmethod
+    def schedule_by_id(cls, album_id: int) -> bool:
+        """Перечитывает альбом и проверяет необходимость сборки."""
+        album = Album.objects.filter(pk=album_id).first()
+
+        if album is None:
+            return False
+
+        return cls.schedule(album)
+
+    @classmethod
     def schedule(cls, album: Album) -> bool:
         """Ставит сборку в очередь, если содержимое архива изменилось."""
         if not album.is_published:
