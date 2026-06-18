@@ -53,12 +53,26 @@ services:
   celery_worker:
     build: .
     env_file: .env
-    command: celery -A config worker -l warning
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
+    command: >
+      celery -A config worker
+      -Q celery
+      --hostname=default@%h
+      -l info
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_archives:
+    build: .
+    env_file: .env
+    command: >
+      celery -A config worker
+      -Q archives
+      --concurrency=1
+      --hostname=archives@%h
+      -l info
     depends_on:
       db:
         condition: service_healthy
