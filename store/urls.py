@@ -8,6 +8,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AlbumViewSet,
+    CDEKWidgetView,
     CartViewSet,
     CatalogMerchDetailView,
     CatalogReleaseDetailView,
@@ -55,4 +56,5 @@ urlpatterns = [
         PurchasedMusicView.as_view(),
         name='purchased-music',
     ),
+    path('cdek/widget', CDEKWidgetView.as_view(), name='cdek-widget'),
 ]

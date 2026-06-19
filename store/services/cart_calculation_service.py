@@ -8,7 +8,7 @@
 from decimal import Decimal
 
 from store.constants import ZERO_MONEY
-from store.models import Promocode
+from store.models import Product, Promocode
 
 ZERO_DISCOUNT = Decimal('0.00')
 DISCOUNT_PRECISION = Decimal('0.01')
@@ -42,6 +42,24 @@ class CartCalculationService:
         self._subtotal = None
         self._discount_total = None
         self._total = None
+
+    def get_merch_artist_ids(self) -> list[int]:
+        """Возвращает список ID уникальных артистов, чей мерч в корзине."""
+        if not self.cart:
+            return []
+
+        return list(
+            self.cart.items
+            .filter(
+                product_variant__product__product_type=Product.ProductType.MERCH,
+                product_variant__product__merch__owner__artist_profile__isnull=False,
+            )
+            .values_list(
+                'product_variant__product__merch__owner__artist_profile__id',
+                flat=True,
+            )
+            .distinct(),
+        )
 
     def get_subtotal(self) -> Decimal:
         """Возвращает общую сумму корзины до применения скидок."""

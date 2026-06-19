@@ -9,7 +9,7 @@ from django.db.models import F
 
 from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
-from store.models import Delivery, Order, OrderItem, Product
+from store.models import Delivery, Order, OrderItem
 from users.models import ArtistPickupPoint, ConsentDocument, UserConsent
 
 
@@ -34,20 +34,7 @@ class OrderService:
         calculation_service = CartCalculationService(cart)
 
         # Получаем список ID уникальных артистов, чей мерч в корзине
-        cart_artist_ids = []
-        if cart:
-            cart_artist_ids = list(
-                cart.items
-                .filter(
-                    product_variant__product__product_type=Product.ProductType.MERCH,
-                    product_variant__product__merch__owner__artist_profile__isnull=False,
-                )
-                .values_list(
-                    'product_variant__product__merch__owner__artist_profile__id',
-                    flat=True,
-                )
-                .distinct(),
-            )
+        cart_artist_ids = calculation_service.get_merch_artist_ids()
 
         pickup_points_data = []
 

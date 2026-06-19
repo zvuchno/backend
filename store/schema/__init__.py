@@ -17,6 +17,7 @@ from .catalog_datail import (
     catalog_merch_detail_schema,
     catalog_release_detail_schema,
 )
+from .cdek_widget import cdek_widget_schema
 from .checkout import checkout_schema
 from .delivery import delivery_schema
 from .favorites import favorites_schema
@@ -38,6 +39,7 @@ __all__ = [
     'catalog_list_schema',
     'catalog_merch_detail_schema',
     'catalog_release_detail_schema',
+    'cdek_widget_schema',
     'checkout_schema',
     'delivery_schema',
     'favorites_schema',
