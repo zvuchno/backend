@@ -23,6 +23,10 @@ class TrackReadSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    allow_overpay = serializers.BooleanField(
+        source='product.allow_overpay',
+        default=False,
+    )
     artist_name = serializers.CharField(
         source='owner.artist_profile.name',
         read_only=True,
@@ -45,6 +49,7 @@ class TrackReadSerializer(serializers.ModelSerializer):
             'duration',
             'position',
             'price',
+            'allow_overpay',
             'image',
             'is_favorite',
         )
@@ -53,22 +58,14 @@ class TrackReadSerializer(serializers.ModelSerializer):
 class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Track."""
 
-    allow_overpay = serializers.SerializerMethodField()
     variants = serializers.SerializerMethodField()
 
     class Meta(TrackReadSerializer.Meta):
         fields = TrackReadSerializer.Meta.fields + (
             'audio_file',
-            'allow_overpay',
             'description',
             'variants',
         )
-
-    def get_allow_overpay(self, obj) -> bool:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.allow_overpay
-        return False
 
 
 class TrackWriteSerializer(serializers.ModelSerializer):
