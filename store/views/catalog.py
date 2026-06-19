@@ -112,6 +112,13 @@ class CatalogReleaseDetailView(AlbumViewSet):
                 'product__merch__kind',
                 'product__merch__album',
             )
+            .prefetch_related(
+                Prefetch(
+                    'product__merch__images_merch',
+                    queryset=Image.objects.order_by('id'),
+                    to_attr='prefetched_images',
+                ),
+            )
             .order_by('id')
         )
 
@@ -130,11 +137,6 @@ class CatalogReleaseDetailView(AlbumViewSet):
             )
             .prefetch_related(
                 Prefetch(
-                    'images_merch',
-                    queryset=Image.objects.order_by('id'),
-                    to_attr='prefetched_images',
-                ),
-                Prefetch(
                     'product__variants',
                     queryset=carrier_active_variants,
                     to_attr='active_carriers_variants',
@@ -152,7 +154,6 @@ class CatalogReleaseDetailView(AlbumViewSet):
             )
             .select_related(
                 'product',
-                'genre',
                 'owner__artist_profile',
             )
             .prefetch_related(
