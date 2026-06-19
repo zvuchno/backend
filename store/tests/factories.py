@@ -14,6 +14,7 @@ from store.models import (
     MerchKind,
     Product,
     ProductVariant,
+    Track,
 )
 from users.tests.factories import ArtistUserFactory
 
@@ -52,6 +53,48 @@ class AlbumFactory(factory.django.DjangoModelFactory):
     is_single = False
     is_published = True
     visibility = 'public'
+
+
+def make_cover_file(
+    name='test-cover.jpg',
+    content=b'test-cover-content',
+) -> SimpleUploadedFile:
+    """Создает тестовый файл обложки."""
+    return SimpleUploadedFile(
+        name=name,
+        content=content,
+        content_type='image/jpeg',
+    )
+
+
+def make_audio_file(
+    name='test-track.mp3',
+    content=b'test-audio-content',
+) -> SimpleUploadedFile:
+    """Создает тестовый исходный аудиофайл."""
+    return SimpleUploadedFile(
+        name=name,
+        content=content,
+        content_type='audio/mpeg',
+    )
+
+
+class TrackFactory(factory.django.DjangoModelFactory):
+    """Фабрика трека с исходным аудиофайлом."""
+
+    class Meta:
+        model = Track
+
+    album = factory.SubFactory(AlbumFactory)
+    owner = factory.LazyAttribute(lambda track: track.album.owner)
+    name = factory.Sequence(lambda n: f'Трек {n}')
+    position = factory.Sequence(lambda n: n + 1)
+    audio_file = factory.Sequence(
+        lambda n: make_audio_file(
+            name=f'track-{n}.mp3',
+            content=f'audio-content-{n}'.encode(),
+        ),
+    )
 
 
 class MerchFactory(factory.django.DjangoModelFactory):

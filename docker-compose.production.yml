@@ -54,11 +54,16 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+
   celery_worker:
     image: inswty/zvuchno_backend:latest
     env_file: .env
     user: "${UID}:${GID}"
-    command: celery -A config worker -l warning
+    command: >
+      celery -A config worker
+      -Q celery
+      --hostname=default@%h
+      -l warning
     logging:
       driver: json-file
       options:
@@ -70,6 +75,31 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+
+  celery_archives:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: >
+      celery -A config worker
+      -Q archives
+      --concurrency=1
+      --hostname=archives@%h
+      -l info
+    volumes:
+      - media:/app/media
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   celery_beat:
     image: inswty/zvuchno_backend:latest
     env_file: .env

@@ -85,4 +85,10 @@ class AlbumArchive(TimestampModel):
             'используется для проверки актуальности архива.'
         ),
     )
+    pending_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text='Хеш сборки для существующей задачи.',
+    )
     error_message = models.TextField(blank=True)
