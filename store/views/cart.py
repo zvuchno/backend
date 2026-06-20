@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from store.constants import ZERO_MONEY
 from store.models import Cart, CartItem
 from store.schema import (
     cart_apply_promocode_schema,
@@ -19,6 +20,14 @@ from store.serializers import (
     CartWriteSerializer,
 )
 from store.services import CartCalculationService, CartService
+
+# Возвращается на GET /cart/me/ если корзина ещё не создана
+EMPTY_CART_RESPONSE = {
+    'items': [],
+    'subtotal': ZERO_MONEY,
+    'discount_promocode': ZERO_MONEY,
+    'total': ZERO_MONEY,
+}
 
 
 @cart_schema
@@ -79,7 +88,11 @@ class CartViewSet(viewsets.GenericViewSet):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        cart = getattr(self, 'instance', None) or self.get_instance()
+        cart = getattr(self, 'instance', None) or getattr(
+            self,
+            '_cached_cart',
+            None,
+        )
         context['cart'] = cart
 
         if cart:
@@ -91,8 +104,12 @@ class CartViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=('get', 'put', 'patch'), url_path='me')
     def me(self, request):
         """Получение или обновление корзины текущего пользователя."""
-        cart = self.get_instance()
-        if request.method in ('PUT', 'PATCH'):
+        if request.method == 'GET':
+            cart = self.get_queryset().first()
+            if cart is None:
+                return Response(EMPTY_CART_RESPONSE)
+        else:  # PUT/PATCH
+            cart = self.get_instance()
             serializer = self.get_serializer(
                 cart,
                 data=request.data,
@@ -100,11 +117,9 @@ class CartViewSet(viewsets.GenericViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
-        cart = self.get_queryset().get(pk=cart.pk)
+            cart = self.get_queryset().get(pk=cart.pk)
         self._cached_cart = cart
-
         self.instance = cart
-
         return Response(
             CartReadSerializer(
                 cart,
