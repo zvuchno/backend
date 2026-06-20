@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
 
+from store.exceptions import CDEKIntegrationError
 from users.exceptions import SocialAuthException
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,19 @@ def custom_exception_handler(exception, context):
             data,
         )
         return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
+    if isinstance(exception, CDEKIntegrationError):
+        logger.error(
+            'CDEK API Error | %s | %s | view=%s | detail=%s',
+            request.method if request else 'UNKNOWN',
+            request.path if request else 'UNKNOWN',
+            view.__class__.__name__ if view else 'UNKNOWN',
+            exception.message,
+        )
+        return Response(
+            {'detail': exception.message},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
     logger.exception(
         'Unhandled API exception | %s | %s | view=%s',
