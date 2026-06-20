@@ -21,11 +21,17 @@ def validate_file_size(value):
 
 def validate_audiofile_size(value):
     """Ограничения размера аудиофайла до 500 MB."""
-    filesize = value.size
-
+    try:
+        filesize = value.size
+    except (FileNotFoundError, OSError, AttributeError):
+        raise ValidationError(
+            'Файл не найден на диске. '
+            'Проверьте путь к файлу или загрузите его заново.',
+        )
     if filesize > MAX_AUDIOFILE_SIZE_MB * 1024 * 1024:  # MB в байтах
         raise ValidationError(
-            f'Размер файла не должен превышать {MAX_AUDIOFILE_SIZE_MB} MB',
+            f'Размер файла ({round(filesize / (1024 * 1024), 2)} MB) '
+            f'превышает лимит {MAX_AUDIOFILE_SIZE_MB} MB.',
         )
     return value
 
