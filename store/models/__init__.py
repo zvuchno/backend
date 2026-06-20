@@ -1,4 +1,7 @@
-from .album import Album
+from .album import (
+    Album,
+    AlbumArchive,
+)
 from .cart import Cart
 from .cart_item import CartItem
 from .delivery import Delivery
@@ -20,6 +23,7 @@ from .track import Track
 
 __all__ = [
     'Album',
+    'AlbumArchive',
     'Cart',
     'CartItem',
     'Delivery',

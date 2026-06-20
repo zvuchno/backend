@@ -17,8 +17,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        drop_view('listener_track_access'),
         drop_view('listener_album_access'),
+        drop_view('listener_track_access'),
         migrations.AlterField(
             model_name='album',
             name='cover_image',
