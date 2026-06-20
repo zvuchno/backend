@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.core.files import File
 from django.core.validators import RegexValidator
 
 from .constants import (
@@ -8,32 +9,31 @@ from .constants import (
 )
 
 
-def validate_file_size(value):
-    """Ограничения размера обложки до 10 MB."""
-    filesize = value.size
+def make_file_size_validator(max_size_mb: int, optional: bool = False):
+    """Фабрика валидаторов размера файла."""
 
-    if filesize > MAX_IMAGE_SIZE_MB * 1024 * 1024:  # MB в байтах
-        raise ValidationError(
-            f'Размер файла не должен превышать {MAX_IMAGE_SIZE_MB} MB',
-        )
-    return value
+    def validator(value: File | None) -> File | None:
+        if optional and not value:
+            return value
+        try:
+            filesize = value.size
+        except (FileNotFoundError, OSError, AttributeError):
+            raise ValidationError(
+                'Файл не найден на диске. '
+                'Проверьте путь к файлу или загрузите его заново.',
+            )
+        if filesize > max_size_mb * 1024 * 1024:
+            raise ValidationError(
+                f'Размер файла ({round(filesize / (1024 * 1024), 2)} MB) '
+                f'превышает лимит {max_size_mb} MB.',
+            )
+        return value
+
+    return validator
 
 
-def validate_audiofile_size(value):
-    """Ограничения размера аудиофайла до 500 MB."""
-    try:
-        filesize = value.size
-    except (FileNotFoundError, OSError, AttributeError):
-        raise ValidationError(
-            'Файл не найден на диске. '
-            'Проверьте путь к файлу или загрузите его заново.',
-        )
-    if filesize > MAX_AUDIOFILE_SIZE_MB * 1024 * 1024:  # MB в байтах
-        raise ValidationError(
-            f'Размер файла ({round(filesize / (1024 * 1024), 2)} MB) '
-            f'превышает лимит {MAX_AUDIOFILE_SIZE_MB} MB.',
-        )
-    return value
+validate_file_size = make_file_size_validator(MAX_IMAGE_SIZE_MB, optional=True)
+validate_audiofile_size = make_file_size_validator(MAX_AUDIOFILE_SIZE_MB)
 
 
 def validate_price_with_donation(product, price_with_donation):
