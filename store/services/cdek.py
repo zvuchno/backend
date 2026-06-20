@@ -11,6 +11,7 @@ from store.constants import (
     CITY_CACHE_TIMEOUT,
     DEFAULT_CACHE_TIMEOUT,
 )
+from store.exceptions import CDEKIntegrationError
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class CDEKService:
         cached_token = cache.get('cdek_access_token')
         if cached_token:
             self._token = cached_token
-            logger.info(f'Получен токен CDEK из кеша: ..{cached_token[:10]}')
+            logger.info('Получен токен CDEK из кеша.')
             return cached_token
 
         data = {
@@ -59,7 +60,11 @@ class CDEKService:
             'client_secret': self.client_secret,
         }
         try:
-            response = requests.post(f'{self.api_url}/oauth/token', data=data)
+            response = requests.post(
+                f'{self.api_url}/oauth/token',
+                data=data,
+                timeout=10,
+            )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             logger.error(
@@ -74,7 +79,7 @@ class CDEKService:
 
         cache.set('cdek_access_token', new_token, expires_in - 300)
         self._token = new_token
-        logger.info(f'Получен токен от API CDEK: ..{new_token[:10]}')
+        logger.info('Получен токен от API CDEK.')
         return new_token
 
     def get_city_code_by_name(self, city_name_en):
@@ -209,10 +214,8 @@ class CDEKService:
                 )
                 response.raise_for_status()
             except requests.RequestException:
-                logger.exception(
-                    f'Ошибка API CDEK: city_code={city_code}, page={page}',
-                )
-                raise
+                logger.exception('Ошибка API CDEK')
+                raise CDEKIntegrationError()
 
             data = response.json()
             if not data:

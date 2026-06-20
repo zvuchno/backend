@@ -2,6 +2,7 @@ import logging
 
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from store.schema import cdek_widget_schema
@@ -15,6 +16,7 @@ class CDEKWidgetView(APIView):
     """Эндпоинт-прокси для интеграции и обеспечения работы виджета СДЭК v3."""
 
     permission_classes = (AllowAny,)
+    throttle_classes = (AnonRateThrottle,)
     service = CDEKService()
 
     def get(self, request):
