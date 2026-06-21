@@ -262,18 +262,21 @@ class TestPurchasedMusicDownloadDetailAPI:
                 'id': album.id,
                 'title': 'Скачать альбом в .ZIP',
                 'status': 'ready',
+                'download_action_url': None,
             },
             {
                 'type': 'track',
                 'id': first_track.id,
                 'title': '01. First Track',
                 'status': 'ready',
+                'download_action_url': None,
             },
             {
                 'type': 'track',
                 'id': second_track.id,
                 'title': '02. Second Track',
                 'status': 'ready',
+                'download_action_url': None,
             },
         ]
         schedule_mock.assert_called_once_with(album)
@@ -323,6 +326,7 @@ class TestPurchasedMusicDownloadDetailAPI:
                     'id': bought_track.id,
                     'title': '01. Bought Track',
                     'status': 'ready',
+                    'download_action_url': None,
                 },
             ],
         }

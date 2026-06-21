@@ -105,6 +105,7 @@ class PurchasedMusicDLDetailView(APIView):
             'id': album.id,
             'title': 'Скачать альбом в .ZIP',
             'status': archive.status,
+            'download_action_url': None,
         }
 
     @staticmethod

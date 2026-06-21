@@ -2,7 +2,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from store.models import ListenerAlbumAccess
+from store.models import AlbumArchive, ListenerAlbumAccess
 from store.serializers.mixins import ProductImagesMixin
 
 
@@ -61,11 +61,6 @@ class LibraryAlbumCardSerializer(
             'is_fully_available',
         )
 
-    @extend_schema_field(OpenApiTypes.URI)
-    def get_download_url(self, obj):
-        """TODO. Возвращает URL скачивания доступных треков релиза."""
-        return
-
     @extend_schema_field(OpenApiTypes.STR)
     def get_image(self, obj):
         """Возвращает изображение карточки релиза."""
@@ -102,7 +97,15 @@ class PurchasedMusicDLItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     title = serializers.CharField()
     status = serializers.ChoiceField(
-        choices=('pending', 'building', 'ready', 'failed'),
+        choices=AlbumArchive.Status.choices,
+    )
+    download_action_url = serializers.URLField(
+        allow_null=True,
+        read_only=True,
+        help_text=(
+            'URL действия для получения ссылки на скачивание. '
+            'Пока может быть null.'
+        ),
     )
 
 
