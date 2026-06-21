@@ -5,6 +5,7 @@ from .commerce import ProductService
 from .location_service import LocationService
 from .music_download import (
     DownloadFilenameService,
+    DownloadLink,
     DownloadLinkService,
 )
 from .order_service import OrderService
@@ -14,6 +15,7 @@ __all__ = [
     'CartService',
     'CDEKService',
     'DownloadFilenameService',
+    'DownloadLink',
     'DownloadLinkService',
     'LocationService',
     'OrderService',

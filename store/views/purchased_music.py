@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.generics import ListAPIView, get_object_or_404
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -8,7 +8,6 @@ from common.permissions import IsListener
 from store.models import (
     AlbumArchive,
     ListenerAlbumAccess,
-    ListenerTrackAccess,
 )
 from store.schema import (
     archive_download_link_schema,
@@ -26,6 +25,7 @@ from store.services import (
     DownloadLinkService,
 )
 from store.services.album_archive import AlbumArchiveScheduler
+from store.views.mixins import PurchasedMusicAccessMixin
 
 
 @purchased_music_schema
@@ -50,30 +50,25 @@ class PurchasedMusicView(ListAPIView):
 
 
 @purchased_music_download_detail_schema
-class PurchasedMusicDLDetailView(APIView):
+class PurchasedMusicDLDetailView(PurchasedMusicAccessMixin, APIView):
     """Варианты скачивания одного доступного слушателю релиза."""
 
     permission_classes = [IsListener]
 
     def get(self, request, album_id):
         """Возвращает варианты скачивания доступного релиза."""
-        album_access = get_object_or_404(
-            ListenerAlbumAccess.objects.select_related(
-                'album',
-                'album__owner',
-                'album__owner__artist_profile',
-            ),
+        album_access = self.get_album_access_or_404(
             user=request.user,
             album_id=album_id,
         )
 
         track_accesses = (
-            ListenerTrackAccess.objects
+            self
+            .get_track_access_queryset()
             .filter(
                 user=request.user,
                 track__album_id=album_access.album_id,
             )
-            .select_related('track')
             .order_by('track__position', 'track__id')
         )
 
@@ -103,20 +98,14 @@ class PurchasedMusicDLDetailView(APIView):
 
 
 @track_download_link_schema
-class PurchasedMusicTrackDownloadLinkView(APIView):
+class PurchasedMusicTrackDownloadLinkView(PurchasedMusicAccessMixin, APIView):
     """Выдаёт временную ссылку на доступный пользователю трек."""
 
     permission_classes = [IsListener]
 
     def post(self, request, track_id):
         """Проверяет доступ и возвращает свежую ссылку на трек."""
-        track_access = get_object_or_404(
-            ListenerTrackAccess.objects.select_related(
-                'track',
-                'track__album',
-                'track__album__owner',
-                'track__album__owner__artist_profile',
-            ),
+        track_access = self.get_track_access_or_404(
             user=request.user,
             track_id=track_id,
         )
@@ -149,22 +138,20 @@ class PurchasedMusicTrackDownloadLinkView(APIView):
 
 
 @archive_download_link_schema
-class PurchasedMusicArchiveDownloadLinkView(APIView):
+class PurchasedMusicArchiveDownloadLinkView(
+    PurchasedMusicAccessMixin,
+    APIView,
+):
     """Выдаёт временную ссылку на готовый архив полностью доступного релиза."""
 
     permission_classes = [IsListener]
 
     def post(self, request, album_id):
         """Проверяет полный доступ и возвращает свежую ссылку на ZIP."""
-        album_access = get_object_or_404(
-            ListenerAlbumAccess.objects.select_related(
-                'album',
-                'album__owner',
-                'album__owner__artist_profile',
-            ),
+        album_access = self.get_album_access_or_404(
             user=request.user,
             album_id=album_id,
-            is_fully_available=True,
+            require_full_access=True,
         )
         album = album_access.album
 

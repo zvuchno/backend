@@ -257,3 +257,29 @@ def purchased_music_download_detail_url():
         )
 
     return _url
+
+
+@pytest.fixture
+def purchased_music_track_download_link_url():
+    """Возвращает URL ручки выдачи ссылки на трек."""
+
+    def _url(track) -> str:
+        return reverse(
+            'api:store:purchased-music-track-download-link',
+            args=(track.id,),
+        )
+
+    return _url
+
+
+@pytest.fixture
+def purchased_music_archive_download_link_url():
+    """Возвращает URL ручки выдачи ссылки на ZIP-архив."""
+
+    def _url(album) -> str:
+        return reverse(
+            'api:store:purchased-music-archive-download-link',
+            args=(album.id,),
+        )
+
+    return _url
