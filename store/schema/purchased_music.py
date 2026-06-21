@@ -31,7 +31,7 @@ purchased_music_download_detail_schema = extend_schema(
     description=(
         'Возвращает доступные варианты скачивания одного релиза. '
         'Для полного доступа может вернуть ZIP-архив со статусом подготовки. '
-        'Поле download_action_url содержит URL POST-ручки для получения '
+        'Поле download_action_url содержит URL POST endpoint для получения '
         'свежей временной ссылки на скачивание. '
         'Для неподготовленного архива возвращается null.'
     ),

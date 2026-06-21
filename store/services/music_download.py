@@ -1,5 +1,6 @@
 """Формирование временных ссылок на приватные медиафайлы."""
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -8,6 +9,8 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 class DownloadFilenameService:
@@ -101,9 +104,16 @@ class DownloadLinkService:
     def _validate_file(field_file) -> None:
         """Проверяет наличие файла в модели и storage."""
         if not field_file or not field_file.name:
+            logger.warning(
+                'Download requested for an empty file field.',
+            )
             raise FileNotFoundError('Файл для скачивания отсутствует.')
 
         if not field_file.storage.exists(field_file.name):
+            logger.error(
+                'Download requested for a missing storage object: %s',
+                field_file.name,
+            )
             raise FileNotFoundError('Файл для скачивания не найден.')
 
     @classmethod

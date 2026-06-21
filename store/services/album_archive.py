@@ -293,18 +293,6 @@ class AlbumArchiveService:
                 old_file_name,
             )
 
-    @classmethod
-    def get_for_download(cls, album) -> AlbumArchive | None:
-        """Планирует актуальную сборку и возвращает архив альбома."""
-        AlbumArchiveScheduler.schedule(album)
-
-        return (
-            AlbumArchive.objects
-            .filter(album=album)
-            .only('album_id', 'status')
-            .first()
-        )
-
 
 class AlbumArchiveScheduler:
     """Планирует отложенную пересборку архива."""

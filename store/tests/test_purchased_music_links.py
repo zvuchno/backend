@@ -300,17 +300,27 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @pytest.mark.parametrize(
-        'archive_status',
+        ('archive_status', 'detail'),
         [
-            AlbumArchive.Status.PENDING,
-            AlbumArchive.Status.BUILDING,
-            AlbumArchive.Status.FAILED,
+            (
+                AlbumArchive.Status.PENDING,
+                'Архив ещё готовится.',
+            ),
+            (
+                AlbumArchive.Status.BUILDING,
+                'Архив ещё готовится.',
+            ),
+            (
+                AlbumArchive.Status.FAILED,
+                'Не удалось подготовить архив.',
+            ),
         ],
     )
     def test_not_ready_archive_returns_409(
         self,
         listener_user,
         archive_status,
+        detail,
     ):
         """Неготовый архив возвращает 409 с текущим статусом."""
         album = self.create_full_access_album(listener_user)
@@ -329,7 +339,7 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
 
         assert response.status_code == status.HTTP_409_CONFLICT
         assert response.data == {
-            'detail': 'Архив ещё не готов.',
+            'detail': detail,
             'status': archive_status,
         }
 
