@@ -65,12 +65,12 @@ urlpatterns = [
         name='purchased-music-download-detail',
     ),
     path(
-        'me/purchased-music/tracks/<int:track_id>/download-link/',
+        'me/purchased-music/download-link/track/<int:track_id>/',
         PurchasedMusicTrackDownloadLinkView.as_view(),
         name='purchased-music-track-download-link',
     ),
     path(
-        'me/purchased-music/albums/<int:album_id>/archive/download-link/',
+        'me/purchased-music/download-link/album-archive/<int:album_id>/',
         PurchasedMusicArchiveDownloadLinkView.as_view(),
         name='purchased-music-archive-download-link',
     ),
