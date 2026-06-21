@@ -5,6 +5,7 @@ from drf_spectacular.utils import (
 )
 
 from store.serializers import (
+    ArchiveNotReadySerializer,
     DownloadLinkSerializer,
     LibraryAlbumCardSerializer,
     PurchasedMusicDLDetailSerializer,
@@ -30,8 +31,9 @@ purchased_music_download_detail_schema = extend_schema(
     description=(
         'Возвращает доступные варианты скачивания одного релиза. '
         'Для полного доступа может вернуть ZIP-архив со статусом подготовки. '
-        'Поле download_action_url зарезервировано для будущей ручки '
-        'получения ссылки на скачивание и пока возвращается как null.'
+        'Поле download_action_url содержит URL POST-ручки для получения '
+        'свежей временной ссылки на скачивание. '
+        'Для неподготовленного архива возвращается null.'
     ),
     tags=PURCHASED_MUSIC_TAGS,
     responses={
@@ -40,10 +42,11 @@ purchased_music_download_detail_schema = extend_schema(
 )
 
 track_download_link_schema = extend_schema(
-    summary='Получить ссылку на скачивание трека',
+    summary='Получить временную ссылку на скачивание трека',
     description=(
         'Проверяет доступ текущего слушателя к треку и возвращает '
-        'короткоживущую ссылку на скачивание.'
+        'короткоживущую ссылку на приватный файл. '
+        'Ссылку следует использовать сразу после получения.'
     ),
     tags=PURCHASED_MUSIC_TAGS,
     responses={
@@ -55,10 +58,11 @@ track_download_link_schema = extend_schema(
 )
 
 archive_download_link_schema = extend_schema(
-    summary='Получить ссылку на ZIP-архив релиза',
+    summary='Получить временную ссылку на ZIP-архив релиза',
     description=(
-        'Проверяет полный доступ текущего слушателя к релизу и '
-        'возвращает короткоживущую ссылку на готовый ZIP-архив.'
+        'Проверяет полный доступ текущего слушателя к релизу и возвращает '
+        'короткоживущую ссылку на готовый ZIP-архив. '
+        'Если архив ещё собирается, возвращает его текущее состояние.'
     ),
     tags=PURCHASED_MUSIC_TAGS,
     responses={
@@ -66,8 +70,6 @@ archive_download_link_schema = extend_schema(
         404: OpenApiResponse(
             description='Релиз недоступен или файл отсутствует.',
         ),
-        409: OpenApiResponse(
-            description='Архив ещё не готов.',
-        ),
+        409: ArchiveNotReadySerializer,
     },
 )

@@ -1,3 +1,4 @@
+from django.urls import reverse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -93,42 +94,133 @@ class PurchasedMusicDLItemSerializer(serializers.Serializer):
 
     type = serializers.ChoiceField(
         choices=('archive', 'track'),
+        read_only=True,
     )
-    id = serializers.IntegerField()
-    title = serializers.CharField()
+    title = serializers.CharField(
+        read_only=True,
+    )
     status = serializers.ChoiceField(
         choices=AlbumArchive.Status.choices,
+        read_only=True,
     )
     download_action_url = serializers.URLField(
         allow_null=True,
         read_only=True,
         help_text=(
-            'URL действия для получения ссылки на скачивание. '
-            'Пока может быть null.'
+            'URL POST-ручки для получения свежей временной ссылки '
+            'на скачивание. null, если скачивание пока недоступно.'
         ),
     )
 
 
 class PurchasedMusicDLDetailSerializer(serializers.Serializer):
-    """Детальная информация для окна скачивания релиза."""
+    """Детальная информация для скачивания релиза."""
 
-    album_id = serializers.IntegerField()
-    access = serializers.ChoiceField(
-        choices=('full', 'partial'),
+    album_id = serializers.IntegerField(
+        source='album.id',
+        read_only=True,
     )
-    items = PurchasedMusicDLItemSerializer(many=True)
+    access = serializers.SerializerMethodField()
+    items = serializers.SerializerMethodField()
+
+    def get_access(self, album_access) -> str:
+        """Возвращает тип доступа пользователя к релизу."""
+        return 'full' if album_access.is_fully_available else 'partial'
+
+    @extend_schema_field(PurchasedMusicDLItemSerializer(many=True))
+    def get_items(self, album_access) -> list[dict]:
+        """Возвращает доступные варианты скачивания."""
+        items = []
+
+        archive = self.context.get('archive')
+
+        if archive is not None:
+            items.append(self._get_archive_item(archive))
+
+        for track in self.context['tracks']:
+            items.append(self._get_track_item(track))
+
+        return items
+
+    def _get_archive_item(self, archive) -> dict:
+        """Возвращает представление ZIP-архива."""
+        return {
+            'type': 'archive',
+            'title': 'Скачать альбом в .ZIP',
+            'status': archive.status,
+            'download_action_url': self._build_download_action_url(
+                view_name='api:store:purchased-music-archive-download-link',
+                args=(archive.album_id,),
+                is_available=archive.status == AlbumArchive.Status.READY,
+            ),
+        }
+
+    def _get_track_item(self, track) -> dict:
+        """Возвращает представление отдельного трека."""
+        title = track.name
+
+        if track.position is not None:
+            title = f'{track.position:02d}. {track.name}'
+
+        return {
+            'type': 'track',
+            'title': title,
+            'status': AlbumArchive.Status.READY,
+            'download_action_url': self._build_download_action_url(
+                view_name='api:store:purchased-music-track-download-link',
+                args=(track.pk,),
+            ),
+        }
+
+    def _build_download_action_url(
+        self,
+        *,
+        view_name: str,
+        args: tuple[int, ...],
+        is_available: bool = True,
+    ) -> str | None:
+        """Возвращает абсолютный URL POST-ручки или null."""
+        if not is_available:
+            return None
+
+        request = self.context.get('request')
+
+        if request is None:
+            return None
+
+        url = reverse(view_name, args=args)
+
+        return request.build_absolute_uri(url)
 
 
 class DownloadLinkSerializer(serializers.Serializer):
     """Временная ссылка на скачивание приватного файла."""
 
-    url = serializers.URLField()
-    filename = serializers.CharField()
+    url = serializers.SerializerMethodField()
+    filename = serializers.CharField(read_only=True)
     expires_in = serializers.IntegerField(
         allow_null=True,
-        help_text='Срок жизни ссылки в секундах.',
+        read_only=True,
     )
     expires_at = serializers.DateTimeField(
         allow_null=True,
-        help_text='Время истечения ссылки в UTC.',
+        read_only=True,
+    )
+
+    def get_url(self, link) -> str:
+        """Возвращает абсолютный URL ссылки."""
+        request = self.context.get('request')
+
+        if request is None:
+            return link.url
+
+        return request.build_absolute_uri(link.url)
+
+
+class ArchiveNotReadySerializer(serializers.Serializer):
+    """Состояние неподготовленного альбомного архива."""
+
+    detail = serializers.CharField()
+    status = serializers.ChoiceField(
+        choices=AlbumArchive.Status.choices,
     )

@@ -259,26 +259,36 @@ class TestPurchasedMusicDownloadDetailAPI:
         assert response.data['items'] == [
             {
                 'type': 'archive',
-                'id': album.id,
                 'title': 'Скачать альбом в .ZIP',
                 'status': 'ready',
-                'download_action_url': None,
+                'download_action_url': (
+                    'http://testserver'
+                    f'/api/v1/store/me/purchased-music/download-link/'
+                    f'album-archive/{album.id}/'
+                ),
             },
             {
                 'type': 'track',
-                'id': first_track.id,
                 'title': '01. First Track',
                 'status': 'ready',
-                'download_action_url': None,
+                'download_action_url': (
+                    'http://testserver'
+                    f'/api/v1/store/me/purchased-music/download-link/'
+                    f'track/{first_track.id}/'
+                ),
             },
             {
                 'type': 'track',
-                'id': second_track.id,
                 'title': '02. Second Track',
                 'status': 'ready',
-                'download_action_url': None,
+                'download_action_url': (
+                    'http://testserver'
+                    f'/api/v1/store/me/purchased-music/download-link/'
+                    f'track/{second_track.id}/'
+                ),
             },
         ]
+
         schedule_mock.assert_called_once_with(album)
 
     @patch(
@@ -323,10 +333,13 @@ class TestPurchasedMusicDownloadDetailAPI:
             'items': [
                 {
                     'type': 'track',
-                    'id': bought_track.id,
                     'title': '01. Bought Track',
                     'status': 'ready',
-                    'download_action_url': None,
+                    'download_action_url': (
+                        'http://testserver'
+                        f'/api/v1/store/me/purchased-music/download-link/'
+                        f'track/{bought_track.id}/'
+                    ),
                 },
             ],
         }
@@ -352,3 +365,48 @@ class TestPurchasedMusicDownloadDetailAPI:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @patch(
+        'store.views.purchased_music.AlbumArchiveScheduler.schedule',
+    )
+    def test_pending_archive_has_no_download_action_url(
+        self,
+        schedule_mock,
+        listener_user,
+    ):
+        """Неготовый архив отображается без URL действия."""
+        album_variant = self.variant_factory(
+            'album',
+            name='Pending Album',
+        )
+        album = album_variant.product.album
+
+        Track.objects.create(
+            name='First Track',
+            owner=album.owner,
+            album=album,
+            position=1,
+        )
+
+        self.create_paid_order(listener_user, [album_variant])
+
+        AlbumArchive.objects.create(
+            album=album,
+            status=AlbumArchive.Status.PENDING,
+        )
+
+        response = self.listener_client.get(
+            self.download_detail_url(album),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['access'] == 'full'
+
+        assert response.data['items'][0] == {
+            'type': 'archive',
+            'title': 'Скачать альбом в .ZIP',
+            'status': 'pending',
+            'download_action_url': None,
+        }
+
+        schedule_mock.assert_called_once_with(album)

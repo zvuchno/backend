@@ -5,7 +5,11 @@ from rest_framework.views import APIView
 
 from common.permissions import IsListener
 
-from store.models import AlbumArchive, ListenerAlbumAccess, ListenerTrackAccess
+from store.models import (
+    AlbumArchive,
+    ListenerAlbumAccess,
+    ListenerTrackAccess,
+)
 from store.schema import (
     archive_download_link_schema,
     purchased_music_download_detail_schema,
@@ -52,89 +56,55 @@ class PurchasedMusicDLDetailView(APIView):
     permission_classes = [IsListener]
 
     def get(self, request, album_id):
-        """Возвращает архив и доступные отдельные треки."""
+        """Возвращает варианты скачивания доступного релиза."""
         album_access = get_object_or_404(
-            ListenerAlbumAccess.objects.select_related('album'),
+            ListenerAlbumAccess.objects.select_related(
+                'album',
+                'album__owner',
+                'album__owner__artist_profile',
+            ),
             user=request.user,
             album_id=album_id,
         )
-        album = album_access.album
 
         track_accesses = (
             ListenerTrackAccess.objects
             .filter(
                 user=request.user,
-                track__album_id=album.id,
+                track__album_id=album_access.album_id,
             )
             .select_related('track')
             .order_by('track__position', 'track__id')
         )
 
-        items = []
+        tracks = [track_access.track for track_access in track_accesses]
+
+        archive = None
 
         if album_access.is_fully_available:
-            archive_item = self._get_archive_item(album)
+            AlbumArchiveScheduler.schedule(album_access.album)
 
-            if archive_item is not None:
-                items.append(archive_item)
-
-        items.extend(
-            self._get_track_item(access.track) for access in track_accesses
-        )
+            archive = (
+                AlbumArchive.objects
+                .filter(album_id=album_access.album_id)
+                .only('album_id', 'status')
+                .first()
+            )
 
         serializer = PurchasedMusicDLDetailSerializer(
-            {
-                'album_id': album.id,
-                'access': (
-                    'full' if album_access.is_fully_available else 'partial'
-                ),
-                'items': items,
+            album_access,
+            context={
+                'request': request,
+                'tracks': tracks,
+                'archive': archive,
             },
         )
         return Response(serializer.data)
 
-    @staticmethod
-    def _get_archive_item(album) -> dict | None:
-        """Проверяет состояние архива и возвращает item для интерфейса."""
-        AlbumArchiveScheduler.schedule(album)
-
-        archive = (
-            AlbumArchive.objects
-            .filter(album=album)
-            .only('album_id', 'status')
-            .first()
-        )
-
-        if archive is None:
-            return None
-
-        return {
-            'type': 'archive',
-            'id': album.id,
-            'title': 'Скачать альбом в .ZIP',
-            'status': archive.status,
-            'download_action_url': None,
-        }
-
-    @staticmethod
-    def _get_track_item(track) -> dict:
-        """Возвращает item отдельного доступного трека."""
-        if track.position is None:
-            title = track.name
-        else:
-            title = f'{track.position:02d}. {track.name}'
-
-        return {
-            'type': 'track',
-            'id': track.id,
-            'title': title,
-            'status': 'ready',
-        }
-
 
 @track_download_link_schema
 class PurchasedMusicTrackDownloadLinkView(APIView):
-    """Отдает временную ссылку на доступный пользователю трек."""
+    """Выдаёт временную ссылку на доступный пользователю трек."""
 
     permission_classes = [IsListener]
 
@@ -159,6 +129,7 @@ class PurchasedMusicTrackDownloadLinkView(APIView):
             )
 
         filename = DownloadFilenameService.get_track_filename(track)
+
         try:
             link = DownloadLinkService.get_link(
                 field_file=track.audio_file,
@@ -171,12 +142,8 @@ class PurchasedMusicTrackDownloadLinkView(APIView):
             )
 
         serializer = DownloadLinkSerializer(
-            {
-                'url': request.build_absolute_uri(link.url),
-                'filename': filename,
-                'expires_in': link.expires_in,
-                'expires_at': link.expires_at,
-            },
+            link,
+            context={'request': request},
         )
         return Response(serializer.data)
 
@@ -205,7 +172,7 @@ class PurchasedMusicArchiveDownloadLinkView(APIView):
 
         archive = (
             AlbumArchive.objects
-            .filter(album=album)
+            .filter(album_id=album.id)
             .only('file', 'status')
             .first()
         )
@@ -232,6 +199,7 @@ class PurchasedMusicArchiveDownloadLinkView(APIView):
             )
 
         filename = DownloadFilenameService.get_archive_filename(album)
+
         try:
             link = DownloadLinkService.get_link(
                 field_file=archive.file,
@@ -244,11 +212,7 @@ class PurchasedMusicArchiveDownloadLinkView(APIView):
             )
 
         serializer = DownloadLinkSerializer(
-            {
-                'url': request.build_absolute_uri(link.url),
-                'filename': filename,
-                'expires_in': link.expires_in,
-                'expires_at': link.expires_at,
-            },
+            link,
+            context={'request': request},
         )
         return Response(serializer.data)

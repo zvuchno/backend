@@ -68,6 +68,7 @@ class DownloadLink:
     """Временная ссылка на скачивание файла."""
 
     url: str
+    filename: str
     expires_in: int | None
     expires_at: datetime | None
 
@@ -91,7 +92,10 @@ class DownloadLinkService:
                 filename=filename,
             )
 
-        return cls._get_local_link(field_file=field_file)
+        return cls._get_local_link(
+            field_file=field_file,
+            filename=filename,
+        )
 
     @staticmethod
     def _validate_file(field_file) -> None:
@@ -127,15 +131,21 @@ class DownloadLinkService:
 
         return DownloadLink(
             url=url,
+            filename=filename,
             expires_in=expires_in,
             expires_at=expires_at,
         )
 
     @staticmethod
-    def _get_local_link(*, field_file) -> DownloadLink:
+    def _get_local_link(
+        *,
+        field_file,
+        filename: str,
+    ) -> DownloadLink:
         """Возвращает URL локального файла для разработки."""
         return DownloadLink(
             url=field_file.url,
+            filename=filename,
             expires_in=None,
             expires_at=None,
         )
