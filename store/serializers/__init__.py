@@ -39,6 +39,7 @@ from .promocode import (
     PromocodeWriteSerializer,
 )
 from .purchased_music import (
+    DownloadLinkSerializer,
     LibraryAlbumCardSerializer,
     PurchasedMusicDLDetailSerializer,
     PurchasedMusicDLItemSerializer,
@@ -67,6 +68,7 @@ __all__ = [
     'CheckoutInfoSerializer',
     'CheckoutSerializer',
     'DeliverySerializer',
+    'DownloadLinkSerializer',
     'FavoriteReadSerializer',
     'FavoriteWriteSerializer',
     'GenreSerializer',

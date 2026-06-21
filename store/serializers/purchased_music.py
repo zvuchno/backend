@@ -117,3 +117,18 @@ class PurchasedMusicDLDetailSerializer(serializers.Serializer):
         choices=('full', 'partial'),
     )
     items = PurchasedMusicDLItemSerializer(many=True)
+
+
+class DownloadLinkSerializer(serializers.Serializer):
+    """Временная ссылка на скачивание приватного файла."""
+
+    url = serializers.URLField()
+    filename = serializers.CharField()
+    expires_in = serializers.IntegerField(
+        allow_null=True,
+        help_text='Срок жизни ссылки в секундах.',
+    )
+    expires_at = serializers.DateTimeField(
+        allow_null=True,
+        help_text='Время истечения ссылки в UTC.',
+    )

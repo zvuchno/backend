@@ -14,7 +14,9 @@ from .merch_kind import MerchKindViewSet
 from .order import OrderViewSet
 from .promocode import PromocodeViewSet
 from .purchased_music import (
+    PurchasedMusicArchiveDownloadLinkView,
     PurchasedMusicDLDetailView,
+    PurchasedMusicTrackDownloadLinkView,
     PurchasedMusicView,
 )
 from .sale import ArtistSaleViewSet
@@ -35,7 +37,9 @@ __all__ = [
     'OrderViewSet',
     'ProductCatalogListView',
     'PromocodeViewSet',
+    'PurchasedMusicArchiveDownloadLinkView',
     'PurchasedMusicDLDetailView',
+    'PurchasedMusicTrackDownloadLinkView',
     'PurchasedMusicView',
     'TrackViewSet',
 ]
