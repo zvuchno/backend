@@ -48,10 +48,6 @@ class LibraryAlbumCardSerializer(
         help_text='Признак полной доступности релиза.',
         read_only=True,
     )
-    download_url = serializers.SerializerMethodField(
-        help_text='URL для скачивания архива с доступными треками релиза.',
-        read_only=True,
-    )
 
     class Meta:
         model = ListenerAlbumAccess
@@ -63,7 +59,6 @@ class LibraryAlbumCardSerializer(
             'year',
             'image',
             'is_fully_available',
-            'download_url',
         )
 
     @extend_schema_field(OpenApiTypes.URI)
@@ -96,3 +91,26 @@ class LibraryAlbumCardSerializer(
         if not obj.album.release_date:
             return None
         return obj.album.release_date.year
+
+
+class PurchasedMusicDLItemSerializer(serializers.Serializer):
+    """Вариант скачивания доступного релиза."""
+
+    type = serializers.ChoiceField(
+        choices=('archive', 'track'),
+    )
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    status = serializers.ChoiceField(
+        choices=('pending', 'building', 'ready', 'failed'),
+    )
+
+
+class PurchasedMusicDLDetailSerializer(serializers.Serializer):
+    """Детальная информация для окна скачивания релиза."""
+
+    album_id = serializers.IntegerField()
+    access = serializers.ChoiceField(
+        choices=('full', 'partial'),
+    )
+    items = PurchasedMusicDLItemSerializer(many=True)

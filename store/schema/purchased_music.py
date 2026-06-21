@@ -1,6 +1,9 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
-from store.serializers import LibraryAlbumCardSerializer
+from store.serializers import (
+    LibraryAlbumCardSerializer,
+    PurchasedMusicDLDetailSerializer,
+)
 
 PURCHASED_MUSIC_TAGS = ['Listener']
 
@@ -15,4 +18,18 @@ purchased_music_schema = extend_schema_view(
         tags=PURCHASED_MUSIC_TAGS,
         responses={200: LibraryAlbumCardSerializer(many=True)},
     ),
+)
+
+purchased_music_download_detail_schema = extend_schema(
+    summary='Варианты скачивания доступного релиза',
+    description=(
+        'Возвращает варианты скачивания одного релиза, доступного '
+        'текущему слушателю. Для полного доступа может вернуть '
+        'ZIP-архив со статусом подготовки. '
+        'Прямые ссылки на файлы здесь еще не возвращаются.'
+    ),
+    tags=PURCHASED_MUSIC_TAGS,
+    responses={
+        200: PurchasedMusicDLDetailSerializer,
+    },
 )
