@@ -92,5 +92,4 @@ __all__ = [
     'TrackWriteSerializer',
     'VariantReadSerializer',
     'VariantWriteSerializer',
-    'PurchasedMusicDLItemSerializer',
 ]

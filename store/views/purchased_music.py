@@ -17,11 +17,11 @@ from store.serializers import (
     LibraryAlbumCardSerializer,
     PurchasedMusicDLDetailSerializer,
 )
-from store.services.album_archive import AlbumArchiveScheduler
-from store.services.music_download import (
+from store.services import (
     DownloadFilenameService,
     DownloadLinkService,
 )
+from store.services.album_archive import AlbumArchiveScheduler
 
 
 @purchased_music_schema
@@ -159,10 +159,16 @@ class PurchasedMusicTrackDownloadLinkView(APIView):
             )
 
         filename = DownloadFilenameService.get_track_filename(track)
-        link = DownloadLinkService.get_link(
-            field_file=track.audio_file,
-            filename=filename,
-        )
+        try:
+            link = DownloadLinkService.get_link(
+                field_file=track.audio_file,
+                filename=filename,
+            )
+        except FileNotFoundError:
+            return Response(
+                {'detail': 'Файл трека временно недоступен.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         serializer = DownloadLinkSerializer(
             {
@@ -226,10 +232,16 @@ class PurchasedMusicArchiveDownloadLinkView(APIView):
             )
 
         filename = DownloadFilenameService.get_archive_filename(album)
-        link = DownloadLinkService.get_link(
-            field_file=archive.file,
-            filename=filename,
-        )
+        try:
+            link = DownloadLinkService.get_link(
+                field_file=archive.file,
+                filename=filename,
+            )
+        except FileNotFoundError:
+            return Response(
+                {'detail': 'Файл архива временно недоступен.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         serializer = DownloadLinkSerializer(
             {
