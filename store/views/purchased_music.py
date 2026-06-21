@@ -164,17 +164,32 @@ class PurchasedMusicArchiveDownloadLinkView(
             .first()
         )
 
-        if archive is None or archive.status != AlbumArchive.Status.READY:
-            archive_status = (
-                archive.status
-                if archive is not None
-                else AlbumArchive.Status.PENDING
-            )
-
+        if archive is None:
             return Response(
                 {
-                    'detail': 'Архив ещё не готов.',
-                    'status': archive_status,
+                    'detail': 'Архив ещё готовится.',
+                    'status': AlbumArchive.Status.PENDING,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if archive.status in {
+            AlbumArchive.Status.PENDING,
+            AlbumArchive.Status.BUILDING,
+        }:
+            return Response(
+                {
+                    'detail': 'Архив ещё готовится.',
+                    'status': archive.status,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if archive.status == AlbumArchive.Status.FAILED:
+            return Response(
+                {
+                    'detail': 'Не удалось подготовить архив.',
+                    'status': archive.status,
                 },
                 status=status.HTTP_409_CONFLICT,
             )
