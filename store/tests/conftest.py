@@ -244,3 +244,16 @@ def catalog_merch_detail_url():
 def purchased_music_url():
     """Возвращает URL-адрес эндпоинта купленной музыки."""
     return reverse('api:store:purchased-music')
+
+
+@pytest.fixture
+def purchased_music_download_detail_url():
+    """Возвращает URL detail-ручки скачивания доступного релиза."""
+
+    def _url(album) -> str:
+        return reverse(
+            'api:store:purchased-music-download-detail',
+            args=(album.id,),
+        )
+
+    return _url
