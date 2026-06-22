@@ -10,6 +10,7 @@ on:
     branches:
       - main
       - develop
+      - feat/383-telegram-bot-integration
 
 jobs:
 
