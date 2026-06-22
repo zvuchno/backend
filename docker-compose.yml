@@ -99,6 +99,23 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  bot:
+    build: .
+    env_file: .env
+    command: python manage.py runbot
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: on-failure
   gateway:
     build: ./nginx/
     env_file: .env

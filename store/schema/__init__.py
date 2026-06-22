@@ -28,6 +28,7 @@ from .order import order_schema
 from .promocode import promocode_schema
 from .purchased_music import purchased_music_schema
 from .sale import artist_sale_schema
+from .telegram_connect import telegram_connect_schema
 from .track import track_schema
 
 __all__ = [
@@ -49,5 +50,6 @@ __all__ = [
     'order_schema',
     'promocode_schema',
     'purchased_music_schema',
+    'telegram_connect_schema',
     'track_schema',
 ]

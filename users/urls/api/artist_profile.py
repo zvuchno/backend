@@ -10,6 +10,7 @@ from users.views import (
     ArtistMeView,
     ArtistPublicView,
     RecipientTypeListView,
+    TelegramConnectView,
 )
 
 urlpatterns = [
@@ -52,5 +53,10 @@ urlpatterns = [
         'me/sales/<int:pk>/',
         ArtistSaleViewSet.as_view({'get': 'retrieve'}),
         name='artist_sale_detail',
+    ),
+    path(
+        'me/telegram/connect/',
+        TelegramConnectView.as_view(),
+        name='artist_telegram_connect',
     ),
 ]

@@ -68,6 +68,16 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         null=True,
         validators=(validate_file_size,),
     )
+    telegram_chat_id = models.BigIntegerField(
+        unique=True,
+        blank=True,
+        null=True,
+    )
+    telegram_token = models.UUIDField(
+        unique=True,
+        blank=True,
+        null=True,
+    )
 
     def save(self, *args, **kwargs):
         """Сохраняет профиль артиста и при необходимости создает slug.
