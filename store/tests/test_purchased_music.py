@@ -1,11 +1,12 @@
 """Тесты API доступной музыки слушателя."""
 
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from rest_framework import status
 
-from store.models import Album, Order, OrderItem, Track
+from store.models import Album, AlbumArchive, Order, OrderItem, Track
 
 pytestmark = pytest.mark.django_db
 
@@ -171,3 +172,241 @@ class TestPurchasedMusicAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert results == []
+
+
+class TestPurchasedMusicDownloadDetailAPI:
+    """Тесты detail-ручки скачивания релиза."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(
+        self,
+        listener_client,
+        purchased_music_download_detail_url,
+        variant_factory,
+    ) -> None:
+        self.listener_client = listener_client
+        self.download_detail_url = purchased_music_download_detail_url
+        self.variant_factory = variant_factory
+
+    def create_paid_order(
+        self,
+        listener_user,
+        variants,
+        order_status=Order.Status.PAID,
+    ):
+        """Создаёт оплаченный заказ с указанными вариантами."""
+        order = Order.objects.create(
+            user=listener_user,
+            status=order_status,
+            total=Decimal('666.00'),
+        )
+
+        for variant in variants:
+            OrderItem.objects.create(
+                order=order,
+                product_variant=variant,
+                price_at_purchase=variant.product.price,
+                unit_price=variant.product.price,
+                quantity=1,
+                product_info={'name': str(variant.product)},
+            )
+
+        return order
+
+    @patch(
+        'store.views.purchased_music.AlbumArchiveScheduler.schedule',
+    )
+    def test_full_release_returns_archive_and_all_tracks(
+        self,
+        schedule_mock,
+        listener_user,
+    ):
+        """Полный доступ возвращает ZIP и все треки релиза."""
+        album_variant = self.variant_factory(
+            'album',
+            name='Full Album',
+        )
+        album = album_variant.product.album
+
+        first_track = Track.objects.create(
+            name='First Track',
+            owner=album.owner,
+            album=album,
+            position=1,
+        )
+        second_track = Track.objects.create(
+            name='Second Track',
+            owner=album.owner,
+            album=album,
+            position=2,
+        )
+
+        self.create_paid_order(listener_user, [album_variant])
+
+        AlbumArchive.objects.create(
+            album=album,
+            status=AlbumArchive.Status.READY,
+        )
+
+        response = self.listener_client.get(
+            self.download_detail_url(album),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['album_id'] == album.id
+        assert response.data['access'] == 'full'
+
+        assert response.data['items'] == [
+            {
+                'type': 'archive',
+                'title': 'Скачать альбом в .ZIP',
+                'status': 'ready',
+                'download_action_url': (
+                    'http://testserver'
+                    f'/api/v1/store/me/purchased-music/download-link/'
+                    f'album-archive/{album.id}/'
+                ),
+            },
+            {
+                'type': 'track',
+                'title': '01. First Track',
+                'status': 'ready',
+                'download_action_url': (
+                    'http://testserver'
+                    f'/api/v1/store/me/purchased-music/download-link/'
+                    f'track/{first_track.id}/'
+                ),
+            },
+            {
+                'type': 'track',
+                'title': '02. Second Track',
+                'status': 'ready',
+                'download_action_url': (
+                    'http://testserver'
+                    f'/api/v1/store/me/purchased-music/download-link/'
+                    f'track/{second_track.id}/'
+                ),
+            },
+        ]
+
+        schedule_mock.assert_called_once_with(album)
+
+    @patch(
+        'store.views.purchased_music.AlbumArchiveScheduler.schedule',
+    )
+    def test_partial_release_returns_only_available_tracks(
+        self,
+        schedule_mock,
+        listener_user,
+    ):
+        """Частичный доступ не возвращает archive item."""
+        bought_track_variant = self.variant_factory(
+            'track',
+            name='Bought Track',
+        )
+        bought_track = bought_track_variant.product.track
+        bought_track.position = 1
+        bought_track.save(update_fields=('position',))
+
+        album = bought_track.album
+
+        Track.objects.create(
+            name='Not Bought Track',
+            owner=album.owner,
+            album=album,
+            position=2,
+        )
+
+        self.create_paid_order(
+            listener_user,
+            [bought_track_variant],
+        )
+
+        response = self.listener_client.get(
+            self.download_detail_url(album),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {
+            'album_id': album.id,
+            'access': 'partial',
+            'items': [
+                {
+                    'type': 'track',
+                    'title': '01. Bought Track',
+                    'status': 'ready',
+                    'download_action_url': (
+                        'http://testserver'
+                        f'/api/v1/store/me/purchased-music/download-link/'
+                        f'track/{bought_track.id}/'
+                    ),
+                },
+            ],
+        }
+        schedule_mock.assert_not_called()
+
+    def test_other_user_cannot_get_download_detail(
+        self,
+        listener_user,
+        user_factory,
+    ):
+        """Чужой доступный релиз не раскрывается."""
+        other_user = user_factory()
+        track_variant = self.variant_factory(
+            'track',
+            name='Other User Track',
+        )
+        album = track_variant.product.track.album
+
+        self.create_paid_order(other_user, [track_variant])
+
+        response = self.listener_client.get(
+            self.download_detail_url(album),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @patch(
+        'store.views.purchased_music.AlbumArchiveScheduler.schedule',
+    )
+    def test_pending_archive_has_no_download_action_url(
+        self,
+        schedule_mock,
+        listener_user,
+    ):
+        """Неготовый архив отображается без URL действия."""
+        album_variant = self.variant_factory(
+            'album',
+            name='Pending Album',
+        )
+        album = album_variant.product.album
+
+        Track.objects.create(
+            name='First Track',
+            owner=album.owner,
+            album=album,
+            position=1,
+        )
+
+        self.create_paid_order(listener_user, [album_variant])
+
+        AlbumArchive.objects.create(
+            album=album,
+            status=AlbumArchive.Status.PENDING,
+        )
+
+        response = self.listener_client.get(
+            self.download_detail_url(album),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['access'] == 'full'
+
+        assert response.data['items'][0] == {
+            'type': 'archive',
+            'title': 'Скачать альбом в .ZIP',
+            'status': 'pending',
+            'download_action_url': None,
+        }
+
+        schedule_mock.assert_called_once_with(album)

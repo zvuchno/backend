@@ -80,6 +80,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'image_preview',
         'created_at',
         'updated_at',
+        'display_connect_to_telegram',
     )
     search_fields = (
         'name',
@@ -115,6 +116,11 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     @admin.display(description='Имя пользователя')
     def account_username(self, obj):
         return obj.user.username or '—'
+
+    @admin.display(description='Подключен Telegram-bot', boolean=True)
+    def display_connect_to_telegram(self, obj):
+        """Отображает статус подключения к Telegram-боту."""
+        return bool(obj.telegram_chat_id)
 
     def get_fieldsets(self, request, obj=None):
         """Возвращает набор полей для создания и редактирования артиста."""
@@ -174,6 +180,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                             'user_link',
                             'account_username',
                             'account_phone',
+                            'display_connect_to_telegram',
                         ),
                     },
                 ),
