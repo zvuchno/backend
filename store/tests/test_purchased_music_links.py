@@ -9,6 +9,8 @@ from rest_framework import status
 from store.models import AlbumArchive, Order, OrderItem, Track
 from store.services import DownloadLink
 
+pytestmark = pytest.mark.django_db
+
 
 class TestPurchasedMusicTrackDownloadLinkAPI:
     """Тесты ручки выдачи временной ссылки на отдельный трек."""
@@ -112,6 +114,9 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data == {
+            'detail': 'Трек недоступен.',
+        }
 
     def test_track_without_audio_file_returns_404(self, listener_user):
         """Трек без файла не выдаёт ссылку."""
@@ -298,6 +303,9 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data == {
+            'detail': 'Релиз недоступен.',
+        }
 
     @pytest.mark.parametrize(
         ('archive_status', 'detail'),

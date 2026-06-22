@@ -365,6 +365,9 @@ class TestPurchasedMusicDownloadDetailAPI:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data == {
+            'detail': 'Релиз недоступен.',
+        }
 
     @patch(
         'store.views.purchased_music.AlbumArchiveScheduler.schedule',

@@ -1,5 +1,5 @@
 from django.db.models import QuerySet
-from django.shortcuts import get_object_or_404
+from django.http import Http404
 
 from store.models import ListenerAlbumAccess, ListenerTrackAccess
 
@@ -42,10 +42,14 @@ class PurchasedMusicAccessMixin:
         if require_full_access:
             filters['is_fully_available'] = True
 
-        return get_object_or_404(
-            self.get_album_access_queryset(),
-            **filters,
+        album_access = (
+            self.get_album_access_queryset().filter(**filters).first()
         )
+
+        if album_access is None:
+            raise Http404('Релиз недоступен.')
+
+        return album_access
 
     def get_track_access_or_404(
         self,
@@ -54,8 +58,17 @@ class PurchasedMusicAccessMixin:
         track_id: int,
     ) -> ListenerTrackAccess:
         """Возвращает доступ пользователя к треку или 404."""
-        return get_object_or_404(
-            self.get_track_access_queryset(),
-            user=user,
-            track_id=track_id,
+        track_access = (
+            self
+            .get_track_access_queryset()
+            .filter(
+                user=user,
+                track_id=track_id,
+            )
+            .first()
         )
+
+        if track_access is None:
+            raise Http404('Трек недоступен.')
+
+        return track_access
