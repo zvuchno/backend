@@ -6,9 +6,11 @@
 """
 
 from .commerce import ProductActionMixin
+from .music_access import PurchasedMusicAccessMixin
 from .soft_delete import SoftDeleteMixin
 
 __all__ = [
+    'PurchasedMusicAccessMixin',
     'ProductActionMixin',
     'SoftDeleteMixin',
 ]

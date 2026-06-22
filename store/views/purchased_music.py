@@ -1,10 +1,31 @@
+from rest_framework import status
 from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from common.permissions import IsListener
 
-from store.models import ListenerAlbumAccess
-from store.schema import purchased_music_schema
-from store.serializers import LibraryAlbumCardSerializer
+from store.models import (
+    AlbumArchive,
+    ListenerAlbumAccess,
+)
+from store.schema import (
+    archive_download_link_schema,
+    purchased_music_download_detail_schema,
+    purchased_music_schema,
+    track_download_link_schema,
+)
+from store.serializers import (
+    DownloadLinkSerializer,
+    LibraryAlbumCardSerializer,
+    PurchasedMusicDLDetailSerializer,
+)
+from store.services import (
+    DownloadFilenameService,
+    DownloadLinkService,
+)
+from store.services.album_archive import AlbumArchiveScheduler
+from store.views.mixins import PurchasedMusicAccessMixin
 
 
 @purchased_music_schema
@@ -26,3 +47,174 @@ class PurchasedMusicView(ListAPIView):
             )
             .order_by('-album__release_date', 'album__name')
         )
+
+
+@purchased_music_download_detail_schema
+class PurchasedMusicDLDetailView(PurchasedMusicAccessMixin, APIView):
+    """Варианты скачивания одного доступного слушателю релиза."""
+
+    permission_classes = [IsListener]
+
+    def get(self, request, album_id):
+        """Возвращает варианты скачивания доступного релиза."""
+        album_access = self.get_album_access_or_404(
+            user=request.user,
+            album_id=album_id,
+        )
+
+        track_accesses = (
+            self
+            .get_track_access_queryset()
+            .filter(
+                user=request.user,
+                track__album_id=album_access.album_id,
+            )
+            .order_by('track__position', 'track__id')
+        )
+
+        tracks = [track_access.track for track_access in track_accesses]
+
+        archive = None
+
+        if album_access.is_fully_available:
+            AlbumArchiveScheduler.schedule(album_access.album)
+
+            archive = (
+                AlbumArchive.objects
+                .filter(album_id=album_access.album_id)
+                .only('album_id', 'status')
+                .first()
+            )
+
+        serializer = PurchasedMusicDLDetailSerializer(
+            album_access,
+            context={
+                'request': request,
+                'tracks': tracks,
+                'archive': archive,
+            },
+        )
+        return Response(serializer.data)
+
+
+@track_download_link_schema
+class PurchasedMusicTrackDownloadLinkView(PurchasedMusicAccessMixin, APIView):
+    """Выдаёт временную ссылку на доступный пользователю трек."""
+
+    permission_classes = [IsListener]
+
+    def post(self, request, track_id):
+        """Проверяет доступ и возвращает свежую ссылку на трек."""
+        track_access = self.get_track_access_or_404(
+            user=request.user,
+            track_id=track_id,
+        )
+        track = track_access.track
+
+        if not track.audio_file:
+            return Response(
+                {'detail': 'Файл трека временно недоступен.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        filename = DownloadFilenameService.get_track_filename(track)
+
+        try:
+            link = DownloadLinkService.get_link(
+                field_file=track.audio_file,
+                filename=filename,
+            )
+        except FileNotFoundError:
+            return Response(
+                {'detail': 'Файл трека временно недоступен.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = DownloadLinkSerializer(
+            link,
+            context={'request': request},
+        )
+        return Response(serializer.data)
+
+
+@archive_download_link_schema
+class PurchasedMusicArchiveDownloadLinkView(
+    PurchasedMusicAccessMixin,
+    APIView,
+):
+    """Выдаёт временную ссылку на готовый архив полностью доступного релиза."""
+
+    permission_classes = [IsListener]
+
+    def post(self, request, album_id):
+        """Проверяет полный доступ и возвращает свежую ссылку на ZIP."""
+        album_access = self.get_album_access_or_404(
+            user=request.user,
+            album_id=album_id,
+            require_full_access=True,
+        )
+        album = album_access.album
+
+        AlbumArchiveScheduler.schedule(album)
+
+        archive = (
+            AlbumArchive.objects
+            .filter(album_id=album.id)
+            .only('file', 'status')
+            .first()
+        )
+
+        if archive is None:
+            return Response(
+                {
+                    'detail': 'Архив ещё готовится.',
+                    'status': AlbumArchive.Status.PENDING,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if archive.status in {
+            AlbumArchive.Status.PENDING,
+            AlbumArchive.Status.BUILDING,
+        }:
+            return Response(
+                {
+                    'detail': 'Архив ещё готовится.',
+                    'status': archive.status,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if archive.status == AlbumArchive.Status.FAILED:
+            return Response(
+                {
+                    'detail': 'Не удалось подготовить архив.',
+                    'status': archive.status,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if not archive.file:
+            return Response(
+                {'detail': 'Файл архива временно недоступен.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        filename = DownloadFilenameService.get_archive_filename(album)
+
+        try:
+            link = DownloadLinkService.get_link(
+                field_file=archive.file,
+                filename=filename,
+            )
+        except FileNotFoundError:
+            return Response(
+                {'detail': 'Файл архива временно недоступен.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = DownloadLinkSerializer(
+            link,
+            context={'request': request},
+        )
+        return Response(serializer.data)

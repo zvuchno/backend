@@ -26,12 +26,18 @@ from .merch import merch_schema
 from .merch_kind import merch_kinds_schema
 from .order import order_schema
 from .promocode import promocode_schema
-from .purchased_music import purchased_music_schema
+from .purchased_music import (
+    archive_download_link_schema,
+    purchased_music_download_detail_schema,
+    purchased_music_schema,
+    track_download_link_schema,
+)
 from .sale import artist_sale_schema
 from .track import track_schema
 
 __all__ = [
     'album_schema',
+    'archive_download_link_schema',
     'artist_sale_schema',
     'cart_apply_promocode_schema',
     'cart_remove_promocode_schema',
@@ -48,6 +54,8 @@ __all__ = [
     'merch_schema',
     'order_schema',
     'promocode_schema',
+    'purchased_music_download_detail_schema',
     'purchased_music_schema',
+    'track_download_link_schema',
     'track_schema',
 ]

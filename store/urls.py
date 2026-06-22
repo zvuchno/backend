@@ -20,6 +20,9 @@ from .views import (
     OrderViewSet,
     ProductCatalogListView,
     PromocodeViewSet,
+    PurchasedMusicArchiveDownloadLinkView,
+    PurchasedMusicDLDetailView,
+    PurchasedMusicTrackDownloadLinkView,
     PurchasedMusicView,
     TrackViewSet,
 )
@@ -55,6 +58,21 @@ urlpatterns = [
         'me/purchased-music',
         PurchasedMusicView.as_view(),
         name='purchased-music',
+    ),
+    path(
+        'me/purchased-music/<int:album_id>/',
+        PurchasedMusicDLDetailView.as_view(),
+        name='purchased-music-download-detail',
+    ),
+    path(
+        'me/purchased-music/download-link/track/<int:track_id>/',
+        PurchasedMusicTrackDownloadLinkView.as_view(),
+        name='purchased-music-track-download-link',
+    ),
+    path(
+        'me/purchased-music/download-link/album-archive/<int:album_id>/',
+        PurchasedMusicArchiveDownloadLinkView.as_view(),
+        name='purchased-music-archive-download-link',
     ),
     path('cdek/widget', CDEKWidgetView.as_view(), name='cdek-widget'),
 ]
