@@ -179,18 +179,11 @@ class PurchasedMusicDLDetailSerializer(serializers.Serializer):
         args: tuple[int, ...],
         is_available: bool = True,
     ) -> str | None:
-        """Возвращает абсолютный URL POST-ручки или null."""
+        """Возвращает относительный URL POST-ручки или null."""
         if not is_available:
             return None
 
-        request = self.context.get('request')
-
-        if request is None:
-            return None
-
-        url = reverse(view_name, args=args)
-
-        return request.build_absolute_uri(url)
+        return reverse(view_name, args=args)
 
 
 class DownloadLinkSerializer(serializers.Serializer):

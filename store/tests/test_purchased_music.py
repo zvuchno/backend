@@ -262,7 +262,6 @@ class TestPurchasedMusicDownloadDetailAPI:
                 'title': 'Скачать альбом в .ZIP',
                 'status': 'ready',
                 'download_action_url': (
-                    'http://testserver'
                     f'/api/v1/store/me/purchased-music/download-link/'
                     f'album-archive/{album.id}/'
                 ),
@@ -272,7 +271,6 @@ class TestPurchasedMusicDownloadDetailAPI:
                 'title': '01. First Track',
                 'status': 'ready',
                 'download_action_url': (
-                    'http://testserver'
                     f'/api/v1/store/me/purchased-music/download-link/'
                     f'track/{first_track.id}/'
                 ),
@@ -282,7 +280,6 @@ class TestPurchasedMusicDownloadDetailAPI:
                 'title': '02. Second Track',
                 'status': 'ready',
                 'download_action_url': (
-                    'http://testserver'
                     f'/api/v1/store/me/purchased-music/download-link/'
                     f'track/{second_track.id}/'
                 ),
@@ -336,7 +333,6 @@ class TestPurchasedMusicDownloadDetailAPI:
                     'title': '01. Bought Track',
                     'status': 'ready',
                     'download_action_url': (
-                        'http://testserver'
                         f'/api/v1/store/me/purchased-music/download-link/'
                         f'track/{bought_track.id}/'
                     ),
