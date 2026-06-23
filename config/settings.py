@@ -325,8 +325,9 @@ AUTH_USER_MODEL = 'users.CoreUser'
 
 PHONENUMBER_DEFAULT_REGION = 'RU'
 
-FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://localhost:3000/verify-email')
-FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://localhost:3000/reset-password-confirm')
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_PATH', 'http://localhost:3000/')
+FRONTEND_VERIFY_EMAIL_PATH = os.getenv('FRONTEND_VERIFY_EMAIL_PATH', '/verify/verify-success')
+FRONTEND_RESET_PASSWORD_PATH = os.getenv('FRONTEND_RESET_PASSWORD_PATH', '/reset-password-confirm')
 
 # Настройки CELERY
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL')
