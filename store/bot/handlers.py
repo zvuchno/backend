@@ -9,6 +9,12 @@ logger = logging.getLogger(__name__)
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     """Обрабатывает /start, привязывает chat_id к артисту по токену."""
+    if message.chat.type != 'private':  # Проверка: только личные сообщения
+        bot.send_message(
+            message.chat.id,
+            '⚠️ Привязка аккаунта доступна только в личных сообщениях.',
+        )
+        return
     chat_id = message.chat.id
     args = message.text.split()
 
