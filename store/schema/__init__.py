@@ -33,6 +33,7 @@ from .purchased_music import (
     track_download_link_schema,
 )
 from .sale import artist_sale_schema
+from .telegram_connect import telegram_connect_schema
 from .track import track_schema
 
 __all__ = [
@@ -56,6 +57,7 @@ __all__ = [
     'promocode_schema',
     'purchased_music_download_detail_schema',
     'purchased_music_schema',
+    'telegram_connect_schema',
     'track_download_link_schema',
     'track_schema',
 ]

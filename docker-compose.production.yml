@@ -127,6 +127,22 @@ services:
     expose:
       - "3000"
     restart: unless-stopped
+  bot:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: python manage.py runbot
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: always
   gateway:
     image: inswty/zvuchno_gateway:latest
     env_file: .env
