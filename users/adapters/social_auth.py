@@ -1,13 +1,14 @@
 """Адаптеры для интеграции входа с соцсетями."""
 
 import logging
-from urllib.parse import urlencode
 
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
+
+from common.utils.urls import build_frontend_url
 
 from config import settings
 from users.constants import (
@@ -121,13 +122,16 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         provider: str = 'unknown',
     ) -> HttpResponseRedirect:
         """Вспомогательный метод для редиректа на фронт с ошибкой."""
-        base_url = getattr(settings, 'FRONTEND_SOCIAL_AUTH_URL', '/')
-        params = urlencode({
-            'status': 'error',
-            'error_code': error_code,
-            'provider': provider,
-        })
-        return redirect(f'{base_url}?{params}')
+        return redirect(
+            build_frontend_url(
+                settings.FRONTEND_SOCIAL_AUTH_PATH,
+                {
+                    'status': 'error',
+                    'error_code': error_code,
+                    'provider': provider,
+                },
+            ),
+        )
 
     def _is_api_request(self, request) -> bool:
         """Проверяет, что запрос относится к API social auth."""

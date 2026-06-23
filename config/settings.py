@@ -325,8 +325,9 @@ AUTH_USER_MODEL = 'users.CoreUser'
 
 PHONENUMBER_DEFAULT_REGION = 'RU'
 
-FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://localhost:3000/verify-email')
-FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://localhost:3000/reset-password-confirm')
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
+FRONTEND_VERIFY_EMAIL_PATH = os.getenv('FRONTEND_VERIFY_EMAIL_PATH', '/verify/verify-success')
+FRONTEND_RESET_PASSWORD_PATH = os.getenv('FRONTEND_RESET_PASSWORD_PATH', '/reset-password-confirm')
 
 # Настройки CELERY
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL')
@@ -455,11 +456,11 @@ SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по em
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # автоматически связывать
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_LOGIN_ON_GET = True  # сразу редиректить вход без промежуточной страницы
-FRONTEND_SOCIAL_AUTH_URL = os.getenv(
-    'FRONTEND_SOCIAL_AUTH_URL',
+FRONTEND_SOCIAL_AUTH_PATH = os.getenv(
+    'FRONTEND_SOCIAL_AUTH_PATH',
     '/'
 )
-LOGIN_REDIRECT_URL = FRONTEND_SOCIAL_AUTH_URL  # Для успешных входов по умолчанию
+LOGIN_REDIRECT_URL = FRONTEND_SOCIAL_AUTH_PATH  # Для успешных входов по умолчанию
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 # SESSION_COOKIE_AGE = 86400
