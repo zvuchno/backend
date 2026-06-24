@@ -39,17 +39,30 @@ class TrackAdmin(
         'owner',
         'get_price',
         'get_allow_overpay',
+        'preview_status',
+        'stream_status',
         'is_active',
     )
     search_fields = ('album__name', 'description', 'name')
     list_filter = (
         'is_active',
+        'preview_status',
+        'stream_status',
         'created_at',
         'updated_at',
     )
     ordering = ('album', 'position')
     readonly_fields = (
         'formatted_duration',
+        'duration',
+        'preview_file',
+        'preview_status',
+        'preview_error',
+        'preview_started_at',
+        'stream_file',
+        'stream_status',
+        'stream_error',
+        'stream_started_at',
         'created_at',
         'updated_at',
         'get_sku',
@@ -69,6 +82,22 @@ class TrackAdmin(
                     'description',
                     'get_sku',
                     'owner',
+                ),
+            },
+        ),
+        (
+            'Обработка аудио',
+            {
+                'classes': ('collapse',),
+                'fields': (
+                    'preview_file',
+                    'preview_status',
+                    'preview_error',
+                    'preview_started_at',
+                    'stream_file',
+                    'stream_status',
+                    'stream_error',
+                    'stream_started_at',
                 ),
             },
         ),

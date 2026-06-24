@@ -507,3 +507,7 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', 10))
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+
+# FFMPEG. Если локально пути отличаются.
+FFMPEG_BINARY = os.getenv('FFMPEG_BINARY', 'ffmpeg')
+FFPROBE_BINARY = os.getenv('FFPROBE_BINARY', 'ffprobe')
