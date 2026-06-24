@@ -71,6 +71,12 @@ class CartViewSet(viewsets.GenericViewSet):
                     'product_variant__product__track__album',
                     'product_variant__product__album',
                     'product_variant__product__merch',
+                )
+                .prefetch_related(
+                    Prefetch(
+                        'product_variant__product__merch__images_merch',
+                        to_attr='prefetched_images',
+                    ),
                 ),
             ),
         )

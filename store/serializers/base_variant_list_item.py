@@ -68,7 +68,11 @@ class BaseVariantTargetImageSerializer(
 
         if product.merch_id:
             items = self.get_merch_image_items(
-                product.merch.images_merch.all(),
+                getattr(
+                    product.merch,
+                    'prefetched_images',
+                    product.merch.images_merch.all(),
+                ),
             )
             return self.get_main_image_url(items)
 
