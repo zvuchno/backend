@@ -357,7 +357,7 @@ class AlbumArchiveScheduler:
             ),
         )
 
-        from store.tasks import build_album_archive
+        from store.tasks.album_archive import build_album_archive
 
         transaction.on_commit(
             lambda album_id=album.pk, content_hash=expected_hash: (

@@ -144,7 +144,7 @@ class ProductInline(NestedStackedInline):
     verbose_name = 'Торговые настройки альбома'
 
 
-class AlbumArchiveInline(admin.StackedInline):
+class AlbumArchiveInline(NestedStackedInline):
     """Инлайн подготовленного архива альбома."""
 
     model = AlbumArchive

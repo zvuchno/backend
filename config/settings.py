@@ -509,5 +509,5 @@ EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', 10))
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 
 # FFMPEG. Если локально пути отличаются.
-FFMPEG_BINARY = os.getenv('FFMPEG_BINARY', 'ffmpeg')
-FFPROBE_BINARY = os.getenv('FFPROBE_BINARY', 'ffprobe')
+FFMPEG_BINARY = os.getenv('FFMPEG_BINARY') or 'ffmpeg'
+FFPROBE_BINARY = os.getenv('FFPROBE_BINARY') or 'ffprobe'
