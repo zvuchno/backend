@@ -10,6 +10,7 @@ on:
     branches:
       - main
       - develop
+      - fix/cart-image-url-s3
 
 jobs:
 
