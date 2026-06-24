@@ -1,12 +1,16 @@
-from django.conf import settings
 from django.urls import reverse
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .catalog_card import CatalogCardTargetSerializer
+from .mixins import ProductImagesMixin
 
 
-class BaseVariantTargetImageSerializer(serializers.ModelSerializer):
+class BaseVariantTargetImageSerializer(
+    ProductImagesMixin,
+    serializers.ModelSerializer,
+):
     """Базовый сериализатор элемента списка, связанного с ProductVariant.
 
     Применяется для list-эндпоинтов (корзина, избранное, заказы),
@@ -54,17 +58,26 @@ class BaseVariantTargetImageSerializer(serializers.ModelSerializer):
 
         return reverse(url_name, args=(obj.target_id,))
 
-    def get_image(self, obj) -> str | None:
-        image_path = getattr(obj, 'image_path', None)
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_image(self, obj):
+        """Возвращает изображение карточки товара."""
+        product = obj.product_variant.product
+        if product.album_id:
+            items = self.get_album_image_items(product.album)
+            return self.get_main_image_url(items)
 
-        if not image_path:
-            return None
-
-        request = self.context.get('request')
-
-        if request:
-            return request.build_absolute_uri(
-                settings.MEDIA_URL + image_path,
+        if product.merch_id:
+            items = self.get_merch_image_items(
+                getattr(
+                    product.merch,
+                    'prefetched_images',
+                    product.merch.images_merch.all(),
+                ),
             )
+            return self.get_main_image_url(items)
 
-        return settings.MEDIA_URL + image_path
+        if product.track_id:
+            items = self.get_album_image_items(product.track.album)
+            return self.get_main_image_url(items)
+
+        return None
