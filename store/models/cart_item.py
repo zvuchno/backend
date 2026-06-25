@@ -98,6 +98,7 @@ class CartItem(models.Model):
     class Meta:
         verbose_name = 'позиция в корзине'
         verbose_name_plural = 'позиции в корзине'
+        ordering = ['id']
         constraints = [
             models.UniqueConstraint(
                 fields=('cart', 'product_variant'),
