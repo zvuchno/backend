@@ -53,73 +53,31 @@ class TestCartAPI:
         variant_factory,
         user,
     ):
-        """Проверяет частичное обновление корзины через PATCH."""
+        """Проверяет обновление количества товара в корзине через PATCH."""
         variant = variant_factory(product_type='merch')
-
         cart = Cart.objects.get_or_create(user=user)[0]
         CartItem.objects.create(
             cart=cart,
             product_variant=variant,
             quantity=1,
+            price_with_donation=Decimal('3000.00'),
+            comment='Thank you!',
         )
         payload = {
             'items': [
                 {
                     'product_variant': variant.id,
                     'quantity': 10,
-                    'price_with_donation': Decimal('3000.00'),
-                    'comment': 'Thank you!',
                 },
             ],
         }
         response = auth_client.patch(cart_url, data=payload, format='json')
         assert response.status_code == status.HTTP_200_OK
-
         item = CartItem.objects.get(cart=cart, product_variant=variant)
         assert item.quantity == 10
         assert item.price_with_donation == Decimal('3000.00')
+        assert item.base_line_total == Decimal('30000.00')
         assert item.comment == 'Thank you!'
-
-    def test_sync_cart_with_put(
-        self,
-        auth_client,
-        cart_url,
-        variant_factory,
-        user,
-    ):
-        """Проверяет полную синхронизацию корзины через PUT."""
-        album = variant_factory(product_type='album')
-        merch = variant_factory(product_type='merch')
-        cart = Cart.objects.get_or_create(user=user)[0]
-        CartItem.objects.create(
-            cart=cart,
-            product_variant=merch,
-            quantity=3,
-        )
-        CartItem.objects.create(
-            cart=cart,
-            product_variant=album,
-            quantity=1,
-        )
-
-        assert CartItem.objects.filter(cart=cart).count() == 2
-
-        payload = {
-            'items': [
-                {
-                    'product_variant': merch.id,
-                    'quantity': 5,
-                },
-            ],
-        }
-        response = auth_client.put(cart_url, data=payload, format='json')
-
-        assert response.status_code == status.HTTP_200_OK
-
-        assert CartItem.objects.filter(cart=cart).count() == 1
-        item = CartItem.objects.get(cart=cart, product_variant=merch)
-        assert item.product_variant.id == merch.id
-        assert item.quantity == 5
 
     def test_remove_item_from_cart(
         self,

@@ -3,6 +3,7 @@
 Содержит классы для чтения и записи данных моделей Cart, CartItem.
 """
 
+from django.db import transaction
 from rest_framework import serializers
 
 from .base_variant_list_item import BaseVariantTargetImageSerializer
@@ -197,15 +198,29 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class CartWriteSerializer(serializers.ModelSerializer):
-    """Сериализатор для записи корзины (PUT/PATCH)."""
+class CartItemUpdateSerializer(serializers.ModelSerializer):
+    """Сериализатор для обновления количества товара в корзине."""
 
-    items = CartItemWriteSerializer(many=True, required=False)
+    product_variant = serializers.PrimaryKeyRelatedField(
+        queryset=ProductVariant.objects.all(),
+    )
+    quantity = serializers.IntegerField(min_value=1)
+
+    class Meta:
+        model = CartItem
+        fields = ('product_variant', 'quantity')
+
+
+class CartWriteSerializer(serializers.ModelSerializer):
+    """Сериализатор для обновления количества товаров в корзине (PATCH)."""
+
+    items = CartItemUpdateSerializer(many=True, required=False)
 
     class Meta:
         model = Cart
         fields = ('items',)
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', None)
 
@@ -215,7 +230,6 @@ class CartWriteSerializer(serializers.ModelSerializer):
             CartService.update_cart_items(
                 cart=instance,
                 items_data=items_data,
-                partial=self.partial,
             )
 
         return instance
