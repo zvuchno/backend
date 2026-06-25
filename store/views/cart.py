@@ -37,13 +37,12 @@ class CartViewSet(viewsets.GenericViewSet):
     Управление корзиной:
     - GET: Получить состав корзины.
     - PUT: Полная синхронизация.
-    - PATCH: Частичное обновление.
-    - POST: Добавить один товар или увеличить количество.
+    - PATCH: Обновить количество товаров.
     - DELETE: Удалить товар полностью.
     """
 
     queryset = Cart.objects.all()
-    http_method_names = ('get', 'post', 'put', 'patch', 'delete')
+    http_method_names = ('get', 'post', 'patch', 'delete')
     permission_classes = (AllowAny,)
 
     def get_queryset(self):
@@ -114,12 +113,12 @@ class CartViewSet(viewsets.GenericViewSet):
             cart = self.get_queryset().first()
             if cart is None:
                 return Response(EMPTY_CART_RESPONSE)
-        else:  # PUT/PATCH
+        else:  # PATCH
             cart = self.get_instance()
             serializer = self.get_serializer(
                 cart,
                 data=request.data,
-                partial=(request.method == 'PATCH'),
+                partial=True,
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()

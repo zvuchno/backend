@@ -42,20 +42,9 @@ cart_schema = extend_schema_view(
             responses={200: CartReadSerializer},
         ),
         extend_schema(
-            methods=['PUT'],
-            summary='Полная синхронизация корзины',
-            description=(
-                'Заменяет текущее содержимое корзины на '
-                'присланный список товаров.'
-            ),
-            tags=CART_TAGS,
-            request=CartWriteSerializer,
-            responses={200: CartReadSerializer},
-        ),
-        extend_schema(
             methods=['PATCH'],
             summary='Частичное обновление корзины',
-            description='Обновляет только переданные поля.',
+            description='Обновляет количество по заданной позиции.',
             tags=CART_TAGS,
             request=CartWriteSerializer,
             responses={200: CartReadSerializer},
