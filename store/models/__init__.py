@@ -19,7 +19,7 @@ from .order_item import OrderItem
 from .product import Product
 from .product_variant import ProductVariant
 from .promocode import Promocode
-from .track import Track
+from .track import Track, TrackGeneratedAudio
 
 __all__ = [
     'Album',
@@ -40,4 +40,5 @@ __all__ = [
     'ProductVariant',
     'Promocode',
     'Track',
+    'TrackGeneratedAudio',
 ]

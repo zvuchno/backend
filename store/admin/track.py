@@ -11,7 +11,7 @@ from .mixins import (
     CommerceBaseMixin,
     CommerceDisplayMixin,
 )
-from store.models import Product, Track
+from store.models import Product, Track, TrackGeneratedAudio
 
 
 class ProductInline(admin.StackedInline):
@@ -22,6 +22,42 @@ class ProductInline(admin.StackedInline):
     fields = ('price', 'allow_overpay')
     can_delete = False
     verbose_name = 'Торговые настройки трека'
+
+
+class TrackGeneratedAudioInline(admin.StackedInline):
+    """Инлайн результатов фоновой подготовки аудиофайлов."""
+
+    model = TrackGeneratedAudio
+    extra = 0
+    max_num = 1
+    can_delete = False
+    verbose_name = 'Сгенерированные аудиофайлы'
+    verbose_name_plural = 'Сгенерированные аудиофайлы'
+
+    fields = (
+        'preview_file',
+        'preview_duration',
+        'preview_status',
+        'preview_error',
+        'preview_started_at',
+        'stream_file',
+        'stream_status',
+        'stream_error',
+        'stream_started_at',
+    )
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        """Запрещает ручное создание результатов обработки."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает ручное изменение результатов обработки."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает ручное удаление результатов обработки."""
+        return False
 
 
 @admin.register(Track)
@@ -39,15 +75,11 @@ class TrackAdmin(
         'owner',
         'get_price',
         'get_allow_overpay',
-        'preview_status',
-        'stream_status',
         'is_active',
     )
     search_fields = ('album__name', 'description', 'name')
     list_filter = (
         'is_active',
-        'preview_status',
-        'stream_status',
         'created_at',
         'updated_at',
     )
@@ -55,14 +87,6 @@ class TrackAdmin(
     readonly_fields = (
         'formatted_duration',
         'duration',
-        'preview_file',
-        'preview_status',
-        'preview_error',
-        'preview_started_at',
-        'stream_file',
-        'stream_status',
-        'stream_error',
-        'stream_started_at',
         'created_at',
         'updated_at',
         'get_sku',
@@ -86,22 +110,6 @@ class TrackAdmin(
             },
         ),
         (
-            'Обработка аудио',
-            {
-                'classes': ('collapse',),
-                'fields': (
-                    'preview_file',
-                    'preview_status',
-                    'preview_error',
-                    'preview_started_at',
-                    'stream_file',
-                    'stream_status',
-                    'stream_error',
-                    'stream_started_at',
-                ),
-            },
-        ),
-        (
             'Системная информация',
             {
                 'classes': ('collapse',),
@@ -112,7 +120,7 @@ class TrackAdmin(
             },
         ),
     )
-    inlines = (ProductInline,)
+    inlines = (ProductInline, TrackGeneratedAudioInline)
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):
