@@ -1,14 +1,27 @@
 import logging
 
-from .telegram import bot
+from django.conf import settings
+from telebot import TeleBot
+
+from .telegram import get_bot
 from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
+
+token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
+# Экземпляр для регистрации декоратора @bot.message_handlerc с фейковым токеном
+bot = TeleBot(token=token if token else '0000000000:fake_token')
 
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     """Обрабатывает /start, привязывает chat_id к артисту по токену."""
+    try:
+        bot = get_bot()
+    except Exception as e:
+        logger.error('Ошибка инициализации бота в handle_start: %s', e)
+        return
+
     if message.chat.type != 'private':  # Проверка: только личные сообщения
         bot.send_message(
             message.chat.id,

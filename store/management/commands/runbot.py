@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from telebot.apihelper import ApiTelegramException
 
 import store.bot.handlers  # noqa: F401
-from store.bot.telegram import bot
+from store.bot.telegram import get_bot
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,13 @@ class Command(BaseCommand):
     help = 'Запуск Telegram-бота'
 
     def handle(self, *args, **options):
+
+        try:
+            bot = get_bot()
+        except Exception as e:
+            logger.error('Не удалось запустить бота: %s', e)
+            return
+
         logger.info('Telegram bot запущен')
 
         while True:
