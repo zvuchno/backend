@@ -98,6 +98,7 @@ class TrackGeneratedAudio(models.Model):
         'Длительность превью',
         null=True,
         blank=True,
+        help_text='Длительность подготовленного превью в секундах',
     )
     preview_status = models.CharField(
         'Статус подготовки превью',
@@ -113,7 +114,6 @@ class TrackGeneratedAudio(models.Model):
         'Начало подготовки превью',
         null=True,
         blank=True,
-        help_text='Длительность подготовленного превью в секундах',
     )
 
     stream_file = models.FileField(

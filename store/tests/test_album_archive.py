@@ -5,7 +5,7 @@ import pytest
 
 from store.models import AlbumArchive
 from store.services.album_archive import AlbumArchiveService
-from store.tasks import build_album_archive
+from store.tasks.album_archive import build_album_archive
 from store.tests.factories import (
     AlbumFactory,
     TrackFactory,
