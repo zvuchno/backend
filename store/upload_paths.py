@@ -34,7 +34,7 @@ def album_archive_upload_to(instance, filename: str) -> str:
 def track_preview_upload_to(instance, filename: str) -> str:
     """Формирует путь для публичного превью трека."""
     return (
-        f'albums/{instance.album_id}/tracks/preview/'
+        f'albums/{instance.track.album_id}/tracks/preview/'
         f'{build_unique_filename(filename)}'
     )
 
@@ -42,6 +42,6 @@ def track_preview_upload_to(instance, filename: str) -> str:
 def track_stream_upload_to(instance, filename: str) -> str:
     """Формирует путь для приватного файла воспроизведения."""
     return (
-        f'albums/{instance.album_id}/tracks/stream/'
+        f'albums/{instance.track.album_id}/tracks/stream/'
         f'{build_unique_filename(filename)}'
     )
