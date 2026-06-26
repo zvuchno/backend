@@ -2,13 +2,19 @@ import logging
 
 from telebot.apihelper import ApiTelegramException
 
-from store.bot.telegram import bot
+from store.bot.telegram import get_bot
 
 logger = logging.getLogger(__name__)
 
 
 def send_telegram_message(chat_id: int, message: str) -> None:
     """Отправляет сообщение в Telegram-чат."""
+    try:
+        bot = get_bot()
+    except Exception as e:
+        logger.error('Ошибка инициализации бота в telegram_message: %s', e)
+        return
+
     logger.debug('Bot-Telegram: Отправка сообщения')
     try:
         bot.send_message(chat_id, message)
