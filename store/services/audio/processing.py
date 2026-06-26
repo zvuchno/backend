@@ -76,6 +76,8 @@ class AudioProcessingService:
         """Создаёт полную версию трека для потокового воспроизведения."""
         command = (
             settings.FFMPEG_BINARY,
+            '-v',
+            'error',
             '-y',
             '-i',
             str(source_path),
@@ -127,6 +129,8 @@ class AudioProcessingService:
 
         command = (
             settings.FFMPEG_BINARY,
+            '-v',
+            'error',
             '-y',
             '-i',
             str(source_path),
@@ -158,6 +162,8 @@ class AudioProcessingService:
         """Создаёт preview из полного короткого трека."""
         command = (
             settings.FFMPEG_BINARY,
+            '-v',
+            'error',
             '-y',
             '-i',
             str(source_path),

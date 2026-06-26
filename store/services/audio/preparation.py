@@ -19,7 +19,10 @@ class TrackAudioPreparationService:
     @classmethod
     def prepare(cls, track_id: int) -> None:
         """Создаёт производные аудиофайлы для указанного трека."""
-        track = Track.objects.get(pk=track_id)
+        try:
+            track = Track.objects.get(pk=track_id)
+        except Track.DoesNotExist:
+            return
 
         generated, _ = TrackGeneratedAudio.objects.get_or_create(
             track=track,
@@ -27,38 +30,57 @@ class TrackAudioPreparationService:
 
         cls._mark_processing_started(generated)
 
-        with tempfile.TemporaryDirectory(
-            prefix=f'track-{track.pk}-',
-        ) as temporary_directory:
-            workdir = Path(temporary_directory)
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix=f'track-{track.pk}-',
+            ) as temporary_directory:
+                workdir = Path(temporary_directory)
 
-            source_path = cls._download_source_file(
-                track=track,
-                workdir=workdir,
-            )
+                source_path = cls._download_source_file(
+                    track=track,
+                    workdir=workdir,
+                )
 
-            metadata = AudioProcessingService.probe_metadata(
-                source_path,
-            )
+                metadata = AudioProcessingService.probe_metadata(
+                    source_path,
+                )
 
-            stream_path = workdir / 'stream.mp3'
-            preview_path = workdir / 'preview.mp3'
+                track.duration = metadata.duration
+                track.save(update_fields=('duration',))
 
-            cls._prepare_stream(
+                stream_path = workdir / 'stream.mp3'
+                preview_path = workdir / 'preview.mp3'
+
+                errors = []
+
+                try:
+                    cls._prepare_stream(
+                        generated=generated,
+                        source_path=source_path,
+                        target_path=stream_path,
+                    )
+                except Exception as error:
+                    errors.append(error)
+
+                try:
+                    cls._prepare_preview(
+                        generated=generated,
+                        source_path=source_path,
+                        target_path=preview_path,
+                        source_duration=metadata.duration,
+                    )
+                except Exception as error:
+                    errors.append(error)
+
+        except Exception as error:
+            cls._mark_processing_failed(
                 generated=generated,
-                source_path=source_path,
-                target_path=stream_path,
+                error=error,
             )
+            raise
 
-            cls._prepare_preview(
-                generated=generated,
-                source_path=source_path,
-                target_path=preview_path,
-                source_duration=metadata.duration,
-            )
-
-            track.duration = metadata.duration
-            track.save(update_fields=('duration',))
+        if errors:
+            raise errors[0]
 
     @staticmethod
     def _download_source_file(
@@ -197,5 +219,29 @@ class TrackAudioPreparationService:
                 'stream_status',
                 'stream_error',
                 'stream_started_at',
+            ),
+        )
+
+    @staticmethod
+    def _mark_processing_failed(
+        *,
+        generated: TrackGeneratedAudio,
+        error: Exception,
+    ) -> None:
+        """Отмечает обе производные версии как неуспешно обработанные."""
+        error_message = str(error)[:2000]
+
+        generated.preview_status = TrackGeneratedAudio.ProcessingStatus.FAILED
+        generated.preview_error = error_message
+
+        generated.stream_status = TrackGeneratedAudio.ProcessingStatus.FAILED
+        generated.stream_error = error_message
+
+        generated.save(
+            update_fields=(
+                'preview_status',
+                'preview_error',
+                'stream_status',
+                'stream_error',
             ),
         )

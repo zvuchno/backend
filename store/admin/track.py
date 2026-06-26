@@ -5,7 +5,7 @@
 
 from django.contrib import admin
 
-from ..services.audio.shedule import TrackGeneratedAudioScheduler
+from ..services.audio.schedule import TrackGeneratedAudioScheduler
 from .forms import MoneyForm
 from .mixins import (
     AutoOwnerAdminMixin,

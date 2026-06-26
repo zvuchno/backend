@@ -9,7 +9,7 @@ TODO: Реализовать логику покупки аудиофайла:
 
 from rest_framework import serializers
 
-from ..services.audio.shedule import TrackGeneratedAudioScheduler
+from ..services.audio.schedule import TrackGeneratedAudioScheduler
 from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track

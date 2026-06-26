@@ -1,6 +1,6 @@
 from .preparation import TrackAudioPreparationService
 from .processing import AudioProcessingService
-from .shedule import TrackGeneratedAudioScheduler
+from .schedule import TrackGeneratedAudioScheduler
 
 __all__ = [
     'AudioProcessingService',

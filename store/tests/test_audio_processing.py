@@ -1,10 +1,10 @@
 import subprocess
 from unittest.mock import patch
 
-from store.services.audio_processing import AudioProcessingService
+from store.services.audio import AudioProcessingService
 
 
-@patch('store.services.audio_processing.subprocess.run')
+@patch('store.services.audio.processing.subprocess.run')
 def test_create_preview_uses_intro_and_remaining_middle(
     run_mock,
     tmp_path,
