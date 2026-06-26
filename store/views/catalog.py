@@ -191,7 +191,8 @@ class CatalogMerchDetailView(MerchViewSet):
         return (
             super()
             .get_queryset()
-            .filter(
-                kind__is_carrier=False,
+            .exclude(
+                kind__is_carrier=True,
+                album__isnull=False,
             )
         )
