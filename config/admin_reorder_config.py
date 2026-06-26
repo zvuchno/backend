@@ -71,4 +71,9 @@ ADMIN_REORDER = (
             'users.UserConsent',
         ),
     },
+    {
+        'app': 'admin',
+        'label': 'Журнал действий',
+        'models': ('admin.LogEntry',),
+    },
 )

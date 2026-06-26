@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'djoser',
     'phonenumber_field',
     'admin_reorder',
+    'common.apps.CommonConfig',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
     'storages',
