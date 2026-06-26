@@ -8,7 +8,7 @@ from django.db import models
 
 from common.storages import get_private_media_storage, get_public_media_storage
 
-from store.constants import MAX_STR_LENGTH
+from store.constants import MAX_FILE_STATUS_STR, MAX_STR_LENGTH
 from store.models.abstract import BaseContent, VisibilityModel
 from store.querysets import VisibilityQuerySet
 from store.upload_paths import album_archive_upload_to, album_cover_upload_to
@@ -72,7 +72,7 @@ class AlbumArchive(TimestampModel):
         blank=True,
     )
     status = models.CharField(
-        max_length=16,
+        max_length=MAX_FILE_STATUS_STR,
         choices=Status.choices,
         default=Status.PENDING,
     )

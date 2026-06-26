@@ -25,7 +25,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
-from store.models import Album, Product, Track
+from store.models import Album, AlbumArchive, Product, Track
 from store.services import ProductService
 
 
@@ -144,6 +144,37 @@ class ProductInline(NestedStackedInline):
     verbose_name = 'Торговые настройки альбома'
 
 
+class AlbumArchiveInline(NestedStackedInline):
+    """Инлайн подготовленного архива альбома."""
+
+    model = AlbumArchive
+    can_delete = False
+    extra = 0
+    max_num = 1
+    fields = (
+        'file',
+        'status',
+        'content_hash',
+        'pending_hash',
+        'error_message',
+        'created_at',
+        'updated_at',
+    )
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        """Запрещает ручное создание архива через админку."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает ручное редактирование архива через админку."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает ручное удаление архива через админку."""
+        return False
+
+
 @admin.register(Album)
 class AlbumAdmin(
     AutoOwnerAdminMixin,
@@ -221,7 +252,7 @@ class AlbumAdmin(
             },
         ),
     )
-    inlines = (ProductInline, TrackInline)
+    inlines = (ProductInline, TrackInline, AlbumArchiveInline)
 
     @admin.display(description='Изображение')
     def image_preview(self, obj):
