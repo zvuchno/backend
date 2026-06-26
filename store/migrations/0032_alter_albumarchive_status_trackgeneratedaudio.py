@@ -11,7 +11,7 @@ from store.migrations.utils import drop_view, create_view
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0030_albumarchive_pending_hash'),
+        ('store', '0031_alter_cartitem_options'),
     ]
 
     operations = [
