@@ -83,6 +83,23 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  celery_media:
+    build: .
+    env_file: .env
+    command: >
+      celery -A config worker
+      -Q media
+      --concurrency=1
+      --hostname=media@%h
+      -l info
+    volumes:
+      - .:/app
+      - ./media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
   celery_beat:
     build: .
     env_file: .env
