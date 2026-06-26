@@ -8,3 +8,7 @@ class CDEKIntegrationError(Exception):
         """Инициализация исключения."""
         self.message = message
         super().__init__(self.message)
+
+
+class AudioProcessingError(Exception):
+    """Ошибка подготовки производного аудиофайла."""
