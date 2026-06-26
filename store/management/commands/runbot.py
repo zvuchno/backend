@@ -4,7 +4,7 @@ import time
 from django.core.management.base import BaseCommand
 from telebot.apihelper import ApiTelegramException
 
-import store.bot.handlers  # noqa: F401
+from store.bot.handlers import register_handlers
 from store.bot.telegram import get_bot
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ class Command(BaseCommand):
         except Exception as e:
             logger.error('Не удалось запустить бота: %s', e)
             return
+        register_handlers(bot)
 
         logger.info('Telegram bot запущен')
 

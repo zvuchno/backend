@@ -39,6 +39,7 @@ from .social_auth import (
     social_error_codes_schema,
     social_token_exchange_schema,
 )
+from .telegram_connect import telegram_connect_schema
 
 __all__ = [
     'artist_cover_update_schema',
@@ -59,6 +60,7 @@ __all__ = [
     'password_reset_request_schema',
     'password_reset_verify_schema',
     'resend_verification_email_schema',
+    'telegram_connect_schema',
     'token_obtain_schema',
     'token_refresh_schema',
     'token_verify_schema',
