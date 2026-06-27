@@ -483,12 +483,11 @@ init_glitchtip()
 DEFAULT_CORS_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
 ]
 EXTRA_CORS_ORIGINS = []
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOW_ALL_ORIGINS = False
+if not DEBUG:
     origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
     EXTRA_CORS_ORIGINS = [o.strip() for o in origins.split(',') if o.strip()]
 
@@ -496,6 +495,7 @@ CORS_ALLOWED_ORIGINS = list({
     *DEFAULT_CORS_ORIGINS,
     *EXTRA_CORS_ORIGINS,
 })
+CORS_ALLOW_CREDENTIALS = True
 
 # EMAIL backend
 if DEBUG:
