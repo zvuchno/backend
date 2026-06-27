@@ -445,7 +445,7 @@ REST_AUTH = {
     'JWT_AUTH_HTTPONLY': False,
     'JWT_SERIALIZER': 'users.serializers.TokenPairSerializer',
 }
-SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
+SITE_ID = int(os.getenv('SITE_ID', default=1))  # id записи таблицы sites, где указан домен бэкенда для allauth.
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {
     'vk': {
