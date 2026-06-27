@@ -9,6 +9,7 @@ TODO: Реализовать логику покупки аудиофайла:
 
 from rest_framework import serializers
 
+from ..services.audio.schedule import TrackGeneratedAudioScheduler
 from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
@@ -93,9 +94,15 @@ class TrackWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
-        return super().create(validated_data)
+        track = super().create(validated_data)
+        TrackGeneratedAudioScheduler.schedule(track)
+        return track
 
     def update(self, instance, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
-        return super().update(instance, validated_data)
+        audio_file_changed = 'audio_file' in validated_data
+        track = super().update(instance, validated_data)
+        if audio_file_changed:
+            TrackGeneratedAudioScheduler.schedule(track)
+        return track

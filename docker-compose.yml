@@ -39,7 +39,7 @@ services:
     volumes:
       - .:/app
       - static:/app/staticfiles
-      - media:/app/media/
+      - ./media:/app/media
     logging:
       driver: json-file
       options:
@@ -72,8 +72,25 @@ services:
     command: >
       celery -A config worker
       -Q archives
-      --concurrency=1
+      --concurrency=2
       --hostname=archives@%h
+      -l info
+    volumes:
+      - .:/app
+      - ./media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  celery_media:
+    build: .
+    env_file: .env
+    command: >
+      celery -A config worker
+      -Q media
+      --concurrency=4
+      --hostname=media@%h
       -l info
     volumes:
       - .:/app

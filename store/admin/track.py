@@ -5,6 +5,7 @@
 
 from django.contrib import admin
 
+from ..services.audio.schedule import TrackGeneratedAudioScheduler
 from .forms import MoneyForm
 from .mixins import (
     AutoOwnerAdminMixin,
@@ -134,3 +135,9 @@ class TrackAdmin(
     def get_queryset(self, request):
         """Родительский метод миксина + select_related('album', 'owner')."""
         return super().get_queryset(request).select_related('album', 'owner')
+
+    def save_model(self, request, obj, form, change):
+        """Сохраняет трек и запускает обработку при изменении исходника."""
+        super().save_model(request, obj, form, change)
+        if not change or 'audio_file' in form.changed_data:
+            TrackGeneratedAudioScheduler.schedule(obj)

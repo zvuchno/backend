@@ -100,6 +100,30 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  celery_media:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: >
+      celery -A config worker
+      -Q media
+      --concurrency=2
+      --hostname=media@%h
+      -l info
+    volumes:
+      - media:/app/media
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   celery_beat:
     image: inswty/zvuchno_backend:latest
     env_file: .env
