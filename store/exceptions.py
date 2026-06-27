@@ -12,3 +12,7 @@ class CDEKIntegrationError(Exception):
 
 class AudioProcessingError(Exception):
     """Ошибка подготовки производного аудиофайла."""
+
+
+class TemporaryAudioStorageError(AudioProcessingError):
+    """Временная ошибка доступа к аудиофайлу в storage."""

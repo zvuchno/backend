@@ -83,7 +83,7 @@ services:
     command: >
       celery -A config worker
       -Q archives
-      --concurrency=2
+      --concurrency=1
       --hostname=archives@%h
       -l info
     volumes:
@@ -107,7 +107,7 @@ services:
     command: >
       celery -A config worker
       -Q media
-      --concurrency=4
+      --concurrency=2
       --hostname=media@%h
       -l info
     volumes:

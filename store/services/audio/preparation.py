@@ -1,16 +1,21 @@
 """Подготовка производных аудиофайлов трека."""
 
-from __future__ import annotations
-
+import logging
 import shutil
+import socket
 import tempfile
 from pathlib import Path
+from urllib.error import URLError
 
 from django.core.files import File
+from django.db import transaction
 from django.utils import timezone
 
+from store.exceptions import TemporaryAudioStorageError
 from store.models import Track, TrackGeneratedAudio
 from store.services.audio.processing import AudioProcessingService
+
+logger = logging.getLogger(__name__)
 
 
 class TrackAudioPreparationService:
@@ -71,7 +76,8 @@ class TrackAudioPreparationService:
                     )
                 except Exception as error:
                     errors.append(error)
-
+        except TemporaryAudioStorageError:
+            raise
         except Exception as error:
             cls._mark_processing_failed(
                 generated=generated,
@@ -82,8 +88,9 @@ class TrackAudioPreparationService:
         if errors:
             raise errors[0]
 
-    @staticmethod
+    @classmethod
     def _download_source_file(
+        cls,
         *,
         track: Track,
         workdir: Path,
@@ -92,9 +99,12 @@ class TrackAudioPreparationService:
         suffix = Path(track.audio_file.name).suffix.lower()
         source_path = workdir / f'original{suffix}'
 
-        with track.audio_file.open('rb') as source_file:
-            with source_path.open('wb') as target_file:
-                shutil.copyfileobj(source_file, target_file)
+        try:
+            with track.audio_file.open('rb') as source_file:
+                with source_path.open('wb') as target_file:
+                    shutil.copyfileobj(source_file, target_file)
+        except Exception as error:
+            cls._raise_storage_error(error)
 
         return source_path
 
@@ -124,13 +134,20 @@ class TrackAudioPreparationService:
                 TrackGeneratedAudio.ProcessingStatus.READY
             )
             generated.stream_error = ''
-            generated.save(
+
+            cls._save_generated_file(
+                generated=generated,
+                field_name='stream_file',
+                target_path=target_path,
+                target_filename='stream.mp3',
                 update_fields=(
                     'stream_file',
                     'stream_status',
                     'stream_error',
                 ),
             )
+        except TemporaryAudioStorageError:
+            raise
         except Exception as error:
             generated.stream_status = (
                 TrackGeneratedAudio.ProcessingStatus.FAILED
@@ -173,7 +190,12 @@ class TrackAudioPreparationService:
                 TrackGeneratedAudio.ProcessingStatus.READY
             )
             generated.preview_error = ''
-            generated.save(
+
+            cls._save_generated_file(
+                generated=generated,
+                field_name='preview_file',
+                target_path=target_path,
+                target_filename='preview.mp3',
                 update_fields=(
                     'preview_file',
                     'preview_duration',
@@ -181,15 +203,17 @@ class TrackAudioPreparationService:
                     'preview_error',
                 ),
             )
+        except TemporaryAudioStorageError:
+            raise
         except Exception as error:
-            generated.preview_status = (
+            generated.stream_status = (
                 TrackGeneratedAudio.ProcessingStatus.FAILED
             )
-            generated.preview_error = str(error)[:2000]
+            generated.stream_error = str(error)[:2000]
             generated.save(
                 update_fields=(
-                    'preview_status',
-                    'preview_error',
+                    'stream_status',
+                    'stream_error',
                 ),
             )
             raise
@@ -245,3 +269,78 @@ class TrackAudioPreparationService:
                 'stream_error',
             ),
         )
+
+    @staticmethod
+    def _delete_storage_file(storage, file_name: str) -> None:
+        """Удаляет устаревший файл из storage без срыва обработки."""
+        if not file_name:
+            return
+
+        try:
+            storage.delete(file_name)
+        except Exception:
+            logger.exception(
+                'Не удалось удалить устаревший сгенерированный файл: %s',
+                file_name,
+            )
+
+    @classmethod
+    def _save_generated_file(
+        cls,
+        *,
+        generated: TrackGeneratedAudio,
+        field_name: str,
+        target_path: Path,
+        target_filename: str,
+        update_fields: tuple[str, ...],
+    ) -> None:
+        """Сохраняет новый generated-файл и удаляет прежний после commit."""
+        field = getattr(generated, field_name)
+
+        old_name = field.name
+        storage = field.storage
+
+        try:
+            with target_path.open('rb') as target_file:
+                field.save(
+                    target_filename,
+                    File(target_file),
+                    save=False,
+                )
+        except Exception as error:
+            cls._raise_storage_error(error)
+
+        new_name = field.name
+
+        try:
+            with transaction.atomic():
+                generated.save(update_fields=update_fields)
+
+                if old_name and old_name != new_name:
+                    transaction.on_commit(
+                        lambda storage=storage, file_name=old_name: (
+                            cls._delete_storage_file(storage, file_name)
+                        ),
+                    )
+        except Exception:
+            if new_name and new_name != old_name:
+                cls._delete_storage_file(storage, new_name)
+            raise
+
+    @staticmethod
+    def _raise_storage_error(error: Exception) -> None:
+        """Преобразует временные ошибки storage в доменное исключение."""
+        if isinstance(
+            error,
+            (
+                ConnectionError,
+                TimeoutError,
+                socket.timeout,
+                URLError,
+            ),
+        ):
+            raise TemporaryAudioStorageError(
+                'Временная ошибка доступа к файловому хранилищу.',
+            ) from error
+
+        raise error
