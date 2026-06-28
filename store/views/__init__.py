@@ -12,6 +12,7 @@ from .genre import GenreViewSet
 from .merch import MerchViewSet
 from .merch_kind import MerchKindViewSet
 from .order import OrderViewSet
+from .payment import CreatePaymentView, yookassa_webhook
 from .promocode import PromocodeViewSet
 from .purchased_music import (
     PurchasedMusicArchiveDownloadLinkView,
@@ -29,6 +30,7 @@ __all__ = [
     'CatalogMerchDetailView',
     'CatalogReleaseDetailView',
     'CDEKWidgetView',
+    'CreatePaymentView',
     'DeliveryViewSet',
     'FavoritesViewSet',
     'GenreViewSet',
@@ -42,4 +44,5 @@ __all__ = [
     'PurchasedMusicTrackDownloadLinkView',
     'PurchasedMusicView',
     'TrackViewSet',
+    'yookassa_webhook',
 ]
