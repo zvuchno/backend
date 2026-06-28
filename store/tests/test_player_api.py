@@ -208,17 +208,15 @@ class TestPlayerTrackPlayAPI:
 
     @staticmethod
     def create_ready_preview(track) -> TrackGeneratedAudio:
-        """Создаёт готовое preview трека."""
+        """Создаёт запись о готовом preview трека."""
         generated = TrackGeneratedAudio.objects.create(
             track=track,
             preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
             preview_duration=29,
         )
-        generated.preview_file.save(
-            'preview.mp3',
-            ContentFile(b'preview-audio'),
-            save=True,
-        )
+        generated.preview_file.name = 'test/previews/preview.mp3'
+        generated.save(update_fields=('preview_file',))
+
         return generated
 
     def test_ready_preview_redirects_to_audio_file(
@@ -354,11 +352,8 @@ class TestPlayerTrackPlayAPI:
             track=track,
             preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
         )
-        generated.preview_file.save(
-            'preview.mp3',
-            ContentFile(b'preview-audio'),
-            save=True,
-        )
+        generated.preview_file.name = 'test/previews/preview.mp3'
+        generated.save(update_fields=('preview_file',))
 
         response = api_client.get(
             player_track_play_url(track.id),

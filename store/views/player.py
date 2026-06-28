@@ -27,7 +27,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
     lookup_url_kwarg = 'album_id'
 
     def get_queryset(self):
-        """Возвращает альбомы с доступными треками для плеера."""
+        """Возвращает альбом с доступными треками для плеера."""
         tracks_queryset = (
             self
             .get_track_read_queryset(
