@@ -1,5 +1,7 @@
 """API плеера для публичного preview и будущего stream."""
 
+import logging
+
 from django.db.models import Prefetch
 from django.http import Http404
 from django.shortcuts import redirect
@@ -16,6 +18,8 @@ from store.schema import (
 )
 from store.serializers import PlayerAlbumSerializer
 from store.views.mixins import TrackReadQuerysetMixin
+
+logger = logging.getLogger(__name__)
 
 
 @player_album_schema
@@ -120,11 +124,47 @@ class PlayerTrackPlayView(APIView):
             )
 
         if not generated.preview_file or not generated.preview_duration:
-            return Response(
-                {
-                    'detail': 'Превью трека временно недоступно.',
-                },
-                status=status.HTTP_404_NOT_FOUND,
+            return self._preview_unavailable_response(
+                code='preview_file_missing',
             )
 
-        return redirect(generated.preview_file.url)
+        preview_file = generated.preview_file
+
+        try:
+            if not preview_file.storage.exists(preview_file.name):
+                logger.warning(
+                    'Preview file is missing in storage: '
+                    'track_id=%s generated_audio_id=%s file_name=%s',
+                    track.pk,
+                    generated.pk,
+                    preview_file.name,
+                )
+                return self._preview_unavailable_response(
+                    code='preview_file_not_found',
+                )
+
+            preview_url = preview_file.url
+        except Exception:
+            logger.exception(
+                'Could not access preview file in storage: '
+                'track_id=%s generated_audio_id=%s file_name=%s',
+                track.pk,
+                generated.pk,
+                preview_file.name,
+            )
+            return self._preview_unavailable_response(
+                code='preview_storage_unavailable',
+            )
+
+        return redirect(preview_url)
+
+    @staticmethod
+    def _preview_unavailable_response(code: str) -> Response:
+        """Возвращает ошибку недоступного preview."""
+        return Response(
+            {
+                'detail': 'Превью трека временно недоступно.',
+                'code': code,
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
