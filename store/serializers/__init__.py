@@ -33,6 +33,11 @@ from .merch import (
 )
 from .merch_kind import MerchKindSerializer
 from .order import OrderDetailSerializer, OrderItemSerializer, OrderSerializer
+from .player import (
+    PlayerAlbumSerializer,
+    PlayerAlbumTrackSerializer,
+    TrackPlaybackSerializer,
+)
 from .promocode import (
     PromocodeReadDetailSerializer,
     PromocodeReadSerializer,
@@ -83,6 +88,9 @@ __all__ = [
     'OrderDetailSerializer',
     'OrderItemSerializer',
     'OrderSerializer',
+    'PlayerAlbumSerializer',
+    'PlayerAlbumTrackSerializer',
+    'TrackPlaybackSerializer',
     'PromocodeReadDetailSerializer',
     'PromocodeReadSerializer',
     'PromocodeWriteSerializer',

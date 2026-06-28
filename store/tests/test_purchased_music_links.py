@@ -6,7 +6,12 @@ import pytest
 from django.utils import timezone
 from rest_framework import status
 
-from store.models import AlbumArchive, Order, OrderItem, Track
+from store.models import (
+    AlbumArchive,
+    Order,
+    OrderItem,
+    Track,
+)
 from store.services import DownloadLink
 
 pytestmark = pytest.mark.django_db
@@ -308,8 +313,8 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
         }
 
     @pytest.mark.parametrize(
-        ('archive_status', 'detail'),
-        [
+        ('archive_status', 'expected_detail'),
+        (
             (
                 AlbumArchive.Status.PENDING,
                 'Архив ещё готовится.',
@@ -322,13 +327,18 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
                 AlbumArchive.Status.FAILED,
                 'Не удалось подготовить архив.',
             ),
-        ],
+        ),
+        ids=(
+            'pending',
+            'building',
+            'failed',
+        ),
     )
     def test_not_ready_archive_returns_409(
         self,
         listener_user,
         archive_status,
-        detail,
+        expected_detail,
     ):
         """Неготовый архив возвращает 409 с текущим статусом."""
         album = self.create_full_access_album(listener_user)
@@ -347,7 +357,7 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
 
         assert response.status_code == status.HTTP_409_CONFLICT
         assert response.data == {
-            'detail': detail,
+            'detail': expected_detail,
             'status': archive_status,
         }
 

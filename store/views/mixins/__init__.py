@@ -8,9 +8,11 @@
 from .commerce import ProductActionMixin
 from .music_access import PurchasedMusicAccessMixin
 from .soft_delete import SoftDeleteMixin
+from .track import TrackReadQuerysetMixin
 
 __all__ = [
     'PurchasedMusicAccessMixin',
     'ProductActionMixin',
     'SoftDeleteMixin',
+    'TrackReadQuerysetMixin',
 ]
