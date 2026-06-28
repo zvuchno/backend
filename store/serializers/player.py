@@ -112,3 +112,15 @@ class PlayerAlbumSerializer(serializers.ModelSerializer):
             return None
 
         return artist.name
+
+
+class PlaybackNotReadySerializer(serializers.Serializer):
+    """Ошибка при недоступном для воспроизведения аудио."""
+
+    detail = serializers.CharField(
+        read_only=True,
+    )
+    status = serializers.ChoiceField(
+        choices=TrackGeneratedAudio.ProcessingStatus.choices,
+        read_only=True,
+    )

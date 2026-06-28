@@ -58,6 +58,7 @@ class TrackViewSet(
         """Возвращает треки, доступные текущему пользователю."""
         return self.get_track_read_queryset(
             action=self.action,
+            queryset=super().get_queryset(),
         )
 
     def create(self, request, *args, **kwargs):

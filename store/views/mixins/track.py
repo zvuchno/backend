@@ -4,13 +4,21 @@ from store.models import Favorite, Track
 
 
 class TrackReadQuerysetMixin:
-    """Подготавливает queryset треков для публичного чтения."""
+    """Подготавливает queryset треков для read-контрактов API."""
 
-    def get_track_read_queryset(self, *, action: str):
-        """Возвращает треки с данными для публичного read-контракта."""
+    def get_track_read_queryset(
+        self,
+        *,
+        action: str,
+        queryset=None,
+    ):
+        """Возвращает доступные треки с данными read-контракта."""
         user = self.request.user
 
-        queryset = Track.objects.visible_for(
+        if queryset is None:
+            queryset = Track.objects.all()
+
+        queryset = queryset.visible_for(
             user=user,
             action=action,
         ).select_related(

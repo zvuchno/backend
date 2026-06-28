@@ -10,10 +10,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from store.models import Album, Track, TrackGeneratedAudio
+from store.schema import (
+    player_album_schema,
+    player_track_play_schema,
+)
 from store.serializers import PlayerAlbumSerializer
 from store.views.mixins import TrackReadQuerysetMixin
 
 
+@player_album_schema
 class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
     """Возвращает данные альбома для очереди плеера."""
 
@@ -58,6 +63,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
         )
 
 
+@player_track_play_schema
 class PlayerTrackPlayView(APIView):
     """Перенаправляет на доступный источник воспроизведения трека."""
 
@@ -69,9 +75,6 @@ class PlayerTrackPlayView(APIView):
             Track.objects
             .visible_for(request.user, action='retrieve')
             .select_related(
-                'album',
-                'owner__artist_profile',
-                'product',
                 'generated',
             )
             .filter(pk=track_id)
@@ -116,7 +119,7 @@ class PlayerTrackPlayView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        if not generated.preview_file:
+        if not generated.preview_file or not generated.preview_duration:
             return Response(
                 {
                     'detail': 'Превью трека временно недоступно.',
