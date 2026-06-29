@@ -26,6 +26,10 @@ from .merch import merch_schema
 from .merch_kind import merch_kinds_schema
 from .order import order_schema
 from .payment import payment_schema
+from .player import (
+    player_album_schema,
+    player_track_play_schema,
+)
 from .promocode import promocode_schema
 from .purchased_music import (
     archive_download_link_schema,
@@ -55,6 +59,8 @@ __all__ = [
     'merch_schema',
     'order_schema',
     'payment_schema',
+    'player_album_schema',
+    'player_track_play_schema',
     'promocode_schema',
     'purchased_music_download_detail_schema',
     'purchased_music_schema',

@@ -19,6 +19,8 @@ from .views import (
     MerchKindViewSet,
     MerchViewSet,
     OrderViewSet,
+    PlayerAlbumView,
+    PlayerTrackPlayView,
     ProductCatalogListView,
     PromocodeViewSet,
     PurchasedMusicArchiveDownloadLinkView,
@@ -83,4 +85,14 @@ urlpatterns = [
         name='payment-create',
     ),
     path('payments/webhook/', yookassa_webhook, name='payment-webhook'),
+    path(
+        'player/albums/<int:album_id>/',
+        PlayerAlbumView.as_view(),
+        name='player-album',
+    ),
+    path(
+        'player/tracks/<int:track_id>/play/',
+        PlayerTrackPlayView.as_view(),
+        name='player-play-track',
+    ),
 ]
