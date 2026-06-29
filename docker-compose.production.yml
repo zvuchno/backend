@@ -42,7 +42,7 @@ services:
     volumes:
       - static:/app/staticfiles
       - media:/app/media
-    command: gunicorn --no-control --worker-tmp-dir /tmp --bind 0.0.0.0:8000 config.wsgi:application
+    command: gunicorn --no-control --worker-tmp-dir /tmp --bind 0.0.0.0:8000 --timeout 300 config.wsgi:application
     logging:
       driver: json-file
       options:
