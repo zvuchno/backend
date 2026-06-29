@@ -70,6 +70,7 @@ class TestCatalogCardValues:
         assert card['is_favorite'] is False
         assert card['target'] == {
             'type': 'release',
+            'id': album.id,
             'url': f'/api/v1/store/catalog/release/{album.id}/',
             'selected_variant_id': variant.id,
         }
@@ -102,6 +103,7 @@ class TestCatalogCardValues:
         assert card['is_favorite'] is False
         assert card['target'] == {
             'type': 'merch',
+            'id': merch.id,
             'url': f'/api/v1/store/catalog/merch/{merch.id}/',
             'selected_variant_id': None,
         }
@@ -139,6 +141,7 @@ class TestCatalogCardValues:
         assert card['is_favorite'] is False
         assert card['target'] == {
             'type': 'release',
+            'id': album.id,
             'url': f'/api/v1/store/catalog/release/{album.id}/',
             'selected_variant_id': variant.id,
         }
