@@ -283,3 +283,29 @@ def purchased_music_archive_download_link_url():
         )
 
     return _url
+
+
+@pytest.fixture
+def player_album_url():
+    """Возвращает URL очереди альбома для плеера."""
+
+    def build(album_id: int) -> str:
+        return reverse(
+            'api:store:player-album',
+            kwargs={'album_id': album_id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def player_track_play_url():
+    """Возвращает URL запуска воспроизведения трека."""
+
+    def build(track_id: int) -> str:
+        return reverse(
+            'api:store:player-play-track',
+            kwargs={'track_id': track_id},
+        )
+
+    return build
