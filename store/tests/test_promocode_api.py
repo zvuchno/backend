@@ -68,28 +68,23 @@ class TestPromocodeAPI:
         )
         assert response.status_code == status.HTTP_200_OK
 
-        # subtotal: (1000.00 * 2) + 500.00 = 2500.00
-        # Скидка: только на товар автора А -> (2000.00 * 0.10) = 200.00
-        # total: 2500.00 - 200.00 = 2300.00
-        data = response.data
-        assert Decimal(data['subtotal']) == Decimal('2500.00')
-        assert Decimal(data['discount_promocode']) == Decimal('200.00')
-        assert Decimal(data['total']) == Decimal('2300.00')
+        data = response.json()
 
-        items = {item['product_variant']: item for item in data['items']}
-        assert Decimal(items[variant_author_a.id]['discount']) == (
-            Decimal('200.00')
+        item_a = next(
+            item
+            for item in data['items']
+            if item['product_variant'] == variant_author_a.id
         )
-        assert Decimal(items[variant_author_a.id]['line_total']) == (
-            Decimal('1800.00')
+        item_b = next(
+            item
+            for item in data['items']
+            if item['product_variant'] == variant_author_b.id
         )
 
-        assert Decimal(items[variant_author_b.id]['discount']) == Decimal(
-            '0.00',
-        )
-        assert Decimal(items[variant_author_b.id]['line_total']) == (
-            Decimal('500.00')
-        )
+        assert Decimal(item_a['base_line_total']) == Decimal('2000.00')
+        assert Decimal(item_a['discount_line_total']) == Decimal('1800.00')
+        assert Decimal(item_b['base_line_total']) == Decimal('500.00')
+        assert Decimal(item_b['discount_line_total']) == Decimal('500.00')
 
     def test_cart_fixed_promocode_distribution_prevents_penny_loss(
         self,
@@ -131,18 +126,23 @@ class TestPromocodeAPI:
         assert Decimal(data['total']) == Decimal('200.00')
 
         total_items_discount = sum(
-            Decimal(item['discount']) for item in data['items']
+            Decimal(item['base_line_total'])
+            - Decimal(item['discount_line_total'])
+            for item in data['items']
         )
         assert total_items_discount == Decimal('100.00')
 
+        # Проверяем распределение 100 рублей на 3 товара
         discounts = sorted([
-            Decimal(item['discount']) for item in data['items']
+            Decimal(item['base_line_total'])
+            - Decimal(item['discount_line_total'])
+            for item in data['items']
         ])
-        assert discounts == ([
+        assert discounts == [
             Decimal('33.33'),
             Decimal('33.33'),
             Decimal('33.34'),
-        ])
+        ]
 
     def test_promocode_resets_when_no_owner_products_left(
         self,

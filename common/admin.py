@@ -15,18 +15,18 @@ class LogEntryAdmin(admin.ModelAdmin):
     - Парсинг JSON-сообщений в читаемый вид.
     """
 
-    list_display = [
+    list_display = (
         'action_time',
         'user',
         'get_content_type',
         'object_repr',
         'action_flag_display',
         'parsed_change_message',
-    ]
-    list_filter = ['action_flag', 'content_type', 'user']
-    search_fields = ['object_repr', 'change_message', 'user__username']
+    )
+    list_filter = ('action_flag', 'content_type')
+    search_fields = ('object_repr', 'change_message', 'user__username')
     date_hierarchy = 'action_time'
-    readonly_fields = [
+    readonly_fields = (
         'action_time',
         'user',
         'content_type',
@@ -34,7 +34,7 @@ class LogEntryAdmin(admin.ModelAdmin):
         'object_repr',
         'action_flag',
         'change_message',
-    ]
+    )
     list_select_related = ('user', 'content_type')
 
     def get_content_type(self, obj):
