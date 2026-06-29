@@ -6,6 +6,7 @@ import pytest
 from django.core.files.base import ContentFile
 from rest_framework import status
 
+from store.constants import PREVIEW_DURATION
 from store.models import Favorite, Track, TrackGeneratedAudio
 
 pytestmark = pytest.mark.django_db
@@ -20,7 +21,7 @@ class TestPlayerAlbumAPI:
         generated = TrackGeneratedAudio.objects.create(
             track=track,
             preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
-            preview_duration=29,
+            preview_duration=PREVIEW_DURATION,
         )
         generated.preview_file.save(
             'preview.mp3',
@@ -94,7 +95,7 @@ class TestPlayerAlbumAPI:
         assert tracks[0]['playback'] == {
             'status': TrackGeneratedAudio.ProcessingStatus.READY,
             'kind': 'preview',
-            'duration': 29,
+            'duration': PREVIEW_DURATION,
             'url': player_track_play_url(first_track.id),
         }
 
@@ -212,7 +213,7 @@ class TestPlayerTrackPlayAPI:
         generated = TrackGeneratedAudio.objects.create(
             track=track,
             preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
-            preview_duration=29,
+            preview_duration=PREVIEW_DURATION,
         )
         generated.preview_file.name = 'test/previews/preview.mp3'
         generated.save(update_fields=('preview_file',))
@@ -327,7 +328,7 @@ class TestPlayerTrackPlayAPI:
         TrackGeneratedAudio.objects.create(
             track=track,
             preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
-            preview_duration=29,
+            preview_duration=PREVIEW_DURATION,
         )
 
         response = api_client.get(

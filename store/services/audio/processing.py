@@ -12,6 +12,7 @@ from store.constants import (
     AUDIO_PROCESSING_TIMEOUT,
     PREVIEW_BITRATE,
     PREVIEW_CROSSFADE_DURATION,
+    PREVIEW_DURATION,
     PREVIEW_SEGMENT_DURATION,
     STREAM_BITRATE,
 )
@@ -150,7 +151,7 @@ class AudioProcessingService:
 
         cls._run(command)
 
-        return PREVIEW_SEGMENT_DURATION * 2 - PREVIEW_CROSSFADE_DURATION
+        return PREVIEW_DURATION
 
     @classmethod
     def _create_full_track_preview(
