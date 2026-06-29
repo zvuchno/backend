@@ -3,9 +3,9 @@
 from decimal import Decimal
 
 import pytest
-from django.core.files.base import ContentFile
 from rest_framework import status
 
+from store.constants import PREVIEW_DURATION
 from store.models import Favorite, Track, TrackGeneratedAudio
 
 pytestmark = pytest.mark.django_db
@@ -20,13 +20,11 @@ class TestPlayerAlbumAPI:
         generated = TrackGeneratedAudio.objects.create(
             track=track,
             preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
-            preview_duration=29,
+            preview_duration=PREVIEW_DURATION,
         )
-        generated.preview_file.save(
-            'preview.mp3',
-            ContentFile(b'preview-audio'),
-            save=True,
-        )
+        generated.preview_file.name = 'test/previews/preview.mp3'
+        generated.save(update_fields=('preview_file',))
+
         return generated
 
     def test_returns_album_with_tracks_in_position_order(
@@ -94,7 +92,7 @@ class TestPlayerAlbumAPI:
         assert tracks[0]['playback'] == {
             'status': TrackGeneratedAudio.ProcessingStatus.READY,
             'kind': 'preview',
-            'duration': 29,
+            'duration': PREVIEW_DURATION,
             'url': player_track_play_url(first_track.id),
         }
 
@@ -212,7 +210,7 @@ class TestPlayerTrackPlayAPI:
         generated = TrackGeneratedAudio.objects.create(
             track=track,
             preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
-            preview_duration=29,
+            preview_duration=PREVIEW_DURATION,
         )
         generated.preview_file.name = 'test/previews/preview.mp3'
         generated.save(update_fields=('preview_file',))
@@ -222,12 +220,23 @@ class TestPlayerTrackPlayAPI:
     def test_ready_preview_redirects_to_audio_file(
         self,
         api_client,
+        monkeypatch,
         player_track_play_url,
         variant_factory,
     ):
         """Готовое preview перенаправляет на аудиофайл."""
         track = self.create_track(variant_factory)
         generated = self.create_ready_preview(track)
+
+        storage = TrackGeneratedAudio._meta.get_field(
+            'preview_file',
+        ).storage
+
+        monkeypatch.setattr(
+            storage,
+            'exists',
+            lambda name: True,
+        )
 
         response = api_client.get(
             player_track_play_url(track.id),
@@ -327,7 +336,7 @@ class TestPlayerTrackPlayAPI:
         TrackGeneratedAudio.objects.create(
             track=track,
             preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
-            preview_duration=29,
+            preview_duration=PREVIEW_DURATION,
         )
 
         response = api_client.get(
@@ -337,6 +346,7 @@ class TestPlayerTrackPlayAPI:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data == {
             'detail': 'Превью трека временно недоступно.',
+            'code': 'preview_file_missing',
         }
 
     def test_ready_preview_without_duration_returns_404(
@@ -362,6 +372,7 @@ class TestPlayerTrackPlayAPI:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.data == {
             'detail': 'Превью трека временно недоступно.',
+            'code': 'preview_duration_missing',
         }
 
     def test_returns_404_for_inaccessible_track(
