@@ -198,7 +198,6 @@ class CartCalculationService:
         """Контекст для сериализаторов."""
         return {
             'cart_service': self,
-            'discounts': self.get_item_discounts(),
             'subtotal': self.get_subtotal(),
             'discount_promocode': self.get_discount_total(),
             'total': self.get_total(),
