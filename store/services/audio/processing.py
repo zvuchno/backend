@@ -115,6 +115,9 @@ class AudioProcessingService:
         second_segment_start = cls._get_remaining_segment_start(
             source_duration=source_duration,
         )
+        preview_duration = PREVIEW_DURATION
+        edge_fade_duration = PREVIEW_CROSSFADE_DURATION / 2
+        fade_out_start = preview_duration - edge_fade_duration
 
         filter_complex = (
             '[0:a]atrim=start=0:duration='
@@ -125,7 +128,9 @@ class AudioProcessingService:
             'asetpts=N/SR/TB[second];'
             '[first][second]acrossfade=d='
             f'{PREVIEW_CROSSFADE_DURATION}'
-            ':c1=tri:c2=tri[audio]'
+            ':c1=tri:c2=tri[merged];'
+            f'[merged]afade=t=in:st=0:d={edge_fade_duration},'
+            f'afade=t=out:st={fade_out_start}:d={edge_fade_duration}[audio]'
         )
 
         command = (
