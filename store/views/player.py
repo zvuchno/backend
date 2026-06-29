@@ -123,9 +123,14 @@ class PlayerTrackPlayView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        if not generated.preview_file or not generated.preview_duration:
+        if not generated.preview_file:
             return self._preview_unavailable_response(
                 code='preview_file_missing',
+            )
+
+        if not generated.preview_duration:
+            return self._preview_unavailable_response(
+                code='preview_duration_missing',
             )
 
         preview_file = generated.preview_file
