@@ -5,6 +5,7 @@
 """
 
 import logging
+import uuid
 
 from django.conf import settings
 from django.db import transaction
@@ -22,16 +23,54 @@ Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 
 
 def create_yookassa_payment(order):
-    """Создает платеж в ЮKassa и сохраняет его запись в БД.
+    """Создает платеж в ЮKassa и сохраняет его запись в БД."""
+    payment = (
+        order.payments
+        .filter(status=Payment.PaymentStatus.PENDING)
+        .order_by('-created_at')
+        .first()
+    )
 
-    Args:
-        order (Order): Объект заказа.
+    # Переиспользуем платеж
+    if payment and payment.provider_payment_id:
+        try:
+            yookassa_payment = YookassaPayment.find_one(
+                payment.provider_payment_id,
+            )
 
-    Returns:
-        str: URL для перенаправления пользователя на страницу оплаты.
+            if yookassa_payment.status == 'pending':
+                return {
+                    'payment_status': 'pending',
+                    'confirmation_url': (
+                        yookassa_payment.confirmation.confirmation_url,
+                    ),
+                }
 
-    """
-    # Создаем запись в БД
+            if yookassa_payment.status == 'succeeded':
+                payment.status = Payment.PaymentStatus.SUCCEEDED
+                payment.save(update_fields=['status'])
+
+                return {
+                    'payment_status': 'succeeded',
+                    'confirmation_url': None,
+                }
+
+            if yookassa_payment.status == 'canceled':
+                payment.status = Payment.PaymentStatus.CANCELED
+                payment.save(update_fields=['status'])
+
+                return {
+                    'payment_status': 'canceled',
+                    'confirmation_url': None,
+                }
+
+        except Exception:
+            logger.warning(
+                'Не удалось получить платеж ЮKassa. payment_id=%s',
+                payment.provider_payment_id,
+            )
+
+    # Создаём новый платеж
     payment = Payment.objects.create(
         order=order,
         amount=order.total,
@@ -40,17 +79,19 @@ def create_yookassa_payment(order):
 
     try:
         # Формируем запрос к API
-        # idempotency_key уникальный для каждой попытки
-        idempotency_key = str(payment.idempotency_key)
+        idempotency_key = str(uuid.uuid4())
 
-        yookassa_res = YookassaPayment.create(
+        created_payment = YookassaPayment.create(
             {
-                'amount': {'value': str(order.total), 'currency': 'RUB'},
+                'amount': {
+                    'value': str(order.total),
+                    'currency': 'RUB',
+                },
                 'confirmation': {
                     'type': 'redirect',
                     'return_url': settings.PAYMENT_RETURN_URL,
                 },
-                'capture': True,  # Автоматически подтверждать платеж
+                'capture': True,
                 'description': f'Заказ №{order.order_number}',
                 'metadata': {'order_id': order.id},
                 'receipt': {
@@ -65,27 +106,22 @@ def create_yookassa_payment(order):
             idempotency_key=idempotency_key,
         )
 
-        # Сохраняем ID платежа ЮKassa
-        payment.provider_payment_id = yookassa_res.id
-        payment.save()
+        payment.provider_payment_id = created_payment.id
+        payment.save(update_fields=['provider_payment_id'])
 
-        logger.info(
-            'Платеж для заказа ID=%s успешно создан в ЮKassa. ID: %s',
-            order.id,
-            yookassa_res.id,
-        )
+        return {
+            'payment_status': 'pending',
+            'confirmation_url': created_payment.confirmation.confirmation_url,
+        }
 
-        return yookassa_res.confirmation.confirmation_url
-
-    except Exception as e:
-        logger.error(
-            'Ошибка при создании платежа для заказа ID=%s: %s',
-            order.id,
-            e,
-        )
+    except Exception:
+        logger.exception('Ошибка создания платежа')
         payment.status = Payment.PaymentStatus.FAILED
-        payment.save()
-        raise e
+        payment.save(update_fields=['status'])
+        return {
+            'payment_status': 'error',
+            'confirmation_url': None,
+        }
 
 
 def process_yookassa_webhook(notification):
@@ -103,41 +139,53 @@ def process_yookassa_webhook(notification):
         )
     except Payment.DoesNotExist:
         logger.error(
-            'Платеж %s не найден при обработке вебхука',
+            'Платеж с provider_payment_id=%s не найден.',
             payment_info.id,
         )
         return
 
     if notification.event == 'payment.succeeded':
+        if payment.status == Payment.PaymentStatus.SUCCEEDED:
+            logger.info(
+                'Webhook для платежа %s уже был обработан.',
+                payment.provider_payment_id,
+            )
+            return
+
         with transaction.atomic():
             # Обновляем статус платежа
             payment.status = Payment.PaymentStatus.SUCCEEDED
             payment.paid_at = timezone.now()
-            payment.save()
+            payment.save(update_fields=['status', 'paid_at'])
 
             # Обновляем статус заказа
             payment.order.status = Order.Status.PAID
-            payment.order.save()
-            logger.info(
-                'Платеж %s успешно оплачен для заказа %s',
-                payment_info.id,
-                payment.order.id,
-            )
+            payment.order.save(update_fields=['status'])
+
+        logger.info(
+            'Платеж %s успешно обработан. Заказ %s оплачен.',
+            payment.provider_payment_id,
+            payment.order.id,
+        )
 
     elif notification.event == 'payment.canceled':
+        if payment.status == Payment.PaymentStatus.CANCELED:
+            logger.info(
+                'Webhook отмены платежа %s уже был обработан.',
+                payment.provider_payment_id,
+            )
+            return
+
         with transaction.atomic():
             # Обновляем статус платежа
             payment.status = Payment.PaymentStatus.CANCELED
+
             if payment_info.cancellation_details:
                 payment.error_code = payment_info.cancellation_details.reason
-            payment.save()
 
-            # Обновляем статус заказа
-            payment.order.status = Order.Status.CANCELED
-            payment.order.save()
+            payment.save(update_fields=['status', 'error_code'])
 
         logger.info(
-            'Платеж %s отменен для заказа %s',
-            payment_info.id,
-            payment.order.id,
+            'Платеж %s отменен.',
+            payment.provider_payment_id,
         )

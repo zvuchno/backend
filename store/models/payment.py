@@ -4,8 +4,6 @@
 оплаты и данных для аудита финансовых операций.
 """
 
-import uuid
-
 from django.db import models
 
 from store.constants import (
@@ -38,7 +36,6 @@ class Payment(TimestampModel):
         unique=True,
         null=True,
         blank=True,
-        db_index=True,
     )
     amount = models.DecimalField(
         'Сумма платежа',
@@ -56,11 +53,6 @@ class Payment(TimestampModel):
         null=True,
         blank=True,
     )
-    idempotency_key = models.UUIDField(
-        unique=True,
-        default=uuid.uuid4,
-        verbose_name='Ключ идемпотентности',
-    )
     error_code = models.CharField(
         'Код ошибки',
         max_length=MAX_CHAR_LENGTH,
@@ -77,5 +69,5 @@ class Payment(TimestampModel):
         payment_id = self.provider_payment_id or 'без ID'
         return (
             f'Платеж {payment_id} ({self.get_status_display()}) '
-            f'для заказа {self.order.order_number}',
+            f'для заказа {self.order.order_number}'
         )

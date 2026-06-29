@@ -33,7 +33,6 @@ class PaymentAdmin(admin.ModelAdmin):
         'provider_payment_id',
         'created_at',
         'updated_at',
-        'idempotency_key',
         'error_code',
     )
     ordering = ('-created_at',)

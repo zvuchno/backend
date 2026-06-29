@@ -3,6 +3,7 @@ import logging
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -26,42 +27,32 @@ class CreatePaymentView(APIView):
 
     def post(self, request):
         order_id = request.data.get('order_id')
-        try:
-            order = get_object_or_404(Order, id=order_id, user=request.user)
-            # Вызываем сервис для создания платежа
-            confirmation_url = create_yookassa_payment(order)
-            return Response(
-                {'confirmation_url': confirmation_url},
-                status=status.HTTP_201_CREATED,
-            )
-        except Order.DoesNotExist:
-            return Response(
-                {'error': 'Заказ не найден'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        order = get_object_or_404(
+            Order,
+            id=order_id,
+            user=request.user,
+        )
+
+        result = create_yookassa_payment(order)
+
+        return Response(
+            {
+                'status': result['payment_status'],
+                'confirmation_url': result.get('confirmation_url'),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 @csrf_exempt
+@require_POST
 def yookassa_webhook(request):
-    """Обрабатывает входящие уведомления (webhook) от ЮKassa.
-
-    Функция считывает тело запроса, делегирует проверку подписи и
-    бизнес-логику обработки событий сервисному слою. Всегда возвращает
-    HTTP 200 OK для подтверждения получения уведомления, чтобы
-    предотвратить повторные попытки отправки со стороны ЮKassa.
-    """
-    event_json = request.body.decode('utf-8')
-
-    signature = request.META.get('HTTP_YOO_SIGNATURE')
-
-    # Фабрика ЮKassa проверяет подпись и создает объект уведомления
+    """Обрабатывает входящие уведомления (webhook) от ЮKassa."""
     try:
-        notification = WebhookNotificationFactory().create(
-            event_json,
-            signature,
-        )
+        notification = WebhookNotificationFactory().create(request.body)
         process_yookassa_webhook(notification)
-        return HttpResponse(status.HTTP_200_OK)
-    except Exception as e:
-        logger.error('Ошибка проверки подписи или обработки вебхука: %s', e)
-        return HttpResponse(status.HTTP_400_BAD_REQUEST)
+    except Exception:
+        logger.exception('Ошибка обработки webhook ЮKassa.')
+        return HttpResponse(status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return HttpResponse(status.HTTP_200_OK)
