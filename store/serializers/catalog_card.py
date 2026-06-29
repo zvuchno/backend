@@ -148,6 +148,10 @@ class CatalogCardTargetSerializer(serializers.Serializer):
     type = serializers.CharField(
         help_text=('Тип детальной карточки: release или merch.'),
     )
+    id = serializers.IntegerField(
+        allow_null=True,
+        help_text='ID сущности, на которую ведёт карточка.',
+    )
     url = serializers.CharField(
         allow_null=True,
         help_text='URL endpoint для перехода.',
@@ -183,6 +187,7 @@ class CatalogCardSerializer(ProductCardSerializer):
         """Возвращает данные для перехода из карточки товара."""
         return {
             'type': obj.target_type,
+            'id': obj.target_id,
             'url': self._get_target_url(obj.target_type, obj.target_id),
             'selected_variant_id': obj.selected_variant_id,
         }
