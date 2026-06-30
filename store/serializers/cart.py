@@ -91,7 +91,7 @@ class CartReadSerializer(serializers.Serializer):
         many=True,
         read_only=True,
     )
-    promocode = serializers.CharField(
+    code = serializers.CharField(
         source='promocode.code',
         read_only=True,
         allow_null=True,
