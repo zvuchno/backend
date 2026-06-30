@@ -5,7 +5,6 @@
 """
 
 import logging
-import uuid
 
 from django.conf import settings
 from django.db import transaction
@@ -23,65 +22,37 @@ Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 
 
 def create_yookassa_payment(order):
-    """Создает платеж в ЮKassa и сохраняет его запись в БД."""
-    payment = (
-        order.payments
-        .filter(status=Payment.PaymentStatus.PENDING)
-        .order_by('-created_at')
-        .first()
-    )
+    """Создает или переиспользует платеж в ЮKassa."""
+    if order.status == Order.Status.PAID:
+        return {
+            'payment_status': 'succeeded',
+            'confirmation_url': None,
+        }
 
-    # Переиспользуем платеж
-    if payment and payment.provider_payment_id:
-        try:
-            yookassa_payment = YookassaPayment.find_one(
-                payment.provider_payment_id,
-            )
-
-            if yookassa_payment.status == 'pending':
-                return {
-                    'payment_status': 'pending',
-                    'confirmation_url': (
-                        yookassa_payment.confirmation.confirmation_url,
-                    ),
-                }
-
-            if yookassa_payment.status == 'succeeded':
-                payment.status = Payment.PaymentStatus.SUCCEEDED
-                payment.save(update_fields=['status'])
-
-                return {
-                    'payment_status': 'succeeded',
-                    'confirmation_url': None,
-                }
-
-            if yookassa_payment.status == 'canceled':
-                payment.status = Payment.PaymentStatus.CANCELED
-                payment.save(update_fields=['status'])
-
-                return {
-                    'payment_status': 'canceled',
-                    'confirmation_url': None,
-                }
-
-        except Exception:
-            logger.warning(
-                'Не удалось получить платеж ЮKassa. payment_id=%s',
-                payment.provider_payment_id,
-            )
-
-    # Создаём новый платеж
-    payment = Payment.objects.create(
+    payment, created = Payment.objects.get_or_create(
         order=order,
-        amount=order.total,
         status=Payment.PaymentStatus.PENDING,
+        defaults={
+            'amount': order.total,
+        },
     )
+
+    if created:
+        logger.info(
+            'Создан новый pending-платеж id=%s для заказа id=%s.',
+            payment.id,
+            order.id,
+        )
+    else:
+        logger.info(
+            'Переиспользуется pending-платеж id=%s для заказа id=%s.',
+            payment.id,
+            order.id,
+        )
 
     try:
         # Формируем запрос к API
-        idempotency_key = str(uuid.uuid4())
-
-        created_payment = YookassaPayment.create(
+        yookassa_payment = YookassaPayment.create(
             {
                 'amount': {
                     'value': str(order.total),
@@ -103,21 +74,23 @@ def create_yookassa_payment(order):
                     # TODO: items для формирования фискального чека (54-ФЗ)
                 },
             },
-            idempotency_key=idempotency_key,
+            idempotency_key=str(payment.idempotency_key),
         )
 
-        payment.provider_payment_id = created_payment.id
+        payment.provider_payment_id = yookassa_payment.id
         payment.save(update_fields=['provider_payment_id'])
 
         return {
             'payment_status': 'pending',
-            'confirmation_url': created_payment.confirmation.confirmation_url,
+            'confirmation_url': yookassa_payment.confirmation.confirmation_url,
         }
 
     except Exception:
-        logger.exception('Ошибка создания платежа')
-        payment.status = Payment.PaymentStatus.FAILED
-        payment.save(update_fields=['status'])
+        logger.exception(
+            'Ошибка создания платежа ЮKassa для заказа id=%s.',
+            order.id,
+        )
+
         return {
             'payment_status': 'error',
             'confirmation_url': None,
