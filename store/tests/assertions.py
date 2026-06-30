@@ -14,6 +14,7 @@ PUBLIC_PRODUCT_CARD_KEYS = {
 
 PUBLIC_PRODUCT_CARD_TARGET_KEYS = {
     'type',
+    'id',
     'url',
     'selected_variant_id',
 }

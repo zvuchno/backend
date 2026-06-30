@@ -113,6 +113,7 @@ class CartViewSet(viewsets.GenericViewSet):
             cart = self.get_queryset().first()
             if cart is None:
                 return Response(EMPTY_CART_RESPONSE)
+            CartService.validate_cart_promocode(cart)
         else:  # PATCH
             cart = self.get_instance()
             serializer = self.get_serializer(

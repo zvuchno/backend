@@ -46,8 +46,12 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
         help_text='Имя артиста-владельца товара.',
     )
     stock = serializers.SerializerMethodField()
-    discount = serializers.SerializerMethodField()
-    line_total = serializers.SerializerMethodField()
+    base_line_total = serializers.DecimalField(
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
+    discount_line_total = serializers.SerializerMethodField()
 
     class Meta(BaseVariantTargetImageSerializer.Meta):
         model = CartItem
@@ -56,11 +60,10 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
             'artist_name',
             'name',
             'kind',
-            'line_total',
+            'base_line_total',
+            'discount_line_total',
             'quantity',
-            'discount',
             'stock',
-            'is_artist_subscription',
         ) + BaseVariantTargetImageSerializer.Meta.fields
 
     def get_stock(self, obj) -> int:
@@ -71,19 +74,7 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
             return 1
         return variant.stock
 
-    def get_discount(self, obj) -> str:
-        """Возвращает сумму скидки на позицию по применённому промокоду."""
-        raw_discount = self.context.get('discounts', {}).get(
-            obj.id,
-            ZERO_MONEY,
-        )
-        field = serializers.DecimalField(
-            max_digits=MAX_PRICE_DIGITS,
-            decimal_places=MONEY_DISPLAY_PRECISION,
-        )
-        return field.to_representation(raw_discount)
-
-    def get_line_total(self, obj) -> str:
+    def get_discount_line_total(self, obj) -> str:
         """Возвращает финальную стоимость позиции из сервиса расчёта."""
         raw_line_total = self.context['cart_service'].get_item_line_total(obj)
         field = serializers.DecimalField(
@@ -99,6 +90,11 @@ class CartReadSerializer(serializers.Serializer):
     items = CartItemReadSerializer(
         many=True,
         read_only=True,
+    )
+    code = serializers.CharField(
+        source='promocode.code',
+        read_only=True,
+        allow_null=True,
     )
     subtotal = serializers.SerializerMethodField()
     discount_promocode = serializers.SerializerMethodField()

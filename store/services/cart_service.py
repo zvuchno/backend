@@ -96,18 +96,9 @@ class CartService:
         ).delete()
 
         if deleted_count > 0 and cart.promocode:
-            cart.refresh_from_db(fields=['items'])
-            calculation_service = CartCalculationService(cart)
-            # Проверяем, остался ли хоть один товар владельца промокода
-            has_applicable_items = any(
-                calculation_service._get_item_owner_id(item)
-                == cart.promocode.owner_id
-                for item in calculation_service.items
-            )
-            # Если подходящих товаров нет — дропаем промокод
-            if not has_applicable_items:
-                cart.promocode = None
-                cart.save()
+            cart.refresh_from_db()
+            CartService.validate_cart_promocode(cart)
+
         return deleted_count > 0
 
     @staticmethod
@@ -186,3 +177,31 @@ class CartService:
                     user_item.save(update_fields=['is_artist_subscription'])
         # Удаляем гостевую корзину после переноса
         guest_cart.delete()
+        user_cart.refresh_from_db()
+        CartService.validate_cart_promocode(user_cart)
+
+    @staticmethod
+    def validate_cart_promocode(cart: Cart) -> None:
+        """Проверяет актуальность промокода.
+
+        Если промокод невалиден или нет подходящих товаров — дропает его.
+        """
+        if not cart.promocode:
+            return
+
+        if not cart.promocode.is_available:
+            cart.promocode = None
+            cart.save(update_fields=['promocode'])
+            return
+
+        # Проверяем наличие товаров владельца промокода
+        calculation_service = CartCalculationService(cart)
+        has_applicable_items = any(
+            calculation_service._get_item_owner_id(item)
+            == cart.promocode.owner_id
+            for item in calculation_service.items
+        )
+        # Если подходящих товаров нет — дропаем промокод
+        if not has_applicable_items:
+            cart.promocode = None
+            cart.save(update_fields=['promocode'])

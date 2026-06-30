@@ -333,7 +333,7 @@ class TestCartAPI:
         item_data = response.data['items'][0]
         # Сумма строки: 1500 * 2 = 3000
         expected_line_total = price_with_donation * quantity
-        assert Decimal(item_data['line_total']) == expected_line_total
+        assert Decimal(item_data['discount_line_total']) == expected_line_total
         # Сумма корзины (subtotal)
         # Добавим еще один обычный товар без доната для чистоты эксперимента
         other_variant = variant_factory(
