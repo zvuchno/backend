@@ -183,9 +183,8 @@ def artist_register_payload():
 def listener_register_payload():
     """Payload регистрации слушателя."""
     return {
-        'username': 'artist_username',
-        'email': 'artist@newmail.ru',
+        'username': 'listener_username',
+        'email': 'listener@newmail.ru',
         'phone': '+79991234567',
         'password': 'qwertyhgfdsa123',
-        'full_name': 'Bestfan Ivanov',
     }
