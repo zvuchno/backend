@@ -80,6 +80,18 @@ def create_yookassa_payment(order):
         payment.provider_payment_id = yookassa_payment.id
         payment.save(update_fields=['provider_payment_id'])
 
+        if yookassa_payment.status == 'succeeded':
+            mark_payment_succeeded(payment)
+            return {
+                'payment_status': 'succeeded',
+                'confirmation_url': None,
+            }
+
+        if yookassa_payment.status == 'canceled':
+            payment.status = Payment.PaymentStatus.CANCELED
+            payment.save(update_fields=['status'])
+            return {'payment_status': 'canceled', 'confirmation_url': None}
+
         return {
             'payment_status': 'pending',
             'confirmation_url': yookassa_payment.confirmation.confirmation_url,
@@ -95,6 +107,23 @@ def create_yookassa_payment(order):
             'payment_status': 'error',
             'confirmation_url': None,
         }
+
+
+def mark_payment_succeeded(payment):
+    """Отмечает платеж как успешно оплаченный."""
+    with transaction.atomic():
+        payment.status = Payment.PaymentStatus.SUCCEEDED
+        payment.paid_at = timezone.now()
+        payment.save(update_fields=['status', 'paid_at'])
+
+        payment.order.status = Order.Status.PAID
+        payment.order.save(update_fields=['status'])
+
+    logger.info(
+        'Платеж %s успешно обработан. Заказ %s оплачен.',
+        payment.provider_payment_id,
+        payment.order.id,
+    )
 
 
 def process_yookassa_webhook(notification):
@@ -125,21 +154,7 @@ def process_yookassa_webhook(notification):
             )
             return
 
-        with transaction.atomic():
-            # Обновляем статус платежа
-            payment.status = Payment.PaymentStatus.SUCCEEDED
-            payment.paid_at = timezone.now()
-            payment.save(update_fields=['status', 'paid_at'])
-
-            # Обновляем статус заказа
-            payment.order.status = Order.Status.PAID
-            payment.order.save(update_fields=['status'])
-
-        logger.info(
-            'Платеж %s успешно обработан. Заказ %s оплачен.',
-            payment.provider_payment_id,
-            payment.order.id,
-        )
+        mark_payment_succeeded(payment)
 
     elif notification.event == 'payment.canceled':
         if payment.status == Payment.PaymentStatus.CANCELED:
