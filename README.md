@@ -221,6 +221,88 @@ python manage.py shell
 python manage.py check
 ```
 
+## Импорт тестового контента
+
+В репозитории есть два способа импортировать тестовый контент:
+
+* локальная Django-команда `import_test_server_music`;
+* внешний HTTP-скрипт `scripts/import_test_server_music.py`.
+
+Оба варианта используют один JSON-источник по умолчанию:
+
+```
+scripts/data/test_server_friendly_indie_payload.json
+```
+
+Структура JSON описана рядом:
+
+```
+scripts/data/test_server_content_payload.schema.json
+```
+
+Импорт идемпотентный: повторный запуск не требует очистки базы. Скрипты
+переиспользуют уже созданных артистов, альбомы, треки и мерч по fixture-маркерам.
+Обложки и картинки товаров генерируются скриптом, в JSON их указывать не нужно.
+
+### Локальный импорт через Django
+
+Команда работает внутри проекта через API-слой Django:
+
+```
+python manage.py import_test_server_music --disable-throttling
+```
+
+Указать другой JSON-источник:
+
+```
+python manage.py import_test_server_music \
+  --payload scripts/data/test_server_friendly_indie_payload.json
+```
+
+Указать пароль для fixture-аккаунтов артистов:
+
+```
+python manage.py import_test_server_music \
+  --password 'TestPass123!@#'
+```
+
+### Импорт через HTTP API
+```
+python -m scripts.import_test_server_music   --base-url https://myhost/api/v1
+```
+
+Этот вариант подходит для локального dev-сервера, staging или тестового сервера.
+В `--base-url` указывается базовый адрес API v1.
+
+Локальный сервер:
+
+```
+python scripts/import_test_server_music.py \
+  --base-url http://127.0.0.1:8000/api/v1
+```
+
+Удаленный сервер:
+
+```
+python scripts/import_test_server_music.py \
+  --base-url https://example.com/api/v1 \
+  --payload scripts/data/test_server_friendly_indie_payload.json \
+  --password 'TestPass123!@#'
+```
+
+Если сервер активно тротлит запросы, добавьте паузу после изменяющих запросов:
+
+```
+python scripts/import_test_server_music.py \
+  --base-url https://example.com/api/v1 \
+  --request-delay 0.5 \
+  --timeout 30
+```
+
+Скрипт получает типы мерча из ручки `/store/merch-kinds/` и сопоставляет их
+с каноническими типами `cassette`, `cap`, `cd`, `tshirt`, `vinyl`. Если подходящий
+тип в базе не найден, товары этого типа пропускаются.
+
 ---
 
 # Команды для ruff
