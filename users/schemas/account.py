@@ -73,6 +73,7 @@ resend_verification_email_schema = extend_schema(
         'текущего пользователя.'
     ),
 )
+
 become_artist_schema = extend_schema(
     tags=['Account'],
     summary='Стать артистом',
@@ -82,8 +83,19 @@ become_artist_schema = extend_schema(
         'Если профиль артиста уже существует, возвращает ошибку.'
     ),
 )
+
 change_username_schema = extend_schema(
     tags=['Account'],
     summary='Изменить имя пользователя (username)',
     description='Меняет имя пользователя, проверяет уникальность.',
+)
+
+set_password_schema = extend_schema(
+    tags=['Account'],
+    summary='Установить пароль',
+    description=(
+        'Устанавливает пароль текущему авторизованному пользователю, '
+        'если у его учетной записи ещё нет пригодного для входа пароля. '
+        'Например, после регистрации через социальную сеть.'
+    ),
 )
