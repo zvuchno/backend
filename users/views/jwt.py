@@ -5,6 +5,8 @@
 и обновления JWT-токенов.
 """
 
+import logging
+
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from allauth.socialaccount.providers.vk.views import VKOAuth2Adapter
 from allauth.socialaccount.providers.yandex.views import YandexOAuth2Adapter
@@ -34,6 +36,8 @@ from users.serializers import (
 )
 from users.views.mixins import SocialAuthMixin
 
+logger = logging.getLogger('cart_debug')
+
 
 @token_obtain_schema
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -52,6 +56,14 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
+
+    def post(self, request, *args, **kwargs):
+        logger.warning('=== TOKEN REQUEST DEBUG ===')
+        logger.warning(f'Raw Cookie header: {request.META.get("HTTP_COOKIE")}')
+        logger.warning(f'request.COOKIES: {request.COOKIES}')
+        logger.warning(f'session.session_key: {request.session.session_key}')
+        logger.warning(f'session.items: {dict(request.session.items())}')
+        return super().post(request, *args, **kwargs)
 
 
 @token_refresh_schema

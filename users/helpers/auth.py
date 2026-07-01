@@ -38,6 +38,12 @@ def run_actions_after_authentication(user, request) -> None:
     # Аутентификация пользователя с объединением корзин.
     # После успешной валидации учетных данных выполняется merge
     # гостевой корзины (session_key) с корзиной пользователя.
+    logger.warning('=== RUN ACTIONS AFTER AUTH DEBUG ===')
+    logger.warning(f'user: {user}, user.id: {user.id}')
+    logger.warning(f'request.COOKIES in serializer: {request.COOKIES}')
+    logger.warning(
+        f'session.session_key in serializer: {request.session.session_key}',
+    )
     try:
         CartService.merge_carts(user, request)
     except Exception:

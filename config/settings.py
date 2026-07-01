@@ -496,6 +496,11 @@ CORS_ALLOWED_ORIGINS = list({
     *EXTRA_CORS_ORIGINS,
 })
 CORS_ALLOW_CREDENTIALS = True
+# Cookies for cross-origin (localhost:3000 -> dev.zvuchno.space)
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SAMESITE = 'None'
 
 # EMAIL backend
 if DEBUG:

@@ -4,6 +4,7 @@
 содержимого корзины, инкапсулируя работу с БД и массовые операции.
 """
 
+import logging
 from decimal import Decimal
 
 from django.db import transaction
@@ -11,6 +12,8 @@ from rest_framework.exceptions import ValidationError
 
 from store.models import Cart, CartItem, ProductVariant
 from store.services import CartCalculationService
+
+logger = logging.getLogger('cart_debug')
 
 
 class CartService:
@@ -124,6 +127,11 @@ class CartService:
         if not session_key:
             return
 
+        logger.warning('=== MERGE CARTS DEBUG ===')
+        logger.warning(
+            f'merge_carts called for user={user}, session_key={session_key}',
+        )
+
         guest_cart = (
             Cart.objects
             .filter(
@@ -131,6 +139,20 @@ class CartService:
             )
             .prefetch_related('items__product_variant__product')
             .first()
+        )
+        logger.warning(f'guest_cart found: {guest_cart}')
+        logger.warning(
+            f'No cart found with session_key={session_key} — '
+            'checking all carts with session_key set',
+        )
+        logger.warning(
+            f'All session-based carts: {
+                list(
+                    Cart.objects.exclude(session_key__isnull=True).values(
+                        "id", "session_key"
+                    )
+                )
+            }',
         )
 
         if not guest_cart:

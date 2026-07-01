@@ -11,6 +11,7 @@ on:
       - main
       - develop
       - fix/docker-compose-backend-timeoput
+      - debug/cart-merge-session-logging
 
 jobs:
 
