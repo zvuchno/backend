@@ -12,6 +12,7 @@ from .views import (
     CartViewSet,
     CatalogMerchDetailView,
     CatalogReleaseDetailView,
+    CreatePaymentView,
     DeliveryViewSet,
     FavoritesViewSet,
     GenreViewSet,
@@ -27,6 +28,7 @@ from .views import (
     PurchasedMusicTrackDownloadLinkView,
     PurchasedMusicView,
     TrackViewSet,
+    yookassa_webhook,
 )
 
 app_name = 'store'
@@ -77,6 +79,12 @@ urlpatterns = [
         name='purchased-music-archive-download-link',
     ),
     path('cdek/widget', CDEKWidgetView.as_view(), name='cdek-widget'),
+    path(
+        'payments/create/',
+        CreatePaymentView.as_view(),
+        name='payment-create',
+    ),
+    path('payments/webhook/', yookassa_webhook, name='payment-webhook'),
     path(
         'player/albums/<int:album_id>/',
         PlayerAlbumView.as_view(),

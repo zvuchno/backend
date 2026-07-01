@@ -29,7 +29,6 @@ class Order(TimestampModel):
 
     class Status(models.TextChoices):
         CREATED = 'created', 'Создан'
-        CONFIRMED = 'confirmed', 'Ожидает оплаты'
         PAID = 'paid', 'Оплачен'
         SHIPPED = 'shipped', 'Отправлен'
         COMPLETED = 'completed', 'Завершен'

@@ -9,7 +9,7 @@ from django.utils.safestring import mark_safe
 
 from common.utils.money import format_money
 
-from store.models import Order, OrderItem
+from store.models import Order, OrderItem, Payment
 
 
 class OrderItemInline(admin.TabularInline):
@@ -93,6 +93,28 @@ class OrderItemInline(admin.TabularInline):
     @admin.display(description='Скидка по промокоду, руб.')
     def display_promocode_discount(self, obj):
         return format_money(obj.promocode_discount)
+
+
+class PaymentInline(admin.TabularInline):
+    """Инлайн отображения платежей по заказу."""
+
+    model = Payment
+    extra = 0
+    fields = (
+        'order',
+        'status',
+        'provider_payment_id',
+        'amount',
+        'error_code',
+    )
+    readonly_fields = ('amount', 'status', 'provider_payment_id', 'created_at')
+    can_delete = False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Order)
@@ -189,7 +211,7 @@ class OrderAdmin(admin.ModelAdmin):
             },
         ),
     )
-    inlines = (OrderItemInline,)
+    inlines = (OrderItemInline, PaymentInline)
 
     @admin.display(description='Сумма товаров (руб.)')
     def display_subtotal(self, obj):
