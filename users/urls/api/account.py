@@ -13,7 +13,10 @@ from users.views import (
     PasswordResetVerifyView,
     ResendVerificationEmailView,
 )
-from users.views.account import UsernameChangeView
+from users.views.account import (
+    SetPasswordView,
+    UsernameChangeView,
+)
 
 urlpatterns = [
     path('me/', MeView.as_view(), name='me'),
@@ -41,6 +44,11 @@ urlpatterns = [
         'verify-email/',
         EmailVerificationView.as_view(),
         name='verify_email',
+    ),
+    path(
+        'me/set-password/',
+        SetPasswordView.as_view(),
+        name='set_password',
     ),
     path(
         'reset-password/',
