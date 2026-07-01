@@ -11,6 +11,7 @@ from .account import (
     password_reset_request_schema,
     password_reset_verify_schema,
     resend_verification_email_schema,
+    set_password_schema,
 )
 from .artist_legal_profile import (
     artist_legal_data_schema,
@@ -43,6 +44,7 @@ from .telegram_connect import telegram_connect_schema
 
 __all__ = [
     'artist_cover_update_schema',
+    'artist_legal_data_schema',
     'artist_list_schema',
     'artist_me_schema',
     'artist_public_schema',
@@ -50,6 +52,7 @@ __all__ = [
     'become_artist_schema',
     'change_password_schema',
     'change_phone_schema',
+    'change_username_schema',
     'consent_doc_schema',
     'email_verification_schema',
     'listener_me_schema',
@@ -66,8 +69,7 @@ __all__ = [
     'token_verify_schema',
     'social_error_codes_schema',
     'social_token_exchange_schema',
-    'change_username_schema',
     'social_auth_schema',
-    'artist_legal_data_schema',
     'recipient_type_list_schema',
+    'set_password_schema',
 ]
