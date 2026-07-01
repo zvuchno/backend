@@ -407,6 +407,7 @@ REST_FRAMEWORK = {
         'change_phone': '5/min',
         'change_username': '5/min',
         'change_password': '5/min',
+        'set_password': '5/hour',
 
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',

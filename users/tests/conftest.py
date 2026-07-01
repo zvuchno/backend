@@ -21,42 +21,22 @@ from users.models import (
     ArtistIdentityData,
     ArtistLegalProfile,
 )
+from users.tests.factories import UserFactory
 
 
 @pytest.fixture
-def artist_legal_url():
-    """URL юридических данных артиста."""
-    return reverse('api:users:artist_legal_profile')
+def current_password():
+    """Возвращает пароль тестового пользователя."""
+    return 'CurrentPassword-482!'
 
 
 @pytest.fixture
-def artist_recipient_type_url():
-    """URL справочника типа получателей."""
-    return reverse('api:users:recipient_type_list')
-
-
-@pytest.fixture
-def listener_register_url():
-    """URL регистрации слушателя."""
-    return reverse('api:users:listener_registration')
-
-
-@pytest.fixture
-def artist_register_url():
-    """URL регистрации артиста."""
-    return reverse('api:users:artist_registration')
-
-
-@pytest.fixture
-def reset_password_url():
-    """URL восстановления пароля."""
-    return reverse('api:users:reset_password')
-
-
-@pytest.fixture
-def resend_email_verification_url():
-    """URL повторного подтверждения email."""
-    return reverse('api:users:resend_verification_email')
+def password_user(current_password):
+    """Создаёт пользователя с установленным известным паролем."""
+    user = UserFactory()
+    user.set_password(current_password)
+    user.save(update_fields=['password'])
+    return user
 
 
 @pytest.fixture
@@ -183,9 +163,73 @@ def artist_register_payload():
 def listener_register_payload():
     """Payload регистрации слушателя."""
     return {
-        'username': 'artist_username',
-        'email': 'artist@newmail.ru',
+        'username': 'listener_username',
+        'email': 'listener@newmail.ru',
         'phone': '+79991234567',
         'password': 'qwertyhgfdsa123',
-        'full_name': 'Bestfan Ivanov',
     }
+
+
+# =================================
+# URL fixtures
+# =================================
+
+
+@pytest.fixture
+def artist_legal_url():
+    """URL юридических данных артиста."""
+    return reverse('api:users:artist_legal_profile')
+
+
+@pytest.fixture
+def artist_recipient_type_url():
+    """URL справочника типа получателей."""
+    return reverse('api:users:recipient_type_list')
+
+
+@pytest.fixture
+def listener_register_url():
+    """URL регистрации слушателя."""
+    return reverse('api:users:listener_registration')
+
+
+@pytest.fixture
+def artist_register_url():
+    """URL регистрации артиста."""
+    return reverse('api:users:artist_registration')
+
+
+@pytest.fixture
+def reset_password_url():
+    """URL восстановления пароля."""
+    return reverse('api:users:reset_password')
+
+
+@pytest.fixture
+def resend_email_verification_url():
+    """URL повторного подтверждения email."""
+    return reverse('api:users:resend_verification_email')
+
+
+@pytest.fixture
+def account_set_password_url():
+    """URL установки первого пароля."""
+    return reverse('api:users:set_password')
+
+
+@pytest.fixture
+def change_password_url():
+    """URL смены установленного пароля."""
+    return reverse('api:users:change_password')
+
+
+@pytest.fixture
+def reset_password_verify_url():
+    """URL проверки ссылки сброса пароля."""
+    return reverse('api:users:reset_password_verify')
+
+
+@pytest.fixture
+def reset_password_confirm_url():
+    """URL подтверждения сброса пароля."""
+    return reverse('api:users:reset_password_confirm')
