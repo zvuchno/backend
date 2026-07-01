@@ -24,6 +24,7 @@ from users.schemas import (
     password_reset_request_schema,
     password_reset_verify_schema,
     resend_verification_email_schema,
+    set_password_schema,
 )
 from users.serializers import (
     ChangePasswordSerializer,
@@ -34,6 +35,7 @@ from users.serializers import (
     PasswordResetRequestSerializer,
     PasswordResetVerifySerializer,
     PhoneChangeSerializer,
+    SetPasswordSerializer,
     UsernameChangeSerializer,
 )
 from users.services import request_password_reset
@@ -86,6 +88,27 @@ class ChangePasswordView(GenericAPIView):
         serializer.save()
         return Response(
             {'detail': 'Пароль успешно изменен.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+@set_password_schema
+class SetPasswordView(GenericAPIView):
+    """Устанавливает пароль для аккаунта без пароля."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = SetPasswordSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'set_password'
+
+    def post(self, request, *args, **kwargs):
+        """Валидирует и устанавливает первый пароль пользователя."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {'detail': 'Пароль успешно установлен.'},
             status=status.HTTP_200_OK,
         )
 
