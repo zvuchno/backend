@@ -7,7 +7,10 @@ from django.views.decorators.http import require_POST
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from yookassa.domain.common import SecurityHelper
 from yookassa.domain.notification import WebhookNotificationFactory
+
+from common.utils import get_client_ip
 
 from store.models import Order
 from store.schema import payment_schema
@@ -48,8 +51,21 @@ class CreatePaymentView(APIView):
 @require_POST
 def yookassa_webhook(request):
     """Обрабатывает входящие уведомления (webhook) от ЮKassa."""
+    ip_address = get_client_ip(request)
+    if not SecurityHelper().is_ip_trusted(ip_address):
+        logger.warning(
+            'Попытка доступа к вебхуку с недоверенного IP: %s',
+            ip_address,
+        )
+        return HttpResponse(status.HTTP_400_BAD_REQUEST)
+
     try:
         notification = WebhookNotificationFactory().create(request.body)
+        logger.info(
+            'Получен вебхук от ЮKassa: event=%s, payment_id=%s',
+            notification.event,
+            notification.object.id,
+        )
         process_yookassa_webhook(notification)
     except Exception:
         logger.exception('Ошибка обработки webhook ЮKassa.')

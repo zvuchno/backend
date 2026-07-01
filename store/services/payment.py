@@ -177,3 +177,9 @@ def process_yookassa_webhook(notification):
             'Платеж %s отменен.',
             payment.provider_payment_id,
         )
+
+    else:
+        logger.warning(
+            'Webhook получено необрабатываемое событие: %s',
+            notification.event,
+        )
