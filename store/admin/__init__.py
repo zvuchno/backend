@@ -14,6 +14,7 @@ from .genre import GenreAdmin
 from .merch import MerchAdmin
 from .merch_kind import MerchKindAdmin
 from .order import OrderAdmin
+from .payment import PaymentAdmin
 from .promocode import PromocodeAdmin
 from .track import TrackAdmin
 
@@ -26,6 +27,7 @@ __all__ = [
     'MerchKindAdmin',
     'MerchAdmin',
     'OrderAdmin',
+    'PaymentAdmin',
     'PromocodeAdmin',
     'TrackAdmin',
 ]
