@@ -14,75 +14,86 @@ class PaymentAdmin(admin.ModelAdmin):
     """Админка для модели платежей."""
 
     list_display = (
+        'id',
         'payment_info',
         'amount',
-        'status',
+        'colored_status',
         'provider_payment_id',
-        'created_at',
+        'paid_at',
     )
+    list_display_links = ('id', 'payment_info')
     list_select_related = ('order',)
-    list_filter = ('status', 'created_at')
+    list_filter = ('status', 'paid_at')
     search_fields = ('order__order_number', 'provider_payment_id')
     readonly_fields = (
-        'status',
+        'colored_status',
         'order',
         'amount',
         'provider_payment_id',
         'created_at',
         'updated_at',
+        'paid_at',
         'error_code',
     )
     ordering = ('-created_at',)
 
-    fieldsets = (
-        (
-            'Основные данные',
-            {
-                'fields': (
-                    'status',
-                    'order',
-                    'order_link',
-                    'amount',
-                    'provider_payment_id',
-                    'error_code',
-                ),
-            },
-        ),
-        (
-            'Системная информация',
-            {
-                'fields': (
-                    'created_at',
-                    'updated_at',
-                ),
-            },
-        ),
-    )
+    def get_fieldsets(self, request, obj=None):
+        fields = [
+            'colored_status',
+            'order',
+            'amount',
+            'provider_payment_id',
+            'paid_at',
+        ]
 
-    def payment_info(self, obj):
-        return f'Платеж №{obj.id} по заказу №{obj.order.order_number}'
+        if obj and obj.status == Payment.PaymentStatus.FAILED:
+            fields.insert(1, 'error_code')
 
-    payment_info.short_description = 'Информация о платеже'
-
-    def status(self, obj):
-        colors = {
-            'succeeded': 'green',
-            'canceled': 'orange',
-            'failed': 'red',
-        }
-        color = colors.get(obj.status)
-        return format_html(
-            '<b style="color: {};">{}</b>',
-            color,
-            obj.status.upper(),
+        return (
+            (
+                'Основные данные',
+                {
+                    'fields': tuple(fields),
+                },
+            ),
+            (
+                'Системная информация',
+                {
+                    'fields': (
+                        'created_at',
+                        'updated_at',
+                    ),
+                },
+            ),
         )
 
-    status.short_description = 'Статус'
+    @admin.display(description='Информация о платеже')
+    def payment_info(self, obj):
+        return f'Оплата по заказу №{obj.order.order_number}'
+
+    @admin.display(description='Статус')
+    def colored_status(self, obj):
+        colors = {
+            'pending': '#0d6efd',
+            'succeeded': '#28a745',
+            'canceled': '#daa024',
+            'failed': '#dc3545',
+        }
+
+        return format_html(
+            '<span style="color: {};">{}</span>',
+            colors.get(obj.status),
+            obj.get_status_display(),
+        )
 
     def has_add_permission(self, request):
-        """Запрещает ручное создание заказов через кнопку 'Добавить'."""
+        """Запрещает ручное создание через кнопку 'Добавить'."""
         return False
 
     def has_delete_permission(self, request, obj=None):
-        """Запрещает ручное удаление заказов через кнопку 'Удалить'."""
+        """Запрещает ручное удаление через кнопку 'Удалить'."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает ручное сохранение через кнопки 'Сохранить'."""
         return False

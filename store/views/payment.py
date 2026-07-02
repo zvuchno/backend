@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django.http import HttpResponse
@@ -60,18 +61,22 @@ def yookassa_webhook(request):
             'Попытка доступа к вебхуку с недоверенного IP: %s',
             ip_address,
         )
-        return HttpResponse(status.HTTP_400_BAD_REQUEST)
+        return HttpResponse(status=status.HTTP_403_FORBIDDEN)
 
     try:
-        notification = WebhookNotificationFactory().create(request.body)
+        data = json.loads(request.body)
+        notification = WebhookNotificationFactory().create(data)
         logger.info(
             'Получен вебхук от ЮKassa: event=%s, payment_id=%s',
             notification.event,
             notification.object.id,
         )
         process_yookassa_webhook(notification)
+    except json.JSONDecodeError:
+        logger.error('Ошибка парсинга JSON в вебхуке ЮKassa')
+        return HttpResponse(status.HTTP_400_BAD_REQUEST)
     except Exception:
         logger.exception('Ошибка обработки webhook ЮKassa.')
-        return HttpResponse(status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return HttpResponse(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return HttpResponse(status.HTTP_200_OK)
+    return HttpResponse(status=status.HTTP_200_OK)

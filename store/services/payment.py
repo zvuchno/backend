@@ -118,13 +118,13 @@ def mark_payment_succeeded(payment):
     with transaction.atomic():
         payment.status = Payment.PaymentStatus.SUCCEEDED
         payment.paid_at = timezone.now()
-        payment.save(update_fields=['status', 'paid_at'])
+        payment.save(update_fields=['status', 'paid_at', 'updated_at'])
 
         payment.order.status = Order.Status.PAID
         payment.order.save(update_fields=['status'])
 
     logger.info(
-        'Платеж %s успешно обработан. Заказ %s оплачен.',
+        'Платеж %s успешно обработан. Заказ id=%s оплачен.',
         payment.provider_payment_id,
         payment.order.id,
     )

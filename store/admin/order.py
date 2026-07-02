@@ -101,19 +101,13 @@ class PaymentInline(admin.TabularInline):
     model = Payment
     extra = 0
     fields = (
-        'order',
-        'status',
-        'provider_payment_id',
-        'amount',
-        'error_code',
-    )
-    readonly_fields = (
-        'amount',
-        'status',
-        'provider_payment_id',
         'created_at',
+        'status',
+        'provider_payment_id',
+        'amount',
         'error_code',
     )
+    readonly_fields = fields
     can_delete = False
 
     def has_delete_permission(self, request, obj=None):
