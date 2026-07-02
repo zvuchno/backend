@@ -107,7 +107,13 @@ class PaymentInline(admin.TabularInline):
         'amount',
         'error_code',
     )
-    readonly_fields = ('amount', 'status', 'provider_payment_id', 'created_at')
+    readonly_fields = (
+        'amount',
+        'status',
+        'provider_payment_id',
+        'created_at',
+        'error_code',
+    )
     can_delete = False
 
     def has_delete_permission(self, request, obj=None):

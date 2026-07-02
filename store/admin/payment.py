@@ -4,7 +4,6 @@
 """
 
 from django.contrib import admin
-from django.urls import reverse
 from django.utils.html import format_html
 
 from store.models import Payment
@@ -15,9 +14,7 @@ class PaymentAdmin(admin.ModelAdmin):
     """Админка для модели платежей."""
 
     list_display = (
-        'id',
-        'order_link',
-        'order',
+        'payment_info',
         'amount',
         'status',
         'provider_payment_id',
@@ -27,8 +24,8 @@ class PaymentAdmin(admin.ModelAdmin):
     list_filter = ('status', 'created_at')
     search_fields = ('order__order_number', 'provider_payment_id')
     readonly_fields = (
+        'status',
         'order',
-        'order_link',
         'amount',
         'provider_payment_id',
         'created_at',
@@ -62,15 +59,25 @@ class PaymentAdmin(admin.ModelAdmin):
         ),
     )
 
-    def order_link(self, obj):
-        url = reverse('admin:store_order_change', args=[obj.order.id])
+    def payment_info(self, obj):
+        return f'Платеж №{obj.id} по заказу №{obj.order.order_number}'
+
+    payment_info.short_description = 'Информация о платеже'
+
+    def status(self, obj):
+        colors = {
+            'succeeded': 'green',
+            'canceled': 'orange',
+            'failed': 'red',
+        }
+        color = colors.get(obj.status)
         return format_html(
-            '<a href="{}">Заказ №{}</a>',
-            url,
-            obj.order.order_number,
+            '<b style="color: {};">{}</b>',
+            color,
+            obj.status.upper(),
         )
 
-    order_link.short_description = 'Перейти к заказу'
+    status.short_description = 'Статус'
 
     def has_add_permission(self, request):
         """Запрещает ручное создание заказов через кнопку 'Добавить'."""

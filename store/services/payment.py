@@ -24,6 +24,10 @@ Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 def create_yookassa_payment(order):
     """Создает или переиспользует платеж в ЮKassa."""
     if order.status == Order.Status.PAID:
+        logger.info(
+            'Попытка инициировать оплату уже оплаченного заказа: order_id=%s',
+            order.id,
+        )
         return {
             'payment_status': 'succeeded',
             'confirmation_url': None,
