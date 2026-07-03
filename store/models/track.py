@@ -62,7 +62,7 @@ class Track(ActivatableModel, TimestampModel):
 
     @property
     def owner(self):
-        """Возвращает владельца альбома."""
+        """Возвращает владельца альбома для обратной совместимости."""
         return self.album.owner
 
     objects = TrackQuerySet.as_manager()

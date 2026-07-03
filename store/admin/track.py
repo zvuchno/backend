@@ -133,8 +133,14 @@ class TrackAdmin(
         return f'{minutes}:{seconds:02}'
 
     def get_queryset(self, request):
-        """Родительский метод миксина + select_related('album', 'owner')."""
-        return super().get_queryset(request).select_related('album', 'owner')
+        """Возвращает треки с альбомом, владельцем и профилем артиста."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'album__owner__artist_profile',
+            )
+        )
 
     def save_model(self, request, obj, form, change):
         """Сохраняет трек и запускает обработку при изменении исходника."""

@@ -25,8 +25,7 @@ class TrackReadSerializer(serializers.ModelSerializer):
         source='product.allow_overpay',
         default=False,
     )
-    artist_name = serializers.CharField(
-        source='owner.artist_profile.name',
+    artist_name = serializers.SerializerMethodField(
         read_only=True,
         allow_null=True,
     )
@@ -36,6 +35,16 @@ class TrackReadSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     is_favorite = serializers.BooleanField(read_only=True)
+
+    @staticmethod
+    def get_artist_name(obj) -> str | None:
+        """Возвращает имя исполнителя альбома."""
+        artist = getattr(obj.album.owner, 'artist_profile', None)
+
+        if artist is None:
+            return None
+
+        return artist.name
 
     class Meta:
         model = Track
