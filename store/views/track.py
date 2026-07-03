@@ -1,5 +1,6 @@
 """ViewSet для работы с моделью track."""
 
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
@@ -60,6 +61,12 @@ class TrackViewSet(
             action=self.action,
             queryset=super().get_queryset(),
         )
+
+    def perform_create(self, serializer):
+        """Создаёт трек и синхронизирует его коммерческие данные."""
+        with transaction.atomic():
+            instance = serializer.save()
+            self._update_product_data(instance, serializer.validated_data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

@@ -23,7 +23,7 @@ class TrackReadQuerysetMixin:
             action=action,
         ).select_related(
             'album',
-            'owner__artist_profile',
+            'album__owner__artist_profile',
             'product',
         )
 

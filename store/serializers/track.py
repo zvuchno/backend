@@ -2,17 +2,14 @@
 
 Содержит сериализаторы для чтения и записи данных модели Track,
 используемые в API.
-TODO: Реализовать логику покупки аудиофайла:
-- ссылка на загрузку только купившему?
-- в списке треков отдавать демку?
 """
 
 from rest_framework import serializers
 
-from ..services.audio.schedule import TrackGeneratedAudioScheduler
 from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
+from store.services.audio.schedule import TrackGeneratedAudioScheduler
 
 
 class TrackReadSerializer(serializers.ModelSerializer):
@@ -106,3 +103,14 @@ class TrackWriteSerializer(serializers.ModelSerializer):
         if audio_file_changed:
             TrackGeneratedAudioScheduler.schedule(track)
         return track
+
+    def validate_album(self, album):
+        """Проверяет, что артист работает только со своим альбомом."""
+        request = self.context['request']
+
+        if album.owner_id != request.user.id:
+            raise serializers.ValidationError(
+                'Нельзя добавить трек в чужой альбом.',
+            )
+
+        return album
