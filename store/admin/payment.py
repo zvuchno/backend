@@ -46,7 +46,7 @@ class PaymentAdmin(admin.ModelAdmin):
             'paid_at',
         ]
 
-        if obj and obj.status == Payment.PaymentStatus.FAILED:
+        if obj and obj.error_code:
             fields.insert(1, 'error_code')
 
         return (

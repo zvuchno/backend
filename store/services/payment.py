@@ -21,7 +21,7 @@ Configuration.account_id = settings.YOOKASSA_SHOP_ID
 Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 
 
-def create_yookassa_payment(order):
+def create_yookassa_payment(order, retry=True):
     """Создает или переиспользует платеж в ЮKassa."""
     if order.status == Order.Status.PAID:
         logger.info(
@@ -80,27 +80,6 @@ def create_yookassa_payment(order):
             },
             idempotency_key=str(payment.idempotency_key),
         )
-
-        payment.provider_payment_id = yookassa_payment.id
-        payment.save(update_fields=['provider_payment_id'])
-
-        if yookassa_payment.status == 'succeeded':
-            mark_payment_succeeded(payment)
-            return {
-                'payment_status': 'succeeded',
-                'confirmation_url': None,
-            }
-
-        if yookassa_payment.status == 'canceled':
-            payment.status = Payment.PaymentStatus.CANCELED
-            payment.save(update_fields=['status'])
-            return {'payment_status': 'canceled', 'confirmation_url': None}
-
-        return {
-            'payment_status': 'pending',
-            'confirmation_url': yookassa_payment.confirmation.confirmation_url,
-        }
-
     except Exception:
         logger.exception(
             'Ошибка создания платежа ЮKassa для заказа id=%s.',
@@ -111,6 +90,49 @@ def create_yookassa_payment(order):
             'payment_status': 'error',
             'confirmation_url': None,
         }
+
+    payment.provider_payment_id = yookassa_payment.id
+    payment.save(update_fields=['provider_payment_id'])
+
+    if yookassa_payment.status == 'succeeded':
+        logger.info(
+            'Платеж для order_id=%s уже имеет статус succeeded '
+            'в ЮKassa, обновляем локальные статусы.',
+            order.id,
+        )
+        mark_payment_succeeded(payment)
+        return {
+            'payment_status': 'succeeded',
+            'confirmation_url': None,
+        }
+
+    if yookassa_payment.status == 'canceled':
+        payment.status = Payment.PaymentStatus.CANCELED
+
+        details = getattr(yookassa_payment, 'cancellation_details', None)
+        reason = getattr(details, 'reason', 'неизвестная причина')
+        payment.error_code = reason
+        payment.save(update_fields=['status', 'error_code'])
+
+        logger.warning(
+            'Платеж отменен: внутренний ID=%s, ID в ЮKassa=%s, причина=%s',
+            payment.id,
+            yookassa_payment.id,
+            reason,
+        )
+        if retry:
+            logger.info(
+                'Создаем новую попытку оплаты для order_id=%s '
+                'после отмены предыдущего платежа.',
+                order.id,
+            )
+            return create_yookassa_payment(order, retry=False)
+        return {'payment_status': 'canceled', 'confirmation_url': None}
+
+    return {
+        'payment_status': 'pending',
+        'confirmation_url': yookassa_payment.confirmation.confirmation_url,
+    }
 
 
 def mark_payment_succeeded(payment):
@@ -169,17 +191,19 @@ def process_yookassa_webhook(notification):
             return
 
         with transaction.atomic():
-            # Обновляем статус платежа
             payment.status = Payment.PaymentStatus.CANCELED
 
+            reason = None
             if payment_info.cancellation_details:
-                payment.error_code = payment_info.cancellation_details.reason
+                reason = payment_info.cancellation_details.reason
+                payment.error_code = reason
 
             payment.save(update_fields=['status', 'error_code'])
 
         logger.info(
-            'Платеж %s отменен.',
+            'Платеж %s отменен. Причина: %s',
             payment.provider_payment_id,
+            reason or 'неизвестная причина',
         )
 
     else:
