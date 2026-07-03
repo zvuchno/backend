@@ -467,8 +467,10 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
 SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
-SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
-SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # автоматически связывать
+# Сопоставление пользователя, привязку соцсети и подтверждение email
+# выполняет SocialAuthService, а не встроенная логика allauth.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = False  # разрешить allauth вход по email из соцсети
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = False  # автоматически связывать allauth
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_LOGIN_ON_GET = True  # сразу редиректить вход без промежуточной страницы
 FRONTEND_SOCIAL_AUTH_PATH = os.getenv(
