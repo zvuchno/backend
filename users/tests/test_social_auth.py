@@ -6,7 +6,6 @@ from unittest.mock import Mock
 import pytest
 from allauth.socialaccount.models import SocialAccount
 from django.db import IntegrityError
-from django.test import RequestFactory
 
 from users.adapters import SocialAccountAdapter
 from users.constants import (
@@ -27,21 +26,37 @@ YANDEX_PROVIDER = 'yandex'
 VK_PROVIDER = 'vk'
 
 
-@pytest.fixture
-def social_auth_service():
-    """Возвращает сервис социальной аутентификации."""
-    return SocialAuthService()
+def build_sociallogin(
+    *,
+    provider: str,
+    uid: str,
+    email: str,
+    save: Mock | None = None,
+):
+    """Создает минимальный объект SocialLogin для adapter-теста."""
+    provider_obj = object()
+
+    sociallogin = SimpleNamespace(
+        account=SimpleNamespace(
+            provider=provider,
+            uid=uid,
+            get_provider=lambda: provider_obj,
+        ),
+        user=SimpleNamespace(
+            email=email,
+        ),
+    )
+    sociallogin.save = save if save is not None else Mock()
+
+    return sociallogin
 
 
 class TestSocialAuthService:
     """Тесты обработки пользователя после входа через соцсеть."""
 
-    def test_creates_new_passwordless_user_from_trusted_social_email(
-        self,
-        social_auth_service,
-    ):
-        """Создаёт пользователя, подтверждает email от доверенного provider."""
-        user = social_auth_service.resolve_user(
+    def test_creates_new_passwordless_user_from_trusted_social_email(self):
+        """Создает passwordless-пользователя с подтвержденным email."""
+        user = SocialAuthService().resolve_user(
             provider=YANDEX_PROVIDER,
             provider_uid='yandex-1001',
             email='  New.User@Example.Test ',
@@ -51,18 +66,14 @@ class TestSocialAuthService:
         assert user.email == 'new.user@example.test'
         assert user.is_email_verified is True
         assert user.has_usable_password() is False
-
         assert ListenerProfile.objects.filter(
             user=user,
             is_active=True,
         ).exists()
 
-    def test_creates_new_unverified_user_from_untrusted_social_email(
-        self,
-        social_auth_service,
-    ):
-        """Не подтверждает email, если provider не считает его доверенным."""
-        user = social_auth_service.resolve_user(
+    def test_creates_new_unverified_user_from_untrusted_social_email(self):
+        """Не подтверждает email пользователя от недоверенного provider."""
+        user = SocialAuthService().resolve_user(
             provider=VK_PROVIDER,
             provider_uid='vk-1002',
             email='new.user@example.test',
@@ -72,7 +83,6 @@ class TestSocialAuthService:
         assert user.email == 'new.user@example.test'
         assert user.is_email_verified is False
         assert user.has_usable_password() is False
-
         assert ListenerProfile.objects.filter(
             user=user,
             is_active=True,
@@ -80,7 +90,6 @@ class TestSocialAuthService:
 
     def test_confirms_existing_unverified_user_from_trusted_social_email(
         self,
-        social_auth_service,
     ):
         """Подтверждает email существующего пользователя через соцсеть."""
         user = UserFactory(
@@ -88,7 +97,7 @@ class TestSocialAuthService:
             is_email_verified=False,
         )
 
-        resolved_user = social_auth_service.resolve_user(
+        resolved_user = SocialAuthService().resolve_user(
             provider=YANDEX_PROVIDER,
             provider_uid='yandex-1003',
             email='LISTENER@EXAMPLE.TEST',
@@ -102,16 +111,15 @@ class TestSocialAuthService:
 
     def test_rejects_existing_unverified_user_from_untrusted_social_email(
         self,
-        social_auth_service,
     ):
-        """Не пускает в неподтверждённый аккаунт без доверенного email."""
+        """Не пускает в неподтвержденный аккаунт без доверенного email."""
         user = UserFactory(
             email='listener@example.test',
             is_email_verified=False,
         )
 
         with pytest.raises(SocialAuthException) as exc_info:
-            social_auth_service.resolve_user(
+            SocialAuthService().resolve_user(
                 provider=VK_PROVIDER,
                 provider_uid='vk-1004',
                 email=user.email,
@@ -125,30 +133,34 @@ class TestSocialAuthService:
         user.refresh_from_db()
         assert user.is_email_verified is False
 
-    def test_returns_existing_verified_user_by_email(
+    def test_does_not_confirm_email_when_social_email_differs(
         self,
-        social_auth_service,
     ):
-        """Возвращает существующий подтверждённый аккаунт без дубля."""
+        """Не подтверждает другой email у пользователя с SocialAccount."""
         user = UserFactory(
             email='listener@example.test',
-            is_email_verified=True,
+            is_email_verified=False,
+        )
+        SocialAccount.objects.create(
+            user=user,
+            provider=YANDEX_PROVIDER,
+            uid='yandex-1005',
+            extra_data={},
         )
 
-        resolved_user = social_auth_service.resolve_user(
+        resolved_user = SocialAuthService().resolve_user(
             provider=YANDEX_PROVIDER,
             provider_uid='yandex-1005',
-            email=user.email,
+            email='another@example.test',
             is_email_verified=True,
         )
 
         assert resolved_user.pk == user.pk
-        assert type(user).objects.filter(email=user.email).count() == 1
 
-    def test_returns_user_found_by_existing_social_account(
-        self,
-        social_auth_service,
-    ):
+        user.refresh_from_db()
+        assert user.is_email_verified is False
+
+    def test_returns_user_found_by_existing_social_account(self):
         """Повторный вход через привязанную соцсеть возвращает того же user."""
         user = UserFactory(
             email='listener@example.test',
@@ -161,7 +173,7 @@ class TestSocialAuthService:
             extra_data={},
         )
 
-        resolved_user = social_auth_service.resolve_user(
+        resolved_user = SocialAuthService().resolve_user(
             provider=YANDEX_PROVIDER,
             provider_uid='yandex-1006',
             email=user.email,
@@ -173,13 +185,10 @@ class TestSocialAuthService:
         user.refresh_from_db()
         assert user.is_email_verified is True
 
-    def test_rejects_social_login_without_email(
-        self,
-        social_auth_service,
-    ):
-        """Не создаёт аккаунт, если provider не вернул email."""
+    def test_rejects_social_login_without_email(self):
+        """Не создает аккаунт, если provider не вернул email."""
         with pytest.raises(SocialAuthException) as exc_info:
-            social_auth_service.resolve_user(
+            SocialAuthService().resolve_user(
                 provider=YANDEX_PROVIDER,
                 provider_uid='yandex-1007',
                 email='',
@@ -188,10 +197,7 @@ class TestSocialAuthService:
 
         assert exc_info.value.error_code == SOCIAL_AUTH_ERROR_MISSING_EMAIL
 
-    def test_rejects_blocked_user_found_by_email(
-        self,
-        social_auth_service,
-    ):
+    def test_rejects_blocked_user_found_by_email(self):
         """Не позволяет войти в заблокированный аккаунт по совпавшему email."""
         user = UserFactory(
             email='listener@example.test',
@@ -199,7 +205,7 @@ class TestSocialAuthService:
         )
 
         with pytest.raises(SocialAuthException) as exc_info:
-            social_auth_service.resolve_user(
+            SocialAuthService().resolve_user(
                 provider=YANDEX_PROVIDER,
                 provider_uid='yandex-1008',
                 email=user.email,
@@ -208,11 +214,8 @@ class TestSocialAuthService:
 
         assert exc_info.value.error_code == SOCIAL_AUTH_ERROR_BLOCKED_USER
 
-    def test_rejects_blocked_user_found_by_social_account(
-        self,
-        social_auth_service,
-    ):
-        """Не позволяет войти в заблокированный аккаунт."""
+    def test_rejects_blocked_user_found_by_social_account(self):
+        """Не позволяет войти в заблокированный аккаунт через SocialAccount."""
         user = UserFactory(is_active=False)
         SocialAccount.objects.create(
             user=user,
@@ -222,7 +225,7 @@ class TestSocialAuthService:
         )
 
         with pytest.raises(SocialAuthException) as exc_info:
-            social_auth_service.resolve_user(
+            SocialAuthService().resolve_user(
                 provider=YANDEX_PROVIDER,
                 provider_uid='yandex-1009',
                 email=user.email,
@@ -232,46 +235,15 @@ class TestSocialAuthService:
         assert exc_info.value.error_code == SOCIAL_AUTH_ERROR_BLOCKED_USER
 
 
-@pytest.fixture
-def request_factory():
-    """Возвращает фабрику HTTP-запросов."""
-    return RequestFactory()
-
-
-def build_sociallogin(
-    *,
-    provider: str,
-    uid: str,
-    email: str,
-    save: Mock | None = None,
-):
-    """Создает минимальный объект SocialLogin для adapter-теста."""
-    provider_obj = object()
-
-    account = SimpleNamespace(
-        provider=provider,
-        uid=uid,
-        get_provider=lambda: provider_obj,
-    )
-
-    sociallogin = SimpleNamespace(
-        account=account,
-        user=SimpleNamespace(email=email),
-    )
-    sociallogin.save = save or Mock()
-
-    return sociallogin
-
-
 class TestSocialAccountAdapter:
-    """Тесты custom adapter-а соцавторизации."""
+    """Тесты custom adapter-а социальной аутентификации."""
 
     def test_pre_social_login_confirms_existing_user_email(
         self,
         monkeypatch,
-        request_factory,
+        rf,
     ):
-        """Подтверждает email пользователя от trusted provider."""
+        """Подтверждает email существующего пользователя до social login."""
         user = UserFactory(
             email='listener@example.test',
             is_email_verified=False,
@@ -279,8 +251,8 @@ class TestSocialAccountAdapter:
         adapter = SocialAccountAdapter()
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
-            uid='yandex-1001',
-            email='listener@example.test',
+            uid='yandex-2001',
+            email=user.email,
         )
 
         monkeypatch.setattr(
@@ -290,7 +262,7 @@ class TestSocialAccountAdapter:
         )
 
         adapter.pre_social_login(
-            request_factory.post('/api/v1/auth/social/yandex/'),
+            rf.post('/api/v1/auth/social/yandex/'),
             sociallogin,
         )
 
@@ -300,9 +272,9 @@ class TestSocialAccountAdapter:
     def test_pre_social_login_does_not_confirm_untrusted_email(
         self,
         monkeypatch,
-        request_factory,
+        rf,
     ):
-        """Не подтверждает email, если provider не считает его trusted."""
+        """Не подтверждает email, если provider не считается trusted."""
         user = UserFactory(
             email='listener@example.test',
             is_email_verified=False,
@@ -310,7 +282,7 @@ class TestSocialAccountAdapter:
         adapter = SocialAccountAdapter()
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
-            uid='yandex-1002',
+            uid='yandex-2002',
             email=user.email,
         )
 
@@ -321,17 +293,14 @@ class TestSocialAccountAdapter:
         )
 
         adapter.pre_social_login(
-            request_factory.post('/api/v1/auth/social/yandex/'),
+            rf.post('/api/v1/auth/social/yandex/'),
             sociallogin,
         )
 
         user.refresh_from_db()
         assert user.is_email_verified is False
 
-    def test_pre_social_login_rejects_blocked_existing_user(
-        self,
-        request_factory,
-    ):
+    def test_pre_social_login_rejects_blocked_existing_user(self, rf):
         """Не разрешает social login заблокированному пользователю."""
         user = UserFactory(
             email='blocked@example.test',
@@ -340,13 +309,13 @@ class TestSocialAccountAdapter:
         adapter = SocialAccountAdapter()
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
-            uid='yandex-1003',
+            uid='yandex-2003',
             email=user.email,
         )
 
         with pytest.raises(SocialAuthException) as exc_info:
             adapter.pre_social_login(
-                request_factory.post('/api/v1/auth/social/yandex/'),
+                rf.post('/api/v1/auth/social/yandex/'),
                 sociallogin,
             )
 
@@ -355,9 +324,9 @@ class TestSocialAccountAdapter:
     def test_save_user_resolves_user_and_saves_sociallogin(
         self,
         monkeypatch,
-        request_factory,
+        rf,
     ):
-        """Передает пользователя в SocialLogin и сохраняет связь."""
+        """Передает найденного пользователя в SocialLogin и сохраняет связь."""
         resolved_user = UserFactory()
         service = Mock()
         service.resolve_user.return_value = resolved_user
@@ -365,10 +334,10 @@ class TestSocialAccountAdapter:
         adapter = SocialAccountAdapter()
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
-            uid='yandex-1004',
+            uid='yandex-2004',
             email='listener@example.test',
         )
-        request = request_factory.post('/api/v1/auth/social/yandex/')
+        request = rf.post('/api/v1/auth/social/yandex/')
 
         monkeypatch.setattr(adapter, 'get_service', lambda: service)
         monkeypatch.setattr(
@@ -384,7 +353,7 @@ class TestSocialAccountAdapter:
 
         service.resolve_user.assert_called_once_with(
             provider=YANDEX_PROVIDER,
-            provider_uid='yandex-1004',
+            provider_uid='yandex-2004',
             email='listener@example.test',
             is_email_verified=True,
         )
@@ -393,7 +362,7 @@ class TestSocialAccountAdapter:
     def test_save_user_returns_service_domain_error_for_api_request(
         self,
         monkeypatch,
-        request_factory,
+        rf,
     ):
         """Не заменяет доменную ошибку сервиса общей OAuth-ошибкой."""
         service = Mock()
@@ -405,7 +374,7 @@ class TestSocialAccountAdapter:
         adapter = SocialAccountAdapter()
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
-            uid='yandex-1005',
+            uid='yandex-2005',
             email='',
         )
 
@@ -418,7 +387,7 @@ class TestSocialAccountAdapter:
 
         with pytest.raises(SocialAuthException) as exc_info:
             adapter.save_user(
-                request_factory.post('/api/v1/auth/social/yandex/'),
+                rf.post('/api/v1/auth/social/yandex/'),
                 sociallogin,
             )
 
@@ -428,20 +397,20 @@ class TestSocialAccountAdapter:
     def test_save_user_returns_social_save_error_when_link_cannot_be_saved(
         self,
         monkeypatch,
-        request_factory,
+        rf,
     ):
         """Возвращает понятную ошибку, если SocialAccount не сохранился."""
         resolved_user = UserFactory()
         service = Mock()
         service.resolve_user.return_value = resolved_user
 
+        adapter = SocialAccountAdapter()
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
-            uid='yandex-1006',
+            uid='yandex-2006',
             email='listener@example.test',
             save=Mock(side_effect=IntegrityError),
         )
-        adapter = SocialAccountAdapter()
 
         monkeypatch.setattr(adapter, 'get_service', lambda: service)
         monkeypatch.setattr(
@@ -452,7 +421,7 @@ class TestSocialAccountAdapter:
 
         with pytest.raises(SocialAuthException) as exc_info:
             adapter.save_user(
-                request_factory.post('/api/v1/auth/social/yandex/'),
+                rf.post('/api/v1/auth/social/yandex/'),
                 sociallogin,
             )
 
