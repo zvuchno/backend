@@ -32,16 +32,31 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         return self.service_class()
 
     def pre_social_login(self, request, sociallogin):
-        """Вызывается сразу после аутентификации у провайдера."""
+        """Обрабатывает пользователя до завершения social login."""
         provider = sociallogin.account.provider
         uid = sociallogin.account.uid
+        email = sociallogin.user.email
+        provider_obj = sociallogin.account.get_provider()
+
         service = self.get_service()
         user = service.find_user_by_social_account(
             provider=provider,
             provider_uid=uid,
         )
+
+        if user is None:
+            user = service.find_user_by_email(email)
+
         try:
             service.ensure_user_is_active(user)
+            service.mark_email_verified_from_social_provider(
+                user=user,
+                email=email,
+                is_email_verified=self.is_email_verified(
+                    provider_obj,
+                    email,
+                ),
+            )
         except SocialAuthException as exc:
             self._handle_auth_error(
                 request,

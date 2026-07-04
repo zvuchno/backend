@@ -223,13 +223,11 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
 
         Track.objects.create(
             name='First Track',
-            owner=album.owner,
             album=album,
             position=1,
         )
         Track.objects.create(
             name='Second Track',
-            owner=album.owner,
             album=album,
             position=2,
         )
@@ -296,7 +294,6 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
 
         Track.objects.create(
             name='Not Bought Track',
-            owner=album.owner,
             album=album,
             position=2,
         )

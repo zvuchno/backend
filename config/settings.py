@@ -380,6 +380,11 @@ DEFAULT_ITEM_WEIGHT=os.getenv('DEFAULT_ITEM_WEIGHT')
 
 DADATA_API_KEY=os.getenv('DADATA_API_KEY')
 
+# YOOKASSA
+PAYMENT_RETURN_URL=os.getenv('PAYMENT_RETURN_URL')
+YOOKASSA_SHOP_ID=os.getenv('YOOKASSA_SHOP_ID')
+YOOKASSA_SECRET_KEY=os.getenv('YOOKASSA_SECRET_KEY')
+
 # Secrets bot_telegram
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME')
@@ -462,8 +467,10 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
 SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
-SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
-SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # автоматически связывать
+# Сопоставление пользователя, привязку соцсети и подтверждение email
+# выполняет SocialAuthService, а не встроенная логика allauth.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = False  # разрешить allauth вход по email из соцсети
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = False  # автоматически связывать allauth
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_LOGIN_ON_GET = True  # сразу редиректить вход без промежуточной страницы
 FRONTEND_SOCIAL_AUTH_PATH = os.getenv(

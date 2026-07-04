@@ -86,7 +86,6 @@ class TrackFactory(factory.django.DjangoModelFactory):
         model = Track
 
     album = factory.SubFactory(AlbumFactory)
-    owner = factory.LazyAttribute(lambda track: track.album.owner)
     name = factory.Sequence(lambda n: f'Трек {n}')
     position = factory.Sequence(lambda n: n + 1)
     audio_file = factory.Sequence(

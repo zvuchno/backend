@@ -45,13 +45,13 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
         # Заказы, где есть товары этого артиста
         order_filter = (
             Q(items__product_variant__product__album__owner=user)
-            | Q(items__product_variant__product__track__owner=user)
+            | Q(items__product_variant__product__track__album__owner=user)
             | Q(items__product_variant__product__merch__owner=user)
         )
         # Фильтр items - только позиции этого артиста
         items_filter = (
             Q(product_variant__product__album__owner=user)
-            | Q(product_variant__product__track__owner=user)
+            | Q(product_variant__product__track__album__owner=user)
             | Q(product_variant__product__merch__owner=user)
         )
 

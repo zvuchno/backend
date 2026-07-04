@@ -2,17 +2,14 @@
 
 Содержит сериализаторы для чтения и записи данных модели Track,
 используемые в API.
-TODO: Реализовать логику покупки аудиофайла:
-- ссылка на загрузку только купившему?
-- в списке треков отдавать демку?
 """
 
 from rest_framework import serializers
 
-from ..services.audio.schedule import TrackGeneratedAudioScheduler
 from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
+from store.services.audio.schedule import TrackGeneratedAudioScheduler
 
 
 class TrackReadSerializer(serializers.ModelSerializer):
@@ -28,8 +25,7 @@ class TrackReadSerializer(serializers.ModelSerializer):
         source='product.allow_overpay',
         default=False,
     )
-    artist_name = serializers.CharField(
-        source='owner.artist_profile.name',
+    artist_name = serializers.SerializerMethodField(
         read_only=True,
         allow_null=True,
     )
@@ -39,6 +35,16 @@ class TrackReadSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     is_favorite = serializers.BooleanField(read_only=True)
+
+    @staticmethod
+    def get_artist_name(obj) -> str | None:
+        """Возвращает имя исполнителя альбома."""
+        artist = getattr(obj.album.owner, 'artist_profile', None)
+
+        if artist is None:
+            return None
+
+        return artist.name
 
     class Meta:
         model = Track
@@ -106,3 +112,14 @@ class TrackWriteSerializer(serializers.ModelSerializer):
         if audio_file_changed:
             TrackGeneratedAudioScheduler.schedule(track)
         return track
+
+    def validate_album(self, album):
+        """Проверяет, что артист работает только со своим альбомом."""
+        request = self.context['request']
+
+        if album.owner_id != request.user.id:
+            raise serializers.ValidationError(
+                'Нельзя добавить трек в чужой альбом.',
+            )
+
+        return album

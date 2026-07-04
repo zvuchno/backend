@@ -64,8 +64,8 @@ class TestPurchasedMusicAPI:
         album_variant = self.variant_factory('album', name='Purchased Album')
         album = album_variant.product.album
 
-        Track.objects.create(name='Track 1', owner=album.owner, album=album)
-        Track.objects.create(name='Track 2', owner=album.owner, album=album)
+        Track.objects.create(name='Track 1', album=album)
+        Track.objects.create(name='Track 2', album=album)
 
         self.create_paid_order(listener_user, [album_variant])
 
@@ -115,7 +115,6 @@ class TestPurchasedMusicAPI:
 
         Track.objects.create(
             name='Not Bought Track',
-            owner=album.owner,
             album=album,
         )
 
@@ -230,13 +229,11 @@ class TestPurchasedMusicDownloadDetailAPI:
 
         first_track = Track.objects.create(
             name='First Track',
-            owner=album.owner,
             album=album,
             position=1,
         )
         second_track = Track.objects.create(
             name='Second Track',
-            owner=album.owner,
             album=album,
             position=2,
         )
@@ -309,7 +306,6 @@ class TestPurchasedMusicDownloadDetailAPI:
 
         Track.objects.create(
             name='Not Bought Track',
-            owner=album.owner,
             album=album,
             position=2,
         )
@@ -382,7 +378,6 @@ class TestPurchasedMusicDownloadDetailAPI:
 
         Track.objects.create(
             name='First Track',
-            owner=album.owner,
             album=album,
             position=1,
         )

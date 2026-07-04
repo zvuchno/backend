@@ -94,7 +94,6 @@ class OrderSerializer(serializers.ModelSerializer):
 class OrderDetailSerializer(OrderSerializer):
     """Сериализтор для подробного просмотра (retrieve) заказа."""
 
-    status = serializers.CharField(source='get_status_display', read_only=True)
     full_address = serializers.SerializerMethodField()
     items = OrderItemSerializer(
         many=True,
