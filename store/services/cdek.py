@@ -111,23 +111,21 @@ class CDEKService:
     def get_offices(self, params: dict) -> dict:
         """Оркестратор получения ПВЗ."""
         # Добавить параметр 'city' к запросу виджета на фронтенде!
-        city = str(params.get('city', '')).strip().lower()
-        if not city:
-            raise ValidationError('Параметр city обязателен.')
+        # city = ''
+        # if not city:
+        #    raise ValidationError('Параметр city обязателен.')
 
-        city_code = self._get_or_set_city_code(city)
+        # city_code = self._get_or_set_city_code(city)
 
         is_handout = params.get('is_handout')
         is_reception = params.get('is_reception')
 
         all_points = self._get_all_points_with_cache(
-            city_code,
-            city,
             is_handout,
             is_reception,
         )
 
-        return self._paginate_points(all_points, params, city, city_code)
+        return self._paginate_points(all_points, params)
 
     def _get_or_set_city_code(self, city: str) -> str:
         """Логика получения и кэширования кода города."""
@@ -151,42 +149,34 @@ class CDEKService:
 
     def _get_all_points_with_cache(
         self,
-        city_code: str,
-        city_name: str,
         is_handout,
         is_reception,
     ) -> list:
         """Логика кэширования списка ПВЗ."""
-        cache_key = (
-            f'cdek:points:city={city_code}:h={is_handout}:r={is_reception}'
-        )
+        cache_key = f'cdek:points:h={is_handout}:r={is_reception}'
         all_points = cache.get(cache_key)
 
         if all_points is None:
             logger.info(
-                f'Получение ПВЗ CDEK из API. city={city_name} ({city_code})',
+                'Получение ПВЗ CDEK из API..',
             )
             all_points = self._fetch_all_points_from_api(
-                city_code,
                 is_handout,
                 is_reception,
             )
             cache.set(cache_key, all_points, timeout=DEFAULT_CACHE_TIMEOUT)
             logger.info(
-                f'Получено {len(all_points)} ПВЗ для города '
-                f'{city_name} ({city_code})',
+                f'Получено {len(all_points)} ПВЗ ',
             )
         else:
             logger.info(
-                f'Получено из кеша {len(all_points)} ПВЗ для города '
-                f'{city_name} ({city_code})',
+                f'Получено из кеша {len(all_points)} ПВЗ  ',
             )
 
         return all_points
 
     def _fetch_all_points_from_api(
         self,
-        city_code: str,
         is_handout,
         is_reception,
     ) -> list:
@@ -195,7 +185,6 @@ class CDEKService:
         page = 0
         api_params = {
             'lang': 'rus',
-            'city_code': city_code,
             'size': CDEK_API_PAGE_SIZE,
         }
         if is_handout is not None:
@@ -233,8 +222,6 @@ class CDEKService:
         self,
         all_points: list,
         params: dict,
-        city: str,
-        city_code: str,
     ) -> dict:
         """Логика пагинации с полным логированием ответа."""
         try:
@@ -252,7 +239,6 @@ class CDEKService:
 
         logger.info(
             'Ответ CDEK Widget API сформирован. '
-            f'city={city} ({city_code}), '
             f'page={page}, size={size}, '
             f'total_elements={total_elements}, '
             f'returned_points={len(returned_points)}',
