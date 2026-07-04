@@ -51,7 +51,7 @@ def build_target_annotations(product_path: str) -> dict:
         ),
         'artist_name': Coalesce(
             F(f'{product_path}__album__owner__artist_profile__name'),
-            F(f'{product_path}__track__owner__artist_profile__name'),
+            F(f'{product_path}__track__album__owner__artist_profile__name'),
             F(f'{product_path}__merch__owner__artist_profile__name'),
         ),
         'kind': Case(

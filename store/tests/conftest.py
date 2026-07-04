@@ -73,7 +73,6 @@ def variant_factory(artist_user):
             )
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
-                owner=kwargs.get('owner') or artist_user,
                 album=album,
                 audio_file=ContentFile(
                     b'fake mp3 content',

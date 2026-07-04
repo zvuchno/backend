@@ -7,10 +7,10 @@ from common.storages import get_private_media_storage, get_public_media_storage
 
 from store.constants import (
     ALLOWED_AUDIO_EXTENSIONS,
+    MAX_CHAR_LENGTH,
     MAX_FILE_STATUS_STR,
     MAX_STR_LENGTH,
 )
-from store.models.abstract import BaseContent
 from store.querysets.track_visibility import TrackQuerySet
 from store.upload_paths import (
     track_audio_upload_to,
@@ -18,12 +18,13 @@ from store.upload_paths import (
     track_stream_upload_to,
 )
 from store.validators import validate_audiofile_size
+from users.models.abstract import ActivatableModel, TimestampModel
 
 
-class Track(BaseContent):
+class Track(ActivatableModel, TimestampModel):
     """Музыкальный трек в составе альбома.
 
-    Связан с альбомом и пользователем-владельцем.
+    Владелец трека определяется владельцем связанного альбома.
     """
 
     album = models.ForeignKey(
@@ -56,6 +57,13 @@ class Track(BaseContent):
         blank=True,
         help_text='Порядковый номер трека в альбоме',
     )
+    name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
+    description = models.TextField('Текст трека', blank=True, default='')
+
+    @property
+    def owner(self):
+        """Возвращает владельца альбома для обратной совместимости."""
+        return self.album.owner
 
     objects = TrackQuerySet.as_manager()
 

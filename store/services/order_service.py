@@ -101,7 +101,7 @@ class OrderService:
             .select_related('product_variant__product')
             .prefetch_related(
                 'product_variant__product__album__owner__artist_profile',
-                'product_variant__product__track__owner__artist_profile',
+                'product_variant__product__track__album__owner__artist_profile',
                 'product_variant__product__merch__owner__artist_profile',
             )
         )
