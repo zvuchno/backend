@@ -308,3 +308,9 @@ def player_track_play_url():
         )
 
     return build
+
+
+@pytest.fixture
+def merch_list_url():
+    """Возвращает URL-адрес эндпоинта для списка мерча."""
+    return reverse('api:store:merch-list')
