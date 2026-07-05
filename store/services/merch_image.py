@@ -16,7 +16,7 @@ class MerchImageService:
         merch: Merch,
         validated_data: dict,
     ) -> Image:
-        """Создаёт изображение и назначает главное при необходимости."""
+        """Создаёт изображение и при необходимости назначает его главным."""
         merch = cls._lock_merch(merch)
 
         requested_is_main = validated_data.get('is_main', False)
@@ -47,16 +47,17 @@ class MerchImageService:
 
         requested_is_main = validated_data.get('is_main')
         was_main = image.is_main
+        image_changed = 'image' in validated_data
 
         old_image_storage = None
         old_image_name = None
 
-        if 'image' in validated_data:
+        if image_changed:
             old_image_storage = image.image.storage
             old_image_name = image.image.name
             image.image = validated_data['image']
 
-        if requested_is_main is True and not image.is_main:
+        if requested_is_main is True and not was_main:
             cls._clear_main_image(merch=merch)
             image.is_main = True
 
@@ -65,28 +66,48 @@ class MerchImageService:
                 merch=merch,
                 exclude_image_id=image.id,
             )
-        if next_image:
-            image.is_main = False
-            image.save(update_fields=['is_main'])
-            next_image.is_main = True
-            next_image.save(update_fields=['is_main'])
-            return image
 
-            # У единственного фото нельзя снять главный статус:
-            # иначе останется набор изображений без главного.
+            if next_image:
+                # Сначала снимаем главный статус с текущего изображения:
+                # иначе unique constraint не позволит назначить следующее.
+                image.is_main = False
 
-        update_fields = ['is_main']
+                update_fields = ['is_main']
+                if image_changed:
+                    update_fields.append('image')
 
-        if 'image' in validated_data:
+                image.save(update_fields=update_fields)
+
+                next_image.is_main = True
+                next_image.save(update_fields=['is_main'])
+
+                cls._delete_replaced_file_after_commit(
+                    storage=old_image_storage,
+                    old_name=old_image_name,
+                    new_name=image.image.name,
+                )
+
+                return image
+
+            # У единственного изображения нельзя снять главный статус:
+            # иначе у мерча останется фото без главного.
+
+        update_fields = []
+
+        if image_changed:
             update_fields.append('image')
 
-        image.save(update_fields=update_fields)
+        if image.is_main != was_main:
+            update_fields.append('is_main')
 
-        if old_image_name and old_image_name != image.image.name:
-            cls._delete_file_after_commit(
-                storage=old_image_storage,
-                name=old_image_name,
-            )
+        if update_fields:
+            image.save(update_fields=update_fields)
+
+        cls._delete_replaced_file_after_commit(
+            storage=old_image_storage,
+            old_name=old_image_name,
+            new_name=image.image.name,
+        )
 
         return image
 
@@ -97,7 +118,7 @@ class MerchImageService:
         *,
         image: Image,
     ) -> None:
-        """Удаляет изображение и назначает следующее главным."""
+        """Удаляет изображение и, если надо, назначает следующее главным."""
         merch = cls._lock_merch(image.merch)
         image = Image.objects.select_for_update().get(pk=image.pk)
 
@@ -119,6 +140,35 @@ class MerchImageService:
             name=image_name,
         )
 
+    @classmethod
+    @transaction.atomic
+    def ensure_main_image(
+        cls,
+        *,
+        merch: Merch,
+    ) -> None:
+        """Назначает главное изображение, если у мерча оно отсутствует."""
+        merch = cls._lock_merch(merch)
+
+        if Image.objects.filter(
+            merch=merch,
+            is_main=True,
+        ).exists():
+            return
+
+        image = (
+            Image.objects
+            .filter(
+                merch=merch,
+            )
+            .order_by('id')
+            .first()
+        )
+
+        if image:
+            image.is_main = True
+            image.save(update_fields=['is_main'])
+
     @staticmethod
     def _lock_merch(merch: Merch) -> Merch:
         """Блокирует мерч на время изменения набора изображений."""
@@ -126,7 +176,7 @@ class MerchImageService:
 
     @staticmethod
     def _clear_main_image(*, merch: Merch) -> None:
-        """Снимает признак главного изображения у текущего главного фото."""
+        """Снимает главный статус с текущего главного изображения."""
         Image.objects.filter(
             merch=merch,
             is_main=True,
@@ -157,29 +207,18 @@ class MerchImageService:
         )
 
     @classmethod
-    @transaction.atomic
-    def ensure_main_image(
+    def _delete_replaced_file_after_commit(
         cls,
         *,
-        merch: Merch,
+        storage,
+        old_name: str | None,
+        new_name: str,
     ) -> None:
-        """Назначает главное изображение, если у мерча оно отсутствует."""
-        merch = cls._lock_merch(merch)
-
-        if Image.objects.filter(
-            merch=merch,
-            is_main=True,
-        ).exists():
+        """Удаляет заменённый файл после успешного коммита транзакции."""
+        if not old_name or old_name == new_name:
             return
-        image = (
-            Image.objects
-            .filter(
-                merch=merch,
-            )
-            .order_by('id')
-            .first()
-        )
 
-        if image:
-            image.is_main = True
-            image.save(update_fields=['is_main'])
+        cls._delete_file_after_commit(
+            storage=storage,
+            name=old_name,
+        )
