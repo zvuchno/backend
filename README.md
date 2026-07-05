@@ -1,5 +1,5 @@
 [![Main Zvuchno workflow](https://github.com/zvuchno/backend/actions/workflows/main.yml/badge.svg)](https://github.com/zvuchno/backend/actions/workflows/main.yml)
-[![Website](https://img.shields.io/badge/Visit-Live%20Site-brightgreen)](https://zvuchno-dev.duckdns.org/)
+[![Website](https://img.shields.io/badge/Visit-Live%20Site-brightgreen)](https://dev.zvuchno.space/)
 
 # Звучно — Backend
 

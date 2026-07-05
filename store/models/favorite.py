@@ -6,6 +6,7 @@
 from django.conf import settings
 from django.db import models
 
+from store.querysets import FavoriteQuerySet
 from users.models.abstract.timestamp_model import TimestampModel
 
 
@@ -24,6 +25,8 @@ class Favorite(TimestampModel):
         related_name='favorited_by',
         on_delete=models.CASCADE,
     )
+
+    objects = FavoriteQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'избранное'

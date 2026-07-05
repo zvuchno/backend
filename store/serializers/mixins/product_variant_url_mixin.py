@@ -4,35 +4,24 @@ from django.urls import reverse
 class ProductVariantURLMixin:
     """Миксин для формирования target_url."""
 
-    def get_target_url(self, obj) -> str:
-        """Возвращает URL для объекта в API."""
-        if hasattr(obj, 'product_variant'):
-            obj = obj.product_variant
+    def get_target_url(self, obj) -> str | None:
 
-        product = obj.product
+        target_type = getattr(obj, 'target_type', None)
+        target_id = getattr(obj, 'target_id', None)
 
-        if product.album_id:
-            relative = reverse(
-                'api:store:albums-detail',
-                kwargs={'pk': product.album_id},
-            )
-        elif product.track_id:
-            relative = reverse(
-                'api:store:tracks-detail',
-                kwargs={'pk': product.track_id},
-            )
-        elif product.merch_id:
-            relative = reverse(
-                'api:store:merch-detail',
-                kwargs={'pk': product.merch_id},
-            )
-        else:
+        if not target_type or not target_id:
             return None
 
-        request = (
-            self.context.get('request') if hasattr(self, 'context') else None
-        )
-        if request:
-            return request.build_absolute_uri(relative)
+        if target_type == 'album':
+            return reverse(
+                'api:store:albums-detail',
+                kwargs={'pk': target_id},
+            )
 
-        return relative
+        if target_type == 'merch':
+            return reverse(
+                'api:store:merch-detail',
+                kwargs={'pk': target_id},
+            )
+
+        return None

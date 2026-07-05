@@ -20,7 +20,14 @@ class ArtistSaleBaseMixin:
     )
     def get_total(self, obj) -> Decimal:
         """Итоговая сумма товаров артиста в этом заказе."""
-        return sum(item.line_total for item in obj.items.all())
+        total = sum(
+            (item.line_total for item in obj.items.all()),
+            start=Decimal('0.00'),
+        )
+        return serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        ).to_representation(total)
 
 
 class ArtistSaleSerializer(ArtistSaleBaseMixin, OrderSerializer):

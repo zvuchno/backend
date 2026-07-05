@@ -3,19 +3,28 @@
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
+from common.storages import get_private_media_storage, get_public_media_storage
+
 from store.constants import (
     ALLOWED_AUDIO_EXTENSIONS,
+    MAX_CHAR_LENGTH,
+    MAX_FILE_STATUS_STR,
     MAX_STR_LENGTH,
 )
-from store.models.abstract import BaseContent
 from store.querysets.track_visibility import TrackQuerySet
+from store.upload_paths import (
+    track_audio_upload_to,
+    track_preview_upload_to,
+    track_stream_upload_to,
+)
 from store.validators import validate_audiofile_size
+from users.models.abstract import ActivatableModel, TimestampModel
 
 
-class Track(BaseContent):
+class Track(ActivatableModel, TimestampModel):
     """Музыкальный трек в составе альбома.
 
-    Связан с альбомом и пользователем-владельцем.
+    Владелец трека определяется владельцем связанного альбома.
     """
 
     album = models.ForeignKey(
@@ -26,7 +35,8 @@ class Track(BaseContent):
     )
     audio_file = models.FileField(
         'Файл трека',
-        upload_to='tracks/',
+        upload_to=track_audio_upload_to,
+        storage=get_private_media_storage,
         validators=[
             FileExtensionValidator(
                 allowed_extensions=ALLOWED_AUDIO_EXTENSIONS,
@@ -47,6 +57,13 @@ class Track(BaseContent):
         blank=True,
         help_text='Порядковый номер трека в альбоме',
     )
+    name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
+    description = models.TextField('Текст трека', blank=True, default='')
+
+    @property
+    def owner(self):
+        """Возвращает владельца альбома для обратной совместимости."""
+        return self.album.owner
 
     objects = TrackQuerySet.as_manager()
 
@@ -59,3 +76,79 @@ class Track(BaseContent):
         if self.position is not None:
             return f'{self.position}. {self.name[:MAX_STR_LENGTH]}'
         return self.name[:MAX_STR_LENGTH]
+
+
+class TrackGeneratedAudio(models.Model):
+    """Результаты подготовки генерируемых аудиофайлов трека."""
+
+    class ProcessingStatus(models.TextChoices):
+        """Статус подготовки производного файла."""
+
+        PENDING = 'pending', 'Ожидает подготовки'
+        BUILDING = 'building', 'Подготавливается'
+        READY = 'ready', 'Готов'
+        FAILED = 'failed', 'Ошибка подготовки'
+
+    track = models.OneToOneField(
+        'store.Track',
+        on_delete=models.CASCADE,
+        related_name='generated',
+        verbose_name='Трек',
+    )
+
+    preview_file = models.FileField(
+        'Файл превью',
+        upload_to=track_preview_upload_to,
+        storage=get_public_media_storage,
+        blank=True,
+    )
+    preview_duration = models.PositiveIntegerField(
+        'Длительность превью',
+        null=True,
+        blank=True,
+        help_text='Длительность подготовленного превью в секундах',
+    )
+    preview_status = models.CharField(
+        'Статус подготовки превью',
+        max_length=MAX_FILE_STATUS_STR,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.PENDING,
+    )
+    preview_error = models.TextField(
+        'Ошибка подготовки превью',
+        blank=True,
+    )
+    preview_started_at = models.DateTimeField(
+        'Начало подготовки превью',
+        null=True,
+        blank=True,
+    )
+
+    stream_file = models.FileField(
+        'Файл для воспроизведения',
+        upload_to=track_stream_upload_to,
+        storage=get_private_media_storage,
+        blank=True,
+    )
+    stream_status = models.CharField(
+        'Статус подготовки файла для воспроизведения',
+        max_length=MAX_FILE_STATUS_STR,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.PENDING,
+    )
+    stream_error = models.TextField(
+        'Ошибка подготовки файла для воспроизведения',
+        blank=True,
+    )
+    stream_started_at = models.DateTimeField(
+        'Начало подготовки файла для воспроизведения',
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'сгенерированные аудиофайлы трека'
+        verbose_name_plural = 'сгенерированные аудиофайлы треков'
+
+    def __str__(self):
+        return f'Обработка: {self.track}'

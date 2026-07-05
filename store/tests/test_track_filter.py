@@ -42,6 +42,12 @@ class TestTrackFilters:
             'jazz': jazz,
         }
 
+    def test_track_owner_is_derived_from_album(self, tracks):
+        """Владелец трека определяется владельцем его альбома."""
+        track = tracks['track_1']
+
+        assert track.owner == track.album.owner
+
     def test_filter_by_genre(self, tracks, track_list_url, api_client):
         """Фильтр по жанру (slug)."""
         response = api_client.get(

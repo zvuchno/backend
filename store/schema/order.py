@@ -13,7 +13,7 @@ from drf_spectacular.utils import (
 
 from store.serializers.order import OrderDetailSerializer, OrderSerializer
 
-ORDER_TAGS = ['Orders']
+ORDER_TAGS = ['Listener']
 
 order_schema = extend_schema_view(
     list=extend_schema(

@@ -16,6 +16,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_INTERNAL_PRECISION,
 )
+from store.querysets import ProductQuerySet
 
 
 class Product(models.Model):
@@ -161,3 +162,5 @@ class Product(models.Model):
         if not self.content:
             return f'Новый товар ({self.get_product_type_display()})'
         return f'{self.get_product_type_display()}: {self.content}'
+
+    objects = ProductQuerySet.as_manager()

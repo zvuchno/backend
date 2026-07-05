@@ -1,13 +1,20 @@
 """Модуль расширения QuerySet для модели позиций корзин."""
 
 from django.db import models
-from django.db.models import Case, DecimalField, ExpressionWrapper, F, When
+from django.db.models import (
+    Case,
+    DecimalField,
+    ExpressionWrapper,
+    F,
+    When,
+)
 from django.db.models.functions import Coalesce
 
 from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_INTERNAL_PRECISION,
 )
+from store.querysets.variant_annotations import build_target_annotations
 
 
 class CartItemQuerySet(models.QuerySet):
@@ -65,4 +72,10 @@ class CartItemQuerySet(models.QuerySet):
                     ),
                 ),
             )
+        )
+
+    def with_target_annotations(self):
+        """Добавляет данные для перехода на целевую карточку."""
+        return self.annotate(
+            **build_target_annotations('product_variant__product'),
         )

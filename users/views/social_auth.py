@@ -1,7 +1,5 @@
 """Представления для входа через сторонние сервисы."""
 
-from urllib.parse import urlencode
-
 from django.contrib.auth import logout
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
@@ -14,6 +12,8 @@ from rest_framework.permissions import (
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+
+from common.utils.urls import build_frontend_url
 
 from config import settings
 from users.constants import SOCIAL_AUTH_ERRORS
@@ -58,12 +58,14 @@ class SocialSessionExchangeView(GenericAPIView):
 
 def _redirect_social_auth_to_frontend(status, **extra) -> HttpResponseRedirect:
     """Редирект на указанную страницу фронта."""
-    target_url = getattr(settings, 'FRONTEND_SOCIAL_AUTH_URL', '/')
-    query = urlencode({
-        'status': status,
-        **extra,
-    })
-    return redirect(f'{target_url}?{query}')
+    target_url = build_frontend_url(
+        settings.FRONTEND_SOCIAL_AUTH_PATH,
+        {
+            'status': status,
+            **extra,
+        },
+    )
+    return redirect(target_url)
 
 
 def redirect_social_auth_cancelled(request):

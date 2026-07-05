@@ -197,7 +197,7 @@ def test_product_permissions_logic(
         ('anon',   401, 'anon cannot create'),
         ('user',   403, 'regular user cannot create'),
         ('artist', 201, 'artist can create'),
-        ('staff',  403, 'staff cannot create (если не артист)'),
+        ('staff',  403, 'staff cannot create (if not artist)'),
     ],
 )
 def test_product_create_permission(

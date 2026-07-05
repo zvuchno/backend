@@ -25,6 +25,35 @@ User = get_user_model()
 class SocialAuthService:
     """Обрабатывает пользователя для входа через соцсеть."""
 
+    def find_user_by_email(self, email: str) -> User | None:
+        """Ищет пользователя по email."""
+        if not email:
+            return None
+
+        return User.objects.filter(
+            email=normalize_email(email),
+        ).first()
+
+    def mark_email_verified_from_social_provider(
+        self,
+        *,
+        user: User | None,
+        email: str,
+        is_email_verified: bool,
+    ) -> None:
+        """Подтверждает email пользователя доверенным провайдером."""
+        if not user or not email or not is_email_verified:
+            return
+
+        if normalize_email(user.email) != normalize_email(email):
+            return
+
+        if user.is_email_verified:
+            return
+
+        user.is_email_verified = True
+        user.save(update_fields=['is_email_verified'])
+
     def resolve_user(
         self,
         *,
@@ -41,6 +70,11 @@ class SocialAuthService:
         if user:
             self.ensure_user_is_active(user)
             ensure_listener_profile(user)
+            self.mark_email_verified_from_social_provider(
+                user=user,
+                email=email,
+                is_email_verified=is_email_verified,
+            )
             return user
 
         if not email:
@@ -51,15 +85,22 @@ class SocialAuthService:
 
         email = normalize_email(email)
 
-        existing_user = User.objects.filter(email=email).first()
+        existing_user = self.find_user_by_email(email)
         if existing_user:
             self.ensure_user_is_active(existing_user)
             ensure_listener_profile(existing_user)
+            self.mark_email_verified_from_social_provider(
+                user=existing_user,
+                email=email,
+                is_email_verified=is_email_verified,
+            )
+
             if not existing_user.is_email_verified:
                 raise SocialAuthException(
                     SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
                     SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED],
                 )
+
             return existing_user
 
         return self._create_account_from_social(

@@ -3,19 +3,25 @@
 Содержит классы для чтения и записи данных моделей Cart, CartItem.
 """
 
+from django.db import transaction
 from rest_framework import serializers
 
-from .mixins import ProductVariantURLMixin
-from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
-from store.models import Cart, CartItem, ProductVariant
-from store.services.cart_service import CartService
-from store.validators import validate_price_with_donation
+from .base_variant_list_item import BaseVariantTargetImageSerializer
+from store.constants import (
+    MAX_PRICE_DIGITS,
+    MAX_PROMOCODE_LENGTH,
+    MONEY_DISPLAY_PRECISION,
+    ZERO_MONEY,
+)
+from store.models import Cart, CartItem, ProductVariant, Promocode
+from store.services.cart_service import CartCalculationService, CartService
+from store.validators import (
+    validate_price_with_donation,
+    validate_promocode_format,
+)
 
 
-class CartItemReadSerializer(
-    ProductVariantURLMixin,
-    serializers.ModelSerializer,
-):
+class CartItemReadSerializer(BaseVariantTargetImageSerializer):
     """Сериализатор товаров в корзине пользователя - чтение."""
 
     product_variant = serializers.IntegerField(
@@ -26,33 +32,39 @@ class CartItemReadSerializer(
         source='product_variant.variant_name',
         read_only=True,
     )
-    price = serializers.DecimalField(
-        source='unit_price',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
+    kind = serializers.CharField(
         read_only=True,
+        allow_null=True,
+        help_text=(
+            'Человекочитаемый вид карточки: Альбом, Сингл, '
+            'Винил, Футболка, Трек и т.п.'
+        ),
+    )
+    artist_name = serializers.CharField(
+        read_only=True,
+        allow_null=True,
+        help_text='Имя артиста-владельца товара.',
     )
     stock = serializers.SerializerMethodField()
-    line_total = serializers.DecimalField(
+    base_line_total = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
-    target_url = serializers.SerializerMethodField()
+    discount_line_total = serializers.SerializerMethodField()
 
-    class Meta:
+    class Meta(BaseVariantTargetImageSerializer.Meta):
         model = CartItem
         fields = (
             'product_variant',
+            'artist_name',
             'name',
-            'price',
+            'kind',
+            'base_line_total',
+            'discount_line_total',
             'quantity',
-            'line_total',
-            'comment',
             'stock',
-            'is_artist_subscription',
-            'target_url',
-        )
+        ) + BaseVariantTargetImageSerializer.Meta.fields
 
     def get_stock(self, obj) -> int:
         """Если цифра - наличие = 1."""
@@ -62,33 +74,58 @@ class CartItemReadSerializer(
             return 1
         return variant.stock
 
+    def get_discount_line_total(self, obj) -> str:
+        """Возвращает финальную стоимость позиции из сервиса расчёта."""
+        raw_line_total = self.context['cart_service'].get_item_line_total(obj)
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_line_total)
 
-class CartReadSerializer(serializers.ModelSerializer):
+
+class CartReadSerializer(serializers.Serializer):
     """Сериализатор корзины покупок пользователя - чтение."""
 
     items = CartItemReadSerializer(
         many=True,
         read_only=True,
     )
-    subtotal = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
+    code = serializers.CharField(
+        source='promocode.code',
         read_only=True,
+        allow_null=True,
     )
-    discount_promocode = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
-    total = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        read_only=True,
-    )
+    subtotal = serializers.SerializerMethodField()
+    discount_promocode = serializers.SerializerMethodField()
+    total = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Cart
-        fields = ('items', 'subtotal', 'discount_promocode', 'total')
+    def get_subtotal(self, obj) -> str:
+        """Возвращает базовую сумму корзины до применения скидок."""
+        raw_subtotal = self.context['subtotal']
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_subtotal)
+
+    def get_discount_promocode(self, obj) -> str:
+        """Возвращает общую сумму скидки по применённому промокоду."""
+        raw_discount = self.context['discount_promocode']
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_discount)
+
+    def get_total(self, obj) -> str:
+        """Возвращает финальную сумму корзины к оплате после вычета скидок."""
+        raw_total = self.context['total']
+        field = serializers.DecimalField(
+            max_digits=MAX_PRICE_DIGITS,
+            decimal_places=MONEY_DISPLAY_PRECISION,
+        )
+        return field.to_representation(raw_total)
 
 
 class CartItemWriteSerializer(serializers.ModelSerializer):
@@ -127,6 +164,15 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
         existing_qty = existing_item.quantity if existing_item else 0
         total_quantity = (existing_qty + quantity) if is_adding else quantity
 
+        if product.product_type == 'track':
+            track_obj = product.content
+            # Если цена равна 0 - купить нельзя
+            if track_obj and product.price == ZERO_MONEY:
+                raise serializers.ValidationError({
+                    'product_variant': 'Этот трек нельзя приобрести '
+                    'отдельно от альбома.',
+                })
+
         if variant.product.product_type == 'merch':
             if variant.stock is not None and total_quantity > variant.stock:
                 raise serializers.ValidationError({
@@ -148,15 +194,29 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class CartWriteSerializer(serializers.ModelSerializer):
-    """Сериализатор для записи корзины (PUT/PATCH)."""
+class CartItemUpdateSerializer(serializers.ModelSerializer):
+    """Сериализатор для обновления количества товара в корзине."""
 
-    items = CartItemWriteSerializer(many=True, required=False)
+    product_variant = serializers.PrimaryKeyRelatedField(
+        queryset=ProductVariant.objects.all(),
+    )
+    quantity = serializers.IntegerField(min_value=1)
+
+    class Meta:
+        model = CartItem
+        fields = ('product_variant', 'quantity')
+
+
+class CartWriteSerializer(serializers.ModelSerializer):
+    """Сериализатор для обновления количества товаров в корзине (PATCH)."""
+
+    items = CartItemUpdateSerializer(many=True, required=False)
 
     class Meta:
         model = Cart
         fields = ('items',)
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         items_data = validated_data.pop('items', None)
 
@@ -166,7 +226,40 @@ class CartWriteSerializer(serializers.ModelSerializer):
             CartService.update_cart_items(
                 cart=instance,
                 items_data=items_data,
-                partial=self.partial,
             )
 
         return instance
+
+
+class ApplyPromocodeSerializer(serializers.Serializer):
+    """Сериализатор входящего промокода."""
+
+    code = serializers.CharField(
+        max_length=MAX_PROMOCODE_LENGTH,
+        required=True,
+        validators=[validate_promocode_format],
+    )
+
+    def validate_code(self, value) -> str:
+        """Проверяет существование промокода и его применимость к корзине."""
+        error_msg = 'Промокод не найден или неактивен'
+
+        try:
+            promocode = Promocode.objects.get(code=value)
+        except Promocode.DoesNotExist:
+            raise serializers.ValidationError(error_msg)
+
+        if not promocode.is_available:
+            raise serializers.ValidationError(error_msg)
+
+        cart = self.context.get('cart')
+        cart.promocode = promocode
+        calculation_service = CartCalculationService(cart)
+
+        if calculation_service.get_discount_total() == ZERO_MONEY:
+            raise serializers.ValidationError(
+                'Этот промокод невозможно применить к товарам в корзине.',
+            )
+
+        self.context['promocode'] = promocode
+        return value

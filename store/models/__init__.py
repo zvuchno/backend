@@ -1,35 +1,46 @@
-from .album import Album
+from .album import (
+    Album,
+    AlbumArchive,
+)
 from .cart import Cart
 from .cart_item import CartItem
 from .delivery import Delivery
 from .favorite import Favorite
 from .genre import Genre
 from .image import Image
-from .listener_track_access import ListenerTrackAccess
 from .merch import Merch
 from .merch_kind import MerchKind
+from .music_access import (
+    ListenerAlbumAccess,
+    ListenerTrackAccess,
+)
 from .order import Order
 from .order_item import OrderItem
+from .payment import Payment
 from .product import Product
 from .product_variant import ProductVariant
 from .promocode import Promocode
-from .track import Track
+from .track import Track, TrackGeneratedAudio
 
 __all__ = [
     'Album',
+    'AlbumArchive',
     'Cart',
     'CartItem',
     'Delivery',
     'Favorite',
     'Genre',
     'Image',
+    'ListenerAlbumAccess',
     'ListenerTrackAccess',
     'MerchKind',
     'Merch',
     'Order',
     'OrderItem',
+    'Payment',
     'Product',
     'ProductVariant',
     'Promocode',
     'Track',
+    'TrackGeneratedAudio',
 ]

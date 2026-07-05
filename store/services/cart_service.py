@@ -7,8 +7,10 @@
 from decimal import Decimal
 
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
 from store.models import Cart, CartItem, ProductVariant
+from store.services import CartCalculationService
 
 
 class CartService:
@@ -61,80 +63,29 @@ class CartService:
 
     @staticmethod
     @transaction.atomic
-    def update_cart_items(
-        cart: Cart,
-        items_data: list,
-        partial: bool = False,
-    ) -> Cart:
-        """Синхронизация товаров в корзине.
-
-        Использует bulk_create и оптимизированные запросы для обновления
-        количества товаров и удаления отсутствующих позиций.
-        """
+    def update_cart_items(cart: Cart, items_data: list) -> Cart:
+        """Обновление количества товаров в корзине."""
         current_items = {
             item.product_variant_id: item
             for item in CartItem.objects.filter(cart=cart)
         }
-
-        incoming_variant_ids = [
-            item['product_variant'].id for item in items_data
-        ]
-
-        # Если PUT — удаляем чего нет в запросе
-        if not partial:
-            cart.items.exclude(
-                product_variant_id__in=incoming_variant_ids,
-            ).delete()
-
-        new_items = []
         updated_items = []
-
         for item_data in items_data:
             variant = item_data['product_variant']
             quantity = item_data['quantity']
-            price_with_donation = item_data.get('price_with_donation')
-            comment = item_data.get('comment')
-            is_sub = item_data.get('is_artist_subscription', False)
-
-            if variant.id in current_items:
-                item = current_items[variant.id]
-                if (
-                    item.quantity != quantity
-                    or item.price_with_donation != price_with_donation
-                    or item.comment != comment
-                    or item.is_artist_subscription != is_sub
-                ):
-                    item.quantity = quantity
-                    item.price_with_donation = price_with_donation
-                    item.comment = comment
-                    item.is_artist_subscription = is_sub
-                    updated_items.append(item)
-            else:
-                new_items.append(
-                    CartItem(
-                        cart=cart,
-                        product_variant=variant,
-                        quantity=quantity,
-                        price_with_donation=price_with_donation,
-                        comment=comment,
-                        is_artist_subscription=is_sub,
-                    ),
+            if variant.id not in current_items:
+                raise ValidationError(
+                    {
+                        'product_variant': f'Товар с ID={variant.id} '
+                        'не найден в корзине',
+                    },
                 )
-
+            item = current_items[variant.id]
+            if item.quantity != quantity:
+                item.quantity = quantity
+                updated_items.append(item)
         if updated_items:
-            CartItem.objects.bulk_update(
-                updated_items,
-                [
-                    'quantity',
-                    'price_with_donation',
-                    'comment',
-                    'is_artist_subscription',
-                ],
-            )
-
-        if new_items:
-            CartItem.objects.bulk_create(new_items)
-
+            CartItem.objects.bulk_update(updated_items, ['quantity'])
         return cart
 
     @staticmethod
@@ -143,6 +94,11 @@ class CartService:
         deleted_count, _ = cart.items.filter(
             product_variant_id=variant_id,
         ).delete()
+
+        if deleted_count > 0 and cart.promocode:
+            cart.refresh_from_db()
+            CartService.validate_cart_promocode(cart)
+
         return deleted_count > 0
 
     @staticmethod
@@ -221,3 +177,31 @@ class CartService:
                     user_item.save(update_fields=['is_artist_subscription'])
         # Удаляем гостевую корзину после переноса
         guest_cart.delete()
+        user_cart.refresh_from_db()
+        CartService.validate_cart_promocode(user_cart)
+
+    @staticmethod
+    def validate_cart_promocode(cart: Cart) -> None:
+        """Проверяет актуальность промокода.
+
+        Если промокод невалиден или нет подходящих товаров — дропает его.
+        """
+        if not cart.promocode:
+            return
+
+        if not cart.promocode.is_available:
+            cart.promocode = None
+            cart.save(update_fields=['promocode'])
+            return
+
+        # Проверяем наличие товаров владельца промокода
+        calculation_service = CartCalculationService(cart)
+        has_applicable_items = any(
+            calculation_service._get_item_owner_id(item)
+            == cart.promocode.owner_id
+            for item in calculation_service.items
+        )
+        # Если подходящих товаров нет — дропаем промокод
+        if not has_applicable_items:
+            cart.promocode = None
+            cart.save(update_fields=['promocode'])
