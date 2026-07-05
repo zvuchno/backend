@@ -33,26 +33,18 @@ cart_schema = extend_schema_view(
                 'из Cookies (`sessionid`). \n'
                 '3. **Слияние (Merge)**: \n'
                 '   - При авторизации (Login) гостевая корзина автоматически '
-                'объединяется с корзиной пользователя.'
+                'объединяется с корзиной пользователя.\n\n'
+                'Для перехода на карточку товара по клику используйте '
+                'target.url и selected_variant_id чтобы открыть '
+                'детальную карточку с заранее выбранным вариантом.'
             ),
             tags=CART_TAGS,
-            responses={200: CartReadSerializer},
-        ),
-        extend_schema(
-            methods=['PUT'],
-            summary='Полная синхронизация корзины',
-            description=(
-                'Заменяет текущее содержимое корзины на '
-                'присланный список товаров.'
-            ),
-            tags=CART_TAGS,
-            request=CartWriteSerializer,
             responses={200: CartReadSerializer},
         ),
         extend_schema(
             methods=['PATCH'],
             summary='Частичное обновление корзины',
-            description='Обновляет только переданные поля (например, купон).',
+            description='Обновляет количество по заданной позиции.',
             tags=CART_TAGS,
             request=CartWriteSerializer,
             responses={200: CartReadSerializer},

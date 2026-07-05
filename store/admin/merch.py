@@ -11,6 +11,7 @@ from nested_admin import (
     NestedTabularInline,
 )
 
+from .forms import MoneyForm
 from store.admin.mixins import (
     AutoOwnerAdminMixin,
     CommerceBaseMixin,
@@ -32,6 +33,7 @@ class ProductInline(NestedStackedInline):
     """Инлайн продукта с вложенными вариантами."""
 
     model = Product
+    form = MoneyForm
     inlines = (ProductVariantInline,)
     fields = ('price', 'allow_overpay', 'property_name')
     can_delete = False
@@ -100,7 +102,13 @@ class MerchAdmin(
     )
     ordering = ('-created_at',)
     search_help_text = 'Поиск по названию, типу, названию альбома и владельцу'
-    readonly_fields = ('image_preview', 'created_at', 'updated_at', 'owner')
+    readonly_fields = (
+        'image_preview',
+        'display_is_carrier',
+        'created_at',
+        'updated_at',
+        'owner',
+    )
     autocomplete_fields = ('album', 'kind')
 
     fieldsets = (
@@ -110,11 +118,11 @@ class MerchAdmin(
                 'fields': (
                     'kind',
                     'name',
+                    'display_is_carrier',
                     'description',
                     'image_preview',
                     'album',
                     'is_published',
-                    'is_carrier',
                     'visibility',
                     'owner',
                     'is_active',
@@ -132,6 +140,11 @@ class MerchAdmin(
             },
         ),
     )
+
+    @admin.display(description='Носитель', boolean=True)
+    def display_is_carrier(self, obj):
+        """Отображает статус носителя для мерча."""
+        return obj.is_carrier
 
     def get_queryset(self, request):
         qs = super(NestedModelAdmin, self).get_queryset(request)

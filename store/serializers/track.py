@@ -2,62 +2,77 @@
 
 Содержит сериализаторы для чтения и записи данных модели Track,
 используемые в API.
-TODO: Реализовать логику покупки аудиофайла:
-- ссылка на загрузку только купившему?
-- в списке треков отдавать демку?
 """
-
-from decimal import Decimal
 
 from rest_framework import serializers
 
 from .mixins import ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
+from store.services.audio.schedule import TrackGeneratedAudioScheduler
 
 
 class TrackReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Track."""
 
-    price = serializers.SerializerMethodField()
+    price = serializers.DecimalField(
+        source='product.price',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
+    allow_overpay = serializers.BooleanField(
+        source='product.allow_overpay',
+        default=False,
+    )
+    artist_name = serializers.SerializerMethodField(
+        read_only=True,
+        allow_null=True,
+    )
+    image = serializers.ImageField(
+        source='album.cover_image',
+        read_only=True,
+        allow_null=True,
+    )
+    is_favorite = serializers.BooleanField(read_only=True)
+
+    @staticmethod
+    def get_artist_name(obj) -> str | None:
+        """Возвращает имя исполнителя альбома."""
+        artist = getattr(obj.album.owner, 'artist_profile', None)
+
+        if artist is None:
+            return None
+
+        return artist.name
 
     class Meta:
         model = Track
         fields = (
             'id',
+            'artist_name',
             'name',
             'album',
             'duration',
             'position',
             'price',
+            'allow_overpay',
+            'image',
+            'is_favorite',
         )
-
-    def get_price(self, obj) -> Decimal | None:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.price
-        return None
 
 
 class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Track."""
 
-    allow_overpay = serializers.SerializerMethodField()
     variants = serializers.SerializerMethodField()
 
     class Meta(TrackReadSerializer.Meta):
         fields = TrackReadSerializer.Meta.fields + (
             'audio_file',
-            'allow_overpay',
             'description',
             'variants',
         )
-
-    def get_allow_overpay(self, obj) -> bool:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.allow_overpay
-        return False
 
 
 class TrackWriteSerializer(serializers.ModelSerializer):
@@ -66,7 +81,7 @@ class TrackWriteSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
-        required=True,
+        required=False,
     )
     allow_overpay = serializers.BooleanField(required=False)
 
@@ -85,9 +100,26 @@ class TrackWriteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
-        return super().create(validated_data)
+        track = super().create(validated_data)
+        TrackGeneratedAudioScheduler.schedule(track)
+        return track
 
     def update(self, instance, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
-        return super().update(instance, validated_data)
+        audio_file_changed = 'audio_file' in validated_data
+        track = super().update(instance, validated_data)
+        if audio_file_changed:
+            TrackGeneratedAudioScheduler.schedule(track)
+        return track
+
+    def validate_album(self, album):
+        """Проверяет, что артист работает только со своим альбомом."""
+        request = self.context['request']
+
+        if album.owner_id != request.user.id:
+            raise serializers.ValidationError(
+                'Нельзя добавить трек в чужой альбом.',
+            )
+
+        return album

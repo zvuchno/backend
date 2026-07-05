@@ -37,9 +37,9 @@ merch_schema = extend_schema_view(
             ),
             OpenApiParameter(
                 name='kind',
-                type=OpenApiTypes.INT,
+                type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='Фильтр по типу мерча',
+                description='Фильтр по slug типа мерча',
             ),
             OpenApiParameter(
                 name='album',

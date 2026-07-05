@@ -1,12 +1,17 @@
 """ViewSet для работы с моделью track."""
 
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
 from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
 
-from .mixins import ProductActionMixin, SoftDeleteMixin
+from .mixins import (
+    ProductActionMixin,
+    SoftDeleteMixin,
+    TrackReadQuerysetMixin,
+)
 from store.filters import TrackFilter
 from store.models import Track
 from store.schema import track_schema
@@ -18,7 +23,12 @@ from store.serializers import (
 
 
 @track_schema
-class TrackViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
+class TrackViewSet(
+    TrackReadQuerysetMixin,
+    ProductActionMixin,
+    SoftDeleteMixin,
+    viewsets.ModelViewSet,
+):
     """API для работы с треками."""
 
     queryset = Track.objects.all()
@@ -46,19 +56,17 @@ class TrackViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         return TrackReadSerializer
 
     def get_queryset(self):
-        queryset = (
-            super()
-            .get_queryset()
-            .visible_for(
-                user=self.request.user,
-                action=self.action,
-            )
+        """Возвращает треки, доступные текущему пользователю."""
+        return self.get_track_read_queryset(
+            action=self.action,
+            queryset=super().get_queryset(),
         )
-        return queryset.select_related(
-            'album',
-            'album__genre',
-            'album__owner__artist_profile',
-        )
+
+    def perform_create(self, serializer):
+        """Создаёт трек и синхронизирует его коммерческие данные."""
+        with transaction.atomic():
+            instance = serializer.save()
+            self._update_product_data(instance, serializer.validated_data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

@@ -27,6 +27,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     is_listener = serializers.SerializerMethodField()
     is_artist = serializers.SerializerMethodField()
+    has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -39,6 +40,7 @@ class MeSerializer(serializers.ModelSerializer):
             'is_email_verified',
             'is_listener',
             'is_artist',
+            'has_usable_password',
         )
 
     @staticmethod
@@ -53,14 +55,15 @@ class MeSerializer(serializers.ModelSerializer):
         profile = getattr(obj, 'artist_profile', None)
         return bool(profile and profile.is_active)
 
+    @staticmethod
+    def get_has_usable_password(obj) -> bool:
+        """Определяет, может ли пользователь войти по паролю."""
+        return obj.has_usable_password()
 
-class ChangePasswordSerializer(serializers.Serializer):
-    """Сериализатор смены пароля пользователя."""
 
-    old_password = serializers.CharField(
-        write_only=True,
-        label='Старый пароль',
-    )
+class NewPasswordSerializer(serializers.Serializer):
+    """Базовый сериализатор установки нового пароля."""
+
     new_password = serializers.CharField(
         write_only=True,
         label='Новый пароль',
@@ -68,6 +71,31 @@ class ChangePasswordSerializer(serializers.Serializer):
     retype_new_password = serializers.CharField(
         write_only=True,
         label='Подтверждение нового пароля',
+    )
+
+    def validate(self, attrs):
+        """Проверяет совпадение и валидность нового пароля."""
+        new_password = attrs['new_password']
+        retype_new_password = attrs['retype_new_password']
+
+        if new_password != retype_new_password:
+            raise serializers.ValidationError({
+                'retype_new_password': 'Новые пароли не совпадают.',
+            })
+
+        validate_password(
+            password=new_password,
+            user=self.context['request'].user,
+        )
+        return attrs
+
+
+class ChangePasswordSerializer(NewPasswordSerializer):
+    """Сериализатор смены уже установленного пароля."""
+
+    old_password = serializers.CharField(
+        write_only=True,
+        label='Старый пароль',
     )
 
     def validate_old_password(self, value):
@@ -79,19 +107,33 @@ class ChangePasswordSerializer(serializers.Serializer):
             )
         return value
 
+    def save(self, **kwargs):
+        """Устанавливает новый пароль пользователю."""
+        user = self.context['request'].user
+        set_user_password(user, self.validated_data['new_password'])
+        return user
+
+
+class SetPasswordSerializer(NewPasswordSerializer):
+    """Устанавливает пароль для аккаунта без пароля."""
+
     def validate(self, attrs):
-        """Проверяет совпадение и валидность нового пароля."""
-        new_password = attrs.get('new_password')
-        retype_new_password = attrs.get('retype_new_password')
-        if new_password != retype_new_password:
+        """Проверяет, что у пользователя ещё нет установленного пароля."""
+        attrs = super().validate(attrs)
+
+        user = self.context['request'].user
+        if user.has_usable_password():
             raise serializers.ValidationError({
-                'retype_new_password': 'Новые пароли не совпадают.',
+                'detail': (
+                    'Пароль уже установлен. '
+                    'Для его изменения используйте change-password.'
+                ),
             })
-        validate_password(new_password, self.context['request'].user)
+
         return attrs
 
     def save(self, **kwargs):
-        """Устанавливает новый пароль пользователю."""
+        """Устанавливает первый пароль пользователю."""
         user = self.context['request'].user
         set_user_password(user, self.validated_data['new_password'])
         return user

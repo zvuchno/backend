@@ -3,6 +3,8 @@ volumes:
   static:
   media:
   next_image_cache:
+  celery_beat_data:
+  redis_data:
 
 services:
   db:
@@ -16,12 +18,75 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+    command:
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
   backend:
     image: inswty/zvuchno_backend:latest
     env_file: .env
     user: "${UID}:${GID}"
     volumes:
       - static:/app/staticfiles
+      - media:/app/media
+    command: gunicorn --no-control --worker-tmp-dir /tmp --bind 0.0.0.0:8000 --timeout 300 config.wsgi:application
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_worker:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: >
+      celery -A config worker
+      -Q celery
+      --hostname=default@%h
+      -l warning
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_archives:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: >
+      celery -A config worker
+      -Q archives
+      --concurrency=1
+      --hostname=archives@%h
+      -l info
+    volumes:
       - media:/app/media
     logging:
       driver: json-file
@@ -30,6 +95,51 @@ services:
         max-file: "5"
     depends_on:
       db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_media:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: >
+      celery -A config worker
+      -Q media
+      --concurrency=2
+      --hostname=media@%h
+      -l info
+    volumes:
+      - media:/app/media
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery_beat:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: celery -A config beat -l warning --schedule=/data/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
   frontend:
@@ -41,6 +151,22 @@ services:
     expose:
       - "3000"
     restart: unless-stopped
+  bot:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: "${UID}:${GID}"
+    command: python manage.py runbot
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: always
   gateway:
     image: inswty/zvuchno_gateway:latest
     env_file: .env
@@ -52,3 +178,4 @@ services:
         condition: service_started
     ports:
       - "127.0.0.1:8000:80"
+    restart: unless-stopped

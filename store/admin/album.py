@@ -9,7 +9,7 @@ from django import forms
 from django.contrib import admin
 from django.core.validators import MinValueValidator
 from django.utils.html import format_html
-from nested_admin import (
+from nested_admin.nested import (
     NestedModelAdmin,
     NestedStackedInline,
     NestedTabularInline,
@@ -25,8 +25,9 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
-from store.models import Album, Product, Track
+from store.models import Album, AlbumArchive, Product, Track
 from store.services import ProductService
+from store.services.audio import TrackGeneratedAudioScheduler
 
 
 class TrackInlineForm(MoneyForm):
@@ -79,9 +80,13 @@ class TrackInlineForm(MoneyForm):
         instance = super().save(commit=commit)
         # Берём цену из формы, 0.00 если поле пустое
         price = self.cleaned_data.get('price') or Decimal('0.00')
+        audio_file_changed = 'audio_file' in self.changed_data
 
-        def sync_commerce_data() -> None:
-            """Синхронизирует коммерческие данные через ProductService."""
+        def sync_related_data() -> None:
+            """Синхронизирует коммерческие данные через ProductService.
+
+            И запускает обработку аудио.
+            """
             validated_data = {
                 'price': price,
                 'variants': [],
@@ -90,10 +95,12 @@ class TrackInlineForm(MoneyForm):
                 instance,
                 validated_data=validated_data,
             )
+            if audio_file_changed:
+                TrackGeneratedAudioScheduler.schedule(instance)
 
         if commit:
             # Для обычного сохранения вызываем сразу
-            sync_commerce_data()
+            sync_related_data()
         else:
             # Для inline-форм в админке: цепляем к save_m2m
             original_save_m2m = getattr(self, 'save_m2m', None)
@@ -102,8 +109,8 @@ class TrackInlineForm(MoneyForm):
                 # Сначала вызываем существующий save_m2m, если есть
                 if original_save_m2m:
                     original_save_m2m()
-                # Затем синхронизируем цену
-                sync_commerce_data()
+                # Затем синхронизируем цену и аудио
+                sync_related_data()
 
             self.save_m2m = chained_save_m2m
         return instance
@@ -142,6 +149,37 @@ class ProductInline(NestedStackedInline):
     fields = ('price', 'allow_overpay')
     can_delete = False
     verbose_name = 'Торговые настройки альбома'
+
+
+class AlbumArchiveInline(NestedStackedInline):
+    """Инлайн подготовленного архива альбома."""
+
+    model = AlbumArchive
+    can_delete = False
+    extra = 0
+    max_num = 1
+    fields = (
+        'file',
+        'status',
+        'content_hash',
+        'pending_hash',
+        'error_message',
+        'created_at',
+        'updated_at',
+    )
+    readonly_fields = fields
+
+    def has_add_permission(self, request, obj=None):
+        """Запрещает ручное создание архива через админку."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает ручное редактирование архива через админку."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает ручное удаление архива через админку."""
+        return False
 
 
 @admin.register(Album)
@@ -221,7 +259,7 @@ class AlbumAdmin(
             },
         ),
     )
-    inlines = (ProductInline, TrackInline)
+    inlines = (ProductInline, TrackInline, AlbumArchiveInline)
 
     @admin.display(description='Изображение')
     def image_preview(self, obj):

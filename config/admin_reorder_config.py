@@ -44,6 +44,11 @@ ADMIN_REORDER = (
             'store.Favorite',
         ),
     },
+    {
+        'app': 'store',
+        'label': 'Платежи',
+        'models': ('store.Payment',),
+    },
     # Объединяем пользователей (users) и системные права доступа (auth)
     # в один раздел админки для удобного управления аккаунтами и ролями
     {
@@ -70,5 +75,10 @@ ADMIN_REORDER = (
             'users.ConsentDocument',
             'users.UserConsent',
         ),
+    },
+    {
+        'app': 'admin',
+        'label': 'Журнал действий',
+        'models': ('admin.LogEntry',),
     },
 )

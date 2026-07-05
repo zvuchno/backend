@@ -93,7 +93,6 @@ class TestFileValidators:
             name='TestTrack',
             album=self.album,
             audio_file=file,
-            owner=self.user,
         )
 
         track.full_clean()
@@ -112,7 +111,6 @@ class TestFileValidators:
             name='TestTrack',
             album=self.album,
             audio_file=file,
-            owner=self.user,
         )
 
         with pytest.raises(ValidationError) as exc:
@@ -133,7 +131,6 @@ class TestFileValidators:
             name='TestTrack',
             album=self.album,
             audio_file=file,
-            owner=self.user,
         )
 
         track.full_clean()
@@ -157,7 +154,6 @@ class TestFileValidators:
             name='TestTrack',
             album=self.album,
             audio_file=file,
-            owner=self.user,
         )
 
         with pytest.raises(ValidationError) as exc:

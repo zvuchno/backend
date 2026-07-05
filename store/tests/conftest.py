@@ -73,7 +73,6 @@ def variant_factory(artist_user):
             )
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
-                owner=kwargs.get('owner') or artist_user,
                 album=album,
                 audio_file=ContentFile(
                     b'fake mp3 content',
@@ -206,3 +205,106 @@ def favorites_url():
 def checkout_url():
     """Возвращает URL-адрес эндпоинта создания заказа."""
     return reverse('api:store:orders-checkout')
+
+
+@pytest.fixture
+def apply_promocode_url():
+    """Возвращает URL-адрес эндпоинта применения промокода."""
+    return reverse('api:store:cart-apply-promocode')
+
+
+@pytest.fixture
+def catalog_url():
+    """Возвращает URL-адрес List эндпоинта каталога."""
+    return reverse('api:store:catalog')
+
+
+@pytest.fixture
+def catalog_release_detail_url():
+    """Возвращает URL-адрес эндпоинта детальной карточки релиза."""
+
+    def _url(album) -> str:
+        return reverse('api:store:catalog-release-detail', args=(album.id,))
+
+    return _url
+
+
+@pytest.fixture
+def catalog_merch_detail_url():
+    """Возвращает URL-адрес эндпоинта детальной карточки мерча."""
+
+    def _url(merch) -> str:
+        return reverse('api:store:catalog-merch-detail', args=(merch.id,))
+
+    return _url
+
+
+@pytest.fixture
+def purchased_music_url():
+    """Возвращает URL-адрес эндпоинта купленной музыки."""
+    return reverse('api:store:purchased-music')
+
+
+@pytest.fixture
+def purchased_music_download_detail_url():
+    """Возвращает URL detail-ручки скачивания доступного релиза."""
+
+    def _url(album) -> str:
+        return reverse(
+            'api:store:purchased-music-download-detail',
+            args=(album.id,),
+        )
+
+    return _url
+
+
+@pytest.fixture
+def purchased_music_track_download_link_url():
+    """Возвращает URL ручки выдачи ссылки на трек."""
+
+    def _url(track) -> str:
+        return reverse(
+            'api:store:purchased-music-track-download-link',
+            args=(track.id,),
+        )
+
+    return _url
+
+
+@pytest.fixture
+def purchased_music_archive_download_link_url():
+    """Возвращает URL ручки выдачи ссылки на ZIP-архив."""
+
+    def _url(album) -> str:
+        return reverse(
+            'api:store:purchased-music-archive-download-link',
+            args=(album.id,),
+        )
+
+    return _url
+
+
+@pytest.fixture
+def player_album_url():
+    """Возвращает URL очереди альбома для плеера."""
+
+    def build(album_id: int) -> str:
+        return reverse(
+            'api:store:player-album',
+            kwargs={'album_id': album_id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def player_track_play_url():
+    """Возвращает URL запуска воспроизведения трека."""
+
+    def build(track_id: int) -> str:
+        return reverse(
+            'api:store:player-play-track',
+            kwargs={'track_id': track_id},
+        )
+
+    return build

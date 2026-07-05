@@ -1,7 +1,10 @@
 from django.db import models
 from django.db.models import Q
 
+from common.storages import get_public_media_storage
+
 from store.models.merch import Merch
+from store.upload_paths import merch_image_upload_to
 from store.validators import validate_file_size
 from users.models.abstract import ActivatableModel, TimestampModel
 
@@ -17,7 +20,8 @@ class Image(ActivatableModel, TimestampModel):
     )
     image = models.ImageField(
         'Фото',
-        upload_to='photos_merch/',
+        upload_to=merch_image_upload_to,
+        storage=get_public_media_storage,
         validators=(validate_file_size,),
     )
     is_main = models.BooleanField('Главное фото', default=False)

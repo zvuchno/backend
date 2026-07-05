@@ -13,6 +13,7 @@ from django.utils.http import (
 )
 
 from common.services.email import EMAIL_SEND_EXCEPTIONS
+from common.utils.urls import build_frontend_url
 
 from users.services import send_email_verification_mail
 
@@ -29,10 +30,12 @@ def generate_email_verification_data(user) -> dict:
     }
 
 
-def build_email_verification_url(user, frontend_base_url: str) -> str:
+def build_email_verification_url(user) -> str:
     """Строит ссылку подтверждения email для фронтенда."""
-    data = generate_email_verification_data(user)
-    return f'{frontend_base_url}?uid={data["uid"]}&token={data["token"]}'
+    return build_frontend_url(
+        settings.FRONTEND_VERIFY_EMAIL_PATH,
+        generate_email_verification_data(user),
+    )
 
 
 def verify_email_token(user, token: str) -> bool:
@@ -42,10 +45,7 @@ def verify_email_token(user, token: str) -> bool:
 
 def request_email_verification(user) -> str:
     """Формирует ссылку подтверждения email и отправляет письмо."""
-    verification_url = build_email_verification_url(
-        user=user,
-        frontend_base_url=settings.FRONTEND_VERIFY_EMAIL_URL,
-    )
+    verification_url = build_email_verification_url(user)
 
     try:
         send_email_verification_mail(
