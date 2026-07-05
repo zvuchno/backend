@@ -4,6 +4,9 @@ import pytest
 from rest_framework import status
 
 from store.tests.assertions import assert_public_product_card_contract
+from store.tests.factories import (
+    ProductVariantFactory,
+)
 from store.tests.scenarios import (
     create_album_product,
     create_carrier_product,
@@ -365,6 +368,84 @@ class TestCatalogOrdering:
             products['album'].id,
             products['merch'].id,
             products['carrier'].id,
+        }
+
+
+class TestCatalogAvailability:
+    """Тесты доступности товаров в каталоге."""
+
+    def test_catalog_hides_sold_out_merch_but_keeps_digital_products(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог скрывает распроданный мерч, но не цифровые товары."""
+        digital_product_without_stock = create_album_product()
+        digital_product_without_stock.variants.update(
+            stock=None,
+        )
+
+        digital_product_with_zero_stock = create_album_product()
+        digital_product_with_zero_stock.variants.update(
+            stock=0,
+        )
+
+        available_product = create_merch_product()
+        available_product.variants.update(
+            stock=3,
+        )
+
+        partially_available_product = create_merch_product()
+        partially_available_product.variants.update(
+            stock=0,
+        )
+        ProductVariantFactory(
+            product=partially_available_product,
+            property_value='L',
+            stock=2,
+        )
+
+        sold_out_product = create_merch_product()
+        sold_out_product.variants.update(
+            stock=0,
+        )
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+
+        product_ids = set(get_product_ids(response))
+
+        assert digital_product_without_stock.id in product_ids
+        assert digital_product_with_zero_stock.id in product_ids
+        assert available_product.id in product_ids
+        assert partially_available_product.id in product_ids
+        assert sold_out_product.id not in product_ids
+
+    def test_merch_catalog_hides_sold_out_merch(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Витрина мерча не возвращает товары без остатков."""
+        available_product = create_merch_product()
+        available_product.variants.update(
+            stock=1,
+        )
+
+        sold_out_product = create_merch_product()
+        sold_out_product.variants.update(
+            stock=0,
+        )
+
+        response = api_client.get(
+            catalog_url,
+            {'type': 'merch'},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert set(get_product_ids(response)) == {
+            available_product.id,
         }
 
 
