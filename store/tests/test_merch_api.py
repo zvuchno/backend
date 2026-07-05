@@ -129,6 +129,10 @@ class TestMerchImages:
     def add_image_url(self, merch):
         return reverse('api:store:merch-add-image', kwargs={'pk': merch.pk})
 
+    @pytest.fixture
+    def merch_detail_url(self, merch):
+        return reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
+
     def test_first_image_becomes_main(self, add_image_url, artist_client):
         """Первое добавленное изображение становится главным."""
         response = artist_client.post(
@@ -136,12 +140,13 @@ class TestMerchImages:
             {'image': make_image()},
             format='multipart',
         )
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['is_main'] is True
 
     def test_second_image_not_main(self, add_image_url, artist_client):
         """Второе изображение не становится главным автоматически."""
-        artist_client.post(
+        first_response = artist_client.post(
             add_image_url,
             {'image': make_image('a.jpg')},
             format='multipart',
@@ -151,99 +156,190 @@ class TestMerchImages:
             {'image': make_image('b.jpg')},
             format='multipart',
         )
+
+        assert first_response.status_code == status.HTTP_201_CREATED
+        assert first_response.data['is_main'] is True
+        assert response.status_code == status.HTTP_201_CREATED
         assert response.data['is_main'] is False
 
     def test_delete_main_image_promotes_next(
         self,
         merch,
         add_image_url,
+        merch_detail_url,
         artist_client,
     ):
-        """Удаление главного изображения → следующее становится главным."""
-        r1 = artist_client.post(
+        """Удаление главного изображения назначает следующим главное."""
+        first_response = artist_client.post(
             add_image_url,
             {'image': make_image('a.jpg')},
             format='multipart',
         )
-        r2 = artist_client.post(
+        second_response = artist_client.post(
             add_image_url,
             {'image': make_image('b.jpg')},
             format='multipart',
         )
 
-        del_url = reverse(
-            'api:store:merch-image-detail',
-            kwargs={'pk': merch.pk, 'image_id': r1.data['id']},
-        )
-        artist_client.delete(del_url)
+        assert first_response.status_code == status.HTTP_201_CREATED
+        assert second_response.status_code == status.HTTP_201_CREATED
 
-        detail_url = reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
-        response = artist_client.get(detail_url)
-        remaining = next(
-            img
-            for img in response.data['images_merch']
-            if img['id'] == r2.data['id']
+        delete_url = reverse(
+            'api:store:merch-image-detail',
+            kwargs={
+                'pk': merch.pk,
+                'image_id': first_response.data['id'],
+            },
         )
-        assert remaining['is_main'] is True
+        response = artist_client.delete(delete_url)
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        response = artist_client.get(merch_detail_url)
+
+        assert response.status_code == status.HTTP_200_OK
+
+        main_images = [
+            image
+            for image in response.data['images_merch']
+            if image['is_main']
+        ]
+
+        assert len(main_images) == 1
+        assert main_images[0]['id'] == second_response.data['id']
 
     def test_patch_main_false_promotes_next(
         self,
         merch,
         add_image_url,
+        merch_detail_url,
         artist_client,
     ):
-        """PATCH is_main=false на главном → следующее становится главным."""
-        r1 = artist_client.post(
+        """Снятие главного статуса назначает следующим главное."""
+        first_response = artist_client.post(
             add_image_url,
             {'image': make_image('a.jpg')},
             format='multipart',
         )
-        artist_client.post(
+        second_response = artist_client.post(
             add_image_url,
             {'image': make_image('b.jpg')},
             format='multipart',
         )
 
+        assert first_response.status_code == status.HTTP_201_CREATED
+        assert second_response.status_code == status.HTTP_201_CREATED
+
         patch_url = reverse(
             'api:store:merch-image-detail',
-            kwargs={'pk': merch.pk, 'image_id': r1.data['id']},
+            kwargs={
+                'pk': merch.pk,
+                'image_id': first_response.data['id'],
+            },
         )
-        artist_client.patch(patch_url, {'is_main': False}, format='json')
+        response = artist_client.patch(
+            patch_url,
+            {'is_main': False},
+            format='json',
+        )
 
-        detail_url = reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
-        response = artist_client.get(detail_url)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_main'] is False
+
+        response = artist_client.get(merch_detail_url)
+
+        assert response.status_code == status.HTTP_200_OK
+
         main_images = [
-            img for img in response.data['images_merch'] if img['is_main']
+            image
+            for image in response.data['images_merch']
+            if image['is_main']
         ]
+
         assert len(main_images) == 1
+        assert main_images[0]['id'] == second_response.data['id']
+
+    def test_only_image_remains_main_when_main_status_is_removed(
+        self,
+        merch,
+        add_image_url,
+        merch_detail_url,
+        artist_client,
+    ):
+        """Единственное изображение нельзя оставить без главного статуса."""
+        create_response = artist_client.post(
+            add_image_url,
+            {'image': make_image()},
+            format='multipart',
+        )
+
+        assert create_response.status_code == status.HTTP_201_CREATED
+        assert create_response.data['is_main'] is True
+
+        patch_url = reverse(
+            'api:store:merch-image-detail',
+            kwargs={
+                'pk': merch.pk,
+                'image_id': create_response.data['id'],
+            },
+        )
+        response = artist_client.patch(
+            patch_url,
+            {'is_main': False},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_main'] is True
+
+        response = artist_client.get(merch_detail_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['images_merch'][0]['is_main'] is True
 
     def test_explicit_is_main_true_on_second_image(
         self,
         merch,
         add_image_url,
+        merch_detail_url,
         artist_client,
     ):
-        """Передача is_main=True для второго фото оно становится главным."""
-        r1 = artist_client.post(
+        """Явное назначение второго изображения снимает статус с первого."""
+        first_response = artist_client.post(
             add_image_url,
             {'image': make_image('a.jpg')},
             format='multipart',
         )
-        r2 = artist_client.post(
+        second_response = artist_client.post(
             add_image_url,
             {'image': make_image('b.jpg'), 'is_main': True},
             format='multipart',
         )
-        assert r2.data['is_main'] is True
 
-        detail_url = reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
-        response = artist_client.get(detail_url)
-        first = next(
-            img
-            for img in response.data['images_merch']
-            if img['id'] == r1.data['id']
+        assert first_response.status_code == status.HTTP_201_CREATED
+        assert second_response.status_code == status.HTTP_201_CREATED
+        assert second_response.data['is_main'] is True
+
+        response = artist_client.get(merch_detail_url)
+
+        assert response.status_code == status.HTTP_200_OK
+
+        main_images = [
+            image
+            for image in response.data['images_merch']
+            if image['is_main']
+        ]
+
+        assert len(main_images) == 1
+        assert main_images[0]['id'] == second_response.data['id']
+
+        first_image = next(
+            image
+            for image in response.data['images_merch']
+            if image['id'] == first_response.data['id']
         )
-        assert first['is_main'] is False
+
+        assert first_image['is_main'] is False
 
 
 @pytest.mark.django_db

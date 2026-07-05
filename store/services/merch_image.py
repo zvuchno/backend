@@ -65,13 +65,15 @@ class MerchImageService:
                 merch=merch,
                 exclude_image_id=image.id,
             )
+        if next_image:
+            image.is_main = False
+            image.save(update_fields=['is_main'])
+            next_image.is_main = True
+            next_image.save(update_fields=['is_main'])
+            return image
 
-            if next_image:
-                image.is_main = False
-                next_image.is_main = True
-                next_image.save(update_fields=['is_main'])
-
-            # У единственного изображения флаг is_main остаётся True.
+            # У единственного фото нельзя снять главный статус:
+            # иначе останется набор изображений без главного.
 
         update_fields = ['is_main']
 

@@ -11,16 +11,13 @@ class MerchImageInlineFormSet(BaseInlineFormSet):
 
         if any(self.errors):
             return
-        main_images_count = 0
-        for form in self.forms:
-            if not hasattr(form, 'cleaned_data'):
-                continue
 
-            if form.cleaned_data.get('DELETE', False):
-                continue
-
-            if form.cleaned_data.get('is_main', False):
-                main_images_count += 1
+        main_images_count = sum(
+            1
+            for form in self.forms
+            if not form.cleaned_data.get('DELETE', False)
+            and form.cleaned_data.get('is_main', False)
+        )
 
         if main_images_count > 1:
             raise ValidationError(
