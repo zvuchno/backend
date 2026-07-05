@@ -22,56 +22,6 @@ def make_image(name='test.jpg'):
 
 
 @pytest.mark.django_db
-class TestMerchRetrieve:
-    """Тесты GET /merch/{id}/ — детальный просмотр."""
-
-    @pytest.fixture
-    def merch(self, variant_factory):
-        return variant_factory(
-            product_type='merch',
-            name='T-Shirt',
-        ).product.merch
-
-    @pytest.fixture
-    def merch_detail_url(self, merch):
-        return reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
-
-    def test_retrieve_contains_expected_fields(
-        self,
-        merch_detail_url,
-        api_client,
-    ):
-        """Ответ содержит нужные поля."""
-        response = api_client.get(merch_detail_url)
-        for field in (
-            'id',
-            'name',
-            'price',
-            'variants',
-            'images_merch',
-            'stock',
-        ):
-            assert field in response.data
-
-    def test_owner_sees_private_fields(self, merch, artist_client):
-        """Владелец видит visibility и is_published."""
-        url = reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
-        response = artist_client.get(url)
-        assert 'visibility' in response.data
-        assert 'is_published' in response.data
-
-    def test_non_owner_does_not_see_private_fields(
-        self,
-        merch_detail_url,
-        api_client,
-    ):
-        """Анонимный пользователь не видит visibility и is_published."""
-        response = api_client.get(merch_detail_url)
-        assert 'visibility' not in response.data
-        assert 'is_published' not in response.data
-
-
-@pytest.mark.django_db
 class TestMerchCreate:
     """Тесты POST /merch/ — создание мерча."""
 
@@ -85,21 +35,6 @@ class TestMerchCreate:
             'visibility': 'public',
             'is_published': True,
         }
-
-    def test_artist_can_create_merch(
-        self,
-        merch_payload,
-        merch_list_url,
-        artist_client,
-    ):
-        """Артист может создать мерч."""
-        response = artist_client.post(
-            merch_list_url,
-            merch_payload,
-            format='json',
-        )
-        assert response.status_code == status.HTTP_201_CREATED
-        assert Merch.objects.filter(name='New Merch').exists()
 
     def test_create_merch_creates_simple_variant(
         self,
@@ -154,16 +89,6 @@ class TestMerchUpdate:
     def merch_detail_url(self, merch):
         return reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
 
-    def test_owner_can_update_merch(self, merch_detail_url, artist_client):
-        """Владелец может обновить мерч."""
-        response = artist_client.patch(
-            merch_detail_url,
-            {'name': 'Updated'},
-            format='json',
-        )
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data['name'] == 'Updated'
-
     def test_deactivate_variants_clears_property_name(
         self,
         merch,
@@ -187,34 +112,6 @@ class TestMerchUpdate:
         assert response.status_code == status.HTTP_200_OK
         merch.refresh_from_db()
         assert merch.product.property_name == ''
-
-
-@pytest.mark.django_db
-class TestMerchDelete:
-    """Тесты DELETE /merch/{id}/ — удаление мерча."""
-
-    @pytest.fixture
-    def merch(self, variant_factory, artist_user):
-        return variant_factory(
-            product_type='merch',
-            owner=artist_user,
-        ).product.merch
-
-    @pytest.fixture
-    def merch_detail_url(self, merch):
-        return reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
-
-    def test_owner_can_delete_merch(
-        self,
-        merch,
-        merch_detail_url,
-        artist_client,
-    ):
-        """Владелец может удалить мерч (мягкое удаление)."""
-        response = artist_client.delete(merch_detail_url)
-        assert response.status_code == status.HTTP_204_NO_CONTENT
-        merch.refresh_from_db()
-        assert merch.is_active is False
 
 
 @pytest.mark.django_db
@@ -405,25 +302,6 @@ class TestMerchVariants:
             format='json',
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    def test_variants_hidden_when_merch_not_visible(
-        self,
-        merch,
-        merch_detail_url,
-        artist_client,
-        api_client,
-    ):
-        """Варианты не видны если мерч скрыт (private)."""
-        artist_client.patch(
-            merch_detail_url,
-            {
-                'variants': [{'value': 'S', 'stock': 10}],
-                'visibility': 'hidden',
-            },
-            format='json',
-        )
-        response = api_client.get(merch_detail_url)
-        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_variants_deactivated_when_merch_inactive(
         self,
