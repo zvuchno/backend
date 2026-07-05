@@ -36,19 +36,3 @@ class Image(ActivatableModel, TimestampModel):
                 name='unique_main_image_per_merch',
             ),
         ]
-
-    def save(self, *args, **kwargs):
-
-        if not self.pk:
-            if not Image.objects.filter(
-                merch=self.merch,
-                is_main=True,
-            ).exists():
-                self.is_main = True
-
-        if self.is_main:
-            Image.objects.filter(
-                merch=self.merch,
-                is_main=True,
-            ).update(is_main=False)
-        super().save(*args, **kwargs)

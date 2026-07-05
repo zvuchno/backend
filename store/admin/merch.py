@@ -6,18 +6,22 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from nested_admin import (
-    NestedModelAdmin,
-    NestedStackedInline,
-    NestedTabularInline,
+    NestedModelAdmin,  # noqa
+    NestedStackedInline,  # noqa
+    NestedTabularInline,  # noqa
 )
 
-from .forms import MoneyForm
+from .forms import (
+    MerchImageInlineFormSet,
+    MoneyForm,
+)
 from store.admin.mixins import (
     AutoOwnerAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
 )
 from store.models import Image, Merch, Product, ProductVariant
+from store.services import MerchImageService
 
 
 class ProductVariantInline(NestedTabularInline):
@@ -46,6 +50,7 @@ class PhotoInline(NestedTabularInline):
     """Отображение фото в модели мерча."""
 
     model = Image
+    formset = MerchImageInlineFormSet
     extra = 1
     fields = ('image', 'preview', 'is_main')
     readonly_fields = ('preview',)
@@ -176,3 +181,11 @@ class MerchAdmin(
                 image.image.url,
             )
         return '-'
+
+    def save_related(self, request, form, formsets, change):
+        """Сохраняет связанные объекты и нормализует главное фото."""
+        super().save_related(request, form, formsets, change)
+
+        MerchImageService.ensure_main_image(
+            merch=form.instance,
+        )
