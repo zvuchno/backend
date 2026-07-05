@@ -27,7 +27,6 @@ from store.constants import (
 )
 from store.models import Album, AlbumArchive, Product, Track
 from store.services import ProductService
-from store.services.audio import TrackGeneratedAudioScheduler
 
 
 class TrackInlineForm(MoneyForm):
@@ -80,13 +79,9 @@ class TrackInlineForm(MoneyForm):
         instance = super().save(commit=commit)
         # Берём цену из формы, 0.00 если поле пустое
         price = self.cleaned_data.get('price') or Decimal('0.00')
-        audio_file_changed = 'audio_file' in self.changed_data
 
-        def sync_related_data() -> None:
-            """Синхронизирует коммерческие данные через ProductService.
-
-            И запускает обработку аудио.
-            """
+        def sync_commerce() -> None:
+            """Синхронизирует коммерческие данные через ProductService."""
             validated_data = {
                 'price': price,
                 'variants': [],
@@ -95,12 +90,10 @@ class TrackInlineForm(MoneyForm):
                 instance,
                 validated_data=validated_data,
             )
-            if audio_file_changed:
-                TrackGeneratedAudioScheduler.schedule(instance)
 
         if commit:
             # Для обычного сохранения вызываем сразу
-            sync_related_data()
+            sync_commerce()
         else:
             # Для inline-форм в админке: цепляем к save_m2m
             original_save_m2m = getattr(self, 'save_m2m', None)
@@ -110,7 +103,7 @@ class TrackInlineForm(MoneyForm):
                 if original_save_m2m:
                     original_save_m2m()
                 # Затем синхронизируем цену и аудио
-                sync_related_data()
+                sync_commerce()
 
             self.save_m2m = chained_save_m2m
         return instance
@@ -124,7 +117,6 @@ class TrackInline(NestedTabularInline):
     fields = (
         'position',
         'name',
-        'audio_file',
         'duration',
         'is_active',
         'price',
@@ -259,7 +251,17 @@ class AlbumAdmin(
             },
         ),
     )
-    inlines = (ProductInline, TrackInline, AlbumArchiveInline)
+
+    def get_inlines(self, request, obj=None):
+        """Возвращает inline-блоки для страницы альбома."""
+        if obj is None:
+            return (ProductInline,)
+
+        return (
+            ProductInline,
+            TrackInline,
+            AlbumArchiveInline,
+        )
 
     @admin.display(description='Изображение')
     def image_preview(self, obj):
