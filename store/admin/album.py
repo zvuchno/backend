@@ -13,7 +13,7 @@ from django.contrib import admin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
 from django.db import transaction
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.middleware.csrf import get_token
 from django.urls import path, reverse
 from django.utils.html import format_html
@@ -292,6 +292,22 @@ class AlbumAdmin(
     def get_queryset(self, request):
         """Родительский метод миксина + select_related('genre', 'owner')."""
         return super().get_queryset(request).select_related('genre', 'owner')
+
+    def response_add(self, request, obj, post_url_continue=None):
+        """Перенаправляет к загрузке треков после создания альбома."""
+        if '_addtracks' in request.POST:
+            return HttpResponseRedirect(
+                reverse(
+                    'admin:store_album_change',
+                    args=(obj.pk,),
+                ),
+            )
+
+        return super().response_add(
+            request,
+            obj,
+            post_url_continue=post_url_continue,
+        )
 
     def get_inlines(self, request, obj=None):
         """Возвращает inline-блоки для страницы альбома."""

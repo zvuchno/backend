@@ -24,7 +24,8 @@
                     >
 
                     <div class="help">
-                        Поддерживаются MP3, WAV и FLAC. Максимальный размер файла — 500 МБ.
+                        Поддерживаются MP3, WAV и FLAC.
+                        Максимальный размер файла — 500 МБ.
                     </div>
                 </div>
             </div>
@@ -44,5 +45,19 @@
                 aria-live="polite"
             ></p>
         </fieldset>
+    {% endif %}
+{% endblock %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+
+    {% if not original %}
+        <div class="submit-row">
+            <input
+                type="submit"
+                value="Сохранить и добавить треки"
+                name="_addtracks"
+            >
+        </div>
     {% endif %}
 {% endblock %}
