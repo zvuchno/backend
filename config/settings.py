@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import sentry_sdk
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -347,6 +348,16 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_TASK_TIME_LIMIT = 300
+
+CELERY_BEAT_SCHEDULE = {
+    'release-expired-reservations': {
+        'task': 'store.tasks.reservations.release_expired_reservations',
+        'schedule': crontab(minute='*/10'),
+        'options': {
+            'queue': 'celery',
+        }
+    },
+}
 
 if DEBUG:
     # Локальная разработка: кэш в оперативной памяти

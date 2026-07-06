@@ -139,6 +139,7 @@ class CartAdmin(admin.ModelAdmin):
         'get_subtotal',
         'get_discount_promocode',
         'get_total',
+        'updated_at',
     )
     search_fields = ('user__username', 'user__email')
     autocomplete_fields = ('user', 'promocode')

@@ -3,12 +3,17 @@
 Содержит настройку интерфейса Django Admin для модели заказа покупателя.
 """
 
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.db import transaction
+from django.db.models import Exists, OuterRef
 from django.urls import NoReverseMatch, reverse
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from common.utils.money import format_money
 
+from .hooks import handle_order_status_change
+from store.exceptions import NotEnoughStock
 from store.models import Order, OrderItem, Payment
 
 
@@ -102,13 +107,28 @@ class PaymentInline(admin.TabularInline):
     extra = 0
     fields = (
         'created_at',
-        'status',
+        'colored_status',
         'provider_payment_id',
         'amount',
         'error_code',
     )
     readonly_fields = fields
     can_delete = False
+
+    @admin.display(description='Статус')
+    def colored_status(self, obj):
+        colors = {
+            'pending': '#0d6efd',
+            'succeeded': '#28a745',
+            'canceled': '#daa024',
+            'failed': '#dc3545',
+        }
+
+        return format_html(
+            '<span style="color: {};">{}</span>',
+            colors.get(obj.status),
+            obj.get_status_display(),
+        )
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -123,10 +143,11 @@ class OrderAdmin(admin.ModelAdmin):
 
     list_display = (
         'order_number',
-        'email',
-        'is_authorized',
+        'created_at',
+        'user',
         'status',
         'delivery',
+        'is_paid',
         'display_total',
     )
     list_editable = ('status',)
@@ -145,6 +166,7 @@ class OrderAdmin(admin.ModelAdmin):
         'promocode',
         'created_at',
         'updated_at',
+        'reserved_until',
     )
     search_fields = (
         'order_number',
@@ -166,6 +188,7 @@ class OrderAdmin(admin.ModelAdmin):
                     'order_number',
                     'user',
                     'status',
+                    'reserved_until',
                 ),
             },
         ),
@@ -239,15 +262,41 @@ class OrderAdmin(admin.ModelAdmin):
         ]
         return ', '.join(filter(None, parts)) or '-'
 
-    @admin.display(description='Авторизован', boolean=True)
-    def is_authorized(self, obj):
-        """Проверяет, привязан ли заказ к профилю пользователя."""
-        return obj.user_id is not None
+    @admin.display(description='Оплачен', boolean=True)
+    def is_paid(self, obj):
+        """Проверяет, есть ли у заказа успешно завершенный платеж."""
+        return obj.payments.filter(status='succeeded').exists()
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            super().save_model(request, obj, form, change)
+            return
+
+        old_status = Order.objects.get(pk=obj.pk).status
+
+        try:
+            with transaction.atomic():
+                super().save_model(request, obj, form, change)
+                obj.refresh_from_db()
+                handle_order_status_change(obj, old_status)
+
+        except NotEnoughStock as e:
+            messages.error(request, f'Не удалось зарезервировать товары: {e}')
+            return
 
     def get_queryset(self, request):
+        # Аннотируем заказы по наличию успешного платежа
         return (
             super()
             .get_queryset(request)
+            .annotate(
+                has_successful_payment=Exists(
+                    Payment.objects.filter(
+                        order=OuterRef('pk'),
+                        status='succeeded',
+                    ),
+                ),
+            )
             .prefetch_related(
                 'items__product_variant__product__album',
                 'items__product_variant__product__track',

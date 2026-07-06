@@ -3,6 +3,7 @@
 Содержит настройку интерфейса Django Admin для модели мерча.
 """
 
+from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
 from nested_admin import (
@@ -20,10 +21,24 @@ from store.admin.mixins import (
 from store.models import Image, Merch, Product, ProductVariant
 
 
+class MerchVariantForm(forms.ModelForm):
+    """Форма для инлайна вариантов продукта."""
+
+    class Meta:
+        model = ProductVariant
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        """Делает обязательными поля варианта продукта."""
+        super().__init__(*args, **kwargs)
+        self.fields['property_value'].required = True
+
+
 class ProductVariantInline(NestedTabularInline):
     """Инлайн для редактирования вариантов продукта в админке."""
 
     model = ProductVariant
+    form = MerchVariantForm
     fields = ('sku', 'property_value', 'stock', 'is_active', 'updated_at')
     extra = 0
     readonly_fields = ('sku', 'updated_at')

@@ -29,6 +29,7 @@ class Order(TimestampModel):
 
     class Status(models.TextChoices):
         CREATED = 'created', 'Создан'
+        RESERVED = 'reserved', 'Резерв'
         PAID = 'paid', 'Оплачен'
         SHIPPED = 'shipped', 'Отправлен'
         COMPLETED = 'completed', 'Завершен'
@@ -129,6 +130,12 @@ class Order(TimestampModel):
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,
         validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    reserved_until = models.DateTimeField(
+        'Зарезервирован до',
+        null=True,
+        blank=True,
+        help_text='Только автоматическое резервирование, ручное - бессрочно',
     )
 
     def _generate_order_number(self) -> str:
