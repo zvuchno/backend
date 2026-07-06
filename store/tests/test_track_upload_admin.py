@@ -161,16 +161,18 @@ class TestAlbumAdminTrackUpload:
 
         transport = initiate_data['upload']['transport']
 
-        assert transport == {
-            'method': 'POST',
-            'url': reverse(
-                'admin:store_track_upload_receive_file',
-                args=(upload_id,),
-            ),
-            'headers': {},
-            'fields': {},
-            'file_field_name': 'file',
+        assert transport['method'] == 'POST'
+        assert transport['url'] == reverse(
+            'admin:store_track_upload_receive_file',
+            args=(upload_id,),
+        )
+        assert transport['fields'] == {}
+        assert transport['file_field_name'] == 'file'
+
+        assert set(transport['headers']) == {
+            'X-CSRFToken',
         }
+        assert transport['headers']['X-CSRFToken']
 
         upload_response = admin_client.post(
             transport['url'],
@@ -181,6 +183,7 @@ class TestAlbumAdminTrackUpload:
                     content_type='audio/flac',
                 ),
             },
+            HTTP_X_CSRFTOKEN=transport['headers']['X-CSRFToken'],
         )
 
         assert upload_response.status_code == HTTPStatus.OK

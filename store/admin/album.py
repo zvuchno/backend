@@ -14,6 +14,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.http import Http404, JsonResponse
+from django.middleware.csrf import get_token
 from django.urls import path, reverse
 from django.utils.html import format_html
 from nested_admin.nested import (
@@ -212,6 +213,13 @@ class AlbumAdmin(
       прямо в форме альбома.
     """
 
+    change_form_template = 'admin/store/album/change_form.html'
+
+    class Media:
+        """Подключает JavaScript загрузчика треков."""
+
+        js = ('store/admin/album_track_upload.js',)
+
     list_display = (
         'name',
         'genre',
@@ -365,6 +373,9 @@ class AlbumAdmin(
                     TrackUploadTransportService.create_instruction(
                         upload=upload,
                         local_upload_url=local_upload_url,
+                        local_upload_headers={
+                            'X-CSRFToken': get_token(request),
+                        },
                     )
                 )
         except ValidationError as exc:
@@ -394,6 +405,10 @@ class AlbumAdmin(
                     'id': upload.pk,
                     'status': upload.status,
                     'expires_at': upload_instruction.expires_at.isoformat(),
+                    'complete_url': reverse(
+                        'admin:store_track_upload_complete',
+                        args=(upload.pk,),
+                    ),
                     'transport': {
                         'method': upload_instruction.method,
                         'url': upload_instruction.url,

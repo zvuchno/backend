@@ -37,6 +37,7 @@ class TrackUploadTransportService:
         *,
         upload: TrackUpload,
         local_upload_url: str,
+        local_upload_headers: dict[str, str] | None = None,
     ) -> UploadInstruction:
         """Возвращает инструкцию для загрузки файла конкретной попытки."""
         if settings.USE_S3_MEDIA:
@@ -45,7 +46,7 @@ class TrackUploadTransportService:
         return UploadInstruction(
             method='POST',
             url=local_upload_url,
-            headers={},
+            headers=local_upload_headers or {},
             fields={},
             file_field_name='file',
             expires_at=upload.expires_at,

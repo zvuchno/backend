@@ -1,0 +1,48 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_field_sets %}
+    {{ block.super }}
+
+    {% if original %}
+        <fieldset
+            class="module aligned"
+            data-track-upload
+            data-initiate-url="{% url 'admin:store_album_track_upload_initiate' original.pk %}"
+        >
+            <h2>Загрузка трека</h2>
+
+            <div class="form-row">
+                <div>
+                    <label for="id_track_upload_file">
+                        Оригинальный аудиофайл:
+                    </label>
+
+                    <input
+                        id="id_track_upload_file"
+                        type="file"
+                        accept=".mp3,.wav,.flac,audio/mpeg,audio/wav,audio/flac"
+                    >
+
+                    <div class="help">
+                        Поддерживаются MP3, WAV и FLAC. Максимальный размер файла — 500 МБ.
+                    </div>
+                </div>
+            </div>
+
+            <div class="submit-row">
+                <input
+                    type="button"
+                    value="Загрузить трек"
+                    class="default"
+                    data-track-upload-submit
+                >
+            </div>
+
+            <p
+                class="help"
+                data-track-upload-status
+                aria-live="polite"
+            ></p>
+        </fieldset>
+    {% endif %}
+{% endblock %}
