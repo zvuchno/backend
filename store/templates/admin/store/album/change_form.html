@@ -14,18 +14,19 @@
             <div class="form-row">
                 <div>
                     <label for="id_track_upload_file">
-                        Оригинальный аудиофайл:
+                        Оригинальные аудиофайлы:
                     </label>
 
                     <input
                         id="id_track_upload_file"
                         type="file"
+                        multiple
                         accept=".mp3,.wav,.flac,audio/mpeg,audio/wav,audio/flac"
                     >
 
                     <div class="help">
                         Поддерживаются MP3, WAV и FLAC.
-                        Максимальный размер файла — 500 МБ.
+                        Максимальный размер одного файла — 500 МБ.
                     </div>
                 </div>
             </div>
@@ -33,7 +34,7 @@
             <div class="submit-row">
                 <input
                     type="button"
-                    value="Загрузить трек"
+                    value="Загрузить треки"
                     class="default"
                     data-track-upload-submit
                 >
@@ -44,6 +45,12 @@
                 data-track-upload-status
                 aria-live="polite"
             ></p>
+
+            <ul
+                class="messagelist"
+                data-track-upload-list
+                aria-live="polite"
+            ></ul>
         </fieldset>
     {% endif %}
 {% endblock %}

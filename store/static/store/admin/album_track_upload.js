@@ -15,6 +15,9 @@
         const statusElement = root.querySelector(
             '[data-track-upload-status]',
         );
+        const uploadList = root.querySelector(
+            '[data-track-upload-list]',
+        );
         const initiateUrl = root.dataset.initiateUrl;
 
         function setStatus(message, isError = false) {
@@ -42,6 +45,33 @@
             }
 
             return '';
+        }
+
+        function getFileLabel(file, index, total) {
+            return `${index + 1}/${total} — ${file.name}`;
+        }
+
+        function createQueue(files) {
+            uploadList.replaceChildren();
+
+            return files.map((file, index) => {
+                const item = document.createElement('li');
+
+                item.textContent = `${getFileLabel(
+                    file,
+                    index,
+                    files.length,
+                )} — ожидает загрузки`;
+
+                uploadList.append(item);
+
+                return item;
+            });
+        }
+
+        function setQueueItemStatus(item, message, isError = false) {
+            item.textContent = message;
+            item.classList.toggle('error', isError);
         }
 
         async function getErrorMessage(response, fallbackMessage) {
@@ -142,42 +172,83 @@
             return response.json();
         }
 
-        submitButton.addEventListener('click', async () => {
-            const file = input.files[0];
+        async function uploadSingleFile(file) {
+            const initiateData = await initiateUpload(file);
 
-            if (!file) {
+            await uploadFile(
+                file,
+                initiateData.upload.transport,
+            );
+
+            await completeUpload(
+                initiateData.upload.complete_url,
+            );
+        }
+
+        submitButton.addEventListener('click', async () => {
+            const files = Array.from(input.files);
+
+            if (!files.length) {
                 setStatus(
-                    'Выберите аудиофайл для загрузки.',
+                    'Выберите хотя бы один аудиофайл для загрузки.',
                     true,
                 );
                 return;
             }
 
+            const queueItems = createQueue(files);
+
             setLoading(true);
-            setStatus('Подготавливаем загрузку…');
+            setStatus(`Выбрано файлов: ${files.length}.`);
 
             try {
-                const initiateData = await initiateUpload(file);
+                for (const [index, file] of files.entries()) {
+                    const queueItem = queueItems[index];
+                    const fileLabel = getFileLabel(
+                        file,
+                        index,
+                        files.length,
+                    );
 
-                setStatus('Передаём файл в хранилище…');
+                    setStatus(`Загружается ${fileLabel}.`);
+                    setQueueItemStatus(
+                        queueItem,
+                        `${fileLabel} — загрузка…`,
+                    );
 
-                await uploadFile(
-                    file,
-                    initiateData.upload.transport,
-                );
+                    await uploadSingleFile(file);
 
-                setStatus('Подтверждаем загрузку…');
+                    setQueueItemStatus(
+                        queueItem,
+                        `${fileLabel} — загружен`,
+                    );
+                }
 
-                await completeUpload(
-                    initiateData.upload.complete_url,
-                );
-
-                setStatus('Трек загружен. Обновляем страницу…');
+                setStatus('Все треки загружены. Обновляем страницу…');
+                input.value = '';
 
                 window.location.reload();
             } catch (error) {
+                const currentItem = queueItems.find(
+                    (item) => item.textContent.endsWith('— загрузка…'),
+                );
+
+                if (currentItem) {
+                    setQueueItemStatus(
+                        currentItem,
+                        `${currentItem.textContent.replace(
+                            '— загрузка…',
+                            '— ошибка',
+                        )}: ${
+                            error.message
+                            || 'Не удалось загрузить файл.'
+                        }`,
+                        true,
+                    );
+                }
+
                 setStatus(
-                    error.message || 'Не удалось загрузить трек.',
+                    'Загрузка остановлена. Уже загруженные треки сохранены.',
                     true,
                 );
                 setLoading(false);
