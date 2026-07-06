@@ -1,3 +1,4 @@
+from .clean_up import TrackUploadCleanupService
 from .upload_service import TrackUploadService
 from .upload_storage import (
     TrackUploadStorageError,
@@ -10,6 +11,7 @@ from .upload_transport import (
 )
 
 __all__ = [
+    'TrackUploadCleanupService',
     'TrackUploadService',
     'TrackUploadStorageError',
     'TrackUploadStorageService',

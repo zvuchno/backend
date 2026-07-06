@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import sentry_sdk
+from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -129,6 +130,9 @@ if USE_SQLITE:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 30,  # Ожидать освобождения базы до 30 секунд
+            },
         }
     }
 else:
@@ -347,6 +351,17 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_TASK_TIME_LIMIT = 300
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-expired-track-uploads': {
+        'task': (
+            'store.tasks.track_upload.cleanup_expired_track_uploads'
+        ),
+        'schedule': crontab(
+            hour=4,
+            minute=10,
+        ),
+    },
+}
 
 if DEBUG:
     # Локальная разработка: кэш в оперативной памяти

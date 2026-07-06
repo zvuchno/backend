@@ -214,16 +214,22 @@ class TrackUploadStorageService:
         return uploaded_size
 
     @classmethod
+    def delete_staging(cls, *, upload: TrackUpload) -> None:
+        """Удаляет staging-файл загрузки из текущего хранилища."""
+        if settings.USE_S3_MEDIA:
+            cls._get_s3_client().delete_object(
+                Bucket=settings.AWS_PRIVATE_STORAGE_BUCKET_NAME,
+                Key=cls._get_bucket_key(upload.staging_key),
+            )
+            return
+
+        upload.track.audio_file.storage.delete(upload.staging_key)
+
+    @classmethod
     def _delete_staging_safely(cls, *, upload: TrackUpload) -> None:
         """Удаляет staging-файл после успешного завершения загрузки."""
         try:
-            if settings.USE_S3_MEDIA:
-                cls._get_s3_client().delete_object(
-                    Bucket=settings.AWS_PRIVATE_STORAGE_BUCKET_NAME,
-                    Key=cls._get_bucket_key(upload.staging_key),
-                )
-            else:
-                upload.track.audio_file.storage.delete(upload.staging_key)
+            cls.delete_staging(upload=upload)
         except Exception:
             logger.exception(
                 'Не удалось удалить staging-файл трека: %s',
