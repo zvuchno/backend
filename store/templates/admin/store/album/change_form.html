@@ -9,7 +9,7 @@
             data-track-upload
             data-initiate-url="{% url 'admin:store_album_track_upload_initiate' original.pk %}"
         >
-            <h2>Загрузка трека</h2>
+            <h2>Загрузка треков</h2>
 
             <div class="form-row">
                 <div>
@@ -38,6 +38,13 @@
                     class="default"
                     data-track-upload-submit
                 >
+
+                <input
+                    type="button"
+                    value="Повторить текущий файл"
+                    hidden
+                    data-track-upload-retry
+                >
             </div>
 
             <p
@@ -46,11 +53,8 @@
                 aria-live="polite"
             ></p>
 
-            <ul
-                class="messagelist"
-                data-track-upload-list
-                aria-live="polite"
-            ></ul>
+            <ul class="track-upload-list" data-track-upload-list>
+            </ul>
         </fieldset>
     {% endif %}
 {% endblock %}

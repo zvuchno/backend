@@ -157,9 +157,22 @@ class TrackInline(NestedTabularInline):
     sortable_field_name = 'position'
 
     def get_queryset(self, request):
-        """Подтянуть связанные с Track поля."""
+        """Возвращает только финализированные треки альбома."""
         qs = super().get_queryset(request)
-        return qs.select_related('product', 'generated')
+
+        return (
+            qs
+            .filter(
+                audio_file__isnull=False,
+            )
+            .exclude(
+                audio_file='',
+            )
+            .select_related(
+                'product',
+                'generated',
+            )
+        )
 
     def has_add_permission(self, request, obj=None):
         """Запрещает создание треков через inline."""
@@ -631,37 +644,4 @@ class AlbumAdmin(
                 },
             },
             status=HTTPStatus.OK,
-        )
-
-    @admin.display(description='Аудио')
-    def audio_players(self, obj):
-        generated_audio = getattr(
-            obj,
-            'generated_audio',
-            None,
-        )
-
-        if generated_audio is None:
-            return 'Оригинал не обработан'
-
-        if generated_audio.status == TrackGeneratedAudio.Status.PROCESSING:
-            return 'Готовится…'
-
-        if generated_audio.status == TrackGeneratedAudio.Status.FAILED:
-            return 'Ошибка подготовки'
-
-        if not generated_audio.preview_file or not generated_audio.stream_file:
-            return 'Файлы ещё не готовы'
-
-        return format_html(
-            (
-                '<div>'
-                '<div>Preview</div>'
-                '<audio controls preload="none" src="{}"></audio>'
-                '<div>Stream</div>'
-                '<audio controls preload="none" src="{}"></audio>'
-                '</div>'
-            ),
-            generated_audio.preview_file.url,
-            generated_audio.stream_file.url,
         )

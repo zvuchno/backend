@@ -22,7 +22,7 @@ class TestTrackUploadService:
     """Тесты подготовки треков к загрузке."""
 
     def test_creates_pending_track_and_upload(self):
-        """Создаёт неактивный трек, товар и попытку загрузки."""
+        """Создаёт неактивный технический трек и попытку загрузки."""
         album = AlbumFactory()
 
         track, upload = TrackUploadService.create_pending_track(
@@ -34,7 +34,7 @@ class TestTrackUploadService:
 
         assert track.album == album
         assert track.name == '01. Intro'
-        assert track.position == 1
+        assert track.position is None
         assert track.is_active is False
         assert not track.audio_file
 
@@ -50,8 +50,8 @@ class TestTrackUploadService:
             f'staging/track-uploads/{album.pk}/',
         )
 
-    def test_sets_position_after_existing_tracks(self):
-        """Добавляет pending-трек в конец существующего треклиста."""
+    def test_pending_track_does_not_take_position_in_tracklist(self):
+        """Черновой трек не занимает позицию до успешной финализации."""
         album = AlbumFactory()
 
         TrackFactory(
@@ -65,7 +65,7 @@ class TestTrackUploadService:
             size=10,
         )
 
-        assert track.position == 5
+        assert track.position is None
 
     @pytest.mark.parametrize(
         'filename',

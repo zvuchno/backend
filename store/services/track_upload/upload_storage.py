@@ -10,9 +10,10 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Max
 from django.utils import timezone
 
-from store.models import TrackUpload
+from store.models import Album, Track, TrackUpload
 from store.services.audio import TrackGeneratedAudioScheduler
 from store.upload_paths import track_audio_upload_to
 
@@ -74,10 +75,32 @@ class TrackUploadStorageService:
             )
 
         track = upload.track
+
+        album = Album.objects.select_for_update().get(
+            pk=track.album_id,
+        )
+
+        last_position = (
+            Track.objects
+            .filter(
+                album_id=album.pk,
+                position__isnull=False,
+            )
+            .exclude(
+                pk=track.pk,
+                audio_file='',
+            )
+            .aggregate(
+                max_position=Max('position'),
+            )
+        )['max_position']
+
+        track.position = (last_position or 0) + 1
         track.audio_file.name = final_key
         track.save(
             update_fields=(
                 'audio_file',
+                'position',
                 'updated_at',
             ),
         )

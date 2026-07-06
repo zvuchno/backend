@@ -65,7 +65,7 @@ class TestAlbumAdminTrackUpload:
 
         assert track.album == album
         assert track.name == '01 Intro'
-        assert track.position == 1
+        assert track.position is None
         assert track.is_active is False
 
         assert upload.track == track
@@ -74,7 +74,7 @@ class TestAlbumAdminTrackUpload:
         assert data['track']['id'] == track.pk
         assert data['upload']['id'] == upload.pk
         assert data['track']['name'] == '01 Intro'
-        assert data['track']['position'] == 1
+        assert data['track']['position'] is None
         assert data['upload']['status'] == TrackUpload.Status.INITIATED
         assert data['upload']['transport'] == {
             'method': 'POST',

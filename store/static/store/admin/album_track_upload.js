@@ -1,6 +1,27 @@
 (function () {
     'use strict';
 
+    const STORAGE_RETRY_DELAYS = [1000];
+    const COMPLETE_RETRY_DELAYS = [1000, 2000, 4000];
+
+    class UploadRequestError extends Error {
+        constructor(message, status = null) {
+            super(message);
+            this.name = 'UploadRequestError';
+            this.status = status;
+        }
+    }
+
+    class UploadFlowError extends Error {
+        constructor({ cause, stage, uploadData = null }) {
+            super(cause.message);
+            this.name = 'UploadFlowError';
+            this.cause = cause;
+            this.stage = stage;
+            this.uploadData = uploadData;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         const root = document.querySelector('[data-track-upload]');
 
@@ -12,6 +33,9 @@
         const submitButton = root.querySelector(
             '[data-track-upload-submit]',
         );
+        const retryButton = root.querySelector(
+            '[data-track-upload-retry]',
+        );
         const statusElement = root.querySelector(
             '[data-track-upload-status]',
         );
@@ -19,6 +43,10 @@
             '[data-track-upload-list]',
         );
         const initiateUrl = root.dataset.initiateUrl;
+
+        let activeFiles = [];
+        let queueItems = [];
+        let failedContext = null;
 
         function setStatus(message, isError = false) {
             statusElement.textContent = message;
@@ -28,6 +56,18 @@
         function setLoading(isLoading) {
             submitButton.disabled = isLoading;
             input.disabled = isLoading;
+
+            if (retryButton) {
+                retryButton.disabled = isLoading;
+            }
+        }
+
+        function showRetryButton(show) {
+            if (!retryButton) {
+                return;
+            }
+
+            retryButton.hidden = !show;
         }
 
         function getCsrfToken() {
@@ -45,6 +85,12 @@
             }
 
             return '';
+        }
+
+        function wait(milliseconds) {
+            return new Promise((resolve) => {
+                window.setTimeout(resolve, milliseconds);
+            });
         }
 
         function getFileLabel(file, index, total) {
@@ -69,9 +115,27 @@
             });
         }
 
-        function setQueueItemStatus(item, message, isError = false) {
+        function setQueueItemStatus(item, message, state = 'pending') {
             item.textContent = message;
-            item.classList.toggle('error', isError);
+
+            item.classList.remove(
+                'track-upload-pending',
+                'track-upload-progress',
+                'track-upload-success',
+                'track-upload-error',
+            );
+
+            item.classList.add(`track-upload-${state}`);
+        }
+
+        function isRetryableError(error) {
+            return (
+                error instanceof UploadRequestError
+                && (
+                    error.status === null
+                    || error.status >= 500
+                )
+            );
         }
 
         async function getErrorMessage(response, fallbackMessage) {
@@ -94,26 +158,35 @@
         }
 
         async function initiateUpload(file) {
-            const response = await fetch(initiateUrl, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken(),
-                },
-                body: JSON.stringify({
-                    filename: file.name,
-                    size: file.size,
-                    content_type: file.type,
-                }),
-            });
+            let response;
+
+            try {
+                response = await fetch(initiateUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        filename: file.name,
+                        size: file.size,
+                        content_type: file.type,
+                    }),
+                });
+            } catch {
+                throw new UploadRequestError(
+                    'Не удалось подготовить загрузку трека.',
+                );
+            }
 
             if (!response.ok) {
-                throw new Error(
+                throw new UploadRequestError(
                     await getErrorMessage(
                         response,
                         'Не удалось подготовить загрузку трека.',
                     ),
+                    response.status,
                 );
             }
 
@@ -134,55 +207,271 @@
                 file,
             );
 
-            const response = await fetch(transport.url, {
-                method: transport.method,
-                credentials: 'same-origin',
-                headers: transport.headers,
-                body: formData,
-            });
+            let response;
+
+            try {
+                response = await fetch(transport.url, {
+                    method: transport.method,
+                    headers: transport.headers,
+                    body: formData,
+                });
+            } catch {
+                throw new UploadRequestError(
+                    'Не удалось передать файл в хранилище.',
+                );
+            }
 
             if (!response.ok) {
-                throw new Error(
+                throw new UploadRequestError(
                     await getErrorMessage(
                         response,
                         'Не удалось передать файл в хранилище.',
                     ),
+                    response.status,
                 );
             }
         }
 
         async function completeUpload(completeUrl) {
-            const response = await fetch(completeUrl, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'X-CSRFToken': getCsrfToken(),
-                },
-            });
+            let response;
+
+            try {
+                response = await fetch(completeUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                });
+            } catch {
+                throw new UploadRequestError(
+                    'Не удалось подтвердить загрузку трека.',
+                );
+            }
 
             if (!response.ok) {
-                throw new Error(
+                throw new UploadRequestError(
                     await getErrorMessage(
                         response,
-                        'Не удалось завершить загрузку трека.',
+                        'Не удалось подтвердить загрузку трека.',
                     ),
+                    response.status,
                 );
             }
 
             return response.json();
         }
 
-        async function uploadSingleFile(file) {
-            const initiateData = await initiateUpload(file);
+        async function runWithRetry(
+            operation,
+            retryDelays,
+            onRetry,
+        ) {
+            for (
+                let attempt = 0;
+                attempt <= retryDelays.length;
+                attempt += 1
+            ) {
+                try {
+                    return await operation();
+                } catch (error) {
+                    const isLastAttempt = (
+                        attempt === retryDelays.length
+                    );
 
-            await uploadFile(
+                    if (
+                        !isRetryableError(error)
+                        || isLastAttempt
+                    ) {
+                        throw error;
+                    }
+
+                    const delay = retryDelays[attempt];
+
+                    onRetry(delay, attempt + 1);
+                    await wait(delay);
+                }
+            }
+
+            throw new Error('Не удалось выполнить загрузку.');
+        }
+
+        async function processFile({
+            file,
+            index,
+            queueItem,
+            uploadData = null,
+            resumeFrom = 'initiate',
+        }) {
+            const fileLabel = getFileLabel(
                 file,
-                initiateData.upload.transport,
+                index,
+                activeFiles.length,
             );
 
-            await completeUpload(
-                initiateData.upload.complete_url,
+            if (resumeFrom === 'initiate') {
+                setStatus(`Подготавливаем ${fileLabel}.`);
+                setQueueItemStatus(
+                    queueItem,
+                    `${fileLabel} — подготовка…`,
+                    'progress',
+                );
+
+                try {
+                    uploadData = await initiateUpload(file);
+                } catch (error) {
+                    throw new UploadFlowError({
+                        cause: error,
+                        stage: 'initiate',
+                    });
+                }
+            }
+
+            if (resumeFrom !== 'complete') {
+                setStatus(`Передаём ${fileLabel} в хранилище.`);
+                setQueueItemStatus(
+                    queueItem,
+                    `${fileLabel} — передача файла…`,
+                    'progress',
+                );
+
+                try {
+                    await runWithRetry(
+                        () => uploadFile(
+                            file,
+                            uploadData.upload.transport,
+                        ),
+                        STORAGE_RETRY_DELAYS,
+                        (delay) => {
+                            setStatus(
+                                `${fileLabel}: повторяем передачу `
+                                + `через ${delay / 1000} с…`,
+                            );
+                        },
+                    );
+                } catch (error) {
+                    throw new UploadFlowError({
+                        cause: error,
+                        stage: 'upload',
+                        uploadData,
+                    });
+                }
+            }
+
+            setStatus(`Подтверждаем ${fileLabel}.`);
+            setQueueItemStatus(
+                queueItem,
+                `${fileLabel} — подтверждение…`,
+                'progress',
             );
+
+            try {
+                await runWithRetry(
+                    () => completeUpload(
+                        uploadData.upload.complete_url,
+                    ),
+                    COMPLETE_RETRY_DELAYS,
+                    (delay) => {
+                        setStatus(
+                            `${fileLabel}: повторяем подтверждение `
+                            + `через ${delay / 1000} с…`,
+                        );
+                    },
+                );
+            } catch (error) {
+                throw new UploadFlowError({
+                    cause: error,
+                    stage: 'complete',
+                    uploadData,
+                });
+            }
+
+            setQueueItemStatus(
+                queueItem,
+                `${fileLabel} — загружен`,
+                'success',
+            );
+        }
+
+        async function runQueue(
+            startIndex = 0,
+            resumeContext = null,
+        ) {
+            setLoading(true);
+            showRetryButton(false);
+
+            for (
+                let index = startIndex;
+                index < activeFiles.length;
+                index += 1
+            ) {
+                const file = activeFiles[index];
+                const queueItem = queueItems[index];
+
+                const isResumedFile = (
+                    resumeContext
+                    && index === resumeContext.index
+                );
+
+                try {
+                    await processFile({
+                        file,
+                        index,
+                        queueItem,
+                        uploadData: isResumedFile
+                            ? resumeContext.uploadData
+                            : null,
+                        resumeFrom: isResumedFile
+                            ? resumeContext.stage
+                            : 'initiate',
+                    });
+                } catch (error) {
+                    failedContext = {
+                        file,
+                        index,
+                        queueItem,
+                        uploadData: error.uploadData,
+                        stage: error.stage,
+                    };
+
+                    const fileLabel = getFileLabel(
+                        file,
+                        index,
+                        activeFiles.length,
+                    );
+
+                    setQueueItemStatus(
+                        queueItem,
+                        `${fileLabel} — ошибка: ${error.message}`,
+                        'error',
+                    );
+
+                    if (error.uploadData) {
+                        setStatus(
+                            'Загрузка остановлена. '
+                            + 'Можно повторить текущий файл.',
+                            true,
+                        );
+                        showRetryButton(true);
+                    } else {
+                        setStatus(
+                            'Не удалось начать загрузку. '
+                            + 'Обновите страницу и попробуйте снова.',
+                            true,
+                        );
+                    }
+
+                    setLoading(false);
+                    return;
+                }
+
+                resumeContext = null;
+            }
+
+            setStatus('Все треки загружены. Обновляем страницу…');
+            input.value = '';
+
+            window.location.reload();
         }
 
         submitButton.addEventListener('click', async () => {
@@ -196,63 +485,24 @@
                 return;
             }
 
-            const queueItems = createQueue(files);
+            activeFiles = files;
+            queueItems = createQueue(files);
+            failedContext = null;
 
-            setLoading(true);
             setStatus(`Выбрано файлов: ${files.length}.`);
 
-            try {
-                for (const [index, file] of files.entries()) {
-                    const queueItem = queueItems[index];
-                    const fileLabel = getFileLabel(
-                        file,
-                        index,
-                        files.length,
-                    );
+            await runQueue();
+        });
 
-                    setStatus(`Загружается ${fileLabel}.`);
-                    setQueueItemStatus(
-                        queueItem,
-                        `${fileLabel} — загрузка…`,
-                    );
-
-                    await uploadSingleFile(file);
-
-                    setQueueItemStatus(
-                        queueItem,
-                        `${fileLabel} — загружен`,
-                    );
-                }
-
-                setStatus('Все треки загружены. Обновляем страницу…');
-                input.value = '';
-
-                window.location.reload();
-            } catch (error) {
-                const currentItem = queueItems.find(
-                    (item) => item.textContent.endsWith('— загрузка…'),
-                );
-
-                if (currentItem) {
-                    setQueueItemStatus(
-                        currentItem,
-                        `${currentItem.textContent.replace(
-                            '— загрузка…',
-                            '— ошибка',
-                        )}: ${
-                            error.message
-                            || 'Не удалось загрузить файл.'
-                        }`,
-                        true,
-                    );
-                }
-
-                setStatus(
-                    'Загрузка остановлена. Уже загруженные треки сохранены.',
-                    true,
-                );
-                setLoading(false);
+        retryButton?.addEventListener('click', async () => {
+            if (!failedContext) {
+                return;
             }
+
+            await runQueue(
+                failedContext.index,
+                failedContext,
+            );
         });
     });
 }());

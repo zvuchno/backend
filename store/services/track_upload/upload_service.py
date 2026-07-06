@@ -7,7 +7,6 @@ from pathlib import Path
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
-from django.db.models import Max
 from django.utils import timezone
 
 from store.constants import (
@@ -47,7 +46,7 @@ class TrackUploadService:
         track = Track.objects.create(
             album=album,
             name=cls._get_track_name(filename),
-            position=cls._get_next_position(album),
+            position=None,
             is_active=False,
         )
 
@@ -181,12 +180,3 @@ class TrackUploadService:
     def _get_track_name(filename: str) -> str:
         """Возвращает предварительное название трека из имени файла."""
         return Path(filename).stem
-
-    @staticmethod
-    def _get_next_position(album: Album) -> int:
-        """Возвращает следующую свободную позицию в треклисте альбома."""
-        last_position = album.tracks.aggregate(
-            max_position=Max('position'),
-        )['max_position']
-
-        return (last_position or 0) + 1
