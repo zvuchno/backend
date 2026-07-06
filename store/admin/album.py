@@ -33,7 +33,14 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
-from store.models import Album, AlbumArchive, Product, Track, TrackUpload
+from store.models import (
+    Album,
+    AlbumArchive,
+    Product,
+    Track,
+    TrackGeneratedAudio,
+    TrackUpload,
+)
 from store.services import ProductService
 from store.services.track_upload import (
     TrackUploadService,
@@ -133,10 +140,16 @@ class TrackInline(NestedTabularInline):
         'position',
         'name',
         'duration',
+        'preview_player',
+        'audio_status',
         'is_active',
         'price',
     )
-    readonly_fields = ('duration',)
+    readonly_fields = (
+        'duration',
+        'preview_player',
+        'audio_status',
+    )
     extra = 0  # Чтобы Nested-сортировка не требовала заполнять пустое поле
     max_num = 0
     show_change_link = True
@@ -146,11 +159,81 @@ class TrackInline(NestedTabularInline):
     def get_queryset(self, request):
         """Подтянуть связанные с Track поля."""
         qs = super().get_queryset(request)
-        return qs.select_related('product')
+        return qs.select_related('product', 'generated')
 
     def has_add_permission(self, request, obj=None):
         """Запрещает создание треков через inline."""
         return False
+
+    @admin.display(description='Превью')
+    def preview_player(self, obj):
+        """Показывает проигрыватель готового превью трека."""
+        try:
+            generated = obj.generated
+        except TrackGeneratedAudio.DoesNotExist:
+            return 'Ожидает обработки'
+
+        if (
+            generated.preview_status
+            == TrackGeneratedAudio.ProcessingStatus.FAILED
+        ):
+            return format_html(
+                '<span class="errornote">Ошибка подготовки</span>',
+            )
+
+        if (
+            generated.preview_status
+            != TrackGeneratedAudio.ProcessingStatus.READY
+        ):
+            return generated.get_preview_status_display()
+
+        if not generated.preview_file:
+            return 'Файл не создан'
+
+        return format_html(
+            '<audio controls preload="none" src="{}"></audio>',
+            generated.preview_file.url,
+        )
+
+    @admin.display(description='Аудио')
+    def audio_status(self, obj):
+        """Показывает компактные статусы производных аудиофайлов."""
+        try:
+            generated = obj.generated
+        except TrackGeneratedAudio.DoesNotExist:
+            return 'Ожидает обработки'
+
+        preview = self._processing_status(
+            status=generated.preview_status,
+            error=generated.preview_error,
+        )
+        stream = self._processing_status(
+            status=generated.stream_status,
+            error=generated.stream_error,
+        )
+
+        return format_html(
+            'Preview: {}<br>Stream: {}',
+            preview,
+            stream,
+        )
+
+    @staticmethod
+    def _processing_status(*, status, error) -> str:
+        """Возвращает краткий HTML-статус подготовки файла."""
+        if status == TrackGeneratedAudio.ProcessingStatus.READY:
+            return format_html('<span class="yes"> готов</span>')
+
+        if status == TrackGeneratedAudio.ProcessingStatus.FAILED:
+            return format_html(
+                '<span class="errornote">✕ {}</span>',
+                error or 'ошибка',
+            )
+
+        if status == TrackGeneratedAudio.ProcessingStatus.BUILDING:
+            return ' подготавливается'
+
+        return ' ожидает'
 
 
 class ProductInline(NestedStackedInline):
@@ -548,4 +631,37 @@ class AlbumAdmin(
                 },
             },
             status=HTTPStatus.OK,
+        )
+
+    @admin.display(description='Аудио')
+    def audio_players(self, obj):
+        generated_audio = getattr(
+            obj,
+            'generated_audio',
+            None,
+        )
+
+        if generated_audio is None:
+            return 'Оригинал не обработан'
+
+        if generated_audio.status == TrackGeneratedAudio.Status.PROCESSING:
+            return 'Готовится…'
+
+        if generated_audio.status == TrackGeneratedAudio.Status.FAILED:
+            return 'Ошибка подготовки'
+
+        if not generated_audio.preview_file or not generated_audio.stream_file:
+            return 'Файлы ещё не готовы'
+
+        return format_html(
+            (
+                '<div>'
+                '<div>Preview</div>'
+                '<audio controls preload="none" src="{}"></audio>'
+                '<div>Stream</div>'
+                '<audio controls preload="none" src="{}"></audio>'
+                '</div>'
+            ),
+            generated_audio.preview_file.url,
+            generated_audio.stream_file.url,
         )
