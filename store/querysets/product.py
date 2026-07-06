@@ -42,6 +42,8 @@ class ProductQuerySet(models.QuerySet):
             merch__is_active=True,
             merch__is_published=True,
             merch__visibility='public',
+            variants__is_active=True,
+            variants__stock__gt=0,
         )
 
     def published_catalog_content(self):
@@ -62,6 +64,8 @@ class ProductQuerySet(models.QuerySet):
                 merch__is_active=True,
                 merch__is_published=True,
                 merch__visibility='public',
+                variants__is_active=True,
+                variants__stock__gt=0,
             ),
         )
 

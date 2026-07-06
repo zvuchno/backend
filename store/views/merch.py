@@ -1,4 +1,3 @@
-from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -17,6 +16,7 @@ from store.serializers import (
     MerchReadSerializer,
     MerchWriteSerializer,
 )
+from store.services import MerchImageService
 from store.views.mixins import ProductActionMixin, SoftDeleteMixin
 
 
@@ -86,14 +86,25 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     @add_image_schema
     @action(detail=True, methods=['post'], url_path='images')
     def add_image(self, request, pk=None):
+        """Добавляет изображение мерча."""
         merch = self.get_object()
         serializer = ImageSerializer(
             data=request.data,
             context={'request': request},
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save(merch=merch)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        image = MerchImageService.create_image(
+            merch=merch,
+            validated_data=serializer.validated_data,
+        )
+
+        return Response(
+            ImageSerializer(
+                image,
+                context={'request': request},
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @image_detail_schema
     @action(
@@ -102,20 +113,16 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         url_path='images/(?P<image_id>[0-9]+)',
     )
     def image_detail(self, request, pk=None, image_id=None):
+        """Обновляет или удаляет изображение мерча."""
         merch = self.get_object()
-        image = get_object_or_404(Image, id=image_id, merch=merch)
+        image = get_object_or_404(
+            Image,
+            id=image_id,
+            merch=merch,
+        )
 
         if request.method == 'DELETE':
-            with transaction.atomic():
-                was_main = image.is_main
-                image_file = image.image
-                image.delete()
-                transaction.on_commit(lambda: image_file.delete(save=False))
-                if was_main:
-                    next_image = merch.images_merch.first()
-                    if next_image:
-                        next_image.is_main = True
-                        next_image.save(update_fields=['is_main'])
+            MerchImageService.delete_image(image=image)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         serializer = ImageSerializer(
@@ -126,13 +133,14 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
 
-        with transaction.atomic():
-            was_main = image.is_main
-            serializer.save()
-            if was_main and not serializer.instance.is_main:
-                next_image = merch.images_merch.exclude(id=image.id).first()
-                if next_image:
-                    next_image.is_main = True
-                    next_image.save(update_fields=['is_main'])
+        image = MerchImageService.update_image(
+            image=image,
+            validated_data=serializer.validated_data,
+        )
 
-        return Response(serializer.data)
+        return Response(
+            ImageSerializer(
+                image,
+                context={'request': request},
+            ).data,
+        )

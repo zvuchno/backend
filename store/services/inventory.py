@@ -19,7 +19,7 @@ class ReservationService:
         order,
         status=Order.Status.RESERVED,
         reserved_until=None,
-    ) -> None:
+    ) -> Order:
         """Резервирует мерч в заказе."""
         # Блокируем заказ
         order = Order.objects.select_for_update().get(pk=order.pk)
@@ -69,10 +69,11 @@ class ReservationService:
             order.id,
             order.reserved_until,
         )
+        return order
 
     @staticmethod
     @transaction.atomic
-    def release_order_reserve(order, status=Order.Status.CREATED) -> None:
+    def release_order_reserve(order, status=Order.Status.CREATED) -> Order:
         """Снимает резерв с мерча в заказе."""
         # Блокируем заказ
         order = Order.objects.select_for_update().get(pk=order.pk)
@@ -121,3 +122,4 @@ class ReservationService:
             'Резерв заказа id=%s снят.',
             order.id,
         )
+        return order

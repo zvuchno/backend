@@ -4,6 +4,7 @@ from .cdek import CDEKService
 from .commerce import ProductService
 from .inventory import ReservationService
 from .location_service import LocationService
+from .merch_image import MerchImageService
 from .music_download import (
     DownloadFilenameService,
     DownloadLink,
@@ -21,6 +22,7 @@ __all__ = [
     'DownloadLink',
     'DownloadLinkService',
     'LocationService',
+    'MerchImageService',
     'OrderService',
     'process_yookassa_webhook',
     'ProductService',

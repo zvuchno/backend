@@ -126,7 +126,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                 ip_address=ip_address,
                 user_agent=request.META.get('HTTP_USER_AGENT'),
             )
-            ReservationService.reserve_order(
+            order = ReservationService.reserve_order(
                 order,
                 reserved_until=(
                     timezone.now()
