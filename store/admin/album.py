@@ -3,11 +3,18 @@
 Содержит настройку интерфейса Django Admin для модели альбомов.
 """
 
+import json
 from decimal import ROUND_HALF_UP, Decimal
+from http import HTTPStatus
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
+from django.db import transaction
+from django.http import Http404, JsonResponse
+from django.urls import path, reverse
 from django.utils.html import format_html
 from nested_admin.nested import (
     NestedModelAdmin,
@@ -25,8 +32,15 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
-from store.models import Album, AlbumArchive, Product, Track
+from store.models import Album, AlbumArchive, Product, Track, TrackUpload
 from store.services import ProductService
+from store.services.track_upload import (
+    TrackUploadService,
+    TrackUploadStorageError,
+    TrackUploadStorageService,
+    TrackUploadTransportService,
+    UploadTransportConfigurationError,
+)
 
 
 class TrackInlineForm(MoneyForm):
@@ -102,7 +116,7 @@ class TrackInlineForm(MoneyForm):
                 # Сначала вызываем существующий save_m2m, если есть
                 if original_save_m2m:
                     original_save_m2m()
-                # Затем синхронизируем цену и аудио
+                # Затем синхронизируем цену
                 sync_commerce()
 
             self.save_m2m = chained_save_m2m
@@ -123,6 +137,7 @@ class TrackInline(NestedTabularInline):
     )
     readonly_fields = ('duration',)
     extra = 0  # Чтобы Nested-сортировка не требовала заполнять пустое поле
+    max_num = 0
     show_change_link = True
     ordering = ('position',)
     sortable_field_name = 'position'
@@ -131,6 +146,10 @@ class TrackInline(NestedTabularInline):
         """Подтянуть связанные с Track поля."""
         qs = super().get_queryset(request)
         return qs.select_related('product')
+
+    def has_add_permission(self, request, obj=None):
+        """Запрещает создание треков через inline."""
+        return False
 
 
 class ProductInline(NestedStackedInline):
@@ -252,17 +271,6 @@ class AlbumAdmin(
         ),
     )
 
-    def get_inlines(self, request, obj=None):
-        """Возвращает inline-блоки для страницы альбома."""
-        if obj is None:
-            return (ProductInline,)
-
-        return (
-            ProductInline,
-            TrackInline,
-            AlbumArchiveInline,
-        )
-
     @admin.display(description='Изображение')
     def image_preview(self, obj):
         """Возвращает HTML-превью обложки альбома в списке админки."""
@@ -276,3 +284,237 @@ class AlbumAdmin(
     def get_queryset(self, request):
         """Родительский метод миксина + select_related('genre', 'owner')."""
         return super().get_queryset(request).select_related('genre', 'owner')
+
+    def get_inlines(self, request, obj=None):
+        """Возвращает inline-блоки для страницы альбома."""
+        if obj is None:
+            return (ProductInline,)
+
+        return (
+            ProductInline,
+            TrackInline,
+            AlbumArchiveInline,
+        )
+
+    def get_urls(self):
+        """Добавляет внутренние URL для загрузки треков."""
+        urls = super().get_urls()
+
+        custom_urls = [
+            path(
+                '<int:album_id>/track-uploads/initiate/',
+                self.admin_site.admin_view(self.initiate_track_upload),
+                name='store_album_track_upload_initiate',
+            ),
+            path(
+                'track-uploads/<int:upload_id>/file/',
+                self.admin_site.admin_view(self.receive_track_upload_file),
+                name='store_track_upload_receive_file',
+            ),
+            path(
+                'track-uploads/<int:upload_id>/complete/',
+                self.admin_site.admin_view(self.complete_track_upload),
+                name='store_track_upload_complete',
+            ),
+        ]
+
+        return custom_urls + urls
+
+    def initiate_track_upload(self, request, album_id):
+        """Создаёт черновой трек и попытку загрузки файла."""
+        if request.method != 'POST':
+            return JsonResponse(
+                {
+                    'detail': 'Метод не поддерживается.',
+                },
+                status=HTTPStatus.METHOD_NOT_ALLOWED,
+            )
+
+        album = self.get_object(request, str(album_id))
+
+        if album is None:
+            raise Http404('Альбом не найден.')
+
+        if not self.has_change_permission(request, album):
+            raise PermissionDenied
+
+        try:
+            payload = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {
+                    'detail': 'Некорректный JSON.',
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        try:
+            with transaction.atomic():
+                track, upload = TrackUploadService.create_pending_track(
+                    album=album,
+                    filename=payload.get('filename', ''),
+                    size=payload.get('size', 0),
+                    content_type=payload.get('content_type', ''),
+                )
+                local_upload_url = reverse(
+                    'admin:store_track_upload_receive_file',
+                    args=(upload.pk,),
+                )
+
+                upload_instruction = (
+                    TrackUploadTransportService.create_instruction(
+                        upload=upload,
+                        local_upload_url=local_upload_url,
+                    )
+                )
+        except ValidationError as exc:
+            return JsonResponse(
+                {
+                    'detail': exc.messages,
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+        except UploadTransportConfigurationError as exc:
+            return JsonResponse(
+                {
+                    'detail': str(exc),
+                },
+                status=HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+
+        return JsonResponse(
+            {
+                'track': {
+                    'id': track.pk,
+                    'name': track.name,
+                    'position': track.position,
+                    'is_active': track.is_active,
+                },
+                'upload': {
+                    'id': upload.pk,
+                    'status': upload.status,
+                    'expires_at': upload_instruction.expires_at.isoformat(),
+                    'transport': {
+                        'method': upload_instruction.method,
+                        'url': upload_instruction.url,
+                        'headers': upload_instruction.headers,
+                        'fields': upload_instruction.fields,
+                        'file_field_name': (
+                            upload_instruction.file_field_name
+                        ),
+                    },
+                },
+            },
+            status=HTTPStatus.CREATED,
+        )
+
+    def receive_track_upload_file(self, request, upload_id):
+        """Принимает файл в локальном режиме разработки."""
+        if request.method != 'POST':
+            return JsonResponse(
+                {
+                    'detail': 'Метод не поддерживается.',
+                },
+                status=HTTPStatus.METHOD_NOT_ALLOWED,
+            )
+
+        if settings.USE_S3_MEDIA:
+            raise Http404
+
+        try:
+            upload = TrackUpload.objects.select_related('track__album').get(
+                pk=upload_id,
+            )
+        except TrackUpload.DoesNotExist as exc:
+            raise Http404('Попытка загрузки не найдена.') from exc
+
+        album = upload.track.album
+
+        if not self.has_change_permission(request, album):
+            raise PermissionDenied
+
+        uploaded_file = request.FILES.get('file')
+
+        if uploaded_file is None:
+            return JsonResponse(
+                {
+                    'detail': 'Не передан файл.',
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        try:
+            upload = TrackUploadService.receive_local_file(
+                upload=upload,
+                uploaded_file=uploaded_file,
+            )
+        except ValidationError as exc:
+            return JsonResponse(
+                {
+                    'detail': exc.messages,
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        return JsonResponse(
+            {
+                'upload': {
+                    'id': upload.pk,
+                    'status': upload.status,
+                    'uploaded_size': upload.uploaded_size,
+                },
+            },
+            status=HTTPStatus.OK,
+        )
+
+    def complete_track_upload(self, request, upload_id):
+        """Подтверждает загрузку файла и запускает подготовку аудио."""
+        if request.method != 'POST':
+            return JsonResponse(
+                {
+                    'detail': 'Метод не поддерживается.',
+                },
+                status=HTTPStatus.METHOD_NOT_ALLOWED,
+            )
+
+        try:
+            upload = TrackUpload.objects.select_related('track__album').get(
+                pk=upload_id,
+            )
+        except TrackUpload.DoesNotExist as exc:
+            raise Http404('Попытка загрузки не найдена.') from exc
+
+        album = upload.track.album
+
+        if not self.has_change_permission(request, album):
+            raise PermissionDenied
+
+        try:
+            upload = TrackUploadStorageService.complete(
+                upload=upload,
+            )
+        except TrackUploadStorageError as exc:
+            return JsonResponse(
+                {
+                    'detail': str(exc),
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        return JsonResponse(
+            {
+                'track': {
+                    'id': upload.track_id,
+                    'name': upload.track.name,
+                    'position': upload.track.position,
+                    'is_active': upload.track.is_active,
+                },
+                'upload': {
+                    'id': upload.pk,
+                    'status': upload.status,
+                    'uploaded_size': upload.uploaded_size,
+                    'completed_at': upload.completed_at.isoformat(),
+                },
+            },
+            status=HTTPStatus.OK,
+        )
