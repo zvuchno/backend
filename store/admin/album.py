@@ -169,7 +169,7 @@ class AlbumArchiveInline(NestedStackedInline):
     model = AlbumArchive
     can_delete = False
     extra = 0
-    max_num = 1
+    max_num = 0
     fields = (
         'file',
         'status',
@@ -216,7 +216,7 @@ class AlbumAdmin(
     change_form_template = 'admin/store/album/change_form.html'
 
     class Media:
-        """Подключает JavaScript загрузчика треков."""
+        """Подключает ресурсы формы альбома."""
 
         js = ('store/admin/album_track_upload.js',)
 
@@ -316,8 +316,8 @@ class AlbumAdmin(
 
         return (
             ProductInline,
-            TrackInline,
             AlbumArchiveInline,
+            TrackInline,
         )
 
     def get_urls(self):
