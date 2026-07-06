@@ -1,12 +1,14 @@
 import logging
 
+from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from store.schema import cdek_widget_schema
-from store.services import CDEKService
+from store.schema import cdek_calculate_schema, cdek_widget_schema
+from store.serializers import CdekCalculateSerializer
+from store.services import CDEKService, CartService
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +22,11 @@ class CDEKWidgetView(APIView):
     service = CDEKService()
 
     def get(self, request):
-        action = request.query_params.get('action')
-
         logger.info(
-            f'Получен запрос Widget-CDEK API. '
+            f'Получен GET запрос Widget-CDEK API. '
             f'Параметры: {dict(request.query_params)}',
         )
+        action = request.query_params.get('action')
 
         if action == 'offices':
             # Передаем QueryDict в сервис
@@ -43,3 +44,49 @@ class CDEKWidgetView(APIView):
 
         logging.error(f'unknown get action: {action}')
         return Response({'error': f'unknown get action: {action}'}, status=400)
+
+    def post(self, request, *args, **kwargs):
+        logger.info(
+            f'Получен POST запрос Widget-CDEK API. '
+            f'Параметры: {dict(request.query_params)}'
+            f'Body: {request.data}',
+        )
+        action = request.data.get('action')
+
+        if action == 'calculate':
+            cart = CartService.get_or_create_cart(request)
+            city = request.query_params.get('city')
+            result = self.service.calculate(
+                cart=cart,
+                city=str(city),
+            )
+
+            return Response(result, status=status.HTTP_200_OK)
+        return None
+
+
+@cdek_calculate_schema
+class CdekCalculateView(APIView):
+    """Принимает код ПВЗ и запрашивает стоимость доставки в API СДЭК."""
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        cart = CartService.get_or_create_cart(request)
+
+        # Валидируем сразу оба поля
+        serializer = CdekCalculateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        city_code = serializer.validated_data['city_code']
+        delivery_type = serializer.validated_data['delivery_type']
+
+        # Передаем всё в наш сервис
+        cdek_service = CDEKService()
+        result = cdek_service.calculate(
+            city=str(city_code),
+            cart=cart,
+            delivery_type=delivery_type,
+        )
+
+        return Response(result, status=status.HTTP_200_OK)
