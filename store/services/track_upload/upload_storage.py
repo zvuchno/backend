@@ -96,9 +96,7 @@ class TrackUploadStorageService:
             ),
         )
 
-        transaction.on_commit(
-            lambda track=track: TrackGeneratedAudioScheduler.schedule(track),
-        )
+        TrackGeneratedAudioScheduler.schedule(track)
 
         transaction.on_commit(
             lambda upload=upload: cls._delete_staging_safely(

@@ -6,6 +6,7 @@ from http import HTTPStatus
 from unittest.mock import patch
 
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
@@ -122,3 +123,108 @@ class TestAlbumAdminTrackUpload:
         response = admin_client.get(url)
 
         assert response.status_code == HTTPStatus.METHOD_NOT_ALLOWED
+
+    def test_completes_local_upload_flow(
+        self,
+        admin_client,
+        settings,
+        django_capture_on_commit_callbacks,
+    ):
+        """Загружает и завершает файл через внутренние admin endpoint-ы."""
+        settings.USE_S3_MEDIA = False
+
+        album = AlbumFactory()
+        file_content = b'test audio content'
+
+        initiate_url = reverse(
+            'admin:store_album_track_upload_initiate',
+            args=(album.pk,),
+        )
+
+        initiate_response = admin_client.post(
+            initiate_url,
+            data=json.dumps(
+                {
+                    'filename': '01 Intro.flac',
+                    'size': len(file_content),
+                    'content_type': 'audio/flac',
+                },
+            ),
+            content_type='application/json',
+        )
+
+        assert initiate_response.status_code == HTTPStatus.CREATED
+
+        initiate_data = initiate_response.json()
+        upload_id = initiate_data['upload']['id']
+        track_id = initiate_data['track']['id']
+
+        transport = initiate_data['upload']['transport']
+
+        assert transport == {
+            'method': 'POST',
+            'url': reverse(
+                'admin:store_track_upload_receive_file',
+                args=(upload_id,),
+            ),
+            'headers': {},
+            'fields': {},
+            'file_field_name': 'file',
+        }
+
+        upload_response = admin_client.post(
+            transport['url'],
+            data={
+                'file': SimpleUploadedFile(
+                    name='01 Intro.flac',
+                    content=file_content,
+                    content_type='audio/flac',
+                ),
+            },
+        )
+
+        assert upload_response.status_code == HTTPStatus.OK
+        assert upload_response.json()['upload'] == {
+            'id': upload_id,
+            'status': TrackUpload.Status.UPLOADED,
+            'uploaded_size': len(file_content),
+        }
+
+        complete_url = reverse(
+            'admin:store_track_upload_complete',
+            args=(upload_id,),
+        )
+
+        with patch(
+            'store.services.track_upload.upload_storage.'
+            'TrackGeneratedAudioScheduler.schedule',
+        ) as mocked_schedule:
+            with django_capture_on_commit_callbacks(execute=True):
+                complete_response = admin_client.post(complete_url)
+
+        assert complete_response.status_code == HTTPStatus.OK
+
+        complete_data = complete_response.json()
+
+        assert complete_data['track'] == {
+            'id': track_id,
+            'name': '01 Intro',
+            'position': 1,
+            'is_active': False,
+        }
+
+        assert complete_data['upload']['id'] == upload_id
+        assert complete_data['upload']['status'] == (
+            TrackUpload.Status.COMPLETED
+        )
+        assert complete_data['upload']['uploaded_size'] == len(file_content)
+        assert complete_data['upload']['completed_at'] is not None
+
+        track = Track.objects.get(pk=track_id)
+        upload = TrackUpload.objects.get(pk=upload_id)
+
+        assert track.audio_file
+        assert upload.status == TrackUpload.Status.COMPLETED
+        assert upload.completed_at is not None
+
+        mocked_schedule.assert_called_once_with(track)
