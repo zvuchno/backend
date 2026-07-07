@@ -321,6 +321,10 @@ class CDEKService:
 
         total_delivery_sum = ZERO_MONEY
 
+        # Списки для сбора сроков доставки от разных артистов
+        all_min_periods = []
+        all_max_periods = []
+
         # Проходим по сгруппированным артистам и суммируем доставки
         for artist_id, items_count in artist_quantities.items():
             from_location_code = artist_city_code.get(artist_id)
@@ -331,29 +335,44 @@ class CDEKService:
                     'населенного пункта для отгрузки товара.',
                 })
 
-            artist_delivery_cost = self._calculate_for_artist(
+            delivery_data = self._calculate_for_artist(
                 artist_id=artist_id,
                 from_location=from_location_code,
                 to_location=city,
                 items_count=items_count,
                 delivery_type=delivery_type,
             )
-            total_delivery_sum += artist_delivery_cost
+
+            total_delivery_sum += delivery_data['total_sum']
+
+            if delivery_data['period_min'] is not None:
+                all_min_periods.append(delivery_data['period_min'])
+            if delivery_data['period_max'] is not None:
+                all_max_periods.append(delivery_data['period_max'])
 
             logger.info(
                 f'Корзина {cart.user}: рассчитана сумма доставки '
                 f'от артиста ID: {artist_id}, from_location: '
                 f'{from_location_code}, to_location: {city}, items_count '
-                f'= {items_count} -> {artist_delivery_cost} руб.',
+                f'= {items_count} -> {delivery_data["total_sum"]} руб.',
             )
+
         delivery_sum = round(total_delivery_sum, MONEY_DISPLAY_PRECISION)
+
+        # Вычисляем финальные сроки (берем худший максимум из всех плеч)
+        period_min = max(all_min_periods) if all_min_periods else None
+        period_max = max(all_max_periods) if all_max_periods else None
+
         logger.info(
             f'Корзина {cart.user}, тип доставки: {delivery_type}, '
-            'итоговая сумма доставки всех '
-            f'товаров -> {delivery_sum} руб.',
+            f'итоговая сумма доставки всех товаров -> {delivery_sum} руб. '
+            f'Сроки: {period_min}-{period_max} дн.',
         )
+
         return {
             'delivery_sum': delivery_sum,
+            'period_min': period_min,
+            'period_max': period_max,
         }
 
     def _calculate_for_artist(
@@ -363,8 +382,8 @@ class CDEKService:
         from_location: str,
         items_count: int,
         delivery_type: str,
-    ) -> Decimal:
-        """Метод для расчета доставки в API СДЭК по конкретному артисту."""
+    ) -> dict:
+        """Метод для расчета доставки в API СДЭК по конкретным артистам."""
         if delivery_type == 'offices':
             tariff_code = self.tariff_code_offices
         elif delivery_type == 'door':
@@ -399,7 +418,11 @@ class CDEKService:
             response.raise_for_status()
             data = response.json()
 
-            return Decimal(str(data.get('total_sum', '0.00')))
+            return {
+                'total_sum': Decimal(str(data['total_sum'])),
+                'period_min': data.get('period_min'),
+                'period_max': data.get('period_max'),
+            }
 
         except requests.RequestException as e:
             raise CDEKIntegrationError(

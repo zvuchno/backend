@@ -1,9 +1,9 @@
 import logging
 
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
 from store.schema import cdek_calculate_schema, cdek_widget_schema
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 class CDEKWidgetView(APIView):
     """Эндпоинт-прокси для интеграции и обеспечения работы виджета СДЭК v3."""
 
-    permission_classes = (IsAuthenticated,)
-    throttle_classes = (UserRateThrottle,)
+    permission_classes = (AllowAny,)
+    throttle_classes = (AnonRateThrottle,)
     service = CDEKService()
 
     def get(self, request):
