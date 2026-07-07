@@ -221,11 +221,7 @@ class TestPlayerAlbumAPI:
 
         player_track = response.data['tracks'][0]
 
-        assert player_track['purchase'] == {
-            'variant_id': None,
-            'price': None,
-            'allow_overpay': False,
-        }
+        assert player_track['purchase'] is None
 
 
 class TestPlayerTrackPlayAPI:

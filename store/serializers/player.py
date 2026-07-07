@@ -110,11 +110,7 @@ class PlayerAlbumTrackSerializer(TrackReadSerializer):
         allow_overpay = representation.pop('allow_overpay')
 
         if instance.variant_id is None:
-            representation['purchase'] = {
-                'variant_id': None,
-                'price': None,
-                'allow_overpay': False,
-            }
+            representation['purchase'] = None
         else:
             representation['purchase'] = {
                 'variant_id': instance.variant_id,
