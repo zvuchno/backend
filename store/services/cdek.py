@@ -222,8 +222,8 @@ class CDEKService:
                     timeout=10,
                 )
                 response.raise_for_status()
-            except requests.RequestException:
-                logger.exception('Ошибка API CDEK')
+            except requests.RequestException as e:
+                logger.error('Ошибка API CDEK: %s', e)
                 raise CDEKIntegrationError()
 
             data = response.json()

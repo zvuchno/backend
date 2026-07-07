@@ -112,6 +112,26 @@ class ProductQuerySet(models.QuerySet):
             ),
         )
 
+    def with_favorite_variant_id(self):
+        """Добавляет ID активного варианта для работы с избранным."""
+        from store.models.product_variant import ProductVariant
+
+        favorite_variant_id = (
+            ProductVariant.objects
+            .filter(
+                product_id=OuterRef('pk'),
+                is_active=True,
+            )
+            .order_by('id')
+            .values('id')[:1]
+        )
+
+        return self.annotate(
+            favorite_variant_id=Subquery(
+                favorite_variant_id,
+            ),
+        )
+
     def with_album_card_data(self):
         """Подтягивает данные для карточек альбомов."""
         return self.select_related('album')
@@ -303,6 +323,7 @@ class ProductQuerySet(models.QuerySet):
             .with_album_card_data()
             .with_album_card_annotations()
             .with_selected_variant_id()
+            .with_favorite_variant_id()
         )
 
     def for_merch_cards(self):
@@ -313,6 +334,7 @@ class ProductQuerySet(models.QuerySet):
             .with_merch_card_data()
             .with_merch_card_annotations()
             .with_selected_variant_id()
+            .with_favorite_variant_id()
         )
 
     def for_track_cards(self):
@@ -322,6 +344,7 @@ class ProductQuerySet(models.QuerySet):
             .published_tracks()
             .with_track_card_data()
             .with_track_card_annotations()
+            .with_favorite_variant_id()
         )
 
     def for_catalog_cards(self):
@@ -337,6 +360,7 @@ class ProductQuerySet(models.QuerySet):
             .with_merch_card_data()
             .with_catalog_card_annotations()
             .with_selected_variant_id()
+            .with_favorite_variant_id()
         )
 
     def for_catalog_type(self, catalog_type):
