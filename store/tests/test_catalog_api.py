@@ -448,6 +448,59 @@ class TestCatalogAvailability:
             available_product.id,
         }
 
+    def test_catalog_returns_merch_once_with_several_available_variants(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог не дублирует мерч с несколькими доступными вариантами."""
+        product = create_merch_product()
+
+        product.variants.update(
+            stock=3,
+        )
+        ProductVariantFactory(
+            product=product,
+            property_value='L',
+            stock=2,
+        )
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+
+        product_ids = get_product_ids(response)
+
+        assert product_ids.count(product.id) == 1
+
+    def test_merch_catalog_returns_prod_once_with_several_available_variants(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Витрина мерча не дублирует товар с неск. доступными вариантами."""
+        product = create_merch_product()
+
+        product.variants.update(
+            stock=3,
+        )
+        ProductVariantFactory(
+            product=product,
+            property_value='L',
+            stock=2,
+        )
+
+        response = api_client.get(
+            catalog_url,
+            {'type': 'merch'},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        product_ids = get_product_ids(response)
+
+        assert product_ids.count(product.id) == 1
+
 
 def get_catalog_cards(response):
     """Возвращает карточки каталога из paginated-ответа."""
