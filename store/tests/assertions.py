@@ -9,6 +9,7 @@ PUBLIC_PRODUCT_CARD_KEYS = {
     'price',
     'image',
     'is_favorite',
+    'favorite_variant_id',
     'target',
 }
 
