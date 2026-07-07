@@ -14,6 +14,7 @@
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import Client
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -175,6 +176,14 @@ def other_client(client_factory, other_user):
 def staff_client(client_factory, staff_user):
     """Клиент администратора."""
     return client_factory(staff_user)
+
+
+@pytest.fixture
+def admin_client(staff_user):
+    """Клиент авторизованного суперпользователя для Django Admin."""
+    client = Client()
+    client.force_login(staff_user)
+    return client
 
 
 @pytest.fixture

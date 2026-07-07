@@ -1,5 +1,7 @@
 """Пути загрузки медиафайлов магазина."""
 
+from uuid import uuid4
+
 from common.upload_paths import build_unique_filename
 
 
@@ -43,5 +45,14 @@ def track_stream_upload_to(instance, filename: str) -> str:
     """Формирует путь для приватного файла воспроизведения."""
     return (
         f'albums/{instance.track.album_id}/tracks/stream/'
+        f'{build_unique_filename(filename)}'
+    )
+
+
+def track_upload_staging_key(album_id: int, filename: str) -> str:
+    """Формирует ключ временного объекта прямой загрузки трека."""
+    return (
+        f'staging/track-uploads/{album_id}/'
+        f'{uuid4().hex}/'
         f'{build_unique_filename(filename)}'
     )
