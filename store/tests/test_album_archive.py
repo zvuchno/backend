@@ -134,25 +134,23 @@ def test_build_skips_outdated_task(album_with_tracks):
 def test_build_marks_archive_failed_when_source_file_is_missing(
     album_with_tracks,
 ):
-    """Отсутствующий исходный файл переводит архив в FAILED."""
+    """Отсутствующий исходник помечает архив ошибочным без исключения."""
     album = album_with_tracks
     archive, expected_hash = prepare_archive(album)
 
     track = album.tracks.order_by('position', 'id').first()
     track.audio_file.storage.delete(track.audio_file.name)
 
-    with pytest.raises(FileNotFoundError):
-        AlbumArchiveService.build(
-            album_id=album.pk,
-            expected_hash=expected_hash,
-        )
+    result = AlbumArchiveService.build(
+        album_id=album.pk,
+        expected_hash=expected_hash,
+    )
 
     archive.refresh_from_db()
 
+    assert result.pk == archive.pk
     assert archive.status == AlbumArchive.Status.FAILED
-    assert archive.error_message
-    assert archive.pending_hash == expected_hash
-    assert not archive.file
+    assert 'отсутствует в хранилище' in archive.error_message
 
 
 def test_content_hash_changes_after_track_update(

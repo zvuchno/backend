@@ -152,6 +152,26 @@ class AlbumArchiveService:
                     ),
                 )
 
+        except FileNotFoundError as error:
+            error_message = (
+                'Не удалось собрать архив: один из исходных файлов '
+                'отсутствует в хранилище. '
+                f'{error}'
+            )[: cls.MAX_ERROR_MESSAGE_LENGTH]
+            logger.warning(
+                'Архив альбома %s не собран: файл отсутствует в storage. %s',
+                album_id,
+                error,
+            )
+            AlbumArchive.objects.filter(pk=archive.pk).update(
+                status=AlbumArchive.Status.FAILED,
+                error_message=error_message,
+                updated_at=timezone.now(),
+            )
+            archive.status = AlbumArchive.Status.FAILED
+            archive.error_message = error_message
+            return archive
+
         except Exception as error:
             logger.exception(
                 'Ошибка при сборке архива для альбома %s.',
