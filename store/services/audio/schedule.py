@@ -1,28 +1,34 @@
+"""Постановка задач подготовки аудио после commit."""
+
+import logging
+
 from django.db import transaction
 
-from store.models import Track
+logger = logging.getLogger(__name__)
 
 
 class TrackGeneratedAudioScheduler:
     """Ставит подготовку производных аудиофайлов в очередь."""
 
     @classmethod
-    def schedule(cls, track: Track) -> bool:
+    def schedule(cls, track) -> None:
         """Ставит обработку трека в очередь после фиксации транзакции."""
-        if not track.pk or not track.audio_file:
-            return False
-
         track_id = track.pk
 
         transaction.on_commit(
-            lambda: cls._enqueue(track_id),
+            lambda: cls._enqueue_safely(track_id),
         )
 
-        return True
-
     @staticmethod
-    def _enqueue(track_id: int) -> None:
-        """Отправляет задачу подготовки файлов в Celery."""
-        from store.tasks.audio import prepare_track_audio
+    def _enqueue_safely(track_id: int) -> None:
+        """Ставит задачу в очередь, не ломая успешный upload."""
+        try:
+            from store.tasks.audio import prepare_track_audio
 
-        prepare_track_audio.delay(track_id)
+            prepare_track_audio.delay(track_id)
+        except Exception:
+            logger.exception(
+                'Не удалось поставить подготовку аудио в очередь '
+                'для трека %s.',
+                track_id,
+            )
