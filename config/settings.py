@@ -130,6 +130,9 @@ if USE_SQLITE:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 30,  # Ожидать освобождения базы до 30 секунд
+            },
         }
     }
 else:
@@ -350,12 +353,16 @@ CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_TASK_TIME_LIMIT = 300
 
 CELERY_BEAT_SCHEDULE = {
+    'cleanup-expired-track-uploads': {
+        'task': 'store.tasks.track_upload.cleanup_expired_track_uploads',
+        'schedule': crontab(hour=4, minute=10),
+    },
     'release-expired-reservations': {
         'task': 'store.tasks.reservations.release_expired_reservations',
         'schedule': crontab(minute='*/10'),
         'options': {
             'queue': 'celery',
-        }
+        },
     },
 }
 

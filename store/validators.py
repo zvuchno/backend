@@ -9,12 +9,19 @@ from .constants import (
 )
 
 
-def make_file_size_validator(max_size_mb: int, optional: bool = False):
-    """Фабрика валидаторов размера файла."""
+class FileSizeValidator:
+    """Проверяет, что размер файла не превышает заданный лимит."""
 
-    def validator(value: File | None) -> File | None:
-        if optional and not value:
+    def __init__(self, max_size_mb: int, optional: bool = False):
+        """Инициализирует валидатор с заданным лимитом размера файла."""
+        self.max_size_mb = max_size_mb
+        self.optional = optional
+
+    def __call__(self, value: File | None) -> File | None:
+        """Проверяет размер переданного файла."""
+        if self.optional and not value:
             return value
+
         try:
             filesize = value.size
         except (FileNotFoundError, OSError, AttributeError):
@@ -22,18 +29,42 @@ def make_file_size_validator(max_size_mb: int, optional: bool = False):
                 'Файл не найден на диске. '
                 'Проверьте путь к файлу или загрузите его заново.',
             )
-        if filesize > max_size_mb * 1024 * 1024:
+
+        if filesize > self.max_size_mb * 1024 * 1024:
             raise ValidationError(
                 f'Размер файла ({round(filesize / (1024 * 1024), 2)} MB) '
-                f'превышает лимит {max_size_mb} MB.',
+                f'превышает лимит {self.max_size_mb} MB.',
             )
+
         return value
 
-    return validator
+    def deconstruct(self):
+        """Возвращает параметры валидатора для миграций."""
+        return (
+            'store.validators.FileSizeValidator',
+            (),
+            {
+                'max_size_mb': self.max_size_mb,
+                'optional': self.optional,
+            },
+        )
+
+    def __eq__(self, other):
+        """Сравнивает валидаторы по настройкам."""
+        return (
+            isinstance(other, FileSizeValidator)
+            and self.max_size_mb == other.max_size_mb
+            and self.optional == other.optional
+        )
 
 
-validate_file_size = make_file_size_validator(MAX_IMAGE_SIZE_MB, optional=True)
-validate_audiofile_size = make_file_size_validator(MAX_AUDIOFILE_SIZE_MB)
+validate_file_size = FileSizeValidator(
+    MAX_IMAGE_SIZE_MB,
+    optional=True,
+)
+validate_audiofile_size = FileSizeValidator(
+    MAX_AUDIOFILE_SIZE_MB,
+)
 
 
 def validate_price_with_donation(product, price_with_donation):
