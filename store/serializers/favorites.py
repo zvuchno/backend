@@ -44,7 +44,6 @@ class FavoriteReadSerializer(BaseVariantTargetImageSerializer):
     class Meta(BaseVariantTargetImageSerializer.Meta):
         model = Favorite
         fields = (
-            'id',
             'artist_name',
             'name',
             'kind',
@@ -62,7 +61,7 @@ class FavoriteWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Favorite
-        fields = ('id', 'user', 'product_variant')
+        fields = ('user', 'product_variant')
         validators = [
             serializers.UniqueTogetherValidator(
                 queryset=Favorite.objects.all(),
