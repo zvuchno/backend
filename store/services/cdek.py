@@ -1,4 +1,6 @@
 import logging
+from collections import defaultdict
+from decimal import Decimal
 
 import requests
 from django.conf import settings
@@ -10,8 +12,13 @@ from store.constants import (
     CDEK_API_PAGE_SIZE,
     CITY_CACHE_TIMEOUT,
     DEFAULT_CACHE_TIMEOUT,
+    MONEY_DISPLAY_PRECISION,
+    ZERO_MONEY,
 )
 from store.exceptions import CDEKIntegrationError
+from store.models import Product
+from store.services.cart_service import CartCalculationService
+from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +34,8 @@ class CDEKService:
         get_access_token(): Получает или обновляет токен доступа OAuth2.
         get_city_code_by_name: Получает код города СДЭК по его названию.
         get_offices: Возвращает список пунктов выдачи для города.
+        calculate: Рассчитывает стоимость доставки на основе корзины.
+        create_order: Регистрирует накладную в СДЭК.
 
     """
 
@@ -35,8 +44,8 @@ class CDEKService:
         self.api_url = settings.CDEK_API_URL
         self.client_id = settings.CDEK_CLIENT_ID
         self.client_secret = settings.CDEK_CLIENT_SECRET
-        self.tariff_code_pickpoint = settings.TARIFF_PICKPOINT
-        self.tariff_code_courier = settings.TARIFF_COURIER
+        self.tariff_code_offices = settings.TARIFF_OFFICES
+        self.tariff_code_door = settings.TARIFF_DOOR
         self.default_item_weight = settings.DEFAULT_ITEM_WEIGHT
 
     def _auth_headers(self) -> dict[str, str]:
@@ -265,3 +274,141 @@ class CDEKService:
             'total_elements': total_elements,
             'total_pages': (total_elements + size - 1) // size,
         }
+
+    def calculate(
+        self,
+        city: str,
+        cart,
+        delivery_type: str = 'offices',
+    ) -> dict:
+        """Расчет стоимости доставки СДЭК на основе содержимого корзины."""
+        if not cart:
+            raise ValidationError({'detail': 'Ваша корзина пуста.'})
+
+        calculation_service = CartCalculationService(cart)
+
+        # Получаем список ID уникальных артистов, чей мерч в корзине
+        cart_artist_ids = calculation_service.get_merch_artist_ids()
+
+        if not cart_artist_ids:  # Если мерча нет
+            logger.warning('Нет физических товаров для доставки.')
+            raise ValidationError({
+                'detail': 'Нет физических товаров для доставки.',
+            })
+
+        # Создаем словарь {artist_id: city_code} - в один запрос
+        artist_city_code = dict(
+            ArtistProfile.objects.filter(id__in=cart_artist_ids).values_list(
+                'id',
+                'shipping_point__city_code',
+            ),
+        )
+        # Считаем количество мерча для каждого артиста
+        artist_quantities = defaultdict(int)
+        cart_items = cart.items.filter(
+            product_variant__product__product_type=Product.ProductType.MERCH,
+        ).select_related(
+            'product_variant__product__merch__owner__artist_profile',
+        )
+
+        for item in cart_items:
+            owner = item.product_variant.product.merch.owner
+            artist_profile = getattr(owner, 'artist_profile', None)
+
+            if artist_profile:
+                artist_id = artist_profile.id
+                if artist_id in artist_city_code:
+                    artist_quantities[artist_id] += item.quantity
+
+        total_delivery_sum = ZERO_MONEY
+
+        # Проходим по сгруппированным артистам и суммируем доставки
+        for artist_id, items_count in artist_quantities.items():
+            from_location_code = artist_city_code.get(artist_id)
+
+            if not from_location_code:
+                raise ValidationError({
+                    'detail': f'У артиста id={artist_id} не указан код '
+                    'населенного пункта для отгрузки товара.',
+                })
+
+            artist_delivery_cost = self._calculate_for_artist(
+                artist_id=artist_id,
+                from_location=from_location_code,
+                to_location=city,
+                items_count=items_count,
+                delivery_type=delivery_type,
+            )
+            total_delivery_sum += artist_delivery_cost
+
+            logger.info(
+                f'Корзина {cart.user}: рассчитана сумма доставки '
+                f'от артиста ID: {artist_id}, from_location: '
+                f'{from_location_code}, to_location: {city}, items_count '
+                f'= {items_count} -> {artist_delivery_cost} руб.',
+            )
+        delivery_sum = round(total_delivery_sum, MONEY_DISPLAY_PRECISION)
+        logger.info(
+            f'Корзина {cart.user}, тип доставки: {delivery_type}, '
+            'итоговая сумма доставки всех '
+            f'товаров -> {delivery_sum} руб.',
+        )
+        return {
+            'delivery_sum': delivery_sum,
+        }
+
+    def _calculate_for_artist(
+        self,
+        artist_id: int,
+        to_location: str,
+        from_location: str,
+        items_count: int,
+        delivery_type: str,
+    ) -> Decimal:
+        """Метод для расчета доставки в API СДЭК по конкретному артисту."""
+        if delivery_type == 'offices':
+            tariff_code = self.tariff_code_offices
+        elif delivery_type == 'door':
+            tariff_code = self.tariff_code_door
+        else:
+            raise ValidationError({
+                'detail': f'Неподдерживаемый тип тарифа: {delivery_type}.',
+            })
+
+        # Умножаем базовый вес на количество мерчей этого артиста
+        total_weight = items_count * int(self.default_item_weight)
+
+        payload = {
+            'tariff_code': tariff_code,
+            'from_location': {'code': int(from_location)},
+            'to_location': {'code': int(to_location)},
+            'packages': [
+                {
+                    'weight': int(total_weight),
+                },
+            ],
+        }
+
+        url = f'{self.api_url}/calculator/tariff'
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers=self._auth_headers(),
+                timeout=5,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            return Decimal(str(data.get('total_sum', '0.00')))
+
+        except requests.RequestException as e:
+            logger.error(
+                f'Не удалось выполнить расчет стоимости доставки '
+                f'для артиста {artist_id}: {e}',
+            )
+            raise CDEKIntegrationError({
+                'detail': 'Не удалось рассчитать стоимость доставки. '
+                'Служба СДЭК временно недоступна, '
+                'пожалуйста, попробуйте позже.',
+            })
