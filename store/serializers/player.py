@@ -72,6 +72,25 @@ class TrackPlaybackSerializer(serializers.Serializer):
         }
 
 
+class TrackCommerceSerializer(serializers.Serializer):
+    """Коммерческие данные трека для плеера."""
+
+    variant_id = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_variant_id(obj) -> int | None:
+        """Возвращает ID активного варианта для покупки трека."""
+        product = getattr(obj, 'product', None)
+
+        if product is None:
+            return None
+
+        variants = getattr(product, 'active_variants', ())
+        variant = next(iter(variants), None)
+
+        return variant.id if variant else None
+
+
 class PlayerAlbumTrackSerializer(TrackReadSerializer):
     """Трек в очереди воспроизведения альбома."""
 
@@ -82,6 +101,28 @@ class PlayerAlbumTrackSerializer(TrackReadSerializer):
 
     class Meta(TrackReadSerializer.Meta):
         fields = TrackReadSerializer.Meta.fields + ('playback',)
+
+    def to_representation(self, instance):
+        """Возвращает данные трека для очереди плеера."""
+        representation = super().to_representation(instance)
+
+        price = representation.pop('price')
+        allow_overpay = representation.pop('allow_overpay')
+
+        if instance.variant_id is None:
+            representation['purchase'] = {
+                'variant_id': None,
+                'price': None,
+                'allow_overpay': False,
+            }
+        else:
+            representation['purchase'] = {
+                'variant_id': instance.variant_id,
+                'price': price,
+                'allow_overpay': allow_overpay,
+            }
+
+        return representation
 
 
 class PlayerAlbumSerializer(serializers.ModelSerializer):

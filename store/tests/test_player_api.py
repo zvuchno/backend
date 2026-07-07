@@ -87,7 +87,9 @@ class TestPlayerAlbumAPI:
 
         assert tracks[0]['name'] == first_track.name
         assert tracks[0]['duration'] == first_track.duration
-        assert tracks[0]['price'] == str(first_variant.product.price)
+        assert tracks[0]['purchase']['price'] == str(
+            first_variant.product.price,
+        )
         assert tracks[0]['is_favorite'] is False
         assert tracks[0]['playback'] == {
             'status': TrackGeneratedAudio.ProcessingStatus.READY,
@@ -193,6 +195,37 @@ class TestPlayerAlbumAPI:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_returns_empty_purchase_for_track_with_zero_price(
+        self,
+        api_client,
+        player_album_url,
+        variant_factory,
+    ):
+        """Не отдаёт покупку для трека, который не продаётся."""
+        variant = variant_factory(
+            'track',
+            price=Decimal('300.00'),
+            allow_overpay=True,
+        )
+        track = variant.product.track
+
+        variant.product.price = Decimal('0.00')
+        variant.product.save(update_fields=('price',))
+
+        response = api_client.get(
+            player_album_url(track.album.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        player_track = response.data['tracks'][0]
+
+        assert player_track['purchase'] == {
+            'variant_id': None,
+            'price': None,
+            'allow_overpay': False,
+        }
 
 
 class TestPlayerTrackPlayAPI:
