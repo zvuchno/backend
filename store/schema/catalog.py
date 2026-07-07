@@ -14,7 +14,6 @@ CATALOG_TAGS = ['Catalog']
 
 catalog_list_schema = extend_schema(
     tags=CATALOG_TAGS,
-    auth=[],
     summary='Список товаров каталога',
     description=(
         'Возвращает список витринных карточек товаров.\n\n'

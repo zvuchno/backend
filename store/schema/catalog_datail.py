@@ -12,7 +12,6 @@ CATALOG_TAGS = ['Catalog']
 
 catalog_release_detail_schema = extend_schema(
     tags=CATALOG_TAGS,
-    auth=[],
     summary='Детальная карточка релиза в каталоге',
     description=(
         'Возвращает данные релиза для публичной витрины.\n\n'
@@ -83,7 +82,6 @@ catalog_release_detail_schema = extend_schema(
 
 catalog_merch_detail_schema = extend_schema(
     tags=CATALOG_TAGS,
-    auth=[],
     summary='Детальная карточка мерча в каталоге',
     description=(
         'Возвращает данные обычного мерча для публичной витрины.\n\n'
