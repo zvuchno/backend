@@ -223,8 +223,7 @@ class CDEKService:
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
-                logger.error('Ошибка API CDEK: %s', e)
-                raise CDEKIntegrationError()
+                raise CDEKIntegrationError() from e
 
             data = response.json()
             if not data:
@@ -403,12 +402,8 @@ class CDEKService:
             return Decimal(str(data.get('total_sum', '0.00')))
 
         except requests.RequestException as e:
-            logger.error(
-                f'Не удалось выполнить расчет стоимости доставки '
-                f'для артиста {artist_id}: {e}',
-            )
-            raise CDEKIntegrationError({
-                'detail': 'Не удалось рассчитать стоимость доставки. '
+            raise CDEKIntegrationError(
+                'Не удалось рассчитать стоимость доставки. '
                 'Служба СДЭК временно недоступна, '
                 'пожалуйста, попробуйте позже.',
-            })
+            ) from e

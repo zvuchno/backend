@@ -72,14 +72,14 @@ def custom_exception_handler(exception, context):
 
     if isinstance(exception, CDEKIntegrationError):
         request = context.get('request')
-        logger.error(
-            'CDEK API Error | Path: %s | Detail: %s',
+        logger.exception(
+            'CDEK API error | path=%s | detail=%s',
             request.path if request else 'UNKNOWN',
-            exception.message,
-            exc_info=True,
+            str(exception),
         )
+
         return Response(
-            {'detail': exception.message},
+            {'detail': str(exception)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
