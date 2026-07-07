@@ -44,8 +44,8 @@ class CDEKService:
         self.api_url = settings.CDEK_API_URL
         self.client_id = settings.CDEK_CLIENT_ID
         self.client_secret = settings.CDEK_CLIENT_SECRET
-        self.tariff_code_pickpoint = settings.TARIFF_PICKPOINT
-        self.tariff_code_courier = settings.TARIFF_COURIER
+        self.tariff_code_pickpoint = settings.TARIFF_OFFICES
+        self.tariff_code_courier = settings.TARIFF_DOOR
         self.default_item_weight = settings.DEFAULT_ITEM_WEIGHT
 
     def _auth_headers(self) -> dict[str, str]:

@@ -20,6 +20,7 @@ class FavoritesViewSet(
 
     queryset = Favorite.objects.all()
     permission_classes = (IsUserObjectOwner,)
+    lookup_field = 'product_variant'
 
     def get_queryset(self):
         return (

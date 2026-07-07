@@ -111,6 +111,14 @@ class ProductCardSerializer(
         help_text='Признак добавления товара в избранное.',
         default=False,
     )
+    favorite_variant_id = serializers.IntegerField(
+        allow_null=True,
+        read_only=True,
+        help_text=(
+            'ID активного варианта, используемый для добавления товара '
+            'в избранное. null, если у товара нет активных вариантов.'
+        ),
+    )
 
     @extend_schema_field(OpenApiTypes.BOOL)
     def get_is_favorite(self, obj):
