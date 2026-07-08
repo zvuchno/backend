@@ -16,8 +16,8 @@ cdek_widget_schema = extend_schema_view(
         summary='Прокси для виджета СДЭК',
         description=(
             'Прокси-эндпоинт для работы виджета СДЭК v3.0.\n\n'
-            'Используется для получения списка ПВЗ (action=office).\n\n'
-            'Для корректной работы виджета при запросе ПВЗ (action=office) '
+            'Используется для получения списка ПВЗ (action=offices).\n\n'
+            'Для корректной работы виджета при запросе ПВЗ (action=offices) '
             'обязательно передавайте параметр "city".'
         ),
         tags=CDEK_TAGS,
@@ -25,7 +25,7 @@ cdek_widget_schema = extend_schema_view(
             OpenApiParameter(
                 name='action',
                 type=OpenApiTypes.STR,
-                description='Действие (для получения офисов "office").',
+                description='Действие (для получения офисов "offices").',
                 required=True,
             ),
             OpenApiParameter(
