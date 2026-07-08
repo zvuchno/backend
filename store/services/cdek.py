@@ -47,6 +47,7 @@ class CDEKService:
         self.tariff_code_offices = settings.TARIFF_OFFICES
         self.tariff_code_door = settings.TARIFF_DOOR
         self.default_item_weight = settings.DEFAULT_ITEM_WEIGHT
+        self.default_city = settings.DEFAULT_CITY
 
     def _auth_headers(self) -> dict[str, str]:
         """Формирование HTTP-заголовков авторизации со токеном Bearer."""
@@ -120,9 +121,13 @@ class CDEKService:
     def get_offices(self, params: dict) -> dict:
         """Оркестратор получения ПВЗ."""
         # Добавить параметр 'city' к запросу виджета на фронтенде!
-        city = str(params.get('city', '')).strip().lower()
-        if not city:
-            raise ValidationError('Параметр city обязателен.')
+        city = (
+            str(
+                params.get('city') or self.default_city,
+            )
+            .strip()
+            .lower()
+        )
 
         city_code = self._get_or_set_city_code(city)
 
