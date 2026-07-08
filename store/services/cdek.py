@@ -467,7 +467,7 @@ class CDEKService:
             response = requests.get(
                 url,
                 headers=self._auth_headers(),
-                params={'name': query},
+                params={'name': query, 'country_code': 'RU'},
                 timeout=10,
             )
             response.raise_for_status()
