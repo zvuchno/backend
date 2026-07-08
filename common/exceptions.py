@@ -71,12 +71,6 @@ def custom_exception_handler(exception, context):
         return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
     if isinstance(exception, CDEKIntegrationError):
-        logger.exception(
-            'CDEK API error | path=%s | detail=%s',
-            request.path if request else 'UNKNOWN',
-            str(exception),
-        )
-
         return Response(
             {'detail': str(exception)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,

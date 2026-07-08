@@ -6,11 +6,14 @@ class CdekCalculateSerializer(serializers.Serializer):
 
     delivery_type = serializers.ChoiceField(
         choices=[
-            ('offices', 'Самовывоз из ПВЗ'),
+            ('office', 'Самовывоз из ПВЗ'),
             ('door', 'Курьер (до двери)'),
+            ('pickup', 'Постомат'),
         ],
         required=True,
-        help_text='Тип доставки: offices (до ПВЗ) или door (до двери)',
+        help_text=(
+            'Тип доставки: office (до ПВЗ), door (до двери), pickup (постомат)'
+        ),
     )
     city_code = serializers.IntegerField(
         required=True,

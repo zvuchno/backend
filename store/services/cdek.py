@@ -44,8 +44,9 @@ class CDEKService:
         self.api_url = settings.CDEK_API_URL
         self.client_id = settings.CDEK_CLIENT_ID
         self.client_secret = settings.CDEK_CLIENT_SECRET
-        self.tariff_code_offices = settings.TARIFF_OFFICES
+        self.tariff_code_office = settings.TARIFF_OFFICE
         self.tariff_code_door = settings.TARIFF_DOOR
+        self.tariff_code_pickup = settings.TARIFF_PICKUP
         self.default_item_weight = settings.DEFAULT_ITEM_WEIGHT
         self.default_city = settings.DEFAULT_CITY
 
@@ -228,6 +229,20 @@ class CDEKService:
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
+                if e.response is not None:
+                    logger.error(
+                        'CDEK вернул ошибку при получении ПВЗ. '
+                        'status=%s, params=%s, body=%s',
+                        e.response.status_code,
+                        api_params,
+                        e.response.text,
+                    )
+                else:
+                    logger.error(
+                        'Ошибка соединения с API CDEK при получении ПВЗ. '
+                        'params=%s',
+                        api_params,
+                    )
                 raise CDEKIntegrationError() from e
 
             data = response.json()
@@ -283,7 +298,7 @@ class CDEKService:
         self,
         city: str,
         cart,
-        delivery_type: str = 'offices',
+        delivery_type: str = 'office',
     ) -> dict:
         """Расчет стоимости доставки СДЭК на основе содержимого корзины."""
         if not cart:
@@ -341,7 +356,6 @@ class CDEKService:
                 })
 
             delivery_data = self._calculate_for_artist(
-                artist_id=artist_id,
                 from_location=from_location_code,
                 to_location=city,
                 items_count=items_count,
@@ -382,17 +396,18 @@ class CDEKService:
 
     def _calculate_for_artist(
         self,
-        artist_id: int,
         to_location: str,
         from_location: str,
         items_count: int,
         delivery_type: str,
     ) -> dict:
         """Метод для расчета доставки в API СДЭК по конкретным артистам."""
-        if delivery_type == 'offices':
-            tariff_code = self.tariff_code_offices
+        if delivery_type == 'office':
+            tariff_code = self.tariff_code_office
         elif delivery_type == 'door':
             tariff_code = self.tariff_code_door
+        elif delivery_type == 'pickup':
+            tariff_code = self.tariff_code_pickup
         else:
             raise ValidationError({
                 'detail': f'Неподдерживаемый тип тарифа: {delivery_type}.',
@@ -430,6 +445,14 @@ class CDEKService:
             }
 
         except requests.RequestException as e:
+            if e.response is not None:
+                logger.error(
+                    'CDEK вернул ошибку при расчёте доставки. '
+                    'status=%s, payload=%s, body=%s',
+                    e.response.status_code,
+                    payload,
+                    e.response.text,
+                )
             raise CDEKIntegrationError(
                 'Не удалось рассчитать стоимость доставки. '
                 'Служба СДЭК временно недоступна, '

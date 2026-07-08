@@ -28,9 +28,9 @@ class CDEKWidgetView(APIView):
         )
         action = request.query_params.get('action')
 
-        if action == 'offices':
+        if action == 'office':
             # Передаем QueryDict в сервис
-            result = self.service.get_offices(request.query_params)
+            result = self.service.get_office(request.query_params)
 
             # Формируем ответ с кастомными заголовками для виджета
             response = Response(result['points'], status=200)
