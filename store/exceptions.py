@@ -6,8 +6,7 @@ class CDEKIntegrationError(Exception):
 
     def __init__(self, message='Сервис доставки временно недоступен.'):
         """Инициализация исключения."""
-        self.message = message
-        super().__init__(self.message)
+        super().__init__(message)
 
 
 class AudioProcessingError(Exception):
