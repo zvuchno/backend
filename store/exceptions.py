@@ -15,3 +15,7 @@ class AudioProcessingError(Exception):
 
 class TemporaryAudioStorageError(AudioProcessingError):
     """Временная ошибка доступа к аудиофайлу в storage."""
+
+
+class NotEnoughStock(Exception):
+    """Недостаточно товара на складе."""

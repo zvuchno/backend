@@ -23,23 +23,49 @@ Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 
 def create_yookassa_payment(order, retry=True):
     """Создает или переиспользует платеж в ЮKassa."""
-    if order.status == Order.Status.PAID:
-        logger.info(
-            'Попытка инициировать оплату уже оплаченного заказа: order_id=%s',
-            order.id,
-        )
-        return {
-            'payment_status': 'succeeded',
-            'confirmation_url': None,
-        }
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=order.pk)
 
-    payment, created = Payment.objects.get_or_create(
-        order=order,
-        status=Payment.PaymentStatus.PENDING,
-        defaults={
-            'amount': order.total,
-        },
-    )
+        if order.status == Order.Status.CREATED:
+            logger.info(
+                'Платёж заблокирован: заказ не зарезервирован | order_id=%s',
+                order.id,
+            )
+            return {
+                'status': 'not_reserved',
+                'confirmation_url': None,
+            }
+
+        if order.status == Order.Status.PAID:
+            logger.info(
+                'Попытка инициировать оплату уже '
+                'оплаченного заказа: order_id=%s',
+                order.id,
+            )
+            return {
+                'status': 'already_paid',
+                'confirmation_url': None,
+            }
+
+        if order.status != Order.Status.RESERVED:
+            logger.warning(
+                'Попытка оплаты заказа в некорректном статусе '
+                '| order_id=%s | status=%s',
+                order.id,
+                order.status,
+            )
+            return {
+                'status': 'invalid_state',
+                'confirmation_url': None,
+            }
+
+        payment, created = Payment.objects.get_or_create(
+            order=order,
+            status=Payment.PaymentStatus.PENDING,
+            defaults={
+                'amount': order.total,
+            },
+        )
 
     if created:
         logger.info(
@@ -92,7 +118,7 @@ def create_yookassa_payment(order, retry=True):
         }
 
     payment.provider_payment_id = yookassa_payment.id
-    payment.save(update_fields=['provider_payment_id'])
+    payment.save(update_fields=['provider_payment_id', 'updated_at'])
 
     if yookassa_payment.status == 'succeeded':
         logger.info(
@@ -112,7 +138,7 @@ def create_yookassa_payment(order, retry=True):
         details = getattr(yookassa_payment, 'cancellation_details', None)
         reason = getattr(details, 'reason', 'неизвестная причина')
         payment.error_code = reason
-        payment.save(update_fields=['status', 'error_code'])
+        payment.save(update_fields=['status', 'error_code', 'updated_at'])
 
         logger.warning(
             'Платеж отменен: внутренний ID=%s, ID в ЮKassa=%s, причина=%s',
@@ -143,7 +169,7 @@ def mark_payment_succeeded(payment):
         payment.save(update_fields=['status', 'paid_at', 'updated_at'])
 
         payment.order.status = Order.Status.PAID
-        payment.order.save(update_fields=['status'])
+        payment.order.save(update_fields=['status', 'updated_at'])
 
     logger.info(
         'Платеж %s успешно обработан. Заказ id=%s оплачен.',
@@ -198,11 +224,12 @@ def process_yookassa_webhook(notification):
                 reason = payment_info.cancellation_details.reason
                 payment.error_code = reason
 
-            payment.save(update_fields=['status', 'error_code'])
+            payment.save(update_fields=['status', 'error_code', 'updated_at'])
 
         logger.info(
-            'Платеж %s отменен. Причина: %s',
+            'Платеж %s по заказу id=%s отменен. Причина: %s',
             payment.provider_payment_id,
+            payment.order.id,
             reason or 'неизвестная причина',
         )
 

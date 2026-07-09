@@ -1,6 +1,10 @@
 """ViewSet для работы с заказом покупателя."""
 
+from datetime import timedelta
+
+from django.db import transaction
 from django.db.models import Count, Prefetch
+from django.utils import timezone
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,6 +12,7 @@ from rest_framework.response import Response
 from common.permissions import IsUserObjectOwner
 from common.utils import get_client_ip
 
+from store.constants import RESERVATION_TTL_MINUTES
 from store.models import Image, Order, OrderItem
 from store.schema import checkout_schema, order_schema
 from store.serializers import (
@@ -16,7 +21,12 @@ from store.serializers import (
     OrderDetailSerializer,
     OrderSerializer,
 )
-from store.services import CartService, LocationService, OrderService
+from store.services import (
+    CartService,
+    LocationService,
+    OrderService,
+    ReservationService,
+)
 
 
 @order_schema
@@ -108,13 +118,23 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
 
-        order = OrderService.create_order(
-            user=request.user,
-            cart=cart,
-            validated_data=serializer.validated_data,
-            ip_address=ip_address,
-            user_agent=request.META.get('HTTP_USER_AGENT'),
-        )
+        with transaction.atomic():
+            order = OrderService.create_order(
+                user=request.user,
+                cart=cart,
+                validated_data=serializer.validated_data,
+                ip_address=ip_address,
+                user_agent=request.META.get('HTTP_USER_AGENT'),
+            )
+            order = ReservationService.reserve_order(
+                order,
+                reserved_until=(
+                    timezone.now()
+                    + timedelta(
+                        minutes=RESERVATION_TTL_MINUTES,
+                    )
+                ),
+            )
         return Response(
             OrderSerializer(order).data,
             status=status.HTTP_201_CREATED,

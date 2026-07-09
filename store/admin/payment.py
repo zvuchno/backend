@@ -6,6 +6,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from common.utils.money import format_money
+
 from store.models import Payment
 
 
@@ -16,7 +18,7 @@ class PaymentAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'payment_info',
-        'amount',
+        'display_amount',
         'colored_status',
         'provider_payment_id',
         'paid_at',
@@ -28,7 +30,7 @@ class PaymentAdmin(admin.ModelAdmin):
     readonly_fields = (
         'colored_status',
         'order',
-        'amount',
+        'display_amount',
         'provider_payment_id',
         'created_at',
         'updated_at',
@@ -41,7 +43,7 @@ class PaymentAdmin(admin.ModelAdmin):
         fields = [
             'colored_status',
             'order',
-            'amount',
+            'display_amount',
             'provider_payment_id',
             'paid_at',
         ]
@@ -70,6 +72,10 @@ class PaymentAdmin(admin.ModelAdmin):
     @admin.display(description='Информация о платеже')
     def payment_info(self, obj):
         return f'Оплата по заказу №{obj.order.order_number}'
+
+    @admin.display(description='Сумма платежа (руб.)')
+    def display_amount(self, obj):
+        return format_money(obj.amount)
 
     @admin.display(description='Статус')
     def colored_status(self, obj):
