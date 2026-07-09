@@ -1,4 +1,6 @@
 import logging
+from collections import defaultdict
+from decimal import Decimal
 
 import requests
 from django.conf import settings
@@ -10,8 +12,13 @@ from store.constants import (
     CDEK_API_PAGE_SIZE,
     CITY_CACHE_TIMEOUT,
     DEFAULT_CACHE_TIMEOUT,
+    MONEY_DISPLAY_PRECISION,
+    ZERO_MONEY,
 )
 from store.exceptions import CDEKIntegrationError
+from store.models import Product
+from store.services.cart_service import CartCalculationService
+from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +34,8 @@ class CDEKService:
         get_access_token(): Получает или обновляет токен доступа OAuth2.
         get_city_code_by_name: Получает код города СДЭК по его названию.
         get_offices: Возвращает список пунктов выдачи для города.
+        calculate: Рассчитывает стоимость доставки на основе корзины.
+        create_order: Регистрирует накладную в СДЭК.
 
     """
 
@@ -35,9 +44,11 @@ class CDEKService:
         self.api_url = settings.CDEK_API_URL
         self.client_id = settings.CDEK_CLIENT_ID
         self.client_secret = settings.CDEK_CLIENT_SECRET
-        self.tariff_code_pickpoint = settings.TARIFF_PICKPOINT
-        self.tariff_code_courier = settings.TARIFF_COURIER
+        self.tariff_code_office = settings.TARIFF_OFFICE
+        self.tariff_code_door = settings.TARIFF_DOOR
+        self.tariff_code_pickup = settings.TARIFF_PICKUP
         self.default_item_weight = settings.DEFAULT_ITEM_WEIGHT
+        self.default_city = settings.DEFAULT_CITY
 
     def _auth_headers(self) -> dict[str, str]:
         """Формирование HTTP-заголовков авторизации со токеном Bearer."""
@@ -111,9 +122,13 @@ class CDEKService:
     def get_offices(self, params: dict) -> dict:
         """Оркестратор получения ПВЗ."""
         # Добавить параметр 'city' к запросу виджета на фронтенде!
-        city = str(params.get('city', '')).strip().lower()
-        if not city:
-            raise ValidationError('Параметр city обязателен.')
+        city = (
+            str(
+                params.get('city') or self.default_city,
+            )
+            .strip()
+            .lower()
+        )
 
         city_code = self._get_or_set_city_code(city)
 
@@ -213,9 +228,22 @@ class CDEKService:
                     timeout=10,
                 )
                 response.raise_for_status()
-            except requests.RequestException:
-                logger.exception('Ошибка API CDEK')
-                raise CDEKIntegrationError()
+            except requests.RequestException as e:
+                if e.response is not None:
+                    logger.error(
+                        'CDEK вернул ошибку при получении ПВЗ. '
+                        'status=%s, params=%s, body=%s',
+                        e.response.status_code,
+                        api_params,
+                        e.response.text,
+                    )
+                else:
+                    logger.error(
+                        'Ошибка соединения с API CDEK при получении ПВЗ. '
+                        'params=%s',
+                        api_params,
+                    )
+                raise CDEKIntegrationError() from e
 
             data = response.json()
             if not data:
@@ -265,3 +293,204 @@ class CDEKService:
             'total_elements': total_elements,
             'total_pages': (total_elements + size - 1) // size,
         }
+
+    def calculate(
+        self,
+        city: str,
+        cart,
+        delivery_type: str = 'office',
+    ) -> dict:
+        """Расчет стоимости доставки СДЭК на основе содержимого корзины."""
+        if not cart:
+            raise ValidationError({'detail': 'Ваша корзина пуста.'})
+
+        calculation_service = CartCalculationService(cart)
+
+        # Получаем список ID уникальных артистов, чей мерч в корзине
+        cart_artist_ids = calculation_service.get_merch_artist_ids()
+
+        if not cart_artist_ids:  # Если мерча нет
+            logger.warning('Нет физических товаров для доставки.')
+            raise ValidationError({
+                'detail': 'Нет физических товаров для доставки.',
+            })
+
+        # Создаем словарь {artist_id: city_code} - в один запрос
+        artist_city_code = dict(
+            ArtistProfile.objects.filter(id__in=cart_artist_ids).values_list(
+                'id',
+                'shipping_point__city_code',
+            ),
+        )
+        # Считаем количество мерча для каждого артиста
+        artist_quantities = defaultdict(int)
+        cart_items = cart.items.filter(
+            product_variant__product__product_type=Product.ProductType.MERCH,
+        ).select_related(
+            'product_variant__product__merch__owner__artist_profile',
+        )
+
+        for item in cart_items:
+            owner = item.product_variant.product.merch.owner
+            artist_profile = getattr(owner, 'artist_profile', None)
+
+            if artist_profile:
+                artist_id = artist_profile.id
+                if artist_id in artist_city_code:
+                    artist_quantities[artist_id] += item.quantity
+
+        total_delivery_sum = ZERO_MONEY
+
+        # Списки для сбора сроков доставки от разных артистов
+        all_min_periods = []
+        all_max_periods = []
+
+        # Проходим по сгруппированным артистам и суммируем доставки
+        for artist_id, items_count in artist_quantities.items():
+            from_location_code = artist_city_code.get(artist_id)
+
+            if not from_location_code:
+                raise ValidationError({
+                    'detail': f'У артиста id={artist_id} не указан код '
+                    'населенного пункта для отгрузки товара.',
+                })
+
+            delivery_data = self._calculate_for_artist(
+                from_location=from_location_code,
+                to_location=city,
+                items_count=items_count,
+                delivery_type=delivery_type,
+            )
+
+            total_delivery_sum += delivery_data['total_sum']
+
+            if delivery_data['period_min'] is not None:
+                all_min_periods.append(delivery_data['period_min'])
+            if delivery_data['period_max'] is not None:
+                all_max_periods.append(delivery_data['period_max'])
+
+            logger.info(
+                f'Корзина {cart.user}: рассчитана сумма доставки '
+                f'от артиста ID: {artist_id}, from_location: '
+                f'{from_location_code}, to_location: {city}, items_count '
+                f'= {items_count} -> {delivery_data["total_sum"]} руб.',
+            )
+
+        delivery_sum = round(total_delivery_sum, MONEY_DISPLAY_PRECISION)
+
+        # Вычисляем финальные сроки (берем худший максимум из всех плеч)
+        period_min = max(all_min_periods) if all_min_periods else None
+        period_max = max(all_max_periods) if all_max_periods else None
+
+        logger.info(
+            f'Корзина {cart.user}, тип доставки: {delivery_type}, '
+            f'итоговая сумма доставки всех товаров -> {delivery_sum} руб. '
+            f'Сроки: {period_min}-{period_max} дн.',
+        )
+
+        return {
+            'delivery_sum': delivery_sum,
+            'period_min': period_min,
+            'period_max': period_max,
+        }
+
+    def _calculate_for_artist(
+        self,
+        to_location: str,
+        from_location: str,
+        items_count: int,
+        delivery_type: str,
+    ) -> dict:
+        """Метод для расчета доставки в API СДЭК по конкретным артистам."""
+        if delivery_type == 'office':
+            tariff_code = self.tariff_code_office
+        elif delivery_type == 'door':
+            tariff_code = self.tariff_code_door
+        elif delivery_type == 'pickup':
+            tariff_code = self.tariff_code_pickup
+        else:
+            raise ValidationError({
+                'detail': f'Неподдерживаемый тип тарифа: {delivery_type}.',
+            })
+
+        # Умножаем базовый вес на количество мерчей этого артиста
+        total_weight = items_count * int(self.default_item_weight)
+
+        payload = {
+            'tariff_code': tariff_code,
+            'from_location': {'code': int(from_location)},
+            'to_location': {'code': int(to_location)},
+            'packages': [
+                {
+                    'weight': int(total_weight),
+                },
+            ],
+        }
+
+        url = f'{self.api_url}/calculator/tariff'
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers=self._auth_headers(),
+                timeout=5,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            return {
+                'total_sum': Decimal(str(data['total_sum'])),
+                'period_min': data.get('period_min'),
+                'period_max': data.get('period_max'),
+            }
+
+        except requests.RequestException as e:
+            if e.response is not None:
+                logger.error(
+                    'CDEK вернул ошибку при расчёте доставки. '
+                    'status=%s, payload=%s, body=%s',
+                    e.response.status_code,
+                    payload,
+                    e.response.text,
+                )
+            raise CDEKIntegrationError(
+                'Не удалось рассчитать стоимость доставки. '
+                'Служба СДЭК временно недоступна, '
+                'пожалуйста, попробуйте позже.',
+            ) from e
+
+    def suggest_cities(self, query):
+        """Поиск доступных городов через саджест-API СДЭК."""
+        url = f'{self.api_url}/location/suggest/cities'
+
+        try:
+            response = requests.get(
+                url,
+                headers=self._auth_headers(),
+                params={'name': query, 'country_code': 'RU'},
+                timeout=10,
+            )
+            response.raise_for_status()
+            return response.json()
+
+        except requests.RequestException as e:
+            if e.response is not None:
+                logger.error(
+                    'CDEK вернул ошибку при поиске городов. '
+                    'status=%s, query=%s, body=%s',
+                    e.response.status_code,
+                    query,
+                    e.response.text,
+                )
+            else:
+                logger.error(
+                    'Ошибка соединения с API CDEK при поиске городов. '
+                    'query=%s',
+                    query,
+                )
+
+            raise CDEKIntegrationError(
+                'Не удалось получить список городов. '
+                'Служба СДЭК временно недоступна, '
+                'пожалуйста, попробуйте позже.',
+            ) from e

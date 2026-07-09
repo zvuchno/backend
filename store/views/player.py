@@ -2,7 +2,7 @@
 
 import logging
 
-from django.db.models import Prefetch
+from django.db.models import OuterRef, Prefetch, Subquery
 from django.http import Http404
 from django.shortcuts import redirect
 from rest_framework import status
@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from store.models import Album, Track, TrackGeneratedAudio
+from store.models import Album, ProductVariant, Track, TrackGeneratedAudio
 from store.schema import (
     player_album_schema,
     player_track_play_schema,
@@ -32,12 +32,28 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
 
     def get_queryset(self):
         """Возвращает альбом с доступными треками для плеера."""
+        purchase_variant_queryset = (
+            ProductVariant.objects
+            .filter(
+                product__track_id=OuterRef('pk'),
+                product__price__gt=0,
+                is_active=True,
+            )
+            .order_by('id')
+            .values('pk')[:1]
+        )
+
         tracks_queryset = (
             self
             .get_track_read_queryset(
                 action='retrieve',
             )
             .select_related('generated')
+            .annotate(
+                variant_id=Subquery(
+                    purchase_variant_queryset,
+                ),
+            )
             .order_by('position', 'id')
         )
 

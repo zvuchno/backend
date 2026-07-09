@@ -5,7 +5,7 @@ from .catalog import (
     CatalogReleaseDetailView,
     ProductCatalogListView,
 )
-from .cdek import CDEKWidgetView
+from .cdek import CDEKWidgetView, CdekCalculateView, CdekCitiesView
 from .delivery import DeliveryViewSet
 from .favorites import FavoritesViewSet
 from .genre import GenreViewSet
@@ -34,6 +34,8 @@ __all__ = [
     'CatalogMerchDetailView',
     'CatalogReleaseDetailView',
     'CDEKWidgetView',
+    'CdekCalculateView',
+    'CdekCitiesView',
     'CreatePaymentView',
     'DeliveryViewSet',
     'FavoritesViewSet',

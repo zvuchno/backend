@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import OuterRef, Prefetch, Subquery
+from django.db.models import Exists, OuterRef, Prefetch, Subquery
 from django.db.models.functions import ExtractYear
 
 
@@ -12,6 +12,20 @@ class ProductQuerySet(models.QuerySet):
     CATALOG_TYPE_ALL = 'all'
     CATALOG_TYPE_ALBUM = 'album'
     CATALOG_TYPE_MERCH = 'merch'
+
+    def with_available_variant(self):
+        """Добавляет признак наличия активного варианта с остатком."""
+        from store.models import ProductVariant
+
+        available_variant = ProductVariant.objects.filter(
+            product_id=OuterRef('pk'),
+            is_active=True,
+            stock__gt=0,
+        )
+
+        return self.annotate(
+            has_available_variant=Exists(available_variant),
+        )
 
     def published_tracks(self):
         """Возвращает опубликованные треки для карточек.
@@ -37,13 +51,12 @@ class ProductQuerySet(models.QuerySet):
 
     def published_merch(self):
         """Возвращает опубликованный мерч каталога."""
-        return self.filter(
+        return self.with_available_variant().filter(
             merch__isnull=False,
             merch__is_active=True,
             merch__is_published=True,
             merch__visibility='public',
-            variants__is_active=True,
-            variants__stock__gt=0,
+            has_available_variant=True,
         )
 
     def published_catalog_content(self):
@@ -52,7 +65,7 @@ class ProductQuerySet(models.QuerySet):
         В основной каталог сейчас входят альбомы и мерч.
         Треки не добавляются, потому что они видимы через альбом.
         """
-        return self.filter(
+        return self.with_available_variant().filter(
             models.Q(
                 album__isnull=False,
                 album__is_active=True,
@@ -64,8 +77,7 @@ class ProductQuerySet(models.QuerySet):
                 merch__is_active=True,
                 merch__is_published=True,
                 merch__visibility='public',
-                variants__is_active=True,
-                variants__stock__gt=0,
+                has_available_variant=True,
             ),
         )
 
@@ -97,6 +109,26 @@ class ProductQuerySet(models.QuerySet):
                 ),
                 default=models.Value(None),
                 output_field=models.IntegerField(),
+            ),
+        )
+
+    def with_favorite_variant_id(self):
+        """Добавляет ID активного варианта для работы с избранным."""
+        from store.models.product_variant import ProductVariant
+
+        favorite_variant_id = (
+            ProductVariant.objects
+            .filter(
+                product_id=OuterRef('pk'),
+                is_active=True,
+            )
+            .order_by('id')
+            .values('id')[:1]
+        )
+
+        return self.annotate(
+            favorite_variant_id=Subquery(
+                favorite_variant_id,
             ),
         )
 
@@ -291,6 +323,7 @@ class ProductQuerySet(models.QuerySet):
             .with_album_card_data()
             .with_album_card_annotations()
             .with_selected_variant_id()
+            .with_favorite_variant_id()
         )
 
     def for_merch_cards(self):
@@ -301,6 +334,7 @@ class ProductQuerySet(models.QuerySet):
             .with_merch_card_data()
             .with_merch_card_annotations()
             .with_selected_variant_id()
+            .with_favorite_variant_id()
         )
 
     def for_track_cards(self):
@@ -310,6 +344,7 @@ class ProductQuerySet(models.QuerySet):
             .published_tracks()
             .with_track_card_data()
             .with_track_card_annotations()
+            .with_favorite_variant_id()
         )
 
     def for_catalog_cards(self):
@@ -325,6 +360,7 @@ class ProductQuerySet(models.QuerySet):
             .with_merch_card_data()
             .with_catalog_card_annotations()
             .with_selected_variant_id()
+            .with_favorite_variant_id()
         )
 
     def for_catalog_type(self, catalog_type):
