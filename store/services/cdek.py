@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 import requests
 from django.conf import settings
@@ -16,7 +16,7 @@ from store.constants import (
     ZERO_MONEY,
 )
 from store.exceptions import CDEKIntegrationError
-from store.models import Product
+from store.models import Product, Shipment
 from store.services.cart_service import CartCalculationService
 from users.models import ArtistProfile
 
@@ -35,7 +35,7 @@ class CDEKService:
         get_city_code_by_name: Получает код города СДЭК по его названию.
         get_offices: Возвращает список пунктов выдачи для города.
         calculate: Рассчитывает стоимость доставки на основе корзины.
-        create_order: Регистрирует накладную в СДЭК.
+        register_orders: Регистрирует накладную в СДЭК.
 
     """
 
@@ -298,7 +298,7 @@ class CDEKService:
         self,
         city: str,
         cart,
-        delivery_type: str = 'office',
+        cdek_delivery_mode: str = 'office',
     ) -> dict:
         """Расчет стоимости доставки СДЭК на основе содержимого корзины."""
         if not cart:
@@ -359,7 +359,7 @@ class CDEKService:
                 from_location=from_location_code,
                 to_location=city,
                 items_count=items_count,
-                delivery_type=delivery_type,
+                cdek_delivery_mode=cdek_delivery_mode,
             )
 
             total_delivery_sum += delivery_data['total_sum']
@@ -383,7 +383,7 @@ class CDEKService:
         period_max = max(all_max_periods) if all_max_periods else None
 
         logger.info(
-            f'Корзина {cart.user}, тип доставки: {delivery_type}, '
+            f'Корзина {cart.user}, тип доставки: {cdek_delivery_mode}, '
             f'итоговая сумма доставки всех товаров -> {delivery_sum} руб. '
             f'Сроки: {period_min}-{period_max} дн.',
         )
@@ -399,18 +399,19 @@ class CDEKService:
         to_location: str,
         from_location: str,
         items_count: int,
-        delivery_type: str,
+        cdek_delivery_mode: str,
     ) -> dict:
         """Метод для расчета доставки в API СДЭК по конкретным артистам."""
-        if delivery_type == 'office':
+        if cdek_delivery_mode == 'office':
             tariff_code = self.tariff_code_office
-        elif delivery_type == 'door':
+        elif cdek_delivery_mode == 'door':
             tariff_code = self.tariff_code_door
-        elif delivery_type == 'pickup':
+        elif cdek_delivery_mode == 'pickup':
             tariff_code = self.tariff_code_pickup
         else:
             raise ValidationError({
-                'detail': f'Неподдерживаемый тип тарифа: {delivery_type}.',
+                'detail': 'Неподдерживаемый тип тарифа: '
+                f'{cdek_delivery_mode}.',
             })
 
         # Умножаем базовый вес на количество мерчей этого артиста
@@ -493,4 +494,259 @@ class CDEKService:
                 'Не удалось получить список городов. '
                 'Служба СДЭК временно недоступна, '
                 'пожалуйста, попробуйте позже.',
+            ) from e
+
+    def register_orders(self, order) -> list[dict]:
+        """Регистрирует накладные СДЭК по заказу."""
+        artist_ids = list(
+            order.items
+            .filter(
+                product_variant__product__product_type=Product.ProductType.MERCH,
+            )
+            .values_list(
+                'product_variant__product__merch__owner__artist_profile__id',
+                flat=True,
+            )
+            .distinct(),
+        )
+        if not artist_ids:
+            logger.info(
+                'Заказ %s: нет физических товаров, регистрация в СДЭК '
+                'не требуется.',
+                order.order_number,
+            )
+            return []
+        artist_profiles = {
+            a.id: a for a in ArtistProfile.objects.filter(id__in=artist_ids)
+        }
+        artist_shipment_point = {
+            a_id: a.shipping_point.pvz_code if a.shipping_point else None
+            for a_id, a in artist_profiles.items()
+        }
+
+        # Группируем позиции заказа по артисту
+        artist_items = defaultdict(list)
+        order_items = order.items.filter(
+            product_variant__product__product_type=Product.ProductType.MERCH,
+        ).select_related(
+            'product_variant__product__merch__owner__artist_profile',
+        )
+        for item in order_items:
+            owner = item.product_variant.product.owner
+            artist_profile = getattr(owner, 'artist_profile', None)
+            if artist_profile and artist_profile.id in artist_shipment_point:
+                artist_items[artist_profile.id].append(item)
+
+        results = []
+        for artist_id, items in artist_items.items():
+            if Shipment.objects.filter(
+                order=order,
+                artist_id=artist_id,
+            ).exists():
+                logger.info(
+                    'Заказ %s: отправление для артиста id=%s уже '
+                    'зарегистрировано, пропускаем.',
+                    order.order_number,
+                    artist_id,
+                )
+                continue
+
+            shipment_point = artist_shipment_point.get(artist_id)
+            if not shipment_point:
+                raise ValidationError({
+                    'detail': (
+                        f'У артиста id={artist_id} не указан код '
+                        'населенного пункта для отгрузки товара.'
+                    ),
+                })
+            result = self._register_order_for_artist(
+                order=order,
+                artist_id=artist_id,
+                shipment_point=shipment_point,
+                items=items,
+            )
+            cdek_uuid = result['cdek_uuid']
+            state = result['state']
+            total_weight = result['total_weight']
+            results.append({
+                'artist_id': artist_id,
+                'cdek_uuid': cdek_uuid,
+                'order_number': f'{order.order_number}-{artist_id}',
+            })
+            logger.info(
+                'Заказ %s: накладная СДЭК зарегистрирована '
+                'для артиста id=%s, cdek_uuid=%s, статус: %s',
+                order.order_number,
+                artist_id,
+                cdek_uuid,
+                state,
+            )
+
+            shipment = Shipment.objects.create(
+                order=order,
+                artist=artist_profiles[artist_id],
+                cdek_uuid=cdek_uuid,
+                state=state,
+                weight=total_weight,
+            )
+            from store.tasks import update_cdek_shipment_task
+
+            update_cdek_shipment_task.apply_async(
+                args=[shipment.id],
+                countdown=30,
+            )
+        return results
+
+    def _register_order_for_artist(
+        self,
+        order,
+        artist_id: int,
+        shipment_point: str,
+        items: list,
+    ) -> dict:
+        """Формирует и отправляет payload регистрации накладной СДЭК."""
+        cdek_delivery_mode = order.cdek_delivery_mode
+        if cdek_delivery_mode == 'office':
+            tariff_code = self.tariff_code_office
+        elif cdek_delivery_mode == 'door':
+            tariff_code = self.tariff_code_door
+        elif cdek_delivery_mode == 'pickup':
+            tariff_code = self.tariff_code_pickup
+        else:
+            raise ValidationError({
+                'detail': 'Неподдерживаемый тип тарифа: '
+                f'{cdek_delivery_mode}.',
+            })
+
+        order_number = f'{order.order_number}-{artist_id}'
+        total_weight = sum(
+            item.quantity * int(self.default_item_weight) for item in items
+        )
+        package_items = [
+            {
+                'name': item.product_variant.product.name,
+                'ware_key': str(item.product_variant.sku),
+                'cost': (
+                    self._money_to_cdek(item.product_variant.product.price)
+                ),
+                'weight': int(self.default_item_weight),
+                'amount': item.quantity,
+                'payment': {'value': self._money_to_cdek(ZERO_MONEY)},
+            }
+            for item in items
+        ]
+
+        payload = {
+            'type': 1,
+            'number': order_number,
+            'tariff_code': tariff_code,
+            'shipment_point': shipment_point,
+            'recipient': {
+                'name': order.full_name,
+                'phones': [{'number': str(order.phone)}],
+            },
+            'packages': [
+                {
+                    'number': f'{order_number}-1',
+                    'weight': int(total_weight),
+                    'items': package_items,
+                },
+            ],
+        }
+        if cdek_delivery_mode in ('office', 'pickup'):
+            payload['delivery_point'] = order.delivery_point
+        else:
+            payload['to_location'] = {
+                'city': order.city,
+                'address': order.full_address,
+            }
+
+        url = f'{self.api_url}/orders'
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                headers=self._auth_headers(),
+                timeout=10,
+            )
+            response.raise_for_status()
+        except requests.RequestException as e:
+            if e.response is not None:
+                logger.error(
+                    'CDEK вернул ошибку при регистрации накладной. '
+                    'status=%s, payload=%s, body=%s',
+                    e.response.status_code,
+                    payload,
+                    e.response.text,
+                )
+            else:
+                logger.error(
+                    'Ошибка соединения с API CDEK при регистрации накладной. '
+                    'payload=%s',
+                    payload,
+                )
+            raise CDEKIntegrationError(
+                'Не удалось зарегистрировать заказ в СДЭК. '
+                'Служба СДЭК временно недоступна, '
+                'пожалуйста, попробуйте позже.',
+            ) from e
+
+        data = response.json()
+        try:
+            return {
+                'cdek_uuid': data['entity']['uuid'],
+                'state': data['requests'][0]['state'],
+                'total_weight': total_weight,
+            }
+        except (KeyError, IndexError, TypeError) as e:
+            logger.error(
+                'Неожиданный формат ответа СДЭК при регистрации заказа %s: %s',
+                order_number,
+                data,
+            )
+            raise CDEKIntegrationError(
+                'СДЭК вернул некорректный ответ при регистрации заказа.',
+            ) from e
+
+    def _money_to_cdek(self, amount: Decimal) -> str:
+        """Приводит Decimal-сумму к строке для JSON-payload СДЭК."""
+        quantized = amount.quantize(
+            Decimal('1.' + '0' * MONEY_DISPLAY_PRECISION),
+            rounding=ROUND_HALF_UP,
+        )
+        return str(quantized)
+
+    def get_order_info(self, cdek_uuid: str) -> dict:
+        """Получает статус и данные накладной СДЭК по uuid заявки.
+
+        Используется после create_order (или в обработчике вебхука
+        ORDER_STATUS) для получения итогового номера накладной
+        (cdek_number) и статуса регистрации.
+        """
+        url = f'{self.api_url}/orders/{cdek_uuid}'
+        try:
+            response = requests.get(
+                url,
+                headers=self._auth_headers(),
+                timeout=10,
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            if e.response is not None:
+                logger.error(
+                    'CDEK вернул ошибку при получении статуса заказа. '
+                    'status=%s, cdek_uuid=%s, body=%s',
+                    e.response.status_code,
+                    cdek_uuid,
+                    e.response.text,
+                )
+            else:
+                logger.error(
+                    'Ошибка соединения с API CDEK при получении статуса '
+                    'заказа. cdek_uuid=%s',
+                    cdek_uuid,
+                )
+            raise CDEKIntegrationError(
+                'Не удалось получить статус заказа в СДЭК.',
             ) from e

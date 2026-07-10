@@ -64,13 +64,13 @@ class CdekCalculateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         city_code = serializer.validated_data['city_code']
-        delivery_type = serializer.validated_data['delivery_type']
+        cdek_delivery_mode = serializer.validated_data['cdek_delivery_mode']
 
         cdek_service = CDEKService()
         result = cdek_service.calculate(
             city=str(city_code),
             cart=cart,
-            delivery_type=delivery_type,
+            cdek_delivery_mode=cdek_delivery_mode,
         )
 
         return Response(result, status=status.HTTP_200_OK)

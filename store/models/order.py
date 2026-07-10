@@ -63,7 +63,25 @@ class Order(TimestampModel):
         'Номер телефона',
     )
 
-    # --- Адрес доставки ---
+    # --- Доставка ---
+    delivery = models.CharField(
+        'Способ доставки',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+    )
+    cdek_delivery_mode = models.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name='Метод доставки СДЭК',
+    )
+    delivery_point = models.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name='Код ПВЗ / Постамата',
+    )
     city = models.CharField(
         'Город',
         max_length=MAX_CHAR_LENGTH,
@@ -164,6 +182,16 @@ class Order(TimestampModel):
             counter.refresh_from_db()
 
             return f'ZV-{short_year}{counter.last_number:06d}'
+
+    @property
+    def full_address(self) -> str:
+        parts = [
+            f'г. {self.city}' if self.city else None,
+            f'ул. {self.street}' if self.street else None,
+            f'д. {self.house}' if self.house else None,
+            f'кв/оф. {self.apartment}' if self.apartment else None,
+        ]
+        return ', '.join(filter(None, parts))
 
     def save(self, *args, **kwargs):
         if not self.order_number:

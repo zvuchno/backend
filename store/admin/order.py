@@ -14,7 +14,7 @@ from common.utils.money import format_money
 
 from .hooks import handle_order_status_change
 from store.exceptions import NotEnoughStock
-from store.models import Order, OrderItem, Payment
+from store.models import Order, OrderItem, Payment, Shipment
 
 
 class OrderItemInline(admin.TabularInline):
@@ -137,6 +137,28 @@ class PaymentInline(admin.TabularInline):
         return False
 
 
+class ShipmentInline(admin.TabularInline):
+    """Инлайн отображения отправлений по заказу."""
+
+    model = Shipment
+    extra = 0
+    fields = (
+        'artist',
+        'cdek_uuid',
+        'state',
+        'tracking_number',
+        'weight',
+    )
+    readonly_fields = fields
+    can_delete = False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     """Админка модели Order с вложенными позициями."""
@@ -234,7 +256,7 @@ class OrderAdmin(admin.ModelAdmin):
             },
         ),
     )
-    inlines = (OrderItemInline, PaymentInline)
+    inlines = (OrderItemInline, PaymentInline, ShipmentInline)
 
     @admin.display(description='Сумма товаров (руб.)')
     def display_subtotal(self, obj):
