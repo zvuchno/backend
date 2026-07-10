@@ -108,7 +108,7 @@ class ProductService:
             for variant_data in variants_data:
                 variant_id = variant_data.get('id')
                 value = variant_data.get('property_value')
-                stock = variant_data.get('stock')
+                stock = variant_data.get('stock') or 0
                 is_active = variant_data.get('is_active', True)
 
                 #  =============== Валидация ===============

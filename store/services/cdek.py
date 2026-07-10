@@ -458,3 +458,39 @@ class CDEKService:
                 'Служба СДЭК временно недоступна, '
                 'пожалуйста, попробуйте позже.',
             ) from e
+
+    def suggest_cities(self, query):
+        """Поиск доступных городов через саджест-API СДЭК."""
+        url = f'{self.api_url}/location/suggest/cities'
+
+        try:
+            response = requests.get(
+                url,
+                headers=self._auth_headers(),
+                params={'name': query, 'country_code': 'RU'},
+                timeout=10,
+            )
+            response.raise_for_status()
+            return response.json()
+
+        except requests.RequestException as e:
+            if e.response is not None:
+                logger.error(
+                    'CDEK вернул ошибку при поиске городов. '
+                    'status=%s, query=%s, body=%s',
+                    e.response.status_code,
+                    query,
+                    e.response.text,
+                )
+            else:
+                logger.error(
+                    'Ошибка соединения с API CDEK при поиске городов. '
+                    'query=%s',
+                    query,
+                )
+
+            raise CDEKIntegrationError(
+                'Не удалось получить список городов. '
+                'Служба СДЭК временно недоступна, '
+                'пожалуйста, попробуйте позже.',
+            ) from e

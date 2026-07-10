@@ -42,13 +42,7 @@ class CreatePaymentView(APIView):
 
         result = create_yookassa_payment(order)
 
-        return Response(
-            {
-                'status': result['payment_status'],
-                'confirmation_url': result.get('confirmation_url'),
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response(result, status=status.HTTP_200_OK)
 
 
 @csrf_exempt

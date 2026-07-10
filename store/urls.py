@@ -14,6 +14,7 @@ from .views import (
     CatalogMerchDetailView,
     CatalogReleaseDetailView,
     CdekCalculateView,
+    CdekCitiesView,
     CreatePaymentView,
     DeliveryViewSet,
     FavoritesViewSet,
@@ -82,8 +83,13 @@ urlpatterns = [
         PurchasedMusicArchiveDownloadLinkView.as_view(),
         name='purchased-music-archive-download-link',
     ),
-    path('cdek/widget', CDEKWidgetView.as_view(), name='cdek-widget'),
-    path('cdek-calculate', CdekCalculateView.as_view(), name='cdek-calculate'),
+    path('cdek/widget/', CDEKWidgetView.as_view(), name='cdek-widget'),
+    path(
+        'cdek-calculate/',
+        CdekCalculateView.as_view(),
+        name='cdek-calculate',
+    ),
+    path('cdek-cities/', CdekCitiesView.as_view(), name='cdek-cities'),
     path(
         'payments/create/',
         CreatePaymentView.as_view(),

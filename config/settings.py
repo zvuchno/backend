@@ -351,15 +351,18 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TASK_SOFT_TIME_LIMIT = 240
 CELERY_TASK_TIME_LIMIT = 300
+
 CELERY_BEAT_SCHEDULE = {
     'cleanup-expired-track-uploads': {
-        'task': (
-            'store.tasks.track_upload.cleanup_expired_track_uploads'
-        ),
-        'schedule': crontab(
-            hour=4,
-            minute=10,
-        ),
+        'task': 'store.tasks.track_upload.cleanup_expired_track_uploads',
+        'schedule': crontab(hour=4, minute=10),
+    },
+    'release-expired-reservations': {
+        'task': 'store.tasks.reservations.release_expired_reservations',
+        'schedule': crontab(minute='*/10'),
+        'options': {
+            'queue': 'celery',
+        },
     },
 }
 

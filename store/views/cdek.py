@@ -6,7 +6,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
-from store.schema import cdek_calculate_schema, cdek_widget_schema
+from store.schema import (
+    cdek_calculate_schema,
+    cdek_cities_suggest_schema,
+    cdek_widget_schema,
+)
 from store.serializers import CdekCalculateSerializer
 from store.services import CDEKService, CartService
 
@@ -28,9 +32,9 @@ class CDEKWidgetView(APIView):
         )
         action = request.query_params.get('action')
 
-        if action == 'office':
+        if action == 'offices':
             # Передаем QueryDict в сервис
-            result = self.service.get_office(request.query_params)
+            result = self.service.get_offices(request.query_params)
 
             # Формируем ответ с кастомными заголовками для виджета
             response = Response(result['points'], status=200)
@@ -68,5 +72,24 @@ class CdekCalculateView(APIView):
             cart=cart,
             delivery_type=delivery_type,
         )
+
+        return Response(result, status=status.HTTP_200_OK)
+
+
+@cdek_cities_suggest_schema
+class CdekCitiesView(APIView):
+    """Отдает подсказки по подбору населенного пункта по его наименованию."""
+
+    permission_classes = (IsAuthenticated,)
+    throttle_classes = (UserRateThrottle,)
+
+    def get(self, request, *args, **kwargs):
+        query = request.query_params.get('query', '').strip()
+
+        if not query or len(query) < 2:  # Минимум 2 символа для поиска
+            return Response([], status=status.HTTP_200_OK)
+
+        cdek_service = CDEKService()
+        result = cdek_service.suggest_cities(query=query)
 
         return Response(result, status=status.HTTP_200_OK)
