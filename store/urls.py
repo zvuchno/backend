@@ -7,6 +7,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AlbumTrackUploadInitiateView,
     AlbumViewSet,
     CDEKWidgetView,
     CartViewSet,
@@ -28,6 +29,8 @@ from .views import (
     PurchasedMusicDLDetailView,
     PurchasedMusicTrackDownloadLinkView,
     PurchasedMusicView,
+    TrackUploadCompleteView,
+    TrackUploadReceiveFileView,
     TrackViewSet,
     yookassa_webhook,
 )
@@ -96,5 +99,20 @@ urlpatterns = [
         'player/tracks/<int:track_id>/play/',
         PlayerTrackPlayView.as_view(),
         name='player-play-track',
+    ),
+    path(
+        'albums/<int:album_id>/track-uploads/initiate/',
+        AlbumTrackUploadInitiateView.as_view(),
+        name='track-upload-initiate',
+    ),
+    path(
+        'track-uploads/<int:upload_id>/file/',
+        TrackUploadReceiveFileView.as_view(),
+        name='track-upload-receive-file',
+    ),
+    path(
+        'track-uploads/<int:upload_id>/complete/',
+        TrackUploadCompleteView.as_view(),
+        name='track-upload-complete',
     ),
 ]

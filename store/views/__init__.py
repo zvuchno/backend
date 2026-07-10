@@ -26,8 +26,14 @@ from .purchased_music import (
 )
 from .sale import ArtistSaleViewSet
 from .track import TrackViewSet
+from .track_upload import (
+    AlbumTrackUploadInitiateView,
+    TrackUploadCompleteView,
+    TrackUploadReceiveFileView,
+)
 
 __all__ = [
+    'AlbumTrackUploadInitiateView',
     'AlbumViewSet',
     'ArtistSaleViewSet',
     'CartViewSet',
@@ -50,6 +56,8 @@ __all__ = [
     'PurchasedMusicDLDetailView',
     'PurchasedMusicTrackDownloadLinkView',
     'PurchasedMusicView',
+    'TrackUploadCompleteView',
+    'TrackUploadReceiveFileView',
     'TrackViewSet',
     'yookassa_webhook',
 ]
