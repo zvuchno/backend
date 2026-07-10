@@ -77,7 +77,6 @@ class TestTrackUploadApi:
         assert track.name == 'Новое название'
         assert track.description == 'Описание трека.'
         assert track.position is None
-        assert track.is_active is False
         assert not track.audio_file
 
         assert track.product.price == Decimal('150.00')
@@ -95,7 +94,6 @@ class TestTrackUploadApi:
             'name': 'Новое название',
             'description': 'Описание трека.',
             'position': None,
-            'is_active': False,
             'price': '150.00',
             'allow_overpay': True,
         }
@@ -288,7 +286,6 @@ class TestTrackUploadApi:
             'name': 'Intro',
             'description': 'Описание.',
             'position': 1,
-            'is_active': False,
             'price': '100.00',
             'allow_overpay': True,
         }
@@ -322,7 +319,6 @@ class TestTrackUploadApi:
             album=album,
             name='Track',
             position=None,
-            is_active=False,
         )
         upload = TrackUpload.objects.create(
             track=track,

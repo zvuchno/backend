@@ -1,11 +1,10 @@
-from decimal import Decimal
-
 from rest_framework import serializers
 
 from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
+    ZERO_MONEY,
 )
 
 
@@ -36,7 +35,7 @@ class TrackUploadInitiateSerializer(serializers.Serializer):
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
         required=False,
-        default=Decimal('0.00'),
+        default=ZERO_MONEY,
     )
     allow_overpay = serializers.BooleanField(
         required=False,
@@ -65,7 +64,6 @@ class TrackUploadTrackSerializer(serializers.Serializer):
     name = serializers.CharField()
     description = serializers.CharField()
     position = serializers.IntegerField(allow_null=True)
-    is_active = serializers.BooleanField()
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,

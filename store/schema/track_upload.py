@@ -11,11 +11,14 @@ from store.serializers import (
 TRACK_UPLOAD_TAGS = ('Tracks',)
 
 track_upload_initiate_schema = extend_schema(
-    summary='Инициализировать загрузку трека',
+    summary='Инициализировать прямую загрузку трека в альбом',
     description=(
-        'Создаёт черновой трек в альбоме, создаёт попытку загрузки '
-        'и возвращает transport-инструкцию для передачи файла '
-        'во временное хранилище.'
+        'Создаёт черновой трек в указанном альбоме и возвращает инструкцию '
+        'для загрузки оригинального аудиофайла. Клиент должен отправить файл '
+        'по адресу upload.transport.url, '
+        'передав все поля из upload.transport.fields '
+        'и сам файл в поле upload.transport.file_field_name. После успешной '
+        'отправки файла нужно вызвать upload.complete_url.'
     ),
     request=TrackUploadInitiateSerializer,
     responses={
@@ -63,8 +66,11 @@ track_upload_receive_file_schema = extend_schema(
 track_upload_complete_schema = extend_schema(
     summary='Завершить загрузку трека',
     description=(
-        'Проверяет staging-файл, переносит его в постоянное хранилище, '
-        'назначает audio_file и position треку, помечает загрузку '
+        'Завершает прямую загрузку после того, '
+        'как клиент успешно отправил файл '
+        'по transport-инструкции. Проверяет staging-файл, '
+        'переносит его в постоянное '
+        'хранилище, назначает audio_file и position треку, помечает загрузку '
         'завершённой и запускает подготовку audio preview/stream.'
     ),
     request=None,

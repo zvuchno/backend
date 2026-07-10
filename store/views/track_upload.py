@@ -12,13 +12,17 @@ from rest_framework.views import APIView
 
 from common.permissions import IsArtist
 
+from store.constants import ZERO_MONEY
 from store.models import Album, TrackUpload
 from store.schema import (
     track_upload_complete_schema,
     track_upload_initiate_schema,
     track_upload_receive_file_schema,
 )
-from store.serializers import TrackUploadInitiateSerializer
+from store.serializers import (
+    TrackUploadInitiateSerializer,
+    TrackUploadResponseSerializer,
+)
 from store.services.track_upload import (
     TrackUploadService,
     TrackUploadStorageError,
@@ -60,20 +64,15 @@ def _build_track_upload_response(
             'name': track.name,
             'description': track.description,
             'position': track.position,
-            'is_active': track.is_active,
-            'price': str(product.price) if product else '0.00',
+            'price': product.price if product else ZERO_MONEY,
             'allow_overpay': product.allow_overpay if product else False,
         },
         'upload': {
             'id': upload.pk,
             'status': upload.status,
             'uploaded_size': upload.uploaded_size,
-            'expires_at': upload.expires_at.isoformat(),
-            'completed_at': (
-                upload.completed_at.isoformat()
-                if upload.completed_at
-                else None
-            ),
+            'expires_at': upload.expires_at,
+            'completed_at': upload.completed_at,
             'complete_url': request.build_absolute_uri(
                 reverse(
                     'api:store:track-upload-complete',
@@ -152,11 +151,13 @@ class AlbumTrackUploadInitiateView(APIView):
         upload.track = track
 
         return Response(
-            _build_track_upload_response(
-                request=request,
-                upload=upload,
-                transport=upload_instruction,
-            ),
+            TrackUploadResponseSerializer(
+                instance=_build_track_upload_response(
+                    request=request,
+                    upload=upload,
+                    transport=upload_instruction,
+                ),
+            ).data,
             status=HTTPStatus.CREATED,
         )
 
@@ -238,8 +239,10 @@ class TrackUploadCompleteView(APIView):
             )
 
         return Response(
-            _build_track_upload_response(
-                request=request,
-                upload=upload,
-            ),
+            TrackUploadResponseSerializer(
+                instance=_build_track_upload_response(
+                    request=request,
+                    upload=upload,
+                ),
+            ).data,
         )
