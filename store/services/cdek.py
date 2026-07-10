@@ -717,12 +717,7 @@ class CDEKService:
         return str(quantized)
 
     def get_order_info(self, cdek_uuid: str) -> dict:
-        """Получает статус и данные накладной СДЭК по uuid заявки.
-
-        Используется после create_order (или в обработчике вебхука
-        ORDER_STATUS) для получения итогового номера накладной
-        (cdek_number) и статуса регистрации.
-        """
+        """Получает статус и данные накладной СДЭК по uuid заявки."""
         url = f'{self.api_url}/orders/{cdek_uuid}'
         try:
             response = requests.get(

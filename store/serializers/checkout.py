@@ -53,8 +53,12 @@ class CheckoutSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
     )
-    cdek_delivery_mode = serializers.CharField(
-        max_length=MAX_CHAR_LENGTH,
+    cdek_delivery_mode = serializers.ChoiceField(
+        choices=[
+            ('office', 'Самовывоз из ПВЗ'),
+            ('door', 'Курьер (до двери)'),
+            ('pickup', 'Постомат'),
+        ],
         required=False,
         allow_blank=True,
     )
