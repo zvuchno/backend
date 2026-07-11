@@ -301,3 +301,67 @@ class TestTrackUploadStorageService:
 
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.completed_at is None
+
+    def test_complete_is_idempotent_for_completed_upload(
+        self,
+        settings,
+        tmp_path,
+        monkeypatch,
+        django_capture_on_commit_callbacks,
+    ):
+        """Повторный complete для завершённой загрузки возвращает успех."""
+        settings.USE_S3_MEDIA = False
+
+        storage = FileSystemStorage(
+            location=tmp_path,
+            base_url='/private/',
+        )
+        audio_file_field = Track._meta.get_field('audio_file')
+
+        monkeypatch.setattr(
+            audio_file_field,
+            'storage',
+            storage,
+        )
+
+        album = AlbumFactory()
+        file_content = b'test audio content'
+
+        track, upload = TrackUploadService.create_pending_track(
+            album=album,
+            filename='track.flac',
+            size=len(file_content),
+            content_type='audio/flac',
+        )
+
+        upload = TrackUploadService.receive_local_file(
+            upload=upload,
+            uploaded_file=SimpleUploadedFile(
+                name='track.flac',
+                content=file_content,
+                content_type='audio/flac',
+            ),
+        )
+
+        with patch(
+            'store.services.track_upload.upload_storage.'
+            'TrackGeneratedAudioScheduler.schedule',
+        ):
+            with django_capture_on_commit_callbacks(execute=True):
+                completed_upload = TrackUploadStorageService.complete(
+                    upload=upload,
+                )
+
+        track.refresh_from_db()
+        first_audio_file_name = track.audio_file.name
+
+        second_completed_upload = TrackUploadStorageService.complete(
+            upload=completed_upload,
+        )
+
+        track.refresh_from_db()
+        second_completed_upload.refresh_from_db()
+
+        assert second_completed_upload.status == TrackUpload.Status.COMPLETED
+        assert track.audio_file.name == first_audio_file_name
+        assert not storage.exists(upload.staging_key)
