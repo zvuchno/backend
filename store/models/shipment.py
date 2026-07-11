@@ -1,7 +1,14 @@
 """Модуль описания моделей данных для логистики и отправлений через СДЭК."""
 
+from django.core.validators import MinValueValidator
 from django.db import models
 
+from store.constants import (
+    MAX_CHAR_LENGTH,
+    MAX_PRICE_DIGITS,
+    MONEY_INTERNAL_PRECISION,
+    ZERO_MONEY,
+)
 from users.models.abstract import TimestampModel
 
 
@@ -29,7 +36,7 @@ class Shipment(TimestampModel):
         help_text='Артист, со склада которого уходит посылка.',
     )
     cdek_uuid = models.CharField(
-        max_length=100,
+        max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
         verbose_name='UUID транзакции СДЭК',
@@ -37,14 +44,14 @@ class Shipment(TimestampModel):
         'для отслеживания статуса регистрации.',
     )
     state = models.CharField(
-        max_length=50,
+        max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
         verbose_name='Состояние',
         help_text='Текущее состояние запроса',
     )
     tracking_number = models.CharField(
-        max_length=100,
+        max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
         verbose_name='Номер накладной',
@@ -53,6 +60,17 @@ class Shipment(TimestampModel):
     weight = models.PositiveIntegerField(
         verbose_name='Вес (в граммах)',
         help_text='Общий физический вес посылки.',
+    )
+    estimated_delivery_cost = models.DecimalField(
+        'Рассчетная стоимость доставки артиста (руб.)',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+        help_text=(
+            'Предварительная стоимость доставки, рассчитанная через API СДЭК. '
+            'Может отличаться от фактической стоимости услуг.'
+        ),
     )
 
     class Meta:

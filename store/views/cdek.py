@@ -68,7 +68,7 @@ class CdekCalculateView(APIView):
 
         cdek_service = CDEKService()
         result = cdek_service.calculate(
-            city=str(city_code),
+            city_code=str(city_code),
             cart=cart,
             cdek_delivery_mode=cdek_delivery_mode,
         )

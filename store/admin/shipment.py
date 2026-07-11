@@ -34,6 +34,7 @@ class ShipmentAdmin(admin.ModelAdmin):
         'cdek_uuid',
         'tracking_number',
         'weight',
+        'estimated_delivery_cost',
         'created_at',
         'updated_at',
     )
@@ -47,6 +48,7 @@ class ShipmentAdmin(admin.ModelAdmin):
                     'state',
                     'cdek_uuid',
                     'tracking_number',
+                    'estimated_delivery_cost',
                     'weight',
                 ),
             },
@@ -61,3 +63,15 @@ class ShipmentAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    def has_add_permission(self, request):
+        """Запрещает ручное создание через кнопку 'Добавить'."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает ручное удаление через кнопку 'Удалить'."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает ручное сохранение через кнопки 'Сохранить'."""
+        return False

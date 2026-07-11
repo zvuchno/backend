@@ -8,6 +8,7 @@ from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
 from store.constants import (
+    MAX_CDEK_CODE_LENGTH,
     MAX_CHAR_LENGTH,
     MAX_NUMBER_ORDER_LENGTH,
     MAX_PRICE_DIGITS,
@@ -82,6 +83,12 @@ class Order(TimestampModel):
         null=True,
         verbose_name='Код ПВЗ / Постамата',
     )
+    cdek_city_code = models.CharField(
+        max_length=MAX_CDEK_CODE_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name='Код населенного пункта в СДЭК',
+    )
     city = models.CharField(
         'Город',
         max_length=MAX_CHAR_LENGTH,
@@ -128,8 +135,19 @@ class Order(TimestampModel):
         default=ZERO_MONEY,
         validators=[MinValueValidator(ZERO_MONEY)],
     )
+    delivery_calculation = models.JSONField(
+        'Стоимость доставки по артистам (руб.)',
+        default=dict,
+        blank=True,
+        help_text=(
+            'Расчетная стоимость доставки, полученная от СДЭК на этапе '
+            'checkout. Формат: {"artist_id": {"cost": "250.00"}}. '
+            'Используется для фиксации стоимости доставки, '
+            'которую оплатил клиент.'
+        ),
+    )
     delivery_price = models.DecimalField(
-        'Стоимость доставки (руб.)',
+        'Стоимость доставки всего заказа (руб.)',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,

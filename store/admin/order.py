@@ -148,6 +148,7 @@ class ShipmentInline(admin.TabularInline):
         'state',
         'tracking_number',
         'weight',
+        'estimated_delivery_cost',
     )
     readonly_fields = fields
     can_delete = False
@@ -184,6 +185,7 @@ class OrderAdmin(admin.ModelAdmin):
         'display_promocode_discount',
         'delivery',
         'display_address',
+        'cdek_city_code',
         'display_total',
         'promocode',
         'created_at',
@@ -230,6 +232,7 @@ class OrderAdmin(admin.ModelAdmin):
                 'fields': (
                     'delivery',
                     'display_address',
+                    'cdek_city_code',
                 ),
             },
         ),

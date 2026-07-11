@@ -16,7 +16,7 @@ from store.constants import (
     ZERO_MONEY,
 )
 from store.exceptions import CDEKIntegrationError
-from store.models import Product, Shipment
+from store.models import OrderItem, Product, Shipment
 from store.services.cart_service import CartCalculationService
 from users.models import ArtistProfile
 
@@ -296,7 +296,7 @@ class CDEKService:
 
     def calculate(
         self,
-        city: str,
+        city_code: str,
         cart,
         cdek_delivery_mode: str = 'office',
     ) -> dict:
@@ -357,7 +357,7 @@ class CDEKService:
 
             delivery_data = self._calculate_for_artist(
                 from_location=from_location_code,
-                to_location=city,
+                to_location=city_code,
                 items_count=items_count,
                 cdek_delivery_mode=cdek_delivery_mode,
             )
@@ -372,7 +372,7 @@ class CDEKService:
             logger.info(
                 f'Корзина {cart.user}: рассчитана сумма доставки '
                 f'от артиста ID: {artist_id}, from_location: '
-                f'{from_location_code}, to_location: {city}, items_count '
+                f'{from_location_code}, to_location: {city_code}, items_count '
                 f'= {items_count} -> {delivery_data["total_sum"]} руб.',
             )
 
@@ -559,6 +559,10 @@ class CDEKService:
                         'населенного пункта для отгрузки товара.'
                     ),
                 })
+            if not order.cdek_city_code:
+                raise ValidationError({
+                    'detail': 'В заказе отсутствует код города СДЭК.',
+                })
             result = self._register_order_for_artist(
                 order=order,
                 artist_id=artist_id,
@@ -588,7 +592,15 @@ class CDEKService:
                 cdek_uuid=cdek_uuid,
                 state=state,
                 weight=total_weight,
+                estimated_delivery_cost=(
+                    order.delivery_calculation[str(artist_id)]['cost']
+                ),
             )
+            # Привязываем товары к созданному отправлению
+            for item in items:
+                item.shipment = shipment
+            OrderItem.objects.bulk_update(items, ['shipment'])
+
             from store.tasks import update_cdek_shipment_task
 
             update_cdek_shipment_task.apply_async(
@@ -626,9 +638,7 @@ class CDEKService:
             {
                 'name': item.product_variant.product.name,
                 'ware_key': str(item.product_variant.sku),
-                'cost': (
-                    self._money_to_cdek(item.product_variant.product.price)
-                ),
+                'cost': (self._money_to_cdek(item.line_total / item.quantity)),
                 'weight': int(self.default_item_weight),
                 'amount': item.quantity,
                 'payment': {'value': self._money_to_cdek(ZERO_MONEY)},
@@ -657,7 +667,7 @@ class CDEKService:
             payload['delivery_point'] = order.delivery_point
         else:
             payload['to_location'] = {
-                'city': order.city,
+                'code': order.cdek_city_code,
                 'address': order.full_address,
             }
 

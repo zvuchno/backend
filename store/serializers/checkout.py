@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from .delivery import DeliverySerializer
 from store.constants import (
+    MAX_CDEK_CODE_LENGTH,
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
@@ -50,6 +51,11 @@ class CheckoutSerializer(serializers.Serializer):
     )
     apartment = serializers.CharField(
         max_length=MAX_CHAR_LENGTH,
+        required=False,
+        allow_blank=True,
+    )
+    cdek_city_code = serializers.CharField(
+        max_length=MAX_CDEK_CODE_LENGTH,
         required=False,
         allow_blank=True,
     )
@@ -135,6 +141,8 @@ class CheckoutSerializer(serializers.Serializer):
             {
                 'cdek_delivery_mode': 'Метод доставки для СДЭК обязателен.',
                 'city': 'Город обязателен для выбора пункта выдачи.',
+                'cdek_city_code': 'Код города обязателен для '
+                'выбора пункта выдачи.',
                 'delivery_point': 'Код пункта выдачи обязателен.',
             },
         )
@@ -146,6 +154,8 @@ class CheckoutSerializer(serializers.Serializer):
             {
                 'cdek_delivery_mode': 'Метод доставки для СДЭК обязателен.',
                 'city': 'Город обязателен для доставки.',
+                'cdek_city_code': 'Код города обязателен для '
+                'выбора пункта выдачи.',
                 'street': 'Улица обязательна для доставки.',
                 'house': 'Номер дома обязателен.',
             },
