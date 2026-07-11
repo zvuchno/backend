@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from store.models import Track, TrackUpload
 from store.services.track_upload import UploadInstruction
-from store.tests.factories import AlbumFactory
+from store.tests.factories import AlbumFactory, TrackFactory
 
 
 @pytest.mark.django_db
@@ -337,3 +337,105 @@ class TestTrackUploadApi:
         response = artist_client.post(url)
 
         assert response.status_code == HTTPStatus.FORBIDDEN
+
+    @patch(
+        'store.views.track_upload.'
+        'TrackUploadTransportService.create_instruction',
+    )
+    def test_initiates_track_file_replacement_upload(
+        self,
+        mocked_create_instruction,
+        artist_client,
+        artist_user,
+    ):
+        """Создаёт попытку замены файла существующего трека."""
+        expires_at = timezone.now() + timedelta(hours=1)
+
+        mocked_create_instruction.return_value = UploadInstruction(
+            method='POST',
+            url='https://storage.test/upload',
+            headers={},
+            fields={
+                'key': 'media/staging/track-uploads/1/new.flac',
+                'Content-Type': 'audio/flac',
+            },
+            file_field_name='file',
+            expires_at=expires_at,
+        )
+
+        album = AlbumFactory(owner=artist_user)
+        track = TrackFactory(
+            album=album,
+            position=5,
+        )
+
+        url = reverse(
+            'api:store:track-file-upload-initiate',
+            args=(track.pk,),
+        )
+
+        response = artist_client.post(
+            url,
+            data={
+                'filename': 'new-original.flac',
+                'size': 123,
+                'content_type': 'audio/flac',
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        data = response.json()
+
+        upload = TrackUpload.objects.get(pk=data['upload']['id'])
+        track.refresh_from_db()
+
+        assert upload.track == track
+        assert upload.purpose == TrackUpload.Purpose.REPLACE
+        assert upload.status == TrackUpload.Status.INITIATED
+        assert upload.original_filename == 'new-original.flac'
+        assert upload.expected_size == 123
+        assert upload.content_type == 'audio/flac'
+
+        assert data['track']['id'] == track.pk
+        assert data['track']['name'] == track.name
+        assert data['track']['position'] == 5
+        assert data['upload']['status'] == TrackUpload.Status.INITIATED
+        assert data['upload']['transport'] == {
+            'method': 'POST',
+            'url': 'https://storage.test/upload',
+            'headers': {},
+            'fields': {
+                'key': 'media/staging/track-uploads/1/new.flac',
+                'Content-Type': 'audio/flac',
+            },
+            'file_field_name': 'file',
+        }
+
+        mocked_create_instruction.assert_called_once()
+
+    def test_rejects_track_file_replacement_for_foreign_track(
+        self,
+        artist_client,
+    ):
+        """Не позволяет артисту заменить файл чужого трека."""
+        track = TrackFactory()
+
+        url = reverse(
+            'api:store:track-file-upload-initiate',
+            args=(track.pk,),
+        )
+
+        response = artist_client.post(
+            url,
+            data={
+                'filename': 'new-original.flac',
+                'size': 123,
+                'content_type': 'audio/flac',
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        assert TrackUpload.objects.count() == 0

@@ -1,6 +1,7 @@
 """Модуль админки для модели Track.
 
 Содержит настройку интерфейса Django Admin для модели музыкального трека.
+TODO: позже перевести замену audio_file в админке на direct upload.
 """
 
 from django.contrib import admin

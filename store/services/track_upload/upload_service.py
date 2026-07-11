@@ -95,7 +95,6 @@ class TrackUploadService:
             description=description or '',
             position=None,
             is_active=False,
-            purpose=TrackUpload.Purpose.CREATE,
         )
 
         ProductService.ensure_commerce(
@@ -109,6 +108,7 @@ class TrackUploadService:
 
         upload = TrackUpload.objects.create(
             track=track,
+            purpose=TrackUpload.Purpose.CREATE,
             staging_key=track_upload_staging_key(
                 album.pk,
                 filename,
