@@ -154,9 +154,24 @@ def create_yookassa_payment(order, retry=True):
             return create_yookassa_payment(order, retry=False)
         return {'payment_status': 'canceled', 'confirmation_token': None}
 
+    confirmation = getattr(yookassa_payment, 'confirmation', None)
+    confirmation_token = getattr(confirmation, 'confirmation_token', None)
+
+    if not confirmation_token:
+        logger.error(
+            'ЮKassa не вернула confirmation_token | order_id=%s '
+            '| payment_id=%s | status=%s',
+            order.id,
+            yookassa_payment.id,
+            yookassa_payment.status,
+        )
+        return {
+            'payment_status': 'error',
+            'confirmation_token': None,
+        }
     return {
         'payment_status': 'pending',
-        'confirmation_token': yookassa_payment.confirmation.confirmation_token,
+        'confirmation_token': confirmation_token,
     }
 
 
