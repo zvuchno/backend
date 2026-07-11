@@ -28,6 +28,7 @@ from .sale import ArtistSaleViewSet
 from .track import TrackViewSet
 from .track_upload import (
     AlbumTrackUploadInitiateView,
+    TrackFileUploadInitiateView,
     TrackUploadCompleteView,
     TrackUploadReceiveFileView,
 )
@@ -57,6 +58,7 @@ __all__ = [
     'PurchasedMusicDLDetailView',
     'PurchasedMusicTrackDownloadLinkView',
     'PurchasedMusicView',
+    'TrackFileUploadInitiateView',
     'TrackUploadCompleteView',
     'TrackUploadReceiveFileView',
     'TrackViewSet',

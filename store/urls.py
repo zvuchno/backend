@@ -30,6 +30,7 @@ from .views import (
     PurchasedMusicDLDetailView,
     PurchasedMusicTrackDownloadLinkView,
     PurchasedMusicView,
+    TrackFileUploadInitiateView,
     TrackUploadCompleteView,
     TrackUploadReceiveFileView,
     TrackViewSet,
@@ -120,5 +121,10 @@ urlpatterns = [
         'track-uploads/<int:upload_id>/complete/',
         TrackUploadCompleteView.as_view(),
         name='track-upload-complete',
+    ),
+    path(
+        'tracks/<int:track_id>/file-upload/initiate/',
+        TrackFileUploadInitiateView.as_view(),
+        name='track-file-upload-initiate',
     ),
 ]

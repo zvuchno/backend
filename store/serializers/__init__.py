@@ -59,6 +59,7 @@ from .track import (
     TrackWriteSerializer,
 )
 from .track_upload import (
+    TrackUploadFileInitiateSerializer,
     TrackUploadInitiateSerializer,
     TrackUploadLocalFileResponseSerializer,
     TrackUploadResponseSerializer,
@@ -109,6 +110,7 @@ __all__ = [
     'TrackReadDetailSerializer',
     'TrackReadSerializer',
     'TrackWriteSerializer',
+    'TrackUploadFileInitiateSerializer',
     'TrackUploadInitiateSerializer',
     'TrackUploadLocalFileResponseSerializer',
     'TrackUploadResponseSerializer',

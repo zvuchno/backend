@@ -105,3 +105,16 @@ class TrackUploadLocalFileResponseSerializer(serializers.Serializer):
     """Ответ локальной ручки приёма файла."""
 
     upload = TrackUploadLocalFileStateSerializer()
+
+
+class TrackUploadFileInitiateSerializer(serializers.Serializer):
+    """Валидирует начало загрузки файла для существующего трека."""
+
+    filename = serializers.CharField(max_length=MAX_CHAR_LENGTH)
+    size = serializers.IntegerField(min_value=1)
+    content_type = serializers.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        required=False,
+        allow_blank=True,
+        default='',
+    )

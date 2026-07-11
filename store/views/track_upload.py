@@ -13,13 +13,15 @@ from rest_framework.views import APIView
 from common.permissions import IsArtist
 
 from store.constants import ZERO_MONEY
-from store.models import Album, TrackUpload
+from store.models import Album, Track, TrackUpload
 from store.schema import (
+    track_file_upload_initiate_schema,
     track_upload_complete_schema,
     track_upload_initiate_schema,
     track_upload_receive_file_schema,
 )
 from store.serializers import (
+    TrackUploadFileInitiateSerializer,
     TrackUploadInitiateSerializer,
     TrackUploadResponseSerializer,
 )
@@ -45,6 +47,14 @@ def _check_upload_owner(*, request, upload: TrackUpload) -> None:
     if upload.track.album.owner_id != request.user.id:
         raise PermissionDenied(
             'Нельзя управлять чужой загрузкой трека.',
+        )
+
+
+def _check_track_upload_access(*, request, track: Track) -> None:
+    """Проверяет, что пользователь может управлять загрузкой файла трека."""
+    if track.album.owner_id != request.user.id:
+        raise PermissionDenied(
+            'Нельзя управлять загрузкой файла чужого трека.',
         )
 
 
@@ -245,4 +255,69 @@ class TrackUploadCompleteView(APIView):
                     upload=upload,
                 ),
             ).data,
+        )
+
+
+class TrackFileUploadInitiateView(APIView):
+    """Создаёт попытку замены оригинального файла трека."""
+
+    permission_classes = (IsArtist,)
+
+    @track_file_upload_initiate_schema
+    def post(self, request, track_id):
+        """Инициализирует прямую замену оригинального файла трека."""
+        track = get_object_or_404(
+            Track.objects.select_related('album'),
+            pk=track_id,
+        )
+        _check_track_upload_access(request=request, track=track)
+
+        serializer = TrackUploadFileInitiateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            upload = TrackUploadService.create_replacement_upload(
+                track=track,
+                filename=serializer.validated_data['filename'],
+                size=serializer.validated_data['size'],
+                content_type=serializer.validated_data['content_type'],
+            )
+
+            local_upload_url = request.build_absolute_uri(
+                reverse(
+                    'api:store:track-upload-receive-file',
+                    args=(upload.pk,),
+                ),
+            )
+
+            upload_instruction = (
+                TrackUploadTransportService.create_instruction(
+                    upload=upload,
+                    local_upload_url=local_upload_url,
+                )
+            )
+        except ValidationError as exc:
+            return Response(
+                {
+                    'detail': exc.messages,
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+        except UploadTransportConfigurationError as exc:
+            return Response(
+                {
+                    'detail': str(exc),
+                },
+                status=HTTPStatus.SERVICE_UNAVAILABLE,
+            )
+
+        return Response(
+            TrackUploadResponseSerializer(
+                instance=_build_track_upload_response(
+                    request=request,
+                    upload=upload,
+                    transport=upload_instruction,
+                ),
+            ).data,
+            status=HTTPStatus.CREATED,
         )
