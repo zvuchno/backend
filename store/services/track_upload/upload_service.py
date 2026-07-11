@@ -12,6 +12,7 @@ from django.utils import timezone
 from store.constants import (
     ALLOWED_AUDIO_EXTENSIONS,
     MAX_AUDIOFILE_SIZE_MB,
+    ZERO_MONEY,
 )
 from store.models import Album, Track, TrackUpload
 from store.services.commerce import ProductService
@@ -32,6 +33,10 @@ class TrackUploadService:
         filename: str,
         size: int,
         content_type: str = '',
+        name: str = '',
+        description: str = '',
+        price: Decimal | None = None,
+        allow_overpay: bool = False,
     ) -> tuple[Track, TrackUpload]:
         """Создаёт черновой трек и попытку загрузки оригинального файла."""
         filename = Path(filename).name
@@ -43,9 +48,13 @@ class TrackUploadService:
 
         album = Album.objects.select_for_update().get(pk=album.pk)
 
+        track_name = name.strip() or cls._get_track_name(filename)
+        track_price = price if price is not None else ZERO_MONEY
+
         track = Track.objects.create(
             album=album,
-            name=cls._get_track_name(filename),
+            name=track_name,
+            description=description or '',
             position=None,
             is_active=False,
         )
@@ -53,7 +62,8 @@ class TrackUploadService:
         ProductService.ensure_commerce(
             track,
             validated_data={
-                'price': Decimal('0.00'),
+                'price': track_price,
+                'allow_overpay': allow_overpay,
                 'variants': [],
             },
         )
