@@ -16,8 +16,8 @@ payment_schema = extend_schema_view(
     post=extend_schema(
         summary='Инициализация платежа',
         description=(
-            'Инициирует создание платежа в ЮKassa для указанного '
-            'заказа и возвращает URL для оплаты.',
+            'Инициирует создание платежа в ЮKassa для указанного заказа '
+            'и возвращает токен для инициализации виджета оплаты на фронтенде.'
         ),
         tags=['Payments'],
         request={
@@ -38,9 +38,10 @@ payment_schema = extend_schema_view(
                 response={
                     'type': 'object',
                     'properties': {
-                        'confirmation_url': {
+                        'confirmation_token': {
                             'type': 'string',
-                            'format': 'uri',
+                            'description': 'Токен подтверждения для '
+                            'встроенного виджета ЮKassa',
                         },
                     },
                 },
@@ -57,7 +58,8 @@ payment_schema = extend_schema_view(
             OpenApiExample(
                 'Успешный ответ',
                 value={
-                    'confirmation_url': 'https://yoomoney.ru/checkout/payments/v2/contract?orderId=...',
+                    'confirmation_token': 'ct-2845c43d-000f-5000'
+                    '-9000-1123456789ab',
                 },
                 response_only=True,
                 status_codes=[str(status.HTTP_201_CREATED)],
