@@ -39,7 +39,7 @@ class TrackUploadStorageService:
         upload = (
             TrackUpload.objects
             .select_for_update()
-            .select_related('track')
+            .select_related('track__album')
             .get(pk=upload.pk)
         )
 

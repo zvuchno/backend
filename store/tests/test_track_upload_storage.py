@@ -346,18 +346,23 @@ class TestTrackUploadStorageService:
         with patch(
             'store.services.track_upload.upload_storage.'
             'TrackGeneratedAudioScheduler.schedule',
-        ):
-            with django_capture_on_commit_callbacks(execute=True):
-                completed_upload = TrackUploadStorageService.complete(
-                    upload=upload,
+        ) as mocked_audio_schedule:
+            with patch.object(
+                AlbumArchiveScheduler,
+                'schedule',
+                return_value=True,
+            ) as mocked_archive_schedule:
+                with django_capture_on_commit_callbacks(execute=True):
+                    completed_upload = TrackUploadStorageService.complete(
+                        upload=upload,
+                    )
+
+                track.refresh_from_db()
+                first_audio_file_name = track.audio_file.name
+
+                second_completed_upload = TrackUploadStorageService.complete(
+                    upload=completed_upload,
                 )
-
-        track.refresh_from_db()
-        first_audio_file_name = track.audio_file.name
-
-        second_completed_upload = TrackUploadStorageService.complete(
-            upload=completed_upload,
-        )
 
         track.refresh_from_db()
         second_completed_upload.refresh_from_db()
@@ -365,3 +370,6 @@ class TestTrackUploadStorageService:
         assert second_completed_upload.status == TrackUpload.Status.COMPLETED
         assert track.audio_file.name == first_audio_file_name
         assert not storage.exists(upload.staging_key)
+
+        assert mocked_audio_schedule.call_count == 1
+        assert mocked_archive_schedule.call_count == 1

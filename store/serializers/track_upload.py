@@ -97,7 +97,9 @@ class TrackUploadLocalFileStateSerializer(serializers.Serializer):
     """Объект upload локальной ручки приёма файла."""
 
     id = serializers.IntegerField()
-    status = serializers.CharField()
+    status = serializers.ChoiceField(
+        choices=TrackUpload.Status.choices,
+    )
     uploaded_size = serializers.IntegerField()
 
 
