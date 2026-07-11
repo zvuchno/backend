@@ -33,7 +33,7 @@ def create_yookassa_payment(order, retry=True):
             )
             return {
                 'status': 'not_reserved',
-                'confirmation_url': None,
+                'confirmation_token': None,
             }
 
         if order.status == Order.Status.PAID:
@@ -44,7 +44,7 @@ def create_yookassa_payment(order, retry=True):
             )
             return {
                 'status': 'already_paid',
-                'confirmation_url': None,
+                'confirmation_token': None,
             }
 
         if order.status != Order.Status.RESERVED:
@@ -56,7 +56,7 @@ def create_yookassa_payment(order, retry=True):
             )
             return {
                 'status': 'invalid_state',
-                'confirmation_url': None,
+                'confirmation_token': None,
             }
 
         payment, created = Payment.objects.get_or_create(
@@ -89,8 +89,7 @@ def create_yookassa_payment(order, retry=True):
                     'currency': 'RUB',
                 },
                 'confirmation': {
-                    'type': 'redirect',
-                    'return_url': settings.PAYMENT_RETURN_URL,
+                    'type': 'embedded',
                 },
                 'capture': True,
                 'description': f'Заказ №{order.order_number}',
@@ -114,7 +113,7 @@ def create_yookassa_payment(order, retry=True):
 
         return {
             'payment_status': 'error',
-            'confirmation_url': None,
+            'confirmation_token': None,
         }
 
     payment.provider_payment_id = yookassa_payment.id
@@ -129,7 +128,7 @@ def create_yookassa_payment(order, retry=True):
         mark_payment_succeeded(payment)
         return {
             'payment_status': 'succeeded',
-            'confirmation_url': None,
+            'confirmation_token': None,
         }
 
     if yookassa_payment.status == 'canceled':
@@ -153,11 +152,26 @@ def create_yookassa_payment(order, retry=True):
                 order.id,
             )
             return create_yookassa_payment(order, retry=False)
-        return {'payment_status': 'canceled', 'confirmation_url': None}
+        return {'payment_status': 'canceled', 'confirmation_token': None}
 
+    confirmation = getattr(yookassa_payment, 'confirmation', None)
+    confirmation_token = getattr(confirmation, 'confirmation_token', None)
+
+    if not confirmation_token:
+        logger.error(
+            'ЮKassa не вернула confirmation_token | order_id=%s '
+            '| payment_id=%s | status=%s',
+            order.id,
+            yookassa_payment.id,
+            yookassa_payment.status,
+        )
+        return {
+            'payment_status': 'error',
+            'confirmation_token': None,
+        }
     return {
         'payment_status': 'pending',
-        'confirmation_url': yookassa_payment.confirmation.confirmation_url,
+        'confirmation_token': confirmation_token,
     }
 
 
