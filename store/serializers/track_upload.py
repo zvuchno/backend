@@ -6,6 +6,7 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
     ZERO_MONEY,
 )
+from store.models import TrackUpload
 
 
 class TrackUploadInitiateSerializer(serializers.Serializer):
@@ -75,7 +76,9 @@ class TrackUploadStateSerializer(serializers.Serializer):
     """Описывает состояние попытки загрузки."""
 
     id = serializers.IntegerField()
-    status = serializers.CharField()
+    status = serializers.ChoiceField(
+        choices=TrackUpload.Status.choices,
+    )
     uploaded_size = serializers.IntegerField(allow_null=True)
     expires_at = serializers.DateTimeField()
     completed_at = serializers.DateTimeField(allow_null=True)
