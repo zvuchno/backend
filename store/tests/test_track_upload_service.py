@@ -117,6 +117,36 @@ class TestTrackUploadService:
         assert album.tracks.count() == 0
         assert TrackUpload.objects.count() == 0
 
+    def test_creates_pending_track_with_api_metadata(self):
+        """Создаёт черновой трек с метаданными из API-формы."""
+        album = AlbumFactory()
+
+        track, upload = TrackUploadService.create_pending_track(
+            album=album,
+            filename='01. Original name.flac',
+            size=10,
+            content_type='audio/flac',
+            name='Новое название',
+            description='Описание трека.',
+            price=Decimal('150.00'),
+            allow_overpay=True,
+        )
+
+        assert track.album == album
+        assert track.name == 'Новое название'
+        assert track.description == 'Описание трека.'
+        assert track.position is None
+        assert track.is_active is False
+        assert not track.audio_file
+
+        assert track.product.price == Decimal('150.00')
+        assert track.product.allow_overpay is True
+        assert track.product.variants.count() == 1
+
+        assert upload.track == track
+        assert upload.status == TrackUpload.Status.INITIATED
+        assert upload.original_filename == '01. Original name.flac'
+
 
 @pytest.mark.django_db
 class TestTrackUploadTransportService:

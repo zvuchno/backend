@@ -73,16 +73,32 @@ track_schema = extend_schema_view(
         responses={200: TrackReadDetailSerializer},
     ),
     create=extend_schema(
-        summary='Загрузить трек',
+        summary='Загрузить трек простым способом',
         tags=TRACKS_TAGS,
-        description='Создаёт новую запись трека.',
+        description=(
+            'Создаёт новую запись трека и принимает '
+            'аудиофайл через multipart/form-data. '
+            'Этот способ оставлен для простых одиночных '
+            'загрузок и обратной совместимости. '
+            'Для больших файлов и стабильной загрузки '
+            'рекомендуется использовать '
+            'прямую загрузку: инициализация → загрузка файла '
+            'по transport-инструкции '
+            '→ завершение загрузки.'
+        ),
         request=TrackWriteSerializer,
         responses={201: TrackReadDetailSerializer},
     ),
     partial_update=extend_schema(
         summary='Частично обновить трек',
         tags=TRACKS_TAGS,
-        description='Обновляет только переданные поля трека.',
+        description=(
+            'Обновляет только переданные поля трека. '
+            'Если передан audio_file, файл загружается '
+            'через backend простым '
+            'multipart-способом. Для больших файлов предпочтительнее '
+            'прямой upload flow.'
+        ),
         request=TrackWriteSerializer,
         responses={200: TrackReadDetailSerializer},
     ),
