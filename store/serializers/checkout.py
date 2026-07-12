@@ -59,7 +59,7 @@ class CheckoutSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
     )
-    cdek_delivery_mode = serializers.ChoiceField(
+    tariffs = serializers.ChoiceField(
         choices=[
             ('office', 'Самовывоз из ПВЗ'),
             ('door', 'Курьер (до двери)'),
@@ -139,7 +139,7 @@ class CheckoutSerializer(serializers.Serializer):
         self._validate_required_fields(
             attrs,
             {
-                'cdek_delivery_mode': 'Метод доставки для СДЭК обязателен.',
+                'tariffs': 'Метод доставки для СДЭК обязателен.',
                 'city': 'Город обязателен для выбора пункта выдачи.',
                 'cdek_city_code': 'Код города обязателен для '
                 'выбора пункта выдачи.',
@@ -152,7 +152,7 @@ class CheckoutSerializer(serializers.Serializer):
         self._validate_required_fields(
             attrs,
             {
-                'cdek_delivery_mode': 'Метод доставки для СДЭК обязателен.',
+                'tariffs': 'Метод доставки для СДЭК обязателен.',
                 'city': 'Город обязателен для доставки.',
                 'cdek_city_code': 'Код города обязателен для '
                 'выбора пункта выдачи.',

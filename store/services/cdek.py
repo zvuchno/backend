@@ -16,7 +16,7 @@ from store.constants import (
     ZERO_MONEY,
 )
 from store.exceptions import CDEKIntegrationError
-from store.models import OrderItem, Product, Shipment
+from store.models import Delivery, OrderItem, Product, Shipment
 from store.services.cart_service import CartCalculationService
 from users.models import ArtistProfile
 
@@ -498,45 +498,55 @@ class CDEKService:
 
     def register_orders(self, order) -> list[dict]:
         """Регистрирует накладные СДЭК по заказу."""
-        artist_ids = list(
-            order.items
-            .filter(
-                product_variant__product__product_type=Product.ProductType.MERCH,
+        if order.delivery.delivery_type not in (
+            Delivery.Type.COURIER,
+            Delivery.Type.PICKPOINT,
+        ):
+            logger.info(
+                'Заказ %s: доставка "%s", регистрация СДЭК не требуется.',
+                order.order_number,
+                order.delivery.delivery_type,
             )
-            .values_list(
-                'product_variant__product__merch__owner__artist_profile__id',
-                flat=True,
-            )
-            .distinct(),
+            return []
+
+        merch_items = order.items.filter(
+            product_variant__product__product_type=(Product.ProductType.MERCH),
+        ).select_related(
+            'product_variant__product__merch__owner__artist_profile',
         )
-        if not artist_ids:
+
+        if not merch_items.exists():
             logger.info(
                 'Заказ %s: нет физических товаров, регистрация в СДЭК '
                 'не требуется.',
                 order.order_number,
             )
             return []
-        artist_profiles = {
-            a.id: a for a in ArtistProfile.objects.filter(id__in=artist_ids)
-        }
-        artist_shipment_point = {
-            a_id: a.shipping_point.pvz_code if a.shipping_point else None
-            for a_id, a in artist_profiles.items()
-        }
 
         # Группируем позиции заказа по артисту
         artist_items = defaultdict(list)
-        order_items = order.items.filter(
-            product_variant__product__product_type=Product.ProductType.MERCH,
-        ).select_related(
-            'product_variant__product__merch__owner__artist_profile',
-        )
-        for item in order_items:
+        artist_profiles = {}
+        for item in merch_items:
             owner = item.product_variant.product.owner
-            artist_profile = getattr(owner, 'artist_profile', None)
-            if artist_profile and artist_profile.id in artist_shipment_point:
-                artist_items[artist_profile.id].append(item)
+            profile = getattr(owner, 'artist_profile', None)
 
+            if (
+                not profile
+                or not profile.shipping_point
+                or not profile.shipping_point.pvz_code
+            ):
+                artist_id = profile.id if profile else 'unknown'
+                raise ValidationError({
+                    'detail': (
+                        f'У артиста id={artist_id} не указан код '
+                        'населенного пункта для отгрузки товара.'
+                    ),
+                })
+
+            artist_items[profile.id].append(item)
+            artist_profiles[profile.id] = profile
+
+        # Цикл обработки отправлений
         results = []
         for artist_id, items in artist_items.items():
             if Shipment.objects.filter(
@@ -551,51 +561,51 @@ class CDEKService:
                 )
                 continue
 
-            shipment_point = artist_shipment_point.get(artist_id)
-            if not shipment_point:
-                raise ValidationError({
-                    'detail': (
-                        f'У артиста id={artist_id} не указан код '
-                        'населенного пункта для отгрузки товара.'
-                    ),
-                })
             if not order.cdek_city_code:
                 raise ValidationError({
                     'detail': 'В заказе отсутствует код города СДЭК.',
                 })
-            result = self._register_order_for_artist(
-                order=order,
-                artist_id=artist_id,
-                shipment_point=shipment_point,
-                items=items,
-            )
-            cdek_uuid = result['cdek_uuid']
-            state = result['state']
-            total_weight = result['total_weight']
-            results.append({
-                'artist_id': artist_id,
-                'cdek_uuid': cdek_uuid,
-                'order_number': f'{order.order_number}-{artist_id}',
-            })
-            logger.info(
-                'Заказ %s: накладная СДЭК зарегистрирована '
-                'для артиста id=%s, cdek_uuid=%s, статус: %s',
-                order.order_number,
-                artist_id,
-                cdek_uuid,
-                state,
-            )
+
+            delivery_data = order.delivery_calculation.get(str(artist_id))
+            if not delivery_data or 'cost' not in delivery_data:
+                raise ValidationError({
+                    'detail': (
+                        'Не найдена стоимость доставки для артиста '
+                        f'id={artist_id}. Необходимо пересчитать доставку.'
+                    ),
+                })
 
             shipment = Shipment.objects.create(
                 order=order,
                 artist=artist_profiles[artist_id],
-                cdek_uuid=cdek_uuid,
-                state=state,
-                weight=total_weight,
-                estimated_delivery_cost=(
-                    order.delivery_calculation[str(artist_id)]['cost']
-                ),
+                state='PENDING',
+                estimated_delivery_cost=delivery_data['cost'],
             )
+
+            result = self._register_order_for_artist(
+                order=order,
+                artist_id=artist_id,
+                shipment_point=artist_profiles[
+                    artist_id
+                ].shipping_point.pvz_code,
+                items=items,
+            )
+
+            cdek_uuid = result['cdek_uuid']
+            state = result['state']
+
+            shipment.cdek_uuid = cdek_uuid
+            shipment.state = state
+            shipment.weight = result['total_weight']
+            shipment.save(
+                update_fields=[
+                    'cdek_uuid',
+                    'state',
+                    'weight',
+                    'updated_at',
+                ],
+            )
+
             # Привязываем товары к созданному отправлению
             for item in items:
                 item.shipment = shipment
@@ -607,6 +617,22 @@ class CDEKService:
                 args=[shipment.id],
                 countdown=30,
             )
+
+            logger.info(
+                'Заказ %s: накладная СДЭК зарегистрирована '
+                'для артиста id=%s, cdek_uuid=%s, статус: %s',
+                order.order_number,
+                artist_id,
+                cdek_uuid,
+                state,
+            )
+
+            results.append({
+                'artist_id': artist_id,
+                'cdek_uuid': cdek_uuid,
+                'order_number': f'{order.order_number}-{artist_id}',
+            })
+
         return results
 
     def _register_order_for_artist(

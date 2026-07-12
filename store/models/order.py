@@ -65,13 +65,15 @@ class Order(TimestampModel):
     )
 
     # --- Доставка ---
-    delivery = models.CharField(
-        'Способ доставки',
-        max_length=MAX_CHAR_LENGTH,
+    delivery = models.ForeignKey(
+        'store.Delivery',
+        on_delete=models.PROTECT,
         blank=True,
-        default='',
+        null=True,
+        related_name='orders',
+        verbose_name='Способ доставки',
     )
-    cdek_delivery_mode = models.CharField(
+    tariffs = models.CharField(
         max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
@@ -121,12 +123,6 @@ class Order(TimestampModel):
         blank=True,
         verbose_name='Примененный промокод',
         related_name='orders',
-    )
-    delivery = models.CharField(
-        'Способ доставки',
-        max_length=MAX_CHAR_LENGTH,
-        blank=True,
-        default='',
     )
     subtotal = models.DecimalField(
         'Сумма товаров (руб.)',
