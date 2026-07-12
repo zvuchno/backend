@@ -14,6 +14,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from store.models import Album, Track, TrackUpload
+from store.services.album_archive import AlbumArchiveScheduler
 from store.services.audio import TrackGeneratedAudioScheduler
 from store.upload_paths import track_audio_upload_to
 
@@ -38,7 +39,7 @@ class TrackUploadStorageService:
         upload = (
             TrackUpload.objects
             .select_for_update()
-            .select_related('track')
+            .select_related('track__album')
             .get(pk=upload.pk)
         )
 
@@ -76,6 +77,50 @@ class TrackUploadStorageService:
 
         track = upload.track
 
+        if upload.purpose == TrackUpload.Purpose.REPLACE:
+            cls._replace_track_audio(
+                track=track,
+                final_key=final_key,
+            )
+        else:
+            cls._finalize_new_track(
+                track=track,
+                final_key=final_key,
+            )
+
+        upload.status = TrackUpload.Status.COMPLETED
+        upload.uploaded_size = uploaded_size
+        upload.completed_at = timezone.now()
+        upload.error = ''
+        upload.save(
+            update_fields=(
+                'status',
+                'uploaded_size',
+                'completed_at',
+                'error',
+                'updated_at',
+            ),
+        )
+
+        TrackGeneratedAudioScheduler.schedule(track)
+        AlbumArchiveScheduler.schedule(track.album)
+
+        transaction.on_commit(
+            lambda upload=upload: cls._delete_staging_safely(
+                upload=upload,
+            ),
+        )
+
+        return upload
+
+    @classmethod
+    def _finalize_new_track(
+        cls,
+        *,
+        track: Track,
+        final_key: str,
+    ) -> None:
+        """Финализирует новый трек после успешной загрузки файла."""
         album = Album.objects.select_for_update().get(
             pk=track.album_id,
         )
@@ -105,29 +150,21 @@ class TrackUploadStorageService:
             ),
         )
 
-        upload.status = TrackUpload.Status.COMPLETED
-        upload.uploaded_size = uploaded_size
-        upload.completed_at = timezone.now()
-        upload.error = ''
-        upload.save(
+    @classmethod
+    def _replace_track_audio(
+        cls,
+        *,
+        track: Track,
+        final_key: str,
+    ) -> None:
+        """Заменяет оригинальный файл существующего трека."""
+        track.audio_file.name = final_key
+        track.save(
             update_fields=(
-                'status',
-                'uploaded_size',
-                'completed_at',
-                'error',
+                'audio_file',
                 'updated_at',
             ),
         )
-
-        TrackGeneratedAudioScheduler.schedule(track)
-
-        transaction.on_commit(
-            lambda upload=upload: cls._delete_staging_safely(
-                upload=upload,
-            ),
-        )
-
-        return upload
 
     @classmethod
     def _copy_local_staging_to_final(

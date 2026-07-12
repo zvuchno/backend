@@ -91,11 +91,23 @@ class TrackUpload(TimestampModel):
         FAILED = 'failed', 'Ошибка загрузки'
         EXPIRED = 'expired', 'Срок загрузки истёк'
 
+    class Purpose(models.TextChoices):
+        """Назначение попытки загрузки."""
+
+        CREATE = 'create', 'Создание трека'
+        REPLACE = 'replace', 'Замена файла'
+
     track = models.ForeignKey(
         'store.Track',
         on_delete=models.CASCADE,
         related_name='upload_attempts',
         verbose_name='Трек',
+    )
+    purpose = models.CharField(
+        'Назначение загрузки',
+        max_length=MAX_FILE_STATUS_STR,
+        choices=Purpose.choices,
+        default=Purpose.CREATE,
     )
     status = models.CharField(
         'Статус загрузки',

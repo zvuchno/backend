@@ -3,6 +3,7 @@
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 
 from store.serializers import (
+    TrackUploadFileInitiateSerializer,
     TrackUploadInitiateSerializer,
     TrackUploadLocalFileResponseSerializer,
     TrackUploadResponseSerializer,
@@ -81,6 +82,31 @@ track_upload_complete_schema = extend_schema(
         ),
         403: OpenApiResponse(description='Нет доступа к загрузке.'),
         404: OpenApiResponse(description='Загрузка не найдена.'),
+    },
+    tags=TRACK_UPLOAD_TAGS,
+)
+
+
+track_file_upload_initiate_schema = extend_schema(
+    summary='Инициализировать замену файла трека',
+    description=(
+        'Создаёт попытку прямой загрузки нового оригинального аудиофайла '
+        'для существующего трека и возвращает инструкцию для отправки файла. '
+        'Клиент должен отправить файл по адресу upload.transport.url, '
+        'передав все поля из upload.transport.fields и сам файл в поле '
+        'upload.transport.file_field_name. После успешной отправки файла '
+        'нужно вызвать upload.complete_url. При завершении загрузки '
+        'сохраняются id трека, альбом, позиция и данные продажи.'
+    ),
+    request=TrackUploadFileInitiateSerializer,
+    responses={
+        201: TrackUploadResponseSerializer,
+        400: OpenApiResponse(description='Ошибка валидации файла.'),
+        403: OpenApiResponse(description='Нет доступа к треку.'),
+        404: OpenApiResponse(description='Трек не найден.'),
+        503: OpenApiResponse(
+            description='Не настроен транспорт загрузки.',
+        ),
     },
     tags=TRACK_UPLOAD_TAGS,
 )
