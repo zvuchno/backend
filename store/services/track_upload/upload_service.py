@@ -26,6 +26,44 @@ class TrackUploadService:
 
     @classmethod
     @transaction.atomic
+    def create_replacement_upload(
+        cls,
+        *,
+        track: Track,
+        filename: str,
+        size: int,
+        content_type: str = '',
+    ) -> TrackUpload:
+        """Создаёт попытку замены оригинального файла существующего трека."""
+        filename = Path(filename).name
+
+        cls._validate_file_metadata(
+            filename=filename,
+            size=size,
+        )
+
+        track = (
+            Track.objects
+            .select_for_update()
+            .select_related('album')
+            .get(pk=track.pk)
+        )
+
+        return TrackUpload.objects.create(
+            track=track,
+            purpose=TrackUpload.Purpose.REPLACE,
+            staging_key=track_upload_staging_key(
+                track.album_id,
+                filename,
+            ),
+            original_filename=filename,
+            expected_size=size,
+            content_type=content_type,
+            expires_at=timezone.now() + TRACK_UPLOAD_TTL,
+        )
+
+    @classmethod
+    @transaction.atomic
     def create_pending_track(
         cls,
         *,
@@ -70,6 +108,7 @@ class TrackUploadService:
 
         upload = TrackUpload.objects.create(
             track=track,
+            purpose=TrackUpload.Purpose.CREATE,
             staging_key=track_upload_staging_key(
                 album.pk,
                 filename,

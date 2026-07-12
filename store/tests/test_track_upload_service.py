@@ -147,6 +147,46 @@ class TestTrackUploadService:
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.original_filename == '01. Original name.flac'
 
+    def test_creates_replacement_upload_for_existing_track(self):
+        """Создаёт попытку замены файла существующего трека."""
+        track = TrackFactory()
+
+        upload = TrackUploadService.create_replacement_upload(
+            track=track,
+            filename='new-original.flac',
+            size=10,
+            content_type='audio/flac',
+        )
+
+        track.refresh_from_db()
+
+        assert upload.track == track
+        assert upload.purpose == TrackUpload.Purpose.REPLACE
+        assert upload.status == TrackUpload.Status.INITIATED
+        assert upload.original_filename == 'new-original.flac'
+        assert upload.expected_size == 10
+        assert upload.content_type == 'audio/flac'
+        assert upload.staging_key.startswith(
+            f'staging/track-uploads/{track.album_id}/',
+        )
+
+        assert track.position is not None
+        assert track.audio_file
+
+    def test_replacement_upload_rejects_invalid_file(self):
+        """Не создаёт попытку замены для неподдерживаемого файла."""
+        track = TrackFactory()
+
+        with pytest.raises(ValidationError):
+            TrackUploadService.create_replacement_upload(
+                track=track,
+                filename='new-original.jpg',
+                size=10,
+                content_type='image/jpeg',
+            )
+
+        assert TrackUpload.objects.count() == 0
+
 
 @pytest.mark.django_db
 class TestTrackUploadTransportService:
