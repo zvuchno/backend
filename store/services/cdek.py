@@ -298,7 +298,7 @@ class CDEKService:
         self,
         city_code: str,
         cart,
-        cdek_delivery_mode: str = 'office',
+        tariffs: str = 'office',
     ) -> dict:
         """Расчет стоимости доставки СДЭК на основе содержимого корзины."""
         if not cart:
@@ -359,7 +359,7 @@ class CDEKService:
                 from_location=from_location_code,
                 to_location=city_code,
                 items_count=items_count,
-                cdek_delivery_mode=cdek_delivery_mode,
+                tariffs=tariffs,
             )
 
             total_delivery_sum += delivery_data['total_sum']
@@ -383,7 +383,7 @@ class CDEKService:
         period_max = max(all_max_periods) if all_max_periods else None
 
         logger.info(
-            f'Корзина {cart.user}, тип доставки: {cdek_delivery_mode}, '
+            f'Корзина {cart.user}, тип доставки: {tariffs}, '
             f'итоговая сумма доставки всех товаров -> {delivery_sum} руб. '
             f'Сроки: {period_min}-{period_max} дн.',
         )
@@ -399,19 +399,18 @@ class CDEKService:
         to_location: str,
         from_location: str,
         items_count: int,
-        cdek_delivery_mode: str,
+        tariffs: str,
     ) -> dict:
         """Метод для расчета доставки в API СДЭК по конкретным артистам."""
-        if cdek_delivery_mode == 'office':
+        if tariffs == 'office':
             tariff_code = self.tariff_code_office
-        elif cdek_delivery_mode == 'door':
+        elif tariffs == 'door':
             tariff_code = self.tariff_code_door
-        elif cdek_delivery_mode == 'pickup':
+        elif tariffs == 'pickup':
             tariff_code = self.tariff_code_pickup
         else:
             raise ValidationError({
-                'detail': 'Неподдерживаемый тип тарифа: '
-                f'{cdek_delivery_mode}.',
+                'detail': f'Неподдерживаемый тип тарифа: {tariffs}.',
             })
 
         # Умножаем базовый вес на количество мерчей этого артиста
@@ -498,14 +497,15 @@ class CDEKService:
 
     def register_orders(self, order) -> list[dict]:
         """Регистрирует накладные СДЭК по заказу."""
-        if order.delivery.delivery_type not in (
-            Delivery.Type.COURIER,
-            Delivery.Type.PICKPOINT,
+        delivery_type = getattr(order.delivery, 'delivery_type', None)
+        if delivery_type not in (
+            Delivery.DeliveryType.COURIER,
+            Delivery.DeliveryType.PICKPOINT,
         ):
             logger.info(
                 'Заказ %s: доставка "%s", регистрация СДЭК не требуется.',
                 order.order_number,
-                order.delivery.delivery_type,
+                delivery_type or 'не указана',
             )
             return []
 
@@ -643,17 +643,16 @@ class CDEKService:
         items: list,
     ) -> dict:
         """Формирует и отправляет payload регистрации накладной СДЭК."""
-        cdek_delivery_mode = order.cdek_delivery_mode
-        if cdek_delivery_mode == 'office':
+        tariffs = order.tariffs
+        if tariffs == 'office':
             tariff_code = self.tariff_code_office
-        elif cdek_delivery_mode == 'door':
+        elif tariffs == 'door':
             tariff_code = self.tariff_code_door
-        elif cdek_delivery_mode == 'pickup':
+        elif tariffs == 'pickup':
             tariff_code = self.tariff_code_pickup
         else:
             raise ValidationError({
-                'detail': 'Неподдерживаемый тип тарифа: '
-                f'{cdek_delivery_mode}.',
+                'detail': f'Неподдерживаемый тип тарифа: {tariffs}.',
             })
 
         order_number = f'{order.order_number}-{artist_id}'
@@ -689,7 +688,7 @@ class CDEKService:
                 },
             ],
         }
-        if cdek_delivery_mode in ('office', 'pickup'):
+        if tariffs in ('office', 'pickup'):
             payload['delivery_point'] = order.delivery_point
         else:
             payload['to_location'] = {

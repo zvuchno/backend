@@ -36,29 +36,31 @@ class Shipment(TimestampModel):
         help_text='Артист, со склада которого уходит посылка.',
     )
     cdek_uuid = models.CharField(
+        'UUID транзакции СДЭК',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
-        verbose_name='UUID транзакции СДЭК',
         help_text='Уникальный идентификатор запроса в API СДЭК '
         'для отслеживания статуса регистрации.',
     )
     state = models.CharField(
+        'Состояние',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
-        verbose_name='Состояние',
         help_text='Текущее состояние запроса',
     )
     tracking_number = models.CharField(
+        'Номер накладной',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
-        verbose_name='Номер накладной',
         help_text='Номер накладной СДЭК (cdek_number)',
     )
     weight = models.PositiveIntegerField(
-        verbose_name='Вес (в граммах)',
+        'Вес (в граммах)',
+        blank=True,
+        null=True,
         help_text='Общий физический вес посылки.',
     )
     estimated_delivery_cost = models.DecimalField(

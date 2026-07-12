@@ -137,9 +137,7 @@ class Order(TimestampModel):
         blank=True,
         help_text=(
             'Расчетная стоимость доставки, полученная от СДЭК на этапе '
-            'checkout. Формат: {"artist_id": {"cost": "250.00"}}. '
-            'Используется для фиксации стоимости доставки, '
-            'которую оплатил клиент.'
+            'checkout. Формат: {"artist_id": {"cost": "0.00"}}.'
         ),
     )
     delivery_price = models.DecimalField(

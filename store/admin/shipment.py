@@ -23,9 +23,13 @@ class ShipmentAdmin(admin.ModelAdmin):
         'state',
         'created_at',
     )
-    search_fields = ('artist', 'order', 'tracking_number')
+    search_fields = (
+        'artist__user__email',
+        'order__order_number',
+        'tracking_number',
+    )
     search_help_text = (
-        'Поиск по арстисту, номера заказа, трек-номеру отправления',
+        'Поиск по email арстиста, номеру заказа, трек-номеру отправления',
     )
     readonly_fields = (
         'order',
@@ -38,6 +42,7 @@ class ShipmentAdmin(admin.ModelAdmin):
         'created_at',
         'updated_at',
     )
+    list_select_related = ('order', 'artist__user')
     fieldsets = (
         (
             'Основная информация',

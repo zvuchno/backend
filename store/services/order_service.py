@@ -3,6 +3,8 @@
 Инкапсулирует сервисы транзакционного создания заказов со снапшотами данных.
 """
 
+import logging
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
@@ -11,6 +13,8 @@ from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
 from store.models import Delivery, Order, OrderItem
 from users.models import ArtistPickupPoint, ConsentDocument, UserConsent
+
+logger = logging.getLogger(__name__)
 
 
 class OrderService:
@@ -143,7 +147,6 @@ class OrderService:
 
         # delivery_price = delivery.price if delivery else ZERO_MONEY
         # TODO: Переделать после реализации доставок
-        delivery_name = delivery.name if delivery else ''
 
         subtotal = calc_service.get_subtotal()
         promocode_discount = calc_service.get_discount_total()
@@ -158,7 +161,7 @@ class OrderService:
             promocode_discount=promocode_discount,
             # TODO: delivery_price=delivery_price,
             total=total,
-            delivery=delivery_name,
+            delivery=delivery,
             **validated_data,  # full_name, email, phone, адресные поля
         )
 

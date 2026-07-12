@@ -191,6 +191,7 @@ class OrderAdmin(admin.ModelAdmin):
         'created_at',
         'updated_at',
         'reserved_until',
+        'delivery_calculation',
     )
     search_fields = (
         'order_number',
@@ -233,6 +234,7 @@ class OrderAdmin(admin.ModelAdmin):
                     'delivery',
                     'display_address',
                     'cdek_city_code',
+                    'delivery_calculation',
                 ),
             },
         ),
