@@ -377,6 +377,9 @@ class CDEKService:
 
         total_delivery_sum = ZERO_MONEY
 
+        # Стоимость доставок по артистам
+        delivery_calculation = {}
+
         # Списки для сбора сроков доставки от разных артистов
         all_min_periods = []
         all_max_periods = []
@@ -398,6 +401,11 @@ class CDEKService:
                 tariffs=tariffs,
             )
 
+            artist_cost = round(
+                delivery_data['total_sum'],
+                MONEY_DISPLAY_PRECISION,
+            )
+            delivery_calculation[str(artist_id)] = {'cost': str(artist_cost)}
             total_delivery_sum += delivery_data['total_sum']
 
             if delivery_data['period_min'] is not None:
@@ -428,6 +436,7 @@ class CDEKService:
             'delivery_sum': delivery_sum,
             'period_min': period_min,
             'period_max': period_max,
+            'delivery_calculation': delivery_calculation,
         }
 
     def _calculate_for_artist(

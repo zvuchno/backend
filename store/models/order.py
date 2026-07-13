@@ -74,22 +74,31 @@ class Order(TimestampModel):
         verbose_name='Способ доставки',
     )
     tariffs = models.CharField(
+        'Метод доставки СДЭК',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
-        verbose_name='Метод доставки СДЭК',
     )
     delivery_point = models.CharField(
+        'Код ПВЗ / Постамата',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
         null=True,
-        verbose_name='Код ПВЗ / Постамата',
+    )
+    pickup_point = models.JSONField(
+        'Адрес самовывоза от артиста',
+        default=dict,
+        blank=True,
+        help_text=(
+            'Адрес и дата, где фанат может получить мерч от артиста. '
+            'Формат: {"address": "Адрес", "date": "YYYY-MM-DD"}.'
+        ),
     )
     cdek_city_code = models.CharField(
+        'Код населенного пункта в СДЭК',
         max_length=MAX_CDEK_CODE_LENGTH,
         blank=True,
         null=True,
-        verbose_name='Код населенного пункта в СДЭК',
     )
     city = models.CharField(
         'Город',
