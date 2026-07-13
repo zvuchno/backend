@@ -48,7 +48,7 @@ class CDEKService:
         self.tariff_code_door = settings.TARIFF_DOOR
         self.tariff_code_pickup = settings.TARIFF_PICKUP
         self.default_item_weight = settings.DEFAULT_ITEM_WEIGHT
-        self.default_city = settings.DEFAULT_CITY
+        self.default_city_code = '44'
 
     def _auth_headers(self) -> dict[str, str]:
         """Формирование HTTP-заголовков авторизации со токеном Bearer."""
@@ -93,81 +93,116 @@ class CDEKService:
         logger.info('Получен токен от API CDEK.')
         return new_token
 
-    def get_city_code_by_name(self, city_name_en):
-        """Получает код города СДЭК по его названию."""
-        url = f'{self.api_url}/location/cities'
+    def get_city_info_by_fias(self, city_fias_id) -> dict | None:
+        """Получает информацию о городе СДЭК по ФИАС."""
+        cache_key = f'cdek:city_info:{city_fias_id}'
+        cached = cache.get(cache_key)
 
-        query = {'city': city_name_en}
+        if cached:
+            logger.info(
+                'Информация о городе по ФИАС %s получена из кэша.',
+                city_fias_id,
+            )
+            return cached
+
+        url = f'{self.api_url}/location/cities'
 
         try:
             response = requests.get(
                 url,
                 headers=self._auth_headers(),
-                params=query,
+                params={'fias_guid': city_fias_id},
                 timeout=10,
             )
             response.raise_for_status()
-            cities_data = response.json()
 
-            if cities_data:
-                return cities_data[0].get('code')
+            data = response.json()
 
-            logger.warning(f'Город {city_name_en} не найден в базе СДЭК')
-            return None
+            if not data:
+                logger.warning(
+                    'ФИАС %s не найден в справочнике СДЭК.',
+                    city_fias_id,
+                )
+                return None
 
-        except Exception as e:
-            logger.error(f'Ошибка при поиске кода города: {str(e)}')
-            return None
+            city = data[0]
+
+            city_code = city.get('code')
+            city_name = city.get('city')
+
+            if not city_code:
+                logger.warning(
+                    'СДЭК вернул город без кода для ФИАС %s.',
+                    city_fias_id,
+                )
+                return None
+
+            city_info = {
+                'city_code': city_code,
+                'city': city_name,
+            }
+
+            cache.set(
+                cache_key,
+                city_info,
+                timeout=CITY_CACHE_TIMEOUT,
+            )
+
+            logger.info(
+                'Информация о городе по ФИАС %s сохранена в кэш: code=%s.',
+                city_fias_id,
+                city_info['city_code'],
+            )
+
+            return city_info
+
+        except requests.RequestException as e:
+            if e.response is not None:
+                logger.error(
+                    'CDEK вернул ошибку при поиске города по ФИАС. '
+                    'status=%s, fias=%s, body=%s',
+                    e.response.status_code,
+                    city_fias_id,
+                    e.response.text,
+                )
+            else:
+                logger.error(
+                    'Ошибка соединения с API CDEK при поиске города по ФИАС. '
+                    'fias=%s',
+                    city_fias_id,
+                )
+
+            raise CDEKIntegrationError(
+                'Не удалось получить информацию о городе из СДЭК. '
+                'Служба СДЭК временно недоступна, пожалуйста, '
+                'попробуйте позже.',
+            ) from e
 
     def get_offices(self, params: dict) -> dict:
         """Оркестратор получения ПВЗ."""
-        # Добавить параметр 'city' к запросу виджета на фронтенде!
-        city = (
+        # Добавить параметр 'city_code' к запросу виджета на фронтенде!
+        city_code = (
             str(
-                params.get('city') or self.default_city,
+                params.get('city_code') or self.default_city_code,
             )
             .strip()
             .lower()
         )
-
-        city_code = self._get_or_set_city_code(city)
 
         is_handout = params.get('is_handout')
         is_reception = params.get('is_reception')
 
         all_points = self._get_all_points_with_cache(
             city_code,
-            city,
             is_handout,
             is_reception,
         )
 
-        return self._paginate_points(all_points, params, city, city_code)
-
-    def _get_or_set_city_code(self, city: str) -> str:
-        """Логика получения и кэширования кода города."""
-        cache_key = f'cdek:city_code:{city}'
-        city_code = cache.get(cache_key)
-
-        if city_code is None:
-            logger.info(
-                f'Код города "{city}" отсутствует в кэше. Запрашиваем у CDEK.',
-            )
-            city_code = self.get_city_code_by_name(city)
-            if not city_code:
-                raise ValidationError(f'Город "{city}" не найден.')
-
-            cache.set(cache_key, city_code, timeout=CITY_CACHE_TIMEOUT)
-            logger.info(f'Код города "{city}" ({city_code}) сохранён в кэш.')
-        else:
-            logger.info(f'Код города "{city}" получен из кэша: {city_code}')
-
-        return city_code
+        return self._paginate_points(all_points, params, city_code)
 
     def _get_all_points_with_cache(
         self,
         city_code: str,
-        city_name: str,
         is_handout,
         is_reception,
     ) -> list:
@@ -179,7 +214,8 @@ class CDEKService:
 
         if all_points is None:
             logger.info(
-                f'Получение ПВЗ CDEK из API. city={city_name} ({city_code})',
+                'Получение ПВЗ CDEK из API. '
+                f'city_code={city_code} ({city_code})',
             )
             all_points = self._fetch_all_points_from_api(
                 city_code,
@@ -189,12 +225,12 @@ class CDEKService:
             cache.set(cache_key, all_points, timeout=DEFAULT_CACHE_TIMEOUT)
             logger.info(
                 f'Получено {len(all_points)} ПВЗ для города '
-                f'{city_name} ({city_code})',
+                f'{city_code} ({city_code})',
             )
         else:
             logger.info(
                 f'Получено из кеша {len(all_points)} ПВЗ для города '
-                f'{city_name} ({city_code})',
+                f'{city_code} ({city_code})',
             )
 
         return all_points

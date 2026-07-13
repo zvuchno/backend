@@ -19,7 +19,7 @@ cdek_widget_schema = extend_schema_view(
             'Прокси-эндпоинт для работы виджета СДЭК v3.0.\n\n'
             'Используется для получения списка ПВЗ (action=offices).\n\n'
             'Для корректной работы виджета при запросе ПВЗ (action=offices) '
-            'обязательно передавайте параметр "city".'
+            'обязательно передавайте параметр "city_code".'
         ),
         tags=CDEK_TAGS,
         parameters=[
@@ -30,9 +30,9 @@ cdek_widget_schema = extend_schema_view(
                 required=True,
             ),
             OpenApiParameter(
-                name='city',
+                name='city_code',
                 type=OpenApiTypes.STR,
-                description='Название города для поиска ПВЗ.',
+                description='Код города в СДЭК для поиска ПВЗ.',
                 required=True,
             ),
             OpenApiParameter(
