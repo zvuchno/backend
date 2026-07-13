@@ -26,7 +26,7 @@ class OrderService:
     """
 
     @staticmethod
-    def checkout_info(user, cart, city) -> dict:
+    def checkout_info(user, cart, city, city_code) -> dict:
         """Сервис формирования данных для оформления заказа.
 
         Собирает:
@@ -74,6 +74,7 @@ class OrderService:
                 'email': user.email if user else '',
                 'phone': str(getattr(user, 'phone', '') or ''),
                 'city': city,
+                'city_code': city_code,
             },
             'subtotal': calculation_service.get_total(),
             'deliveries': deliveries_qs,

@@ -22,6 +22,7 @@ from store.serializers import (
     OrderSerializer,
 )
 from store.services import (
+    CDEKService,
     CartService,
     LocationService,
     OrderService,
@@ -102,12 +103,16 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
 
         # GET
         if request.method == 'GET':
-            city_data = LocationService().get_city_by_ip(ip_address)
+            city_fias_id = LocationService().get_fias_by_ip(ip_address)[
+                'city_fias_id'
+            ]
+            city_data = CDEKService().get_city_info_by_fias(city_fias_id) or {}
 
             data = OrderService.checkout_info(
                 user=user,
                 cart=cart,
                 city=city_data.get('city', ''),
+                city_code=city_data.get('city_code', ''),
             )
             return Response(CheckoutInfoSerializer(data).data)
 

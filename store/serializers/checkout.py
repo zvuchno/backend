@@ -197,6 +197,7 @@ class UserDefaultsSerializer(serializers.Serializer):
     email = serializers.EmailField()
     phone = serializers.CharField()
     city = serializers.CharField(allow_blank=True)
+    city_code = serializers.CharField(allow_blank=True)
 
 
 class ArtistPickupPointsSerializer(serializers.ModelSerializer):

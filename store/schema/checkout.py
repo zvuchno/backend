@@ -42,6 +42,7 @@ def checkout_schema(view_func):
                             'email': serializers.EmailField(read_only=True),
                             'phone': serializers.CharField(read_only=True),
                             'city': serializers.CharField(read_only=True),
+                            'city_code': serializers.CharField(read_only=True),
                         },
                     ),
                     'subtotal': serializers.DecimalField(
