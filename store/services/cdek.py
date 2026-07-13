@@ -297,7 +297,6 @@ class CDEKService:
         self,
         all_points: list,
         params: dict,
-        city: str,
         city_code: str,
     ) -> dict:
         """Логика пагинации с полным логированием ответа."""
@@ -316,7 +315,7 @@ class CDEKService:
 
         logger.info(
             'Ответ CDEK Widget API сформирован. '
-            f'city={city} ({city_code}), '
+            f'city_code={city_code}, '
             f'page={page}, size={size}, '
             f'total_elements={total_elements}, '
             f'returned_points={len(returned_points)}',
