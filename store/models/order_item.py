@@ -67,6 +67,14 @@ class OrderItem(models.Model):
         validators=[MinValueValidator(ZERO_MONEY)],
         help_text='Скидка по промокоду продавца, руб.',
     )
+    shipment = models.ForeignKey(
+        'store.Shipment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='items',
+        verbose_name='Посылка (Отправление)',
+    )
 
     # Snapshot {name, variant_name, artist..}
     product_info = models.JSONField('Данные о товаре (snapshot)', default=dict)

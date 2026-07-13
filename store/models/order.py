@@ -8,6 +8,7 @@ from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
 from store.constants import (
+    MAX_CDEK_CODE_LENGTH,
     MAX_CHAR_LENGTH,
     MAX_NUMBER_ORDER_LENGTH,
     MAX_PRICE_DIGITS,
@@ -63,7 +64,33 @@ class Order(TimestampModel):
         'Номер телефона',
     )
 
-    # --- Адрес доставки ---
+    # --- Доставка ---
+    delivery = models.ForeignKey(
+        'store.Delivery',
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+        related_name='orders',
+        verbose_name='Способ доставки',
+    )
+    tariffs = models.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name='Метод доставки СДЭК',
+    )
+    delivery_point = models.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name='Код ПВЗ / Постамата',
+    )
+    cdek_city_code = models.CharField(
+        max_length=MAX_CDEK_CODE_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name='Код населенного пункта в СДЭК',
+    )
     city = models.CharField(
         'Город',
         max_length=MAX_CHAR_LENGTH,
@@ -97,12 +124,6 @@ class Order(TimestampModel):
         verbose_name='Примененный промокод',
         related_name='orders',
     )
-    delivery = models.CharField(
-        'Способ доставки',
-        max_length=MAX_CHAR_LENGTH,
-        blank=True,
-        default='',
-    )
     subtotal = models.DecimalField(
         'Сумма товаров (руб.)',
         max_digits=MAX_PRICE_DIGITS,
@@ -110,8 +131,17 @@ class Order(TimestampModel):
         default=ZERO_MONEY,
         validators=[MinValueValidator(ZERO_MONEY)],
     )
+    delivery_calculation = models.JSONField(
+        'Стоимость доставки по артистам (руб.)',
+        default=dict,
+        blank=True,
+        help_text=(
+            'Расчетная стоимость доставки, полученная от СДЭК на этапе '
+            'checkout. Формат: {"artist_id": {"cost": "0.00"}}.'
+        ),
+    )
     delivery_price = models.DecimalField(
-        'Стоимость доставки (руб.)',
+        'Стоимость доставки всего заказа (руб.)',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,
@@ -164,6 +194,16 @@ class Order(TimestampModel):
             counter.refresh_from_db()
 
             return f'ZV-{short_year}{counter.last_number:06d}'
+
+    @property
+    def full_address(self) -> str:
+        parts = [
+            f'г. {self.city}' if self.city else None,
+            f'ул. {self.street}' if self.street else None,
+            f'д. {self.house}' if self.house else None,
+            f'кв/оф. {self.apartment}' if self.apartment else None,
+        ]
+        return ', '.join(filter(None, parts))
 
     def save(self, *args, **kwargs):
         if not self.order_number:

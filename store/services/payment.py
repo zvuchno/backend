@@ -13,6 +13,7 @@ from yookassa import Configuration
 from yookassa import Payment as YookassaPayment
 
 from store.models import Order, Payment
+from store.tasks import register_cdek_orders_task
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +191,7 @@ def mark_payment_succeeded(payment):
         payment.provider_payment_id,
         payment.order.id,
     )
+    register_cdek_orders_task.delay(payment.order_id)
 
 
 def process_yookassa_webhook(notification):

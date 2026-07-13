@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from .delivery import DeliverySerializer
 from store.constants import (
+    MAX_CDEK_CODE_LENGTH,
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
@@ -49,6 +50,25 @@ class CheckoutSerializer(serializers.Serializer):
         allow_blank=True,
     )
     apartment = serializers.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        required=False,
+        allow_blank=True,
+    )
+    cdek_city_code = serializers.CharField(
+        max_length=MAX_CDEK_CODE_LENGTH,
+        required=False,
+        allow_blank=True,
+    )
+    tariffs = serializers.ChoiceField(
+        choices=[
+            ('office', 'Самовывоз из ПВЗ'),
+            ('door', 'Курьер (до двери)'),
+            ('pickup', 'Постомат'),
+        ],
+        required=False,
+        allow_blank=True,
+    )
+    delivery_point = serializers.CharField(
         max_length=MAX_CHAR_LENGTH,
         required=False,
         allow_blank=True,
@@ -104,22 +124,47 @@ class CheckoutSerializer(serializers.Serializer):
                 ),
             })
 
-        if delivery.delivery_type != Delivery.DeliveryType.PICKUP:
+        if delivery.delivery_type == Delivery.DeliveryType.COURIER:
             self._validate_delivery_address(attrs)
+        elif delivery.delivery_type == Delivery.DeliveryType.PICKPOINT:
+            self._clear_street_address_fields(attrs)
+            self._validate_pickpoint_fields(attrs)
         else:
             self._clear_address_fields(attrs)
 
         return attrs
 
-    def _validate_delivery_address(self, attrs) -> None:
-        """Проверяет обязательные поля адреса доставки."""
-        errors = {}
+    def _validate_pickpoint_fields(self, attrs) -> None:
+        """Проверяет обязательные поля для доставки в ПВЗ."""
+        self._validate_required_fields(
+            attrs,
+            {
+                'tariffs': 'Метод доставки для СДЭК обязателен.',
+                'city': 'Город обязателен для выбора пункта выдачи.',
+                'cdek_city_code': 'Код города обязателен для '
+                'выбора пункта выдачи.',
+                'delivery_point': 'Код пункта выдачи обязателен.',
+            },
+        )
 
-        required_fields = {
-            'city': 'Город обязателен для доставки.',
-            'street': 'Улица обязательна для доставки.',
-            'house': 'Номер дома обязателен.',
-        }
+    def _validate_delivery_address(self, attrs) -> None:
+        """Проверяет обязательные поля адреса для доставки до двери."""
+        self._validate_required_fields(
+            attrs,
+            {
+                'tariffs': 'Метод доставки для СДЭК обязателен.',
+                'city': 'Город обязателен для доставки.',
+                'cdek_city_code': 'Код города обязателен для '
+                'выбора пункта выдачи.',
+                'street': 'Улица обязательна для доставки.',
+                'house': 'Номер дома обязателен.',
+            },
+        )
+
+    @staticmethod
+    def _validate_required_fields(attrs, required_fields) -> None:
+        """Проверяет обязательные поля."""
+        errors = {}
 
         for field, message in required_fields.items():
             if not attrs.get(field):
@@ -130,8 +175,16 @@ class CheckoutSerializer(serializers.Serializer):
 
     @staticmethod
     def _clear_address_fields(attrs) -> None:
-        """Очищает адресные поля."""
+        """Очищает поля доставки, не используемые для выбранного типа."""
         attrs['city'] = ''
+        attrs['street'] = ''
+        attrs['house'] = ''
+        attrs['apartment'] = ''
+        attrs['delivery_point'] = ''
+
+    @staticmethod
+    def _clear_street_address_fields(attrs) -> None:
+        """Очищает поля адреса, не используемые для ПВЗ."""
         attrs['street'] = ''
         attrs['house'] = ''
         attrs['apartment'] = ''

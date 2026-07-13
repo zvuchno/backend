@@ -16,6 +16,7 @@ from .merch_kind import MerchKindAdmin
 from .order import OrderAdmin
 from .payment import PaymentAdmin
 from .promocode import PromocodeAdmin
+from .shipment import ShipmentAdmin
 from .track import TrackAdmin
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     'OrderAdmin',
     'PaymentAdmin',
     'PromocodeAdmin',
+    'ShipmentAdmin',
     'TrackAdmin',
 ]
 

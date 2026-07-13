@@ -4,7 +4,7 @@ from rest_framework import serializers
 class CdekCalculateSerializer(serializers.Serializer):
     """Сериализатор входных данных для расчёта стоимости доставки СДЭК."""
 
-    delivery_type = serializers.ChoiceField(
+    tariffs = serializers.ChoiceField(
         choices=[
             ('office', 'Самовывоз из ПВЗ'),
             ('door', 'Курьер (до двери)'),

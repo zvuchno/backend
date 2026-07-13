@@ -40,8 +40,9 @@ ADMIN_REORDER = (
         'models': (
             'store.Order',
             'store.Cart',
-            'store.Delivery',
             'store.Favorite',
+            'store.Delivery',
+            'store.Shipment',
         ),
     },
     {
