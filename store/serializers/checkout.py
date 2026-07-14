@@ -148,12 +148,12 @@ class CheckoutSerializer(serializers.Serializer):
 
         if delivery.delivery_type == Delivery.DeliveryType.COURIER:
             self._clear_fields(attrs, 'delivery_point')
-            attrs['pickup_point'] = {}
+            attrs['pickup_point'] = None
             self._validate_delivery_address(attrs)
 
         elif delivery.delivery_type == Delivery.DeliveryType.PICKPOINT:
             self._clear_fields(attrs, *ADDRESS_FIELDS)
-            attrs['pickup_point'] = {}
+            attrs['pickup_point'] = None
             self._validate_pickpoint_fields(attrs)
 
         elif delivery.delivery_type == Delivery.DeliveryType.ARTIST_PICKUP:

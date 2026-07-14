@@ -60,9 +60,7 @@ class Order(TimestampModel):
     # --- Контакты ---
     full_name = models.CharField('Имя и фамилия', max_length=MAX_CHAR_LENGTH)
     email = models.EmailField('Email')
-    phone = PhoneNumberField(
-        'Номер телефона',
-    )
+    phone = PhoneNumberField('Номер телефона')
 
     # --- Доставка ---
     delivery = models.ForeignKey(
@@ -77,13 +75,13 @@ class Order(TimestampModel):
         'Метод доставки СДЭК',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
-        null=True,
+        default='',
     )
     delivery_point = models.CharField(
         'Код ПВЗ / Постамата',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
-        null=True,
+        default='',
     )
     pickup_point = models.JSONField(
         'Адрес самовывоза от артиста',
@@ -98,7 +96,7 @@ class Order(TimestampModel):
         'Код населенного пункта в СДЭК',
         max_length=MAX_CDEK_CODE_LENGTH,
         blank=True,
-        null=True,
+        default='',
     )
     city = models.CharField(
         'Город',
