@@ -3,11 +3,12 @@
 Содержит классы для чтения и записи данных моделей Order.
 """
 
+from django.utils.dateparse import parse_date
 from rest_framework import serializers
 
 from .base_variant_list_item import BaseVariantTargetImageSerializer
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
-from store.models import Order, OrderItem
+from store.models import Delivery, Order, OrderItem
 
 
 class OrderItemSerializer(BaseVariantTargetImageSerializer):
@@ -109,6 +110,10 @@ class OrderDetailSerializer(OrderSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    delivery = serializers.CharField(
+        source='delivery.name',
+        read_only=True,
+    )
 
     class Meta:
         model = Order
@@ -129,6 +134,21 @@ class OrderDetailSerializer(OrderSerializer):
         )
 
     def get_full_address(self, obj) -> str:
+        if obj.delivery and obj.delivery.delivery_type == (
+            Delivery.DeliveryType.ARTIST_PICKUP
+        ):
+            pickup = obj.pickup_point or {}
+
+            address = pickup.get('address')
+            date = pickup.get('date')
+
+            if date:
+                parsed_date = parse_date(date)
+                if parsed_date:
+                    date = parsed_date.strftime('%d.%m.%Y')
+
+            return ', '.join(filter(None, (address, date)))
+
         parts = [
             f'г. {obj.city}' if obj.city else None,
             f'ул. {obj.street}' if obj.street else None,
