@@ -14,7 +14,7 @@ from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
 from store.models import Delivery, Order, OrderItem
 from store.services import CDEKService
-from users.models import ArtistPickupPoint, ConsentDocument, UserConsent
+from users.models import ConsentDocument, UserConsent
 
 logger = logging.getLogger(__name__)
 
@@ -42,31 +42,20 @@ class OrderService:
         # Получаем список ID уникальных артистов, чей мерч в корзине
         cart_artist_ids = calculation_service.get_merch_artist_ids()
 
-        pickup_points_data = []
-
         if not cart_artist_ids:  # Мерч тут есть?
             deliveries_qs = Delivery.objects.none()
+            pickup_points_data = []
         else:
             deliveries_qs = Delivery.objects.filter(is_active=True)
+            pickup_points_data = (
+                calculation_service.get_available_pickup_points()
+            )
 
-            if len(cart_artist_ids) == 1:
-                single_artist_id = cart_artist_ids[0]
-
-                points_qs = ArtistPickupPoint.objects.filter(
-                    is_active=True,
-                    artist_id=single_artist_id,
+            # Если для текущей корзины нет доступных точек — скрываем самовывоз
+            if not pickup_points_data.exists():
+                deliveries_qs = deliveries_qs.exclude(
+                    delivery_type=Delivery.DeliveryType.ARTIST_PICKUP,
                 )
-
-                pickup_points_data = points_qs
-
-                # Если у артиста нет точек — скрываем самовывоз
-                if not points_qs.exists():
-                    deliveries_qs = deliveries_qs.exclude(
-                        delivery_type='pickup',
-                    )
-            else:
-                # Если артистов несколько — скрываем самовывоз
-                deliveries_qs = deliveries_qs.exclude(delivery_type='pickup')
 
         profile = getattr(user, 'listener_profile', None)
 

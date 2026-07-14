@@ -11,6 +11,7 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Delivery, Product
+from store.services import CartCalculationService
 from users.models import ArtistPickupPoint
 
 CDEK_FIELDS = (
@@ -201,6 +202,27 @@ class CheckoutSerializer(serializers.Serializer):
                 'точку самовывоза от артиста.',
             },
         )
+
+        cart = self.context['cart']
+        calculation_service = CartCalculationService(cart)
+
+        pickup_point = attrs['pickup_point']
+        is_valid = (
+            calculation_service
+            .get_available_pickup_points()
+            .filter(
+                pk=pickup_point.pk,
+            )
+            .exists()
+        )
+
+        if not is_valid:
+            raise serializers.ValidationError({
+                'pickup_point': (
+                    'Выбранная точка самовывоза недоступна '
+                    'для артиста из корзины.'
+                ),
+            })
 
     @staticmethod
     def _validate_required_fields(attrs, required_fields) -> None:

@@ -192,6 +192,7 @@ class OrderAdmin(admin.ModelAdmin):
         'updated_at',
         'reserved_until',
         'delivery_calculation',
+        'pickup_point',
     )
     search_fields = (
         'order_number',
@@ -232,6 +233,7 @@ class OrderAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'delivery',
+                    'pickup_point',
                     'display_address',
                     'cdek_city_code',
                     'delivery_calculation',

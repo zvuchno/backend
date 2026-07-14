@@ -7,8 +7,11 @@
 
 from decimal import Decimal
 
+from django.db.models import QuerySet
+
 from store.constants import ZERO_MONEY
 from store.models import Product, Promocode
+from users.models import ArtistPickupPoint
 
 ZERO_DISCOUNT = Decimal('0.00')
 DISCOUNT_PRECISION = Decimal('0.01')
@@ -59,6 +62,17 @@ class CartCalculationService:
                 flat=True,
             )
             .distinct(),
+        )
+
+    def get_available_pickup_points(self) -> QuerySet:
+        """Точки самовывоза, доступные для текущего состава корзины."""
+        artist_ids = self.get_merch_artist_ids()
+        if len(artist_ids) != 1:
+            return ArtistPickupPoint.objects.none()
+
+        return ArtistPickupPoint.objects.filter(
+            is_active=True,
+            artist_id=artist_ids[0],
         )
 
     def get_subtotal(self) -> Decimal:
