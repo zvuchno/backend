@@ -4,6 +4,7 @@
 """
 
 import logging
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -12,7 +13,8 @@ from django.db.models import F
 from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
 from store.models import Delivery, Order, OrderItem
-from users.models import ArtistPickupPoint, ConsentDocument, UserConsent
+from store.services import CDEKService
+from users.models import ConsentDocument, UserConsent
 
 logger = logging.getLogger(__name__)
 
@@ -40,31 +42,20 @@ class OrderService:
         # Получаем список ID уникальных артистов, чей мерч в корзине
         cart_artist_ids = calculation_service.get_merch_artist_ids()
 
-        pickup_points_data = []
-
         if not cart_artist_ids:  # Мерч тут есть?
             deliveries_qs = Delivery.objects.none()
+            pickup_points_data = []
         else:
             deliveries_qs = Delivery.objects.filter(is_active=True)
+            pickup_points_data = (
+                calculation_service.get_available_pickup_points()
+            )
 
-            if len(cart_artist_ids) == 1:
-                single_artist_id = cart_artist_ids[0]
-
-                points_qs = ArtistPickupPoint.objects.filter(
-                    is_active=True,
-                    artist_id=single_artist_id,
+            # Если для текущей корзины нет доступных точек — скрываем самовывоз
+            if not pickup_points_data.exists():
+                deliveries_qs = deliveries_qs.exclude(
+                    delivery_type=Delivery.DeliveryType.ARTIST_PICKUP,
                 )
-
-                pickup_points_data = points_qs
-
-                # Если у артиста нет точек — скрываем самовывоз
-                if not points_qs.exists():
-                    deliveries_qs = deliveries_qs.exclude(
-                        delivery_type='pickup',
-                    )
-            else:
-                # Если артистов несколько — скрываем самовывоз
-                deliveries_qs = deliveries_qs.exclude(delivery_type='pickup')
 
         profile = getattr(user, 'listener_profile', None)
 
@@ -99,6 +90,11 @@ class OrderService:
         4. Регистрирует согласие пользователя на рассылку и обработку ПДн.
         5. Очищает корзину (удаляет позиции или объект целиком для анонимов).
         """
+        logger.info(
+            'Начало оформления заказа: user_id=%s, cart_id=%s',
+            user.id if user else None,
+            cart.id,
+        )
         # Блокируем строки корзины
         cart_items = (
             cart.items
@@ -125,6 +121,12 @@ class OrderService:
 
             # Проверяем актуальный статус из базы данных
             if not promocode or not promocode.is_available:
+                logger.warning(
+                    'Попытка оформить заказ с неактивным промокодом: '
+                    'promocode_id=%s, cart_id=%s',
+                    cart.promocode_id,
+                    cart.id,
+                )
                 raise ValidationError(
                     'Применённый промокод больше не активен.',
                 )
@@ -136,6 +138,12 @@ class OrderService:
         item_discounts = calc_service.get_item_discounts()
 
         if cart.promocode and calc_service.get_discount_total() == ZERO_MONEY:
+            logger.warning(
+                'Промокод не применим к товарам в корзине: '
+                'promocode_id=%s, cart_id=%s',
+                cart.promocode_id,
+                cart.id,
+            )
             raise ValidationError(
                 'Этот промокод невозможно применить к товарам в корзине.',
             )
@@ -145,13 +153,28 @@ class OrderService:
             None,
         )
         delivery = validated_data.pop('delivery', None)
+        tariffs = validated_data.pop('tariffs', None)
+        pickup_point = validated_data.pop('pickup_point', None)
+        cdek_city_code = validated_data.get('cdek_city_code')
 
-        # delivery_price = delivery.price if delivery else ZERO_MONEY
-        # TODO: Переделать после реализации доставок
+        pickup_point_data = {}
+        if pickup_point:
+            pickup_point_data = {
+                'address': pickup_point.address,
+                'date': pickup_point.pickup_date.isoformat(),
+            }
 
         subtotal = calc_service.get_subtotal()
         promocode_discount = calc_service.get_discount_total()
-        total = calc_service.get_total()  # TODO доработать + delivery_price
+        delivery_price, delivery_calculation = (
+            OrderService._get_delivery_result(
+                cart,
+                delivery,
+                cdek_city_code,
+                tariffs,
+            )
+        )
+        total = calc_service.get_total() + delivery_price
 
         # Создаем заказ с фиксацией промокода и его общей скидки
         order = Order.objects.create(
@@ -160,9 +183,11 @@ class OrderService:
             subtotal=subtotal,
             promocode=cart.promocode,
             promocode_discount=promocode_discount,
-            # TODO: delivery_price=delivery_price,
+            delivery_calculation=delivery_calculation,
+            delivery_price=delivery_price,
             total=total,
             delivery=delivery,
+            pickup_point=pickup_point_data,
             **validated_data,  # full_name, email, phone, адресные поля
         )
 
@@ -189,7 +214,12 @@ class OrderService:
             order,
             cart_items,
         )
-
+        logger.info(
+            'Заказ создан: order_id=%s, user_id=%s, total=%s',
+            order.id,
+            user.id if user else None,
+            total,
+        )
         return order
 
     @staticmethod
@@ -247,6 +277,11 @@ class OrderService:
             )
             if item.is_artist_subscription and artist_profile:
                 artists_to_subscribe.add(artist_profile)
+                logger.info(
+                    'Подписка на артиста добавлена: order_id=%s, artist_id=%s',
+                    order.id,
+                    artist_profile.id,
+                )
 
         OrderItem.objects.bulk_create(order_items)
         return artists_to_subscribe
@@ -271,6 +306,12 @@ class OrderService:
             ).first()
 
             if not newsletter_doc:
+                logger.error(
+                    'Нет активного документа согласия на рассылку '
+                    '(LISTENER_NEWSLETTER). '
+                    'order будет отменён: order_id=%s',
+                    order.id,
+                )
                 raise ValidationError(
                     'Нет активного документа согласия на рассылку.',
                 )
@@ -296,6 +337,12 @@ class OrderService:
             ).first()
 
             if not personal_doc:
+                logger.error(
+                    'Нет активного документа согласия на обработку ПДн '
+                    '(LISTENER_PERSONAL_DATA). '
+                    'order будет отменён: order_id=%s',
+                    order.id,
+                )
                 raise ValidationError(
                     'Нет активного документа согласия для слушателя.',
                 )
@@ -308,6 +355,45 @@ class OrderService:
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
+
+    @staticmethod
+    def _get_delivery_result(
+        cart,
+        delivery,
+        cdek_city_code,
+        tariffs,
+    ) -> tuple[Decimal, dict]:
+        """Возвращает (delivery_price, delivery_calculation) для заказа.
+
+        Расчёт выполняется только если выбрана доставка СДЭК (курьер/ПВЗ)
+        и в корзине есть мерч — иначе оба поля пустые.
+        """
+        if not delivery or delivery.delivery_type not in (
+            Delivery.DeliveryType.COURIER,
+            Delivery.DeliveryType.PICKPOINT,
+        ):
+            return ZERO_MONEY, {}
+
+        if not CartCalculationService(cart).get_merch_artist_ids():
+            return ZERO_MONEY, {}
+
+        result = CDEKService().calculate(
+            city_code=cdek_city_code,
+            cart=cart,
+            tariffs=tariffs,
+        )
+
+        delivery_sum = result.get('delivery_sum')
+        if delivery_sum is None:
+            logger.error(
+                'CDEK вернул ответ без delivery_sum: '
+                'cart_id=%s, city_code=%s, result=%s',
+                cart.id,
+                cdek_city_code,
+                result,
+            )
+            raise ValidationError('Не удалось рассчитать стоимость доставки.')
+        return Decimal(delivery_sum), result.get('delivery_calculation', {})
 
     @staticmethod
     def _finalize_cart_and_promocode(user, cart, order, cart_items) -> None:
@@ -324,3 +410,8 @@ class OrderService:
             order.promocode.__class__.objects.filter(
                 id=order.promocode_id,
             ).update(used_count=F('used_count') + 1)
+            logger.info(
+                'Промокод применен: promocode_id=%s, order_id=%s',
+                order.promocode_id,
+                order.id,
+            )

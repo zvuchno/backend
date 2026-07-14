@@ -11,7 +11,24 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Delivery, Product
+from store.services import CartCalculationService
 from users.models import ArtistPickupPoint
+
+CDEK_FIELDS = (
+    'city',
+    'street',
+    'house',
+    'apartment',
+    'cdek_city_code',
+    'tariffs',
+    'delivery_point',
+)
+
+ADDRESS_FIELDS = (
+    'street',
+    'house',
+    'apartment',
+)
 
 
 class CheckoutSerializer(serializers.Serializer):
@@ -73,6 +90,11 @@ class CheckoutSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
     )
+    pickup_point = serializers.PrimaryKeyRelatedField(
+        queryset=ArtistPickupPoint.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     delivery = serializers.PrimaryKeyRelatedField(
         queryset=Delivery.objects.filter(is_active=True),
@@ -112,7 +134,7 @@ class CheckoutSerializer(serializers.Serializer):
 
         if not has_merch:
             attrs['delivery'] = None
-            self._clear_address_fields(attrs)
+            self._clear_fields(attrs, *CDEK_FIELDS, 'pickup_point')
             return attrs
 
         delivery = attrs.get('delivery')
@@ -125,12 +147,22 @@ class CheckoutSerializer(serializers.Serializer):
             })
 
         if delivery.delivery_type == Delivery.DeliveryType.COURIER:
+            self._clear_fields(attrs, 'delivery_point')
+            attrs['pickup_point'] = None
             self._validate_delivery_address(attrs)
+
         elif delivery.delivery_type == Delivery.DeliveryType.PICKPOINT:
-            self._clear_street_address_fields(attrs)
+            self._clear_fields(attrs, *ADDRESS_FIELDS)
+            attrs['pickup_point'] = None
             self._validate_pickpoint_fields(attrs)
+
+        elif delivery.delivery_type == Delivery.DeliveryType.ARTIST_PICKUP:
+            self._clear_fields(attrs, *CDEK_FIELDS)
+            self._validate_artist_pickup_fields(attrs)
         else:
-            self._clear_address_fields(attrs)
+            raise serializers.ValidationError({
+                'delivery': 'Неизвестный тип доставки.',
+            })
 
         return attrs
 
@@ -161,6 +193,37 @@ class CheckoutSerializer(serializers.Serializer):
             },
         )
 
+    def _validate_artist_pickup_fields(self, attrs) -> None:
+        """Проверяет обязательные поля для самовывоза у артиста."""
+        self._validate_required_fields(
+            attrs,
+            {
+                'pickup_point': 'Необходимо выбрать '
+                'точку самовывоза от артиста.',
+            },
+        )
+
+        cart = self.context['cart']
+        calculation_service = CartCalculationService(cart)
+
+        pickup_point = attrs['pickup_point']
+        is_valid = (
+            calculation_service
+            .get_available_pickup_points()
+            .filter(
+                pk=pickup_point.pk,
+            )
+            .exists()
+        )
+
+        if not is_valid:
+            raise serializers.ValidationError({
+                'pickup_point': (
+                    'Выбранная точка самовывоза недоступна '
+                    'для артиста из корзины.'
+                ),
+            })
+
     @staticmethod
     def _validate_required_fields(attrs, required_fields) -> None:
         """Проверяет обязательные поля."""
@@ -174,20 +237,10 @@ class CheckoutSerializer(serializers.Serializer):
             raise serializers.ValidationError(errors)
 
     @staticmethod
-    def _clear_address_fields(attrs) -> None:
-        """Очищает поля доставки, не используемые для выбранного типа."""
-        attrs['city'] = ''
-        attrs['street'] = ''
-        attrs['house'] = ''
-        attrs['apartment'] = ''
-        attrs['delivery_point'] = ''
-
-    @staticmethod
-    def _clear_street_address_fields(attrs) -> None:
-        """Очищает поля адреса, не используемые для ПВЗ."""
-        attrs['street'] = ''
-        attrs['house'] = ''
-        attrs['apartment'] = ''
+    def _clear_fields(attrs, *fields) -> None:
+        """Очищает указанные поля."""
+        for field in fields:
+            attrs[field] = ''
 
 
 class UserDefaultsSerializer(serializers.Serializer):
