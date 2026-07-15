@@ -822,10 +822,10 @@ class CDEKService:
         logger.error(
             '%s status=%s code=%s context=%s body=%s',
             log_message,
-            response.status_code if response else None,
+            response.status_code if response is not None else None,
             code,
             context,
-            response.text if response else None,
+            response.text if response is not None else None,
         )
 
         raise CDEKIntegrationError(
