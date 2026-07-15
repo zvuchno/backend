@@ -47,6 +47,22 @@ def custom_exception_handler(exception, context):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    if isinstance(exception, CDEKIntegrationError):
+        data = {
+            'detail': str(exception),
+        }
+
+        if exception.code:
+            data['code'] = exception.code
+
+        if exception.error:
+            data['error'] = exception.error
+
+        return Response(
+            data,
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
     if response is not None:
         logger.warning(
             'API error | %s | %s | status=%s | view=%s | detail=%s',
@@ -69,12 +85,6 @@ def custom_exception_handler(exception, context):
             data,
         )
         return Response(data, status=status.HTTP_400_BAD_REQUEST)
-
-    if isinstance(exception, CDEKIntegrationError):
-        return Response(
-            {'detail': str(exception)},
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
 
     logger.exception(
         'Unhandled API exception | %s | %s | view=%s',

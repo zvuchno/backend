@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from decimal import ROUND_HALF_UP, Decimal
+from typing import NoReturn
 
 import requests
 from django.conf import settings
@@ -77,12 +78,13 @@ class CDEKService:
                 timeout=10,
             )
             response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            logger.error(
-                'Ошибка авторизации СДЭК: '
-                f'{getattr(e.response, "text", str(e))}',
+
+        except requests.RequestException as e:
+            self._raise_cdek_error(
+                e,
+                message='Не удалось получить токен СДЭК.',
+                log_message='Ошибка авторизации CDEK.',
             )
-            raise ValidationError(f'Не удалось получить токен: {e}')
 
         token_data = response.json()
         new_token = token_data.get('access_token')
@@ -157,26 +159,12 @@ class CDEKService:
             return city_info
 
         except requests.RequestException as e:
-            if e.response is not None:
-                logger.error(
-                    'CDEK вернул ошибку при поиске города по ФИАС. '
-                    'status=%s, fias=%s, body=%s',
-                    e.response.status_code,
-                    city_fias_id,
-                    e.response.text,
-                )
-            else:
-                logger.error(
-                    'Ошибка соединения с API CDEK при поиске города по ФИАС. '
-                    'fias=%s',
-                    city_fias_id,
-                )
-
-            raise CDEKIntegrationError(
-                'Не удалось получить информацию о городе из СДЭК. '
-                'Служба СДЭК временно недоступна, пожалуйста, '
-                'попробуйте позже.',
-            ) from e
+            self._raise_cdek_error(
+                e,
+                message='Не удалось получить информацию о городе из СДЭК.',
+                log_message=('CDEK вернул ошибку при поиске города по ФИАС.'),
+                context={'city_fias_id': city_fias_id},
+            )
 
     def get_offices(self, params: dict) -> dict:
         """Оркестратор получения ПВЗ."""
@@ -265,21 +253,12 @@ class CDEKService:
                 )
                 response.raise_for_status()
             except requests.RequestException as e:
-                if e.response is not None:
-                    logger.error(
-                        'CDEK вернул ошибку при получении ПВЗ. '
-                        'status=%s, params=%s, body=%s',
-                        e.response.status_code,
-                        api_params,
-                        e.response.text,
-                    )
-                else:
-                    logger.error(
-                        'Ошибка соединения с API CDEK при получении ПВЗ. '
-                        'params=%s',
-                        api_params,
-                    )
-                raise CDEKIntegrationError() from e
+                self._raise_cdek_error(
+                    e,
+                    message='Не удалось получить список ПВЗ.',
+                    log_message='CDEK вернул ошибку при получении ПВЗ.',
+                    context={'api_params': api_params},
+                )
 
             data = response.json()
             if not data:
@@ -489,19 +468,12 @@ class CDEKService:
             }
 
         except requests.RequestException as e:
-            if e.response is not None:
-                logger.error(
-                    'CDEK вернул ошибку при расчёте доставки. '
-                    'status=%s, payload=%s, body=%s',
-                    e.response.status_code,
-                    payload,
-                    e.response.text,
-                )
-            raise CDEKIntegrationError(
-                'Не удалось рассчитать стоимость доставки. '
-                'Служба СДЭК временно недоступна, '
-                'пожалуйста, попробуйте позже.',
-            ) from e
+            self._raise_cdek_error(
+                e,
+                message='Не удалось рассчитать стоимость доставки.',
+                log_message='CDEK вернул ошибку при расчёте доставки.',
+                context={'payload': payload},
+            )
 
     def suggest_cities(self, query):
         """Поиск доступных городов через саджест-API СДЭК."""
@@ -518,26 +490,12 @@ class CDEKService:
             return response.json()
 
         except requests.RequestException as e:
-            if e.response is not None:
-                logger.error(
-                    'CDEK вернул ошибку при поиске городов. '
-                    'status=%s, query=%s, body=%s',
-                    e.response.status_code,
-                    query,
-                    e.response.text,
-                )
-            else:
-                logger.error(
-                    'Ошибка соединения с API CDEK при поиске городов. '
-                    'query=%s',
-                    query,
-                )
-
-            raise CDEKIntegrationError(
-                'Не удалось получить список городов. '
-                'Служба СДЭК временно недоступна, '
-                'пожалуйста, попробуйте позже.',
-            ) from e
+            self._raise_cdek_error(
+                e,
+                message='Не удалось получить список городов.',
+                log_message='CDEK вернул ошибку при поиске городов.',
+                context={'query': query},
+            )
 
     def register_orders(self, order) -> list[dict]:
         """Регистрирует накладные СДЭК по заказу."""
@@ -749,26 +707,14 @@ class CDEKService:
                 timeout=10,
             )
             response.raise_for_status()
+
         except requests.RequestException as e:
-            if e.response is not None:
-                logger.error(
-                    'CDEK вернул ошибку при регистрации накладной. '
-                    'status=%s, payload=%s, body=%s',
-                    e.response.status_code,
-                    payload,
-                    e.response.text,
-                )
-            else:
-                logger.error(
-                    'Ошибка соединения с API CDEK при регистрации накладной. '
-                    'payload=%s',
-                    payload,
-                )
-            raise CDEKIntegrationError(
-                'Не удалось зарегистрировать заказ в СДЭК. '
-                'Служба СДЭК временно недоступна, '
-                'пожалуйста, попробуйте позже.',
-            ) from e
+            self._raise_cdek_error(
+                e,
+                message='Не удалось зарегистрировать заказ в СДЭК.',
+                log_message=('CDEK вернул ошибку при регистрации накладной.'),
+                context={'payload': payload},
+            )
 
         data = response.json()
         try:
@@ -806,21 +752,62 @@ class CDEKService:
             )
             response.raise_for_status()
             return response.json()
+
         except requests.RequestException as e:
-            if e.response is not None:
-                logger.error(
-                    'CDEK вернул ошибку при получении статуса заказа. '
-                    'status=%s, cdek_uuid=%s, body=%s',
-                    e.response.status_code,
-                    cdek_uuid,
-                    e.response.text,
-                )
-            else:
-                logger.error(
-                    'Ошибка соединения с API CDEK при получении статуса '
-                    'заказа. cdek_uuid=%s',
-                    cdek_uuid,
-                )
-            raise CDEKIntegrationError(
-                'Не удалось получить статус заказа в СДЭК.',
-            ) from e
+            self._raise_cdek_error(
+                e,
+                message='Не удалось получить статус заказа в СДЭК.',
+                log_message=(
+                    'CDEK вернул ошибку при получении статуса заказа.'
+                ),
+                context={'cdek_uuid': cdek_uuid},
+            )
+
+    def _parse_error(
+        self,
+        response,
+    ) -> tuple[str | None, str | None]:
+        """Извлекает код и сообщение ошибки из ответа СДЭК."""
+        if response is None:
+            return None, None
+
+        try:
+            errors = response.json().get('errors') or []
+            if not errors:
+                return None, None
+
+            error = errors[0]
+            return (
+                error.get('code'),
+                error.get('message'),
+            )
+
+        except (ValueError, IndexError, AttributeError):
+            return None, None
+
+    def _raise_cdek_error(
+        self,
+        exc: requests.RequestException,
+        *,
+        message: str,
+        log_message: str,
+        context: dict | None = None,
+    ) -> NoReturn:
+        response = exc.response
+
+        code, error = self._parse_error(response)
+
+        logger.error(
+            '%s status=%s code=%s context=%s body=%s',
+            log_message,
+            response.status_code if response else None,
+            code,
+            context,
+            response.text if response else None,
+        )
+
+        raise CDEKIntegrationError(
+            message,
+            code=code,
+            error=error,
+        ) from exc
