@@ -110,6 +110,28 @@ class OrderService:
         if not cart_items.exists():
             raise ValidationError('Нельзя оформить заказ с пустой корзиной.')
 
+        # Проверяем актуальную доступность товаров прямо из БД
+        inactive_items = [
+            item
+            for item in cart_items
+            if not item.product_variant.product.content.is_active
+            or not item.product_variant.is_active
+        ]
+        if inactive_items:
+            unavailable_names = ', '.join(
+                item.product_variant.variant_name for item in inactive_items
+            )
+            logger.warning(
+                'Попытка оформить заказ с недоступными товарами: '
+                'cart_id=%s, items=%s',
+                cart.id,
+                unavailable_names,
+            )
+            raise ValidationError(
+                'Некоторые товары больше недоступны для покупки: '
+                f'{unavailable_names}.',
+            )
+
         if cart.promocode_id:
             # Блокируем запись промокода в БД до конца транзакции
             promocode = (
