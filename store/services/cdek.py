@@ -49,7 +49,10 @@ class CDEKService:
         self.tariff_code_door = settings.TARIFF_DOOR
         self.tariff_code_pickup = settings.TARIFF_PICKUP
         self.default_item_weight = settings.DEFAULT_ITEM_WEIGHT
-        self.default_city_code = '44'
+        self.default_city_info = {
+            'city_code': '44',
+            'city': 'Москва',
+        }
 
     def _auth_headers(self) -> dict[str, str]:
         """Формирование HTTP-заголовков авторизации со токеном Bearer."""
@@ -95,7 +98,11 @@ class CDEKService:
         logger.info('Получен токен от API CDEK.')
         return new_token
 
-    def get_city_info_by_fias(self, city_fias_id) -> dict | None:
+    def get_city_info_by_fias(
+        self,
+        city_fias_id,
+        _is_fallback=False,
+    ) -> dict | None:
         """Получает информацию о городе СДЭК по ФИАС."""
         cache_key = f'cdek:city_info:{city_fias_id}'
         cached = cache.get(cache_key)
@@ -125,7 +132,25 @@ class CDEKService:
                     'ФИАС %s не найден в справочнике СДЭК.',
                     city_fias_id,
                 )
-                return None
+
+                if not _is_fallback:
+                    logger.info(
+                        'Повторяем запрос с дефолтным ФИАС %s.',
+                        settings.DEFAULT_FIAS,
+                    )
+                    result = self.get_city_info_by_fias(
+                        settings.DEFAULT_FIAS,
+                        _is_fallback=True,
+                    )
+                    cache.set(cache_key, result, timeout=CITY_CACHE_TIMEOUT)
+                    return result
+
+                logger.warning(
+                    'Дефолтный ФИАС %s тоже не найден, '
+                    'используем default_city_code.',
+                    settings.DEFAULT_FIAS,
+                )
+                return self.default_city_info
 
             city = data[0]
 
@@ -134,10 +159,11 @@ class CDEKService:
 
             if not city_code:
                 logger.warning(
-                    'СДЭК вернул город без кода для ФИАС %s.',
+                    'СДЭК вернул город без кода для ФИАС %s, '
+                    'используем default_city_code.',
                     city_fias_id,
                 )
-                return None
+                return self.default_city_info
 
             city_info = {
                 'city_code': city_code,
@@ -169,13 +195,9 @@ class CDEKService:
     def get_offices(self, params: dict) -> dict:
         """Оркестратор получения ПВЗ."""
         # Добавить параметр 'city_code' к запросу виджета на фронтенде!
-        city_code = (
-            str(
-                params.get('city_code') or self.default_city_code,
-            )
-            .strip()
-            .lower()
-        )
+        city_code = str(
+            params.get('city_code') or self.default_city_info['city_code'],
+        ).strip()
 
         is_handout = params.get('is_handout')
         is_reception = params.get('is_reception')
