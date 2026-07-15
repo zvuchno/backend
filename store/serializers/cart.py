@@ -156,6 +156,18 @@ class CartItemWriteSerializer(serializers.ModelSerializer):
         product = variant.product
         quantity = attrs.get('quantity')
 
+        # Проверка доступности товара
+        if not product.content.is_active:
+            raise serializers.ValidationError({
+                'product_variant': 'Этот товар больше недоступен для покупки.',
+            })
+
+        if hasattr(variant, 'is_active') and not variant.is_active:
+            raise serializers.ValidationError({
+                'product_variant': 'Этот вариант товара больше недоступен '
+                'для покупки.',
+            })
+
         existing_item = cart.items.filter(product_variant=variant).first()
 
         view = self.context.get('view')
