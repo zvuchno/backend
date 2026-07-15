@@ -4,9 +4,11 @@
 """
 
 from django.utils.dateparse import parse_date
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .base_variant_list_item import BaseVariantTargetImageSerializer
+from .mixins import ProductImagesMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Delivery, Order, OrderItem
 
@@ -67,7 +69,7 @@ class OrderItemSerializer(BaseVariantTargetImageSerializer):
         return obj.product_info.get('property_value') or ''
 
 
-class OrderSerializer(serializers.ModelSerializer):
+class OrderSerializer(ProductImagesMixin, serializers.ModelSerializer):
     """Сериализтор заказа."""
 
     items_count = serializers.IntegerField(
@@ -79,6 +81,7 @@ class OrderSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    images = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -89,7 +92,31 @@ class OrderSerializer(serializers.ModelSerializer):
             'status',
             'items_count',
             'total',
+            'images',
         )
+
+    @extend_schema_field(serializers.ListField(child=serializers.URLField()))
+    def get_images(self, obj) -> list[str]:
+        """Возвращает изображения товаров заказа."""
+        urls = []
+        for item in obj.items.all():
+            product = item.product_variant.product
+            if product.album_id:
+                items = self.get_album_image_items(product.album)
+            elif product.track_id:
+                items = self.get_album_image_items(product.track.album)
+            elif product.merch_id:
+                items = self.get_merch_image_items(
+                    product.merch.images_merch.all(),
+                )
+            else:
+                continue
+
+            url = self.get_main_image_url(items)
+            if url:
+                urls.append(url)
+
+        return urls
 
 
 class OrderDetailSerializer(OrderSerializer):

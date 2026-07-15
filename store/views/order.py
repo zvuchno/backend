@@ -50,7 +50,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_permissions(self):
         if self.action == 'checkout':
-            return (permissions.AllowAny(),)
+            return (permissions.IsAuthenticated(),)
         return super().get_permissions()
 
     def get_queryset(self):
@@ -141,6 +141,6 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                 ),
             )
         return Response(
-            OrderSerializer(order).data,
+            self.get_serializer(order).data,
             status=status.HTTP_201_CREATED,
         )
