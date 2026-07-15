@@ -272,10 +272,12 @@ class OrderService:
                 else None
             )
             artist_name = getattr(artist_profile, 'name', '')
+            product_kind = OrderService._get_product_kind(product)
 
             # Собираем JSON-снапшот
             product_info_snapshot = {
                 'name': variant.variant_name,
+                'kind': product_kind,
                 'artist_name': artist_name,
                 'product_type': product.product_type,
                 'property_name': product.property_name,
@@ -377,6 +379,17 @@ class OrderService:
                 ip_address=ip_address,
                 user_agent=user_agent,
             )
+
+    @staticmethod
+    def _get_product_kind(product) -> str:
+        """Определяет тип (kind) продукта."""
+        if product.product_type == product.ProductType.ALBUM:
+            return 'Сингл' if product.album.is_single else 'Альбом'
+        if product.product_type == product.ProductType.TRACK:
+            return 'Трек'
+        if product.product_type == product.ProductType.MERCH:
+            return product.merch.kind.name if product.merch.kind else 'Мерч'
+        return ''
 
     @staticmethod
     def _get_delivery_result(
