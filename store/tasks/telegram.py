@@ -36,8 +36,9 @@ def send_telegram_notification(self, artist_id: int, message: str) -> bool:
 
     except ApiTelegramException as exc:
         logger.warning(
-            'Telegram task: ошибка Telegram API (artist_id=%s)',
+            'Telegram task: ошибка Telegram API (artist_id=%s): %s',
             artist_id,
+            exc,
         )
 
         raise self.retry(exc=exc)
