@@ -17,6 +17,15 @@ class BaseContent(ActivatableModel, TimestampModel):
 
     name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
     description = models.TextField('Описание', blank=True, default='')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='created_%(class)s_items',
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name='Создал',
+    )
 
     class Meta:
         abstract = True
