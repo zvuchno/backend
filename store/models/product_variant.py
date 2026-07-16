@@ -89,7 +89,7 @@ class ProductVariant(ActivatableModel, TimestampModel):
         if not self.product:
             return ''
         product_name = self.product.name
-        if self.property_value:
+        if self.property_value and self.property_value != 'simple':
             return f'{product_name} ({self.property_value})'
         return product_name
 
