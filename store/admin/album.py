@@ -25,7 +25,7 @@ from nested_admin.nested import (
 
 from .forms import MoneyForm
 from .mixins import (
-    AutoOwnerAdminMixin,
+    AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
 )
@@ -292,7 +292,7 @@ class AlbumArchiveInline(NestedStackedInline):
 
 @admin.register(Album)
 class AlbumAdmin(
-    AutoOwnerAdminMixin,
+    AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
     NestedModelAdmin,
@@ -316,10 +316,29 @@ class AlbumAdmin(
 
         js = ('store/admin/album_track_upload.js',)
 
+    def get_readonly_fields(self, request, obj=None):
+        """Возвращает поля, недоступные для ручного изменения."""
+        readonly_fields = tuple(
+            super().get_readonly_fields(request, obj),
+        ) + (
+            'image_preview',
+            'created_at',
+            'updated_at',
+            'get_sku',
+            'payout_recipient',
+            'created_by',
+        )
+
+        if obj is not None:
+            readonly_fields += ('artist',)
+
+        return readonly_fields
+
     list_display = (
         'name',
         'genre',
-        'owner',
+        'artist',
+        'payout_recipient',
         'is_single',
         'is_published',
         'get_price',
@@ -327,7 +346,13 @@ class AlbumAdmin(
         'visibility',
         'is_active',
     )
-    search_fields = ('genre__name', 'name')
+    search_fields = (
+        'genre__name',
+        'name',
+        'artist__name',
+        'payout_recipient__email',
+        'created_by__email',
+    )
     list_filter = (
         'is_active',
         'created_at',
@@ -335,13 +360,6 @@ class AlbumAdmin(
         'visibility',
     )
     ordering = ('-created_at', 'is_active', 'name')
-    readonly_fields = (
-        'image_preview',
-        'created_at',
-        'updated_at',
-        'get_sku',
-        'owner',
-    )
     list_editable = ('is_active', 'is_published', 'visibility')
     fieldsets = (
         (
@@ -358,7 +376,8 @@ class AlbumAdmin(
                     'is_published',
                     'visibility',
                     'get_sku',
-                    'owner',
+                    'artist',
+                    'payout_recipient',
                     'is_active',
                 ),
             },
@@ -370,6 +389,7 @@ class AlbumAdmin(
                 'fields': (
                     'created_at',
                     'updated_at',
+                    'created_by',
                 ),
             },
         ),
@@ -386,8 +406,24 @@ class AlbumAdmin(
         return '-'
 
     def get_queryset(self, request):
-        """Родительский метод миксина + select_related('genre', 'owner')."""
-        return super().get_queryset(request).select_related('genre', 'owner')
+        """Возвращает альбомы со связанными служебными объектами."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'genre',
+                'artist',
+                'payout_recipient',
+                'created_by',
+            )
+        )
+
+    def save_model(self, request, obj, form, change):
+        """Сохраняет альбом и назначает получателя выплат."""
+        if not change and obj.payout_recipient_id is None:
+            obj.payout_recipient = obj.artist.default_payout_recipient
+
+        super().save_model(request, obj, form, change)
 
     def response_add(self, request, obj, post_url_continue=None):
         """Перенаправляет к загрузке треков после создания альбома."""

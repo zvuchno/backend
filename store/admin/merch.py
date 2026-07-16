@@ -17,7 +17,7 @@ from .forms import (
     MoneyForm,
 )
 from store.admin.mixins import (
-    AutoOwnerAdminMixin,
+    AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
 )
@@ -82,7 +82,7 @@ class PhotoInline(NestedTabularInline):
 
 @admin.register(Merch)
 class MerchAdmin(
-    AutoOwnerAdminMixin,
+    AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
     NestedModelAdmin,
@@ -93,7 +93,8 @@ class MerchAdmin(
     list_display = (
         'name',
         'kind',
-        'owner',
+        'artist',
+        'payout_recipient',
         'image_preview',
         'album',
         'is_published',
@@ -117,18 +118,34 @@ class MerchAdmin(
     search_fields = (
         'name',
         'kind__name',
-        'owner__username',
+        'artist__name',
+        'payout_recipient__email',
+        'created_by__email',
         'album__name',
     )
     ordering = ('-created_at',)
-    search_help_text = 'Поиск по названию, типу, названию альбома и владельцу'
-    readonly_fields = (
-        'image_preview',
-        'display_is_carrier',
-        'created_at',
-        'updated_at',
-        'owner',
+    search_help_text = (
+        'Поиск по названию, типу, артисту, альбому, '
+        'получателю выплат и создателю'
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        """Возвращает поля, недоступные для ручного изменения."""
+        readonly_fields = (
+            *super().get_readonly_fields(request, obj),
+            'image_preview',
+            'display_is_carrier',
+            'created_at',
+            'updated_at',
+            'payout_recipient',
+            'created_by',
+        )
+
+        if obj is not None:
+            readonly_fields += ('artist',)
+
+        return readonly_fields
+
     autocomplete_fields = ('album', 'kind')
 
     fieldsets = (
@@ -144,7 +161,8 @@ class MerchAdmin(
                     'album',
                     'is_published',
                     'visibility',
-                    'owner',
+                    'artist',
+                    'payout_recipient',
                     'is_active',
                 ),
             },
@@ -156,6 +174,7 @@ class MerchAdmin(
                 'fields': (
                     'created_at',
                     'updated_at',
+                    'created_by',
                 ),
             },
         ),
@@ -171,12 +190,21 @@ class MerchAdmin(
         return qs.select_related(
             'product',
             'kind',
-            'owner',
+            'artist',
+            'payout_recipient',
+            'created_by',
             'album',
         ).prefetch_related(
             'images_merch',
             'product__variants',
         )
+
+    def save_model(self, request, obj, form, change):
+        """Сохраняет мерч и назначает получателя выплат."""
+        if not change and obj.payout_recipient_id is None:
+            obj.payout_recipient = obj.artist.default_payout_recipient
+
+        super().save_model(request, obj, form, change)
 
     @admin.display(description='Главное фото')
     def image_preview(self, obj):

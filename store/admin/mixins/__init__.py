@@ -5,11 +5,11 @@
 не зависящие от конкретной модели.
 """
 
-from .auto_owner_mixin import AutoOwnerAdminMixin
+from .auto_owner_mixin import AutoCreatedByAdminMixin
 from .commerce import CommerceBaseMixin, CommerceDisplayMixin
 
 __all__ = [
-    'AutoOwnerAdminMixin',
+    'AutoCreatedByAdminMixin',
     'CommerceBaseMixin',
     'CommerceDisplayMixin',
 ]

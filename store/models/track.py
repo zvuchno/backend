@@ -63,7 +63,7 @@ class Track(BaseContent):
     @property
     def owner(self):
         """Возвращает владельца альбома для обратной совместимости."""
-        return self.album.owner
+        return self.album.payout_recipient
 
     objects = TrackQuerySet.as_manager()
 
