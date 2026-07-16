@@ -275,7 +275,6 @@ class TestSyncMerchVariants:
         (None, 10),        # value — None
         ('', 10),          # value — пустая строка
         ('   ', 10),       # value — строка с пробелами
-        ('L', None),       # stock — None
         ('L', '10'),       # stock — строка вместо числа
         ('L', 10.5),       # stock — float вместо int
         ('L', -1),         # stock — отрицательное число

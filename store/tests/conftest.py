@@ -12,8 +12,6 @@
 Файл не требует явного импорта — pytest находит его автоматически.
 """
 
-from decimal import Decimal
-
 import pytest
 from django.core.files.base import ContentFile
 from django.urls import reverse
@@ -152,7 +150,6 @@ def delivery_courier():
     return Delivery.objects.create(
         name='Курьерская доставка',
         delivery_type=Delivery.DeliveryType.COURIER,
-        price=Decimal('500.00'),
         is_active=True,
     )
 
@@ -163,7 +160,6 @@ def inactive_delivery():
     return Delivery.objects.create(
         name='Старая доставка',
         delivery_type=Delivery.DeliveryType.COURIER,
-        price=Decimal('100.00'),
         is_active=False,
     )
 
