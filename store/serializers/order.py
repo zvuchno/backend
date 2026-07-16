@@ -18,6 +18,7 @@ class OrderItemSerializer(BaseVariantTargetImageSerializer):
 
     sku = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
+    kind = serializers.SerializerMethodField()
     property_name = serializers.SerializerMethodField()
     property_value = serializers.SerializerMethodField()
     donation = serializers.DecimalField(
@@ -45,6 +46,7 @@ class OrderItemSerializer(BaseVariantTargetImageSerializer):
         model = OrderItem
         fields = (
             'sku',
+            'kind',
             'name',
             'property_name',
             'property_value',
@@ -61,6 +63,9 @@ class OrderItemSerializer(BaseVariantTargetImageSerializer):
 
     def get_name(self, obj) -> str:
         return obj.product_info.get('name') or ''
+
+    def get_kind(self, obj) -> str:
+        return obj.product_info.get('kind') or ''
 
     def get_property_name(self, obj) -> str:
         return obj.product_info.get('property_name') or ''
