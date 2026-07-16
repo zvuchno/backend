@@ -89,9 +89,12 @@ class ProductVariant(ActivatableModel, TimestampModel):
         if not self.product:
             return ''
         product_name = self.product.name
-        if self.property_value and self.property_value != 'simple':
+        if self.property_value and self.property_value not in [
+            'simple',
+            'digital',
+        ]:
             return f'{product_name} ({self.property_value})'
         return product_name
 
     def __str__(self):
-        return f'{self.variant_name}'
+        return self.variant_name

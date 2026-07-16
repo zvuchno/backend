@@ -61,7 +61,7 @@ class TestFavoritesAPI:
             data={'product_variant': variant.id},
             format='json',
         )
-        favorite_id = res_create.data['id']
+        favorite_id = res_create.data['product_variant']
 
         url = reverse('api:store:me-favorites-detail', args=[favorite_id])
         response = self.auth_client.delete(url)

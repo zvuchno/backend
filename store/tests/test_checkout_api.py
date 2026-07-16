@@ -14,6 +14,7 @@ class TestCheckoutAPI:
     @pytest.fixture(autouse=True)
     def _setup(
         self,
+        user,
         api_client,
         auth_client,
         checkout_url,
@@ -22,6 +23,7 @@ class TestCheckoutAPI:
         consent_doc_pdn,
     ) -> None:
         """Автоматически прокидывает зависимости в self перед каждым тестом."""
+        self.user = user
         self.auth_client = auth_client
         self.api_client = api_client
         self.checkout_url = checkout_url
@@ -40,6 +42,8 @@ class TestCheckoutAPI:
             'city': 'Москва',
             'street': 'Ленина',
             'house': '1',
+            'cdek_city_code': '252',
+            'tariffs': 'door',
         }
         payload.update(kwargs)
         return payload
@@ -58,8 +62,9 @@ class TestCheckoutAPI:
         assert UserConsent.objects.filter(user=user).exists()
         assert self.cart_with_items.items.count() == 0
 
-    def test_anon_checkout_flow(
+    def test_listener_checkout_flow(
         self,
+        user,
         cart_url,
         cart_add_url,
         artist_user,
@@ -68,9 +73,9 @@ class TestCheckoutAPI:
     ):
         """Сквозной тест оформления заказа.
 
-        Аноним → сессия + успешный заказ + очистка корзины + согласия.
+        Фанат + успешный заказ + очистка корзины + согласия.
         """
-        response = self.api_client.get(cart_url)
+        response = self.auth_client.get(cart_url)
         variant = variant_factory(product_type='merch', owner=artist_user)
         types = [
             ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
@@ -81,9 +86,9 @@ class TestCheckoutAPI:
             'quantity': 2,
             'is_artist_subscription': 'true',
         }
-        response = self.api_client.post(cart_add_url, payload, format='json')
+        response = self.auth_client.post(cart_add_url, payload, format='json')
 
-        response = self.api_client.post(
+        response = self.auth_client.post(
             self.checkout_url,
             self.get_payload(),
             format='json',
@@ -96,7 +101,7 @@ class TestCheckoutAPI:
         assert len(cart_response.data['items']) == 0
         assert (
             UserConsent.objects.filter(
-                user__isnull=True,
+                user=user,
                 document__document_type__in=types,
             ).count()
             == 2
