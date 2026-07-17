@@ -4,9 +4,6 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
-from store.migrations.utils import drop_view, create_view
-
-
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -14,8 +11,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        drop_view('listener_album_access'),
-        drop_view('listener_track_access'),
         migrations.AddField(
             model_name='artistprofile',
             name='label',
@@ -47,6 +42,4 @@ class Migration(migrations.Migration):
             model_name='artistprofile',
             constraint=models.CheckConstraint(condition=models.Q(('label__isnull', True), models.Q(('pk', models.F('label')), _negated=True), _connector='OR'), name='profile_is_not_its_own_label'),
         ),
-        create_view('listener_track_access', version=1),
-        create_view('listener_album_access', version=1),
     ]
