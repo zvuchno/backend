@@ -118,7 +118,7 @@ class Migration(migrations.Migration):
     dependencies = [
         (
             'store',
-            '0040_order_pickup_point_alter_order_cdek_city_code_and_more',
+            '0041_alter_shipment_cdek_uuid_and_more',
         ),
         (
             'users',

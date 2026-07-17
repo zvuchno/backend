@@ -36,14 +36,21 @@ class ArtistSaleSerializer(ArtistSaleBaseMixin, OrderSerializer):
     total = serializers.SerializerMethodField()
 
 
-class ArtistSaleDetailSerializer(ArtistSaleBaseMixin, OrderDetailSerializer):
-    """Сериализтор для подробного просмотра заказа продавца."""
+class ArtistSaleDetailSerializer(
+    ArtistSaleBaseMixin,
+    OrderDetailSerializer,
+):
+    """Сериализатор для подробного просмотра заказа продавца."""
 
     total = serializers.SerializerMethodField()
+    tracking_number = serializers.CharField(
+        source='artist_tracking_number',
+        read_only=True,
+    )
 
     class Meta(OrderDetailSerializer.Meta):
         fields = tuple(
             field
             for field in OrderDetailSerializer.Meta.fields
             if field not in ('delivery_price', 'subtotal')
-        )
+        ) + ('tracking_number',)

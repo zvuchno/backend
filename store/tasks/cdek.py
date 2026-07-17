@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from django.db import transaction
 
 from store.exceptions import CDEKIntegrationError
 from store.models import Order, Shipment
@@ -78,7 +79,17 @@ def update_cdek_shipment_task(self, shipment_id: int):
     request = requests[0]
     state = request.get('state')
 
-    if state in ('ACCEPTED', 'WAITING'):
+    if not state:
+        logger.warning(
+            'СДЭК не вернул состояние регистрации. uuid=%s',
+            shipment.cdek_uuid,
+        )
+        raise self.retry()
+
+    if state in (
+        Shipment.State.ACCEPTED,
+        Shipment.State.WAITING,
+    ):
         logger.info(
             'Регистрация отправления %s ещё не завершена (%s).',
             shipment.cdek_uuid,
@@ -86,7 +97,7 @@ def update_cdek_shipment_task(self, shipment_id: int):
         )
         raise self.retry()
 
-    if state == 'INVALID':
+    if state == Shipment.State.INVALID:
         logger.error(
             'Регистрация отправления %s завершилась ошибкой: %s',
             shipment.cdek_uuid,
@@ -97,7 +108,7 @@ def update_cdek_shipment_task(self, shipment_id: int):
         shipment.save(update_fields=['state', 'updated_at'])
         return
 
-    if state != 'SUCCESSFUL':
+    if state != Shipment.State.SUCCESSFUL:
         logger.warning(
             'Неизвестное состояние регистрации "%s" для uuid=%s.',
             state,
@@ -114,16 +125,22 @@ def update_cdek_shipment_task(self, shipment_id: int):
         )
         raise self.retry()
 
-    shipment.tracking_number = tracking_number
-    shipment.state = state
+    with transaction.atomic():
+        shipment.tracking_number = tracking_number
+        shipment.state = state
 
-    shipment.save(
-        update_fields=[
-            'tracking_number',
-            'state',
-            'updated_at',
-        ],
-    )
+        shipment.save(
+            update_fields=[
+                'tracking_number',
+                'state',
+                'updated_at',
+            ],
+        )
+        from store.notifications import send_shipment_registered_notification
+
+        transaction.on_commit(
+            lambda: send_shipment_registered_notification(shipment),
+        )
 
     logger.info(
         'Отправление %s успешно зарегистрировано. Трек-номер: %s',

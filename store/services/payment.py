@@ -13,6 +13,7 @@ from yookassa import Configuration
 from yookassa import Payment as YookassaPayment
 
 from store.models import Order, Payment
+from store.notifications import send_order_paid_notifications_to_artists
 from store.tasks import register_cdek_orders_task
 
 logger = logging.getLogger(__name__)
@@ -177,7 +178,7 @@ def create_yookassa_payment(order, retry=True):
 
 
 def mark_payment_succeeded(payment):
-    """Отмечает платеж как успешно оплаченный."""
+    """Отмечает платеж как успешно оплаченный и отправляет уведомления."""
     with transaction.atomic():
         payment.status = Payment.PaymentStatus.SUCCEEDED
         payment.paid_at = timezone.now()
@@ -186,12 +187,20 @@ def mark_payment_succeeded(payment):
         payment.order.status = Order.Status.PAID
         payment.order.save(update_fields=['status', 'updated_at'])
 
+        transaction.on_commit(
+            lambda: (
+                # Отправлем уведомление артистам
+                send_order_paid_notifications_to_artists(payment.order),
+                # Регистрируем заказ в СДЭК
+                register_cdek_orders_task.delay(payment.order_id),
+            ),
+        )
+
     logger.info(
         'Платеж %s успешно обработан. Заказ id=%s оплачен.',
         payment.provider_payment_id,
         payment.order.id,
     )
-    register_cdek_orders_task.delay(payment.order_id)
 
 
 def process_yookassa_webhook(notification):

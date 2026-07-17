@@ -27,6 +27,7 @@ class TestTrackUploadService:
 
         track, upload = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='01. Intro.flac',
             size=10,
             content_type='audio/flac',
@@ -61,6 +62,7 @@ class TestTrackUploadService:
 
         track, _ = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='Next.mp3',
             size=10,
         )
@@ -82,6 +84,7 @@ class TestTrackUploadService:
         with pytest.raises(ValidationError):
             TrackUploadService.create_pending_track(
                 album=album,
+                created_by=album.created_by,
                 filename=filename,
                 size=10,
             )
@@ -96,6 +99,7 @@ class TestTrackUploadService:
         with pytest.raises(ValidationError):
             TrackUploadService.create_pending_track(
                 album=album,
+                created_by=album.created_by,
                 filename='empty.mp3',
                 size=0,
             )
@@ -110,6 +114,7 @@ class TestTrackUploadService:
         with pytest.raises(ValidationError):
             TrackUploadService.create_pending_track(
                 album=album,
+                created_by=album.created_by,
                 filename='huge.flac',
                 size=(MAX_AUDIOFILE_SIZE_MB * 1024 * 1024) + 1,
             )
@@ -123,6 +128,7 @@ class TestTrackUploadService:
 
         track, upload = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='01. Original name.flac',
             size=10,
             content_type='audio/flac',

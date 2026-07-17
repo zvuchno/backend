@@ -174,10 +174,10 @@ class OrderService:
             'personal_data_consent',
             None,
         )
-        delivery = validated_data.pop('delivery', None)
-        tariffs = validated_data.pop('tariffs', None)
-        pickup_point = validated_data.pop('pickup_point', None)
+        delivery = validated_data.get('delivery')
+        tariffs = validated_data.get('tariffs')
         cdek_city_code = validated_data.get('cdek_city_code')
+        pickup_point = validated_data.pop('pickup_point', None)
 
         pickup_point_data = {}
         if pickup_point:
@@ -208,7 +208,6 @@ class OrderService:
             delivery_calculation=delivery_calculation,
             delivery_price=delivery_price,
             total=total,
-            delivery=delivery,
             pickup_point=pickup_point_data,
             **validated_data,  # full_name, email, phone, адресные поля
         )

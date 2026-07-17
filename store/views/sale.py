@@ -1,12 +1,20 @@
 """ViewSet для работы с историей продаж продавца."""
 
-from django.db.models import Count, Prefetch
+from django.db.models import (
+    CharField,
+    Count,
+    OuterRef,
+    Prefetch,
+    Subquery,
+    Value,
+)
+from django.db.models.functions import Coalesce
 from rest_framework import filters, viewsets
 
 from common.access import managed_artist_q
 from common.permissions import CanCreateArtistContent, IsSalesOwner
 
-from store.models import Image, Order, OrderItem
+from store.models import Image, Order, OrderItem, Shipment
 from store.schema import artist_sale_schema
 from store.serializers import (
     ArtistSaleDetailSerializer,
@@ -42,6 +50,10 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         if not user.is_authenticated:
             return Order.objects.none()
+        shipment_tracking_subquery = Shipment.objects.filter(
+            order=OuterRef('pk'),
+            artist=user.artist_profile,
+        ).values('tracking_number')[:1]
 
         # Заказы, где есть товары этого артиста
         order_filter = (
@@ -106,9 +118,19 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
                     'items',
                     filter=order_filter,
                 ),
+                # Номер отправления текущего артиста (с защитой от NULL)
+                artist_tracking_number=Coalesce(
+                    Subquery(
+                        shipment_tracking_subquery,
+                        output_field=CharField(),
+                    ),
+                    Value(''),
+                    output_field=CharField(),
+                ),
             )
             .prefetch_related(
                 Prefetch('items', queryset=items_qs),
             )
             .distinct()
+            .order_by('-created_at')
         )

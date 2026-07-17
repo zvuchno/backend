@@ -49,6 +49,7 @@ class TestTrackUploadStorageService:
 
         track, upload = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='01 Intro.flac',
             size=len(file_content),
             content_type='audio/flac',
@@ -125,6 +126,7 @@ class TestTrackUploadStorageService:
 
         _, upload = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='missing.flac',
             size=10,
             content_type='audio/flac',
@@ -329,6 +331,7 @@ class TestTrackUploadStorageService:
 
         track, upload = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='track.flac',
             size=len(file_content),
             content_type='audio/flac',

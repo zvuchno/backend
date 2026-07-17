@@ -508,6 +508,7 @@ class AlbumAdmin(
             with transaction.atomic():
                 track, upload = TrackUploadService.create_pending_track(
                     album=album,
+                    created_by=request.user,
                     filename=payload.get('filename', ''),
                     size=payload.get('size', 0),
                     content_type=payload.get('content_type', ''),

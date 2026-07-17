@@ -531,9 +531,10 @@ class CDEKService:
             return []
 
         merch_items = order.items.filter(
-            product_variant__product__product_type=(Product.ProductType.MERCH),
+            product_variant__product__product_type=Product.ProductType.MERCH,
         ).select_related(
             'product_variant__product__merch__artist',
+            'product_variant__product__merch__artist__shipping_point',
         )
 
         if not merch_items.exists():
@@ -598,7 +599,7 @@ class CDEKService:
             shipment = Shipment.objects.create(
                 order=order,
                 artist=artist_profiles[artist_id],
-                state='PENDING',
+                state=Shipment.State.PENDING,
                 estimated_delivery_cost=delivery_data['cost'],
             )
 
@@ -633,14 +634,21 @@ class CDEKService:
 
             from store.tasks import update_cdek_shipment_task
 
-            update_cdek_shipment_task.apply_async(
+            task_result = update_cdek_shipment_task.apply_async(
                 args=[shipment.id],
                 countdown=30,
             )
+            logger.info(
+                'Заказ %s: отправлена Celery-задача обновления статуса '
+                'СДЭК (task_id=%s) для shipment_id=%s.',
+                order.order_number,
+                task_result.id,
+                shipment.id,
+            )
 
             logger.info(
-                'Заказ %s: накладная СДЭК зарегистрирована '
-                'для артиста id=%s, cdek_uuid=%s, статус: %s',
+                'Заказ %s: отправлен запрос на регистрацию накладной СДЭК '
+                'для артиста id=%s. Получен cdek_uuid=%s, статус запроса: %s',
                 order.order_number,
                 artist_id,
                 cdek_uuid,
