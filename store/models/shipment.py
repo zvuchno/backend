@@ -21,6 +21,13 @@ class Shipment(TimestampModel):
     независимо и имеет свой трек-номер.
     """
 
+    class State(models.TextChoices):
+        PENDING = 'PENDING', 'В ожидании'
+        ACCEPTED = 'ACCEPTED', 'Принято'
+        WAITING = 'WAITING', 'Ожидание'
+        SUCCESSFUL = 'SUCCESSFUL', 'Успешно'
+        INVALID = 'INVALID', 'Ошибка'
+
     order = models.ForeignKey(
         'store.Order',
         on_delete=models.CASCADE,
@@ -39,22 +46,23 @@ class Shipment(TimestampModel):
         'UUID транзакции СДЭК',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
-        null=True,
+        default='',
         help_text='Уникальный идентификатор запроса в API СДЭК '
         'для отслеживания статуса регистрации.',
     )
     state = models.CharField(
         'Состояние',
-        max_length=MAX_CHAR_LENGTH,
+        max_length=20,
+        choices=State.choices,
         blank=True,
-        null=True,
+        default='',
         help_text='Текущее состояние запроса',
     )
     tracking_number = models.CharField(
         'Номер накладной',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
-        null=True,
+        default='',
         help_text='Номер накладной СДЭК (cdek_number)',
     )
     weight = models.PositiveIntegerField(
@@ -64,7 +72,7 @@ class Shipment(TimestampModel):
         help_text='Общий физический вес посылки.',
     )
     estimated_delivery_cost = models.DecimalField(
-        'Рассчетная стоимость доставки артиста (руб.)',
+        'Расчетная стоимость доставки артиста (руб.)',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,

@@ -92,6 +92,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             .prefetch_related(
                 Prefetch('items', queryset=items_qs),
             )
+            .order_by('-created_at')
         )
 
     @checkout_schema
