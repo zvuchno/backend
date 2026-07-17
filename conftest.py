@@ -18,8 +18,12 @@ from django.test import Client
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from users.models import ArtistProfile, ListenerProfile
-from users.models.artist_profile import ArtistProfileType
+from users.models import (
+    ArtistProfile,
+    ArtistProfileType,
+    ArtistShippingPoint,
+    ListenerProfile,
+)
 
 User = get_user_model()
 
@@ -181,20 +185,36 @@ def other_user(user_factory):
 @pytest.fixture
 def artist_user(artist_user_factory):
     """Пользователь с профилем независимого артиста."""
-    return artist_user_factory(
+    user = artist_user_factory(
         email='artist@artist.ru',
         username='artist',
     )
+    ArtistShippingPoint.objects.create(
+        artist=user.artist_profile,
+        pvz_code='MSK1',
+        city_code='44',
+        city='Москва',
+        address='ул. Ленина, д. 10',
+    )
+    return user
 
 
 @pytest.fixture
 def other_artist_user(artist_user_factory):
     """Другой пользователь с профилем независимого артиста."""
-    return artist_user_factory(
+    user = artist_user_factory(
         email='other_artist@artist.ru',
         username='other_artist',
         name='Other Artist',
     )
+    ArtistShippingPoint.objects.create(
+        artist=user.artist_profile,
+        pvz_code='SPB2',
+        city_code='137',
+        city='Санкт-Петербург',
+        address='Невский пр., д. 25',
+    )
+    return user
 
 
 @pytest.fixture
@@ -246,6 +266,7 @@ def listener_user(listener_user_factory):
         email='listener@listener.ru',
         username='listener',
     )
+    return user
 
 
 @pytest.fixture

@@ -6,6 +6,8 @@
 
 from rest_framework import serializers
 
+from common.access import can_manage_artist
+
 from .mixins import ImmutableFieldsSerializerMixin, ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
@@ -39,12 +41,7 @@ class TrackReadSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_artist_name(obj) -> str | None:
         """Возвращает имя исполнителя альбома."""
-        artist = getattr(obj.album.owner, 'artist_profile', None)
-
-        if artist is None:
-            return None
-
-        return artist.name
+        return obj.artist.name
 
     class Meta:
         model = Track
@@ -122,7 +119,7 @@ class TrackWriteSerializer(
         """Проверяет, что артист работает только со своим альбомом."""
         request = self.context['request']
 
-        if album.owner_id != request.user.id:
+        if not can_manage_artist(request.user, album.artist):
             raise serializers.ValidationError(
                 'Нельзя добавить трек в чужой альбом.',
             )

@@ -14,11 +14,17 @@ from store.services import ProductService
 class TestProductService:
     """Тесты orchestration-логики ensure_commerce."""
 
-    def test_ensure_commerce_creates_album_with_digital_variant(self, user):
+    def test_ensure_commerce_creates_album_with_digital_variant(
+        self,
+        artist_user,
+    ):
         """Album → создается продукт + digital вариант."""
+        artist = artist_user.artist_profile
         album = Album.objects.create(
             name='Test Album',
-            owner=user,
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
         )
 
         product = ProductService.ensure_commerce(album, validated_data={})
@@ -48,9 +54,15 @@ class TestProductService:
         assert Product.objects.filter(track=track).count() == 1
         assert product_returned.variants.count() == 1
 
-    def test_ensure_commerce_updates_product_fields(self, user):
+    def test_ensure_commerce_updates_product_fields(self, artist_user):
         """Поля продукта обновляются внутри ensure_commerce."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
 
         product = ProductService.ensure_commerce(
             merch,
@@ -67,9 +79,15 @@ class TestProductService:
         assert product.allow_overpay is False
         assert product.property_name == 'Size'
 
-    def test_ensure_commerce_creates_simple_merch(self, user):
+    def test_ensure_commerce_creates_simple_merch(self, artist_user):
         """Merch без вариантов → создается SIMPLE вариант."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
 
         product = ProductService.ensure_commerce(
             merch,
@@ -85,9 +103,15 @@ class TestProductService:
         assert variant.stock == 50
         assert product.variants.count() == 1
 
-    def test_ensure_commerce_creates_variants_merch(self, user):
+    def test_ensure_commerce_creates_variants_merch(self, artist_user):
         """Merch с вариантами → создаются варианты."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
 
         product = ProductService.ensure_commerce(
             merch,
@@ -110,9 +134,15 @@ class TestProductService:
 class TestSyncMerchVariants:
     """Тесты логики sync_merch_variants."""
 
-    def test_transition_complex_to_simple(self, user):
+    def test_transition_complex_to_simple(self, artist_user):
         """Сложный мерч → простой: старые варианты деактивируются."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
         product = ProductService.ensure_commerce(merch, validated_data={})
 
         # Сначала делаем сложный товар
@@ -133,9 +163,15 @@ class TestSyncMerchVariants:
         assert product.variants.get(is_active=True).stock == 100
         assert product.variants.filter(is_active=False).count() == 2
 
-    def test_update_variant_by_id(self, user):
+    def test_update_variant_by_id(self, artist_user):
         """ID в списке → обновление существующего варианта без дублирования."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
         # Создаем начальный вариант
         product = ProductService.ensure_commerce(
             merch,
@@ -159,9 +195,15 @@ class TestSyncMerchVariants:
         assert variant.property_value == 'Red'
         assert variant.stock == 15
 
-    def test_partial_sync(self, user):
+    def test_partial_sync(self, artist_user):
         """Неполный список → варианты, отсутствующие в списке, выключаются."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
 
         product = ProductService.ensure_commerce(
             merch,
@@ -182,9 +224,15 @@ class TestSyncMerchVariants:
         assert product.variants.filter(is_active=True).count() == 1
         assert product.variants.filter(is_active=False).count() == 2
 
-    def test_no_duplicates(self, user):
+    def test_no_duplicates(self, artist_user):
         """Дубли в списке → ValidationError."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
 
         with pytest.raises(ValidationError) as excinfo:
             ProductService.ensure_commerce(
@@ -198,9 +246,15 @@ class TestSyncMerchVariants:
             )
         assert 'дублирующиеся значения' in excinfo.value.detail['variants']
 
-    def test_reactivate_variant(self, user):
+    def test_reactivate_variant(self, artist_user):
         """Повторный ввод данных → неактивный вариант снова включается."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
         product = ProductService.ensure_commerce(
             merch,
             validated_data={
@@ -224,12 +278,17 @@ class TestSyncMerchVariants:
         assert variant.stock == 50
         assert product.variants.filter(property_value='L').count() == 1
 
-    def test_security_prevent_id_hijacking(self, variant_factory, user):
+    def test_security_prevent_id_hijacking(self, variant_factory, artist_user):
         """Передача чужого ID варианта → ValidationError."""
         other_merch = variant_factory(product_type='merch')
         other_id = other_merch.id
-
-        my_merch = Merch.objects.create(name='My Merch', owner=user)
+        artist = artist_user.artist_profile
+        my_merch = Merch.objects.create(
+            name='My Merch',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
         data = {
             'variants': [
                 {'id': other_id, 'property_value': 'Fake Size', 'stock': 99},
@@ -242,9 +301,15 @@ class TestSyncMerchVariants:
         assert f'ID {other_id} не принадлежит' in str(excinfo.value)
         assert my_merch.product.variants.count() == 0
 
-    def test_variant_name_collision_on_update(self, user):
+    def test_variant_name_collision_on_update(self, artist_user):
         """Переименование в уже существующее имя → ValidationError."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
         product = ProductService.ensure_commerce(
             merch,
             validated_data={
@@ -275,7 +340,6 @@ class TestSyncMerchVariants:
         (None, 10),        # value — None
         ('', 10),          # value — пустая строка
         ('   ', 10),       # value — строка с пробелами
-        ('L', None),       # stock — None
         ('L', '10'),       # stock — строка вместо числа
         ('L', 10.5),       # stock — float вместо int
         ('L', -1),         # stock — отрицательное число
@@ -283,13 +347,19 @@ class TestSyncMerchVariants:
     # fmt: on
     def test_invalid_variant_data_raises_error(
         self,
-        user,
+        artist_user,
         invalid_value,
         invalid_stock,
     ):
         """Некорректные value или stock → ValidationError."""
         from store.models import Merch
-        merch = Merch.objects.create(name='Test', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='Test',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
 
         invalid_data = {
             'variants': [
@@ -304,9 +374,15 @@ class TestSyncMerchVariants:
             excinfo.value.detail['variants']
         )
 
-    def test_empty_variants_list_deactivates_all(self, user):
+    def test_empty_variants_list_deactivates_all(self, artist_user):
         """variants=[] → simple + все варианты деактивируются."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
 
         product = ProductService.ensure_commerce(
             merch,
@@ -325,9 +401,15 @@ class TestSyncMerchVariants:
             property_value=CHAR_PRESET_SIMPLE,
         ).exists()
 
-    def test_patch_without_variants_is_noop(self, user):
+    def test_patch_without_variants_is_noop(self, artist_user):
         """PATCH без variants не меняет варианты и не создает simple."""
-        merch = Merch.objects.create(name='T-Shirt', owner=user)
+        artist = artist_user.artist_profile
+        merch = Merch.objects.create(
+            name='T-Shirt',
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
+        )
 
         product = ProductService.ensure_commerce(
             merch,

@@ -143,12 +143,7 @@ class PlayerAlbumSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_artist_name(obj) -> str | None:
         """Возвращает имя исполнителя альбома."""
-        artist = getattr(obj.owner, 'artist_profile', None)
-
-        if artist is None:
-            return None
-
-        return artist.name
+        return obj.artist.name or None
 
 
 class PlaybackNotReadySerializer(serializers.Serializer):

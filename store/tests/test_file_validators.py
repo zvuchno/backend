@@ -16,19 +16,24 @@ class TestFileValidators:
     """Тесты валидации файлов."""
 
     @pytest.fixture(autouse=True)
-    def _setup(self, user) -> None:
+    def _setup(self, artist_user) -> None:
+        artist = artist_user.artist_profile
         self.album = Album.objects.create(
             name='Test_album',
-            owner=user,
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
         )
         merch = Merch.objects.create(
             name='Test_merch',
-            owner=user,
+            artist=artist,
+            payout_recipient=artist_user,
+            created_by=artist_user,
         )
         self.image_obj = Image.objects.create(
             merch=merch,
         )
-        self.user = user
+        self.user = artist_user
 
     # ========================== TESTS ==========================
 

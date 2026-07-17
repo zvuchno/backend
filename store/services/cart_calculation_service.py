@@ -55,10 +55,10 @@ class CartCalculationService:
             self.cart.items
             .filter(
                 product_variant__product__product_type=Product.ProductType.MERCH,
-                product_variant__product__merch__owner__artist_profile__isnull=False,
+                product_variant__product__merch__artist__isnull=False,
             )
             .values_list(
-                'product_variant__product__merch__owner__artist_profile__id',
+                'product_variant__product__merch__artist__id',
                 flat=True,
             )
             .distinct(),
@@ -87,13 +87,13 @@ class CartCalculationService:
 
         return self._subtotal
 
-    def _get_item_owner_id(self, item) -> int | None:
+    def _get_item_artist_id(self, item) -> int | None:
         """Определяет ID владельца (артиста) для конкретной позиции в корзине.
 
         Необходимо для проверки применимости промокода, так как промокоды
         выпущены конкретными артистами для своих товаров.
         """
-        return item.product_variant.product.content.owner_id
+        return item.product_variant.product.content.artist_id
 
     def get_item_discounts(self) -> dict[int, Decimal]:
         """Рассчитывает и возвращает скидку для каждой позиции корзины.
@@ -115,7 +115,7 @@ class CartCalculationService:
             item
             for item in self.items
             if (
-                self._get_item_owner_id(item) == self.promocode.owner_id
+                self._get_item_artist_id(item) == self.promocode.owner_id
                 and item.base_line_total > ZERO_DISCOUNT
             )
         ]
