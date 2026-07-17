@@ -1,12 +1,13 @@
 """Миксины вьюсетов."""
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from common.access import can_manage_artist
 
 from store.services import ProductService
-from users.models import ArtistProfile
+from users.models import ArtistProfile, ArtistProfileType
 
 
 class ProductActionMixin:
@@ -40,7 +41,7 @@ class ProductActionMixin:
             None,
         )
 
-        if profile is None:
+        if profile is None or profile.profile_type != ArtistProfileType.ARTIST:
             raise ValidationError({
                 'artist': 'Необходимо указать артиста.',
             })
@@ -65,10 +66,14 @@ class ProductActionMixin:
 
         model = serializer.Meta.model
 
-        if hasattr(model, 'artist'):
+        try:
+            model._meta.get_field('artist')
+        except FieldDoesNotExist:
+            pass
+        else:
             save_kwargs.update({
                 'artist': artist,
-                'payout_recipient': (artist.default_payout_recipient),
+                'payout_recipient': artist.default_payout_recipient,
             })
 
         return save_kwargs

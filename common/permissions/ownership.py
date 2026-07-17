@@ -113,7 +113,7 @@ class IsSalesOwner(BasePermission):
       треком или мерчем.
     """
 
-    message = 'Вы не являетесь продавцом товаров в этом заказе.'
+    message = 'У вас нет доступа к продажам товаров в этом заказе.'
 
     def has_object_permission(self, request, view, obj) -> bool:
         user = request.user
@@ -121,6 +121,9 @@ class IsSalesOwner(BasePermission):
             return False
 
         return any(
-            item.product_variant.product.owner == user
+            can_manage_store_object(
+                user,
+                item.product_variant.product,
+            )
             for item in obj.items.all()
         )
