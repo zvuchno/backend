@@ -20,7 +20,7 @@ class DownloadFilenameService:
     def get_track_filename(cls, track) -> str:
         """Возвращает имя отдельного скачиваемого трека."""
         album = track.album
-        artist = getattr(album.owner, 'artist_profile', None)
+        artist = album.artist
 
         artist_name = artist.name if artist else 'Исполнитель'
         suffix = Path(track.audio_file.name).suffix.lower()
@@ -40,7 +40,7 @@ class DownloadFilenameService:
     @classmethod
     def get_archive_filename(cls, album) -> str:
         """Возвращает имя ZIP-архива полного релиза."""
-        artist = getattr(album.owner, 'artist_profile', None)
+        artist = album.artist
         artist_name = artist.name if artist else 'Исполнитель'
 
         return (

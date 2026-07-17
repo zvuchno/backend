@@ -3,15 +3,14 @@ from django.db.models import Q
 from users.models import ArtistProfile
 
 
-def can_manage_artist(user, artist: ArtistProfile) -> bool:
+def can_manage_artist(user, artist: ArtistProfile | None) -> bool:
     """Проверяет право пользователя управлять публичным профилем."""
-    if not user or not user.is_authenticated:
+    if not user or not user.is_authenticated or artist is None:
         return False
 
-    if artist.label_id is not None:
-        return artist.label.user_id == user.id
-
-    return artist.user_id == user.id
+    return artist.user_id == user.id or (
+        artist.label_id is not None and artist.label.user_id == user.id
+    )
 
 
 def managed_artist_q(user, prefix='artist') -> Q:

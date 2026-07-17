@@ -42,8 +42,7 @@ class PurchasedMusicView(ListAPIView):
             .filter(user=self.request.user)
             .select_related(
                 'album',
-                'album__owner',
-                'album__owner__artist_profile',
+                'album__artist',
             )
             .order_by('-album__release_date', 'album__name')
         )

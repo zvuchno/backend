@@ -87,13 +87,18 @@ class CartCalculationService:
 
         return self._subtotal
 
-    def _get_item_artist_id(self, item) -> int | None:
+    def _get_item_owner_id(self, item) -> int | None:
         """Определяет ID владельца (артиста) для конкретной позиции в корзине.
 
         Необходимо для проверки применимости промокода, так как промокоды
         выпущены конкретными артистами для своих товаров.
         """
-        return item.product_variant.product.content.artist_id
+        content = item.product_variant.product.content
+
+        if not content or not content.artist:
+            return None
+
+        return content.artist.user_id
 
     def get_item_discounts(self) -> dict[int, Decimal]:
         """Рассчитывает и возвращает скидку для каждой позиции корзины.
@@ -115,7 +120,7 @@ class CartCalculationService:
             item
             for item in self.items
             if (
-                self._get_item_artist_id(item) == self.promocode.owner_id
+                self._get_item_owner_id(item) == self.promocode.owner_id
                 and item.base_line_total > ZERO_DISCOUNT
             )
         ]

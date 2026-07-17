@@ -10,7 +10,8 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.permissions import IsArtist
+from common.access import can_manage_artist
+from common.permissions import CanCreateArtistContent
 
 from store.constants import ZERO_MONEY
 from store.models import Album, Track, TrackUpload
@@ -34,17 +35,17 @@ from store.services.track_upload import (
 )
 
 
-def _check_album_owner(*, request, album: Album) -> None:
+def _check_album_access(*, request, album: Album) -> None:
     """Проверяет, что текущий артист владеет альбомом."""
-    if album.owner_id != request.user.id:
+    if not can_manage_artist(request.user, album.artist):
         raise PermissionDenied(
             'Нельзя загружать треки в чужой альбом.',
         )
 
 
-def _check_upload_owner(*, request, upload: TrackUpload) -> None:
+def _check_upload_access(*, request, upload: TrackUpload) -> None:
     """Проверяет, что текущий артист владеет альбомом загрузки."""
-    if upload.track.album.owner_id != request.user.id:
+    if not can_manage_artist(request.user, upload.track.album.artist):
         raise PermissionDenied(
             'Нельзя управлять чужой загрузкой трека.',
         )
@@ -52,7 +53,7 @@ def _check_upload_owner(*, request, upload: TrackUpload) -> None:
 
 def _check_track_upload_access(*, request, track: Track) -> None:
     """Проверяет, что пользователь может управлять загрузкой файла трека."""
-    if track.album.owner_id != request.user.id:
+    if not can_manage_artist(request.user, track.album.artist):
         raise PermissionDenied(
             'Нельзя управлять загрузкой файла чужого трека.',
         )
@@ -107,13 +108,13 @@ def _build_track_upload_response(
 class AlbumTrackUploadInitiateView(APIView):
     """Создаёт черновой трек и возвращает инструкцию загрузки."""
 
-    permission_classes = (IsArtist,)
+    permission_classes = (CanCreateArtistContent,)
 
     @track_upload_initiate_schema
     def post(self, request, album_id):
         """Инициализирует прямую загрузку оригинального файла трека."""
         album = get_object_or_404(Album, pk=album_id)
-        _check_album_owner(request=request, album=album)
+        _check_album_access(request=request, album=album)
 
         serializer = TrackUploadInitiateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -175,7 +176,7 @@ class AlbumTrackUploadInitiateView(APIView):
 class TrackUploadReceiveFileView(APIView):
     """Принимает файл в локальном режиме без Object Storage."""
 
-    permission_classes = (IsArtist,)
+    permission_classes = (CanCreateArtistContent,)
     parser_classes = (MultiPartParser,)
 
     @track_upload_receive_file_schema
@@ -185,10 +186,12 @@ class TrackUploadReceiveFileView(APIView):
             raise Http404
 
         upload = get_object_or_404(
-            TrackUpload.objects.select_related('track__album'),
+            TrackUpload.objects.select_related(
+                'track__album__artist__label',
+            ),
             pk=upload_id,
         )
-        _check_upload_owner(request=request, upload=upload)
+        _check_upload_access(request=request, upload=upload)
 
         uploaded_file = request.FILES.get('file')
 
@@ -227,16 +230,18 @@ class TrackUploadReceiveFileView(APIView):
 class TrackUploadCompleteView(APIView):
     """Подтверждает staging-файл и финализирует трек."""
 
-    permission_classes = (IsArtist,)
+    permission_classes = (CanCreateArtistContent,)
 
     @track_upload_complete_schema
     def post(self, request, upload_id):
         """Переносит staging-файл в постоянное хранилище."""
         upload = get_object_or_404(
-            TrackUpload.objects.select_related('track__album'),
+            TrackUpload.objects.select_related(
+                'track__album__artist__label',
+            ),
             pk=upload_id,
         )
-        _check_upload_owner(request=request, upload=upload)
+        _check_upload_access(request=request, upload=upload)
 
         try:
             upload = TrackUploadStorageService.complete(upload=upload)
@@ -261,7 +266,7 @@ class TrackUploadCompleteView(APIView):
 class TrackFileUploadInitiateView(APIView):
     """Создаёт попытку замены оригинального файла трека."""
 
-    permission_classes = (IsArtist,)
+    permission_classes = (CanCreateArtistContent,)
 
     @track_file_upload_initiate_schema
     def post(self, request, track_id):

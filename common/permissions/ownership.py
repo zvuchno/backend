@@ -1,3 +1,5 @@
+"""TODO: убрать не нужные."""
+
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from common.access import can_manage_store_object

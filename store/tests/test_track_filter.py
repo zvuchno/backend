@@ -26,13 +26,15 @@ class TestTrackFilters:
         v1 = variant_factory(product_type='track', name='Song A')
         t1 = v1.product.track
         t1.album.genre = rock
-        t1.album.owner = artist_user
+        t1.album.artist = artist_user.artist_profile
+        t1.album.payout_recipient = artist_user
         t1.album.save()
 
         v2 = variant_factory(product_type='track', name='Song B')
         t2 = v2.product.track
         t2.album.genre = jazz
-        t2.album.owner = other_artist_user
+        t2.album.artist = other_artist_user.artist_profile
+        t2.album.payout_recipient = other_artist_user
         t2.album.save()
 
         return {
@@ -42,11 +44,11 @@ class TestTrackFilters:
             'jazz': jazz,
         }
 
-    def test_track_owner_is_derived_from_album(self, tracks):
-        """Владелец трека определяется владельцем его альбома."""
+    def test_track_artist_is_derived_from_album(self, tracks):
+        """Артист трека определяется Артистом его альбома."""
         track = tracks['track_1']
 
-        assert track.owner == track.album.owner
+        assert track.artist == track.album.artist
 
     def test_filter_by_genre(self, tracks, track_list_url, api_client):
         """Фильтр по жанру (slug)."""
@@ -65,7 +67,7 @@ class TestTrackFilters:
         """Фильтр по slug артиста."""
         response = api_client.get(
             track_list_url,
-            {'artist': tracks['track_1'].album.owner.artist_profile.slug},
+            {'artist': tracks['track_1'].album.artist.slug},
         )
 
         assert response.status_code == status.HTTP_200_OK

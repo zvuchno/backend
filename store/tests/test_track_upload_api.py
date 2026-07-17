@@ -45,7 +45,7 @@ class TestTrackUploadApi:
             expires_at=expires_at,
         )
 
-        album = AlbumFactory(owner=artist_user)
+        album = AlbumFactory(artist=artist_user.artist_profile)
 
         url = reverse(
             'api:store:track-upload-initiate',
@@ -153,7 +153,7 @@ class TestTrackUploadApi:
         artist_user,
     ):
         """Не создаёт черновой трек для неподдерживаемого файла."""
-        album = AlbumFactory(owner=artist_user)
+        album = AlbumFactory(artist=artist_user.artist_profile)
 
         url = reverse(
             'api:store:track-upload-initiate',
@@ -199,7 +199,7 @@ class TestTrackUploadApi:
             storage,
         )
 
-        album = AlbumFactory(owner=artist_user)
+        album = AlbumFactory(artist=artist_user.artist_profile)
         file_content = b'test audio content'
 
         initiate_url = reverse(
@@ -363,7 +363,7 @@ class TestTrackUploadApi:
             expires_at=expires_at,
         )
 
-        album = AlbumFactory(owner=artist_user)
+        album = AlbumFactory(artist=artist_user.artist_profile)
         track = TrackFactory(
             album=album,
             position=5,

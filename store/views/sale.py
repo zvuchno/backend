@@ -1,9 +1,10 @@
 """ViewSet для работы с историей продаж продавца."""
 
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Prefetch
 from rest_framework import filters, viewsets
 
-from common.permissions import IsArtist, IsSalesOwner
+from common.access import managed_artist_q
+from common.permissions import CanCreateArtistContent, IsSalesOwner
 
 from store.models import Image, Order, OrderItem
 from store.schema import artist_sale_schema
@@ -18,7 +19,7 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
     """API продаж артиста."""
 
     queryset = Order.objects.all()
-    permission_classes = (IsArtist, IsSalesOwner)
+    permission_classes = (CanCreateArtistContent, IsSalesOwner)
     filter_backends = (filters.SearchFilter,)
     search_fields = (
         'order_number',
@@ -44,15 +45,35 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
 
         # Заказы, где есть товары этого артиста
         order_filter = (
-            Q(items__product_variant__product__album__owner=user)
-            | Q(items__product_variant__product__track__album__owner=user)
-            | Q(items__product_variant__product__merch__owner=user)
+            managed_artist_q(
+                user,
+                prefix='items__product_variant__product__album__artist',
+            )
+            | managed_artist_q(
+                user,
+                prefix=(
+                    'items__product_variant__product__track__album__artist'
+                ),
+            )
+            | managed_artist_q(
+                user,
+                prefix='items__product_variant__product__merch__artist',
+            )
         )
         # Фильтр items - только позиции этого артиста
         items_filter = (
-            Q(product_variant__product__album__owner=user)
-            | Q(product_variant__product__track__album__owner=user)
-            | Q(product_variant__product__merch__owner=user)
+            managed_artist_q(
+                user,
+                prefix='product_variant__product__album__artist',
+            )
+            | managed_artist_q(
+                user,
+                prefix='product_variant__product__track__album__artist',
+            )
+            | managed_artist_q(
+                user,
+                prefix='product_variant__product__merch__artist',
+            )
         )
 
         # Queryset для items
