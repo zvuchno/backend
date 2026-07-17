@@ -4,7 +4,10 @@ from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
+from common.permissions import (
+    CanCreateArtistContent,
+    IsStoreObjectManagerOrReadOnly,
+)
 
 from store.filters.merch import MerchFilter
 from store.models import Image, Merch
@@ -53,8 +56,8 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == 'create':
-            return (IsArtist(),)
-        return (IsStoreObjectOwnerOrReadOnly(),)
+            return (CanCreateArtistContent(),)
+        return (IsStoreObjectManagerOrReadOnly(),)
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -76,7 +79,8 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
                 'product',
                 'kind',
                 'album',
-                'owner',
+                'artist',
+                'payout_recipient',
             ).prefetch_related(
                 'images_merch',
                 'product__variants',

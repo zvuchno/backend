@@ -8,7 +8,9 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .mixins import ProductVariantsMixin
+from common.access import can_manage_store_object
+
+from .mixins import ImmutableFieldsSerializerMixin, ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Album
 
@@ -44,8 +46,8 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         )
 
         # Скрываем поля, если юзера нет, если не владелец и не админ
-        if not user or not (
-            user.is_authenticated and (user == instance.owner or user.is_staff)
+        if not (
+            user and (user.is_staff or can_manage_store_object(user, instance))
         ):
             ret.pop('visibility', None)
             ret.pop('is_published', None)
@@ -75,8 +77,13 @@ class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
         return False
 
 
-class AlbumWriteSerializer(serializers.ModelSerializer):
+class AlbumWriteSerializer(
+    ImmutableFieldsSerializerMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор для создания и обновления Album."""
+
+    immutable_fields = ('artist',)
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
@@ -89,6 +96,7 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
         model = Album
         fields = (
             'name',
+            'artist',
             'is_single',
             'release_date',
             'genre',
@@ -99,6 +107,11 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
             'visibility',
             'is_published',
         )
+        extra_kwargs = {
+            'artist': {
+                'required': False,
+            },
+        }
 
     def validate_release_date(self, value):
         if value > timezone.now().date():

@@ -8,11 +8,10 @@ from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class BaseContent(ActivatableModel, TimestampModel):
-    """Абстрактная модель для моделей контента.
+    """Абстрактная модель общего контента.
 
-    Содержит общие поля для всех типов контента:
-    название, описание, владелец, признак активности и временные метки.
-    Предназначена для наследования моделями, такими как Album, Track и другими.
+    Содержит название, описание, создателя, признак активности
+    и временные метки.
     """
 
     name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)

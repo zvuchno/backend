@@ -6,7 +6,7 @@
 
 from rest_framework import serializers
 
-from .mixins import ProductVariantsMixin
+from .mixins import ImmutableFieldsSerializerMixin, ProductVariantsMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
@@ -75,8 +75,13 @@ class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
         )
 
 
-class TrackWriteSerializer(serializers.ModelSerializer):
+class TrackWriteSerializer(
+    ImmutableFieldsSerializerMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор для создания и обновления."""
+
+    immutable_fields = ('album',)
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,

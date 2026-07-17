@@ -7,6 +7,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from store.models import Merch, MerchKind, Product
+from users.tests.factories import ArtistProfileFactory
 
 User = get_user_model()
 
@@ -31,16 +32,26 @@ class MerchAdminTest(TestCase):
             password='password',
             email='a@a.com',
         )
+        self.artist = ArtistProfileFactory()
         self.client = Client()
         self.client.force_login(self.admin_user)
 
         self.add_url = reverse('admin:store_merch_add')
 
-    def _get_merch_payload(self, name, kind_id, price, variants) -> dict:
+    def _get_merch_payload(
+        self,
+        *,
+        name,
+        kind_id,
+        artist_id,
+        price,
+        variants,
+    ) -> dict:
         """Формирует POST payload для Django Admin формы."""
         data = {
             'name': name,
             'kind': str(kind_id),
+            'artist': str(artist_id),
             'visibility': 'public',
             'allow_overpay': 'on',
             '_save': 'Save',
@@ -85,6 +96,7 @@ class MerchAdminTest(TestCase):
         payload = self._get_merch_payload(
             name=merch_name,
             kind_id=kind.id,
+            artist_id=self.artist.pk,
             price=str(price),
             variants=variants_data,
         )
@@ -102,3 +114,7 @@ class MerchAdminTest(TestCase):
         actual = {v.property_value: v.stock for v in variants}
         expected = {'XL': 10, 'S': 5}
         assert actual == expected
+
+        assert merch.artist == self.artist
+        assert merch.payout_recipient == self.artist.default_payout_recipient
+        assert merch.created_by == self.admin_user

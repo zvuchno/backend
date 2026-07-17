@@ -8,19 +8,24 @@
 
 from .ownership import (
     IsSalesOwner,
+    IsStoreObjectManager,
+    IsStoreObjectManagerOrReadOnly,
     IsStoreObjectOwner,
     IsStoreObjectOwnerOrReadOnly,
     IsUserObjectOwner,
     IsUserObjectOwnerOrReadOnly,
 )
-from .profiles import IsArtist, IsListener, IsNotArtist
+from .profiles import CanCreateArtistContent, IsArtist, IsListener, IsNotArtist
 from .verification import IsUserVerified
 
 __all__ = [
+    'CanCreateArtistContent',
     'IsArtist',
     'IsListener',
     'IsNotArtist',
     'IsSalesOwner',
+    'IsStoreObjectManager',
+    'IsStoreObjectManagerOrReadOnly',
     'IsStoreObjectOwner',
     'IsStoreObjectOwnerOrReadOnly',
     'IsUserObjectOwner',

@@ -1,9 +1,55 @@
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
+
+from common.access import can_manage_store_object
 
 from .base import (
     _IsOwnerByField,
     _IsOwnerByFieldOrReadOnly,
 )
+
+
+class IsStoreObjectManager(BasePermission):
+    """Разрешает доступ пользователю, управляющему артистом объекта."""
+
+    message = 'У вас нет прав на управление этим объектом.'
+
+    def has_permission(self, request, view) -> bool:
+        """Требует аутентифицированного пользователя."""
+        return bool(
+            request.user and request.user.is_authenticated,
+        )
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        """Проверяет право управления артистом объекта."""
+        return can_manage_store_object(
+            request.user,
+            obj,
+        )
+
+
+class IsStoreObjectManagerOrReadOnly(BasePermission):
+    """Разрешает чтение всем, изменение управляющему артистом."""
+
+    message = 'У вас нет прав на изменение этого объекта.'
+
+    def has_permission(self, request, view) -> bool:
+        """Разрешает чтение всем, запись — аутентифицированным."""
+        if request.method in SAFE_METHODS:
+            return True
+
+        return bool(
+            request.user and request.user.is_authenticated,
+        )
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        """Разрешает чтение всем, изменение — управляющему."""
+        if request.method in SAFE_METHODS:
+            return True
+
+        return can_manage_store_object(
+            request.user,
+            obj,
+        )
 
 
 class IsStoreObjectOwner(_IsOwnerByField):
