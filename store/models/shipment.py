@@ -22,7 +22,7 @@ class Shipment(TimestampModel):
     """
 
     class State(models.TextChoices):
-        PENDING = 'PENDING', 'Отправлено'
+        PENDING = 'PENDING', 'В ожидании'
         ACCEPTED = 'ACCEPTED', 'Принято'
         WAITING = 'WAITING', 'Ожидание'
         SUCCESSFUL = 'SUCCESSFUL', 'Успешно'

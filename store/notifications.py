@@ -45,9 +45,9 @@ def send_shipment_registered_notification(shipment) -> None:
     order = shipment.order
     message = (
         f'📦 *Создана накладная СДЭК!*\n\n'
-        f'*Заказ:* #{order.order_number}\n'
-        f'*Номер отправления:* `{shipment.tracking_number}`\n\n'
-        f'Используйте этот номер для отправки посылки из вашего ПВЗ.'
+        f'Заказ: #{order.order_number}\n\n'
+        f'Номер отправления: {shipment.tracking_number}\n'
+        f'(используйте этот номер для отправки посылки из вашего ПВЗ)'
     )
 
     send_telegram_notification.delay(
