@@ -25,7 +25,7 @@ from users.models.abstract import TimestampModel
 class Track(BaseContent):
     """Музыкальный трек в составе альбома.
 
-    Владелец трека определяется владельцем связанного альбома.
+    Артист и получатель выплат определяются связанным альбомом.
     """
 
     album = models.ForeignKey(

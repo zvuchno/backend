@@ -16,12 +16,14 @@ from store.tests.factories import (
     MerchProductFactory,
     ProductVariantFactory,
 )
-from users.tests.factories import ArtistUserFactory
+from users.tests.factories import ArtistProfileFactory
 
 
 def create_album_product(
     *,
-    owner=None,
+    artist=None,
+    payout_recipient=None,
+    created_by=None,
     artist_name=None,
     genre=None,
     name='Тестовый альбом',
@@ -32,14 +34,18 @@ def create_album_product(
     with_variant=True,
 ):
     """Создает опубликованный альбом, товар и цифровой вариант."""
-    owner = owner or ArtistUserFactory()
+    artist = artist or ArtistProfileFactory()
 
     if artist_name:
-        owner.artist_profile.name = artist_name
-        owner.artist_profile.save(update_fields=('name', 'slug'))
+        artist.name = artist_name
+        artist.save(update_fields=('name', 'slug'))
 
     album = AlbumFactory(
-        owner=owner,
+        artist=artist,
+        payout_recipient=(payout_recipient or artist.default_payout_recipient),
+        created_by=(
+            created_by or artist.user or artist.default_payout_recipient
+        ),
         genre=genre or GenreFactory(),
         name=name,
         is_published=is_published,
@@ -64,7 +70,9 @@ def create_album_product(
 
 def create_merch_product(
     *,
-    owner=None,
+    artist=None,
+    payout_recipient=None,
+    created_by=None,
     artist_name=None,
     kind=None,
     name='Тестовый мерч',
@@ -77,14 +85,18 @@ def create_merch_product(
     with_image=False,
 ):
     """Создает мерч, товар и вариант."""
-    owner = owner or ArtistUserFactory()
+    artist = artist or ArtistProfileFactory()
 
     if artist_name:
-        owner.artist_profile.name = artist_name
-        owner.artist_profile.save(update_fields=('name', 'slug'))
+        artist.name = artist_name
+        artist.save(update_fields=('name', 'slug'))
 
     merch = MerchFactory(
-        owner=owner,
+        artist=artist,
+        payout_recipient=(payout_recipient or artist.default_payout_recipient),
+        created_by=(
+            created_by or artist.user or artist.default_payout_recipient
+        ),
         kind=kind or MerchKindFactory(is_carrier=False),
         album=album,
         name=name,
@@ -106,14 +118,19 @@ def create_merch_product(
         )
 
     if with_image:
-        MerchImageFactory(merch=merch, is_main=True)
+        MerchImageFactory(
+            merch=merch,
+            is_main=True,
+        )
 
     return product
 
 
 def create_carrier_product(
     *,
-    owner=None,
+    artist=None,
+    payout_recipient=None,
+    created_by=None,
     artist_name=None,
     album=None,
     genre=None,
@@ -123,13 +140,36 @@ def create_carrier_product(
     with_variant=True,
 ):
     """Создает физический носитель, связанный с альбомом."""
-    if owner is None and album is not None:
-        owner = album.owner
-    owner = owner or ArtistUserFactory()
+    if album is not None:
+        if artist is not None and artist.pk != album.artist_id:
+            raise ValueError(
+                'Артист носителя должен совпадать с артистом альбома.',
+            )
+
+        if (
+            payout_recipient is not None
+            and payout_recipient.pk != album.payout_recipient_id
+        ):
+            raise ValueError(
+                'Получатель выплат носителя должен совпадать '
+                'с получателем выплат альбома.',
+            )
+
+        artist = artist or album.artist
+        payout_recipient = payout_recipient or album.payout_recipient
+        created_by = created_by or album.created_by
+
+    artist = artist or ArtistProfileFactory()
 
     if album is None:
         album = AlbumFactory(
-            owner=owner,
+            artist=artist,
+            payout_recipient=(
+                payout_recipient or artist.default_payout_recipient
+            ),
+            created_by=(
+                created_by or artist.user or artist.default_payout_recipient
+            ),
             genre=genre or GenreFactory(),
             name='Альбом для носителя',
             is_published=True,
@@ -143,7 +183,9 @@ def create_carrier_product(
     )
 
     return create_merch_product(
-        owner=owner,
+        artist=artist,
+        payout_recipient=(payout_recipient or album.payout_recipient),
+        created_by=created_by or album.created_by,
         artist_name=artist_name,
         kind=carrier_kind,
         name=name,
@@ -260,46 +302,49 @@ def create_catalog_filter_dataset():
 
     tshirt = MerchKindFactory(name='Футболка', slug='tshirt')
     cap = MerchKindFactory(name='Кепка', slug='cap')
-    vinyl = MerchKindFactory(name='Винил', slug='vinyl', is_carrier=True)
+    vinyl = MerchKindFactory(
+        name='Винил',
+        slug='vinyl',
+        is_carrier=True,
+    )
 
-    first_artist = ArtistUserFactory()
-    first_artist.artist_profile.name = 'First Artist'
-    first_artist.artist_profile.save(update_fields=('name', 'slug'))
-
-    second_artist = ArtistUserFactory()
-    second_artist.artist_profile.name = 'Second Artist'
-    second_artist.artist_profile.save(update_fields=('name', 'slug'))
+    first_artist = ArtistProfileFactory(
+        name='First Artist',
+    )
+    second_artist = ArtistProfileFactory(
+        name='Second Artist',
+    )
 
     rock_album = create_album_product(
-        owner=first_artist,
+        artist=first_artist,
         name='Rock Album',
         genre=rock,
     )
     jazz_album = create_album_product(
-        owner=second_artist,
+        artist=second_artist,
         name='Jazz Album',
         genre=jazz,
     )
 
     tshirt_merch = create_merch_product(
-        owner=first_artist,
+        artist=first_artist,
         name='T-Shirt',
         kind=tshirt,
     )
     cap_merch = create_merch_product(
-        owner=second_artist,
+        artist=second_artist,
         name='Cap',
         kind=cap,
     )
 
     rock_carrier = create_carrier_product(
-        owner=first_artist,
+        artist=first_artist,
         name='Rock Vinyl',
         album=rock_album.album,
         kind=vinyl,
     )
     jazz_carrier = create_carrier_product(
-        owner=second_artist,
+        artist=second_artist,
         name='Jazz Vinyl',
         album=jazz_album.album,
         kind=vinyl,

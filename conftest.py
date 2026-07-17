@@ -19,6 +19,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from users.models import ArtistProfile, ListenerProfile
+from users.models.artist_profile import ArtistProfileType
 
 User = get_user_model()
 
@@ -45,23 +46,101 @@ def user_factory(db):
 
 
 @pytest.fixture
-def artist_user_factory(user_factory):
-    """Фабрика пользователей-артистов."""
+def artist_profile_factory(db):
+    """Фабрика публичных профилей артистов."""
+
+    def create_artist_profile(
+        *,
+        user=None,
+        label=None,
+        name='Test Artist',
+        is_active=True,
+        **kwargs,
+    ) -> ArtistProfile:
+        return ArtistProfile.objects.create(
+            user=user,
+            label=label,
+            profile_type=ArtistProfileType.ARTIST,
+            name=name,
+            is_active=is_active,
+            **kwargs,
+        )
+
+    return create_artist_profile
+
+
+@pytest.fixture
+def label_profile_factory(db):
+    """Фабрика публичных профилей лейблов."""
+
+    def create_label_profile(
+        *,
+        user,
+        name='Test Label',
+        is_active=True,
+        **kwargs,
+    ) -> ArtistProfile:
+        return ArtistProfile.objects.create(
+            user=user,
+            profile_type=ArtistProfileType.LABEL,
+            name=name,
+            is_active=is_active,
+            **kwargs,
+        )
+
+    return create_label_profile
+
+
+@pytest.fixture
+def artist_user_factory(
+    user_factory,
+    artist_profile_factory,
+):
+    """Фабрика пользователей с профилем артиста."""
 
     def create_artist_user(
         name='Test Artist',
         is_active=True,
+        label=None,
         **kwargs,
     ) -> User:
         user = user_factory(**kwargs)
-        ArtistProfile.objects.create(
+
+        artist_profile_factory(
+            user=user,
+            label=label,
+            name=name,
+            is_active=is_active,
+        )
+
+        return user
+
+    return create_artist_user
+
+
+@pytest.fixture
+def label_user_factory(
+    user_factory,
+    label_profile_factory,
+):
+    """Фабрика пользователей с профилем лейбла."""
+
+    def create_label_user(
+        name='Test Label',
+        is_active=True,
+        **kwargs,
+    ) -> User:
+        user = user_factory(**kwargs)
+
+        label_profile_factory(
             user=user,
             name=name,
             is_active=is_active,
         )
+
         return user
 
-    return create_artist_user
+    return create_label_user
 
 
 @pytest.fixture
@@ -101,7 +180,7 @@ def other_user(user_factory):
 
 @pytest.fixture
 def artist_user(artist_user_factory):
-    """Пользователь с профилем артиста."""
+    """Пользователь с профилем независимого артиста."""
     return artist_user_factory(
         email='artist@artist.ru',
         username='artist',
@@ -110,11 +189,53 @@ def artist_user(artist_user_factory):
 
 @pytest.fixture
 def other_artist_user(artist_user_factory):
-    """Другой пользователь с профилем артиста."""
+    """Другой пользователь с профилем независимого артиста."""
     return artist_user_factory(
         email='other_artist@artist.ru',
         username='other_artist',
         name='Other Artist',
+    )
+
+
+@pytest.fixture
+def label_user(label_user_factory):
+    """Пользователь с профилем лейбла."""
+    return label_user_factory(
+        email='label@label.ru',
+        username='label',
+    )
+
+
+@pytest.fixture
+def label_client(client_factory, label_user):
+    """Клиент лейбла."""
+    return client_factory(label_user)
+
+
+@pytest.fixture
+def label_created_artist(
+    label_user,
+    artist_profile_factory,
+):
+    """Артист без аккаунта, созданный лейблом."""
+    return artist_profile_factory(
+        user=None,
+        label=label_user.artist_profile,
+        name='Label Artist',
+    )
+
+
+@pytest.fixture
+def signed_artist_user(
+    artist_user_factory,
+    label_user,
+):
+    """Пользователь-артист, подключённый к лейблу."""
+    return artist_user_factory(
+        email='signed@artist.ru',
+        username='signed_artist',
+        name='Signed Artist',
+        label=label_user.artist_profile,
     )
 
 
