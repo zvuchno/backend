@@ -43,7 +43,7 @@ class ProductActionMixin:
 
         if profile is None or profile.profile_type != ArtistProfileType.ARTIST:
             raise ValidationError({
-                'artist': 'Необходимо указать артиста.',
+                'artist': 'Необходимо указать профиль артиста или лейбла.',
             })
 
         return profile

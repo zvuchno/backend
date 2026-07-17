@@ -122,6 +122,7 @@ class AlbumTrackUploadInitiateView(APIView):
         try:
             track, upload = TrackUploadService.create_pending_track(
                 album=album,
+                created_by=request.user,
                 filename=serializer.validated_data['filename'],
                 size=serializer.validated_data['size'],
                 content_type=serializer.validated_data['content_type'],
