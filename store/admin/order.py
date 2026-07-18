@@ -148,10 +148,14 @@ class ShipmentInline(admin.TabularInline):
         'state',
         'tracking_number',
         'weight',
-        'estimated_delivery_cost',
+        'display_estimated_delivery_cost',
     )
     readonly_fields = fields
     can_delete = False
+
+    @admin.display(description='Расчетная стоимость доставки артиста (руб.)')
+    def display_estimated_delivery_cost(self, obj):
+        return format_money(obj.estimated_delivery_cost)
 
     def has_delete_permission(self, request, obj=None):
         return False
