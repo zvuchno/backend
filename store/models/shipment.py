@@ -22,10 +22,10 @@ class Shipment(TimestampModel):
     """
 
     class State(models.TextChoices):
-        CREATED = 'CREATED', 'Создано'
-        ACCEPTED = 'ACCEPTED', 'Принято'
-        WAITING = 'WAITING', 'Ожидание'
-        SUCCESSFUL = 'SUCCESSFUL', 'Успешно'
+        CREATED = 'CREATED', 'Создан'
+        ACCEPTED = 'ACCEPTED', 'Запрос принят'
+        WAITING = 'WAITING', 'Ожидает обработки'
+        SUCCESSFUL = 'SUCCESSFUL', 'Обработан'
         INVALID = 'INVALID', 'Ошибка'
 
     order = models.ForeignKey(

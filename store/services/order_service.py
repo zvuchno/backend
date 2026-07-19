@@ -265,6 +265,9 @@ class OrderService:
             artist_profile = getattr(product, 'artist', None)
             artist_name = getattr(artist_profile, 'name', '')
             product_kind = OrderService._get_product_kind(product)
+            property_value = (
+                variant.property_value if product.property_name else ''
+            )
 
             # Собираем JSON-снапшот
             product_info_snapshot = {
@@ -273,7 +276,7 @@ class OrderService:
                 'artist_name': artist_name,
                 'product_type': product.product_type,
                 'property_name': product.property_name,
-                'property_value': variant.property_value,
+                'property_value': property_value,
                 'allow_overpay': product.allow_overpay,
                 'promocode': promocode_code,
                 'sku': variant.sku,
