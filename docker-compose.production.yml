@@ -5,6 +5,7 @@ volumes:
   next_image_cache:
   celery_beat_data:
   redis_data:
+  flower_data:
 
 services:
   db:
@@ -142,6 +143,34 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+  flower:
+    image: inswty/zvuchno_backend:latest
+    env_file: .env
+    user: '${UID}:${GID}'
+    command: >
+      celery -A config flower
+      --address=0.0.0.0
+      --port=5555
+      --url-prefix=internal/flower
+      --xheaders=True
+      --persistent=True
+      --db=/data/flower
+      --state-save-interval=5000
+    volumes:
+      - flower_data:/data
+    expose:
+      - '5555'
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
   frontend:
     image: inswty/zvuchno_frontend:latest
     env_file:
@@ -175,6 +204,8 @@ services:
       - media:/media:ro
     depends_on:
       backend:
+        condition: service_started
+      flower:
         condition: service_started
     ports:
       - "127.0.0.1:8000:80"
