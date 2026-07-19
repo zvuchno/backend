@@ -91,7 +91,8 @@ def create_yookassa_payment(order, retry=True):
                     'currency': 'RUB',
                 },
                 'confirmation': {
-                    'type': 'embedded',
+                    'type': 'redirect',
+                    'return_url': 'https://dev.zvuchno.space/order/order-succeed',
                 },
                 'capture': True,
                 'description': f'Заказ №{order.order_number}',
@@ -157,7 +158,7 @@ def create_yookassa_payment(order, retry=True):
         return {'payment_status': 'canceled', 'confirmation_token': None}
 
     confirmation = getattr(yookassa_payment, 'confirmation', None)
-    confirmation_token = getattr(confirmation, 'confirmation_token', None)
+    confirmation_token = getattr(confirmation, 'confirmation_url', None)
 
     if not confirmation_token:
         logger.error(
