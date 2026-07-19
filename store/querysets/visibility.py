@@ -2,6 +2,8 @@
 
 from django.db import models
 
+from common.access import managed_artist_q
+
 
 class VisibilityQuerySet(models.QuerySet):
     """QuerySet с правилами доступа и видимости объектов.
@@ -31,7 +33,7 @@ class VisibilityQuerySet(models.QuerySet):
             is_published=True,
             visibility__in=allowed_visibilities,
         )
-        # Владелец + публичное
+        # Управляемые артистом объекты + публичное
         if user.is_authenticated:
-            return qs.filter(base_q | models.Q(owner=user))
+            return qs.filter(base_q | managed_artist_q(user))
         return qs.filter(base_q)

@@ -43,8 +43,8 @@ class ProductCatalogListView(ListAPIView):
     search_fields = (
         'album__name',
         'merch__name',
-        'album__owner__artist_profile__name',
-        'merch__owner__artist_profile__name',
+        'album__artist__name',
+        'merch__artist__name',
     )
     throttle_classes = (AnonRateThrottle, UserRateThrottle)
 
@@ -154,7 +154,7 @@ class CatalogReleaseDetailView(AlbumViewSet):
             )
             .select_related(
                 'product',
-                'owner__artist_profile',
+                'artist',
             )
             .prefetch_related(
                 Prefetch(

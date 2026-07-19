@@ -4,7 +4,7 @@ from .artist_contact import ArtistContact
 from .artist_identity_data import ArtistIdentityData
 from .artist_legal_profile import ArtistLegalProfile
 from .artist_pickup_point import ArtistPickupPoint
-from .artist_profile import ArtistProfile
+from .artist_profile import ArtistProfile, ArtistProfileType
 from .artist_shipping_point import ArtistShippingPoint
 from .artist_social import ArtistSocial
 from .consent_document import ConsentDocument
@@ -20,6 +20,7 @@ __all__ = [
     'ArtistLegalProfile',
     'ArtistPickupPoint',
     'ArtistProfile',
+    'ArtistProfileType',
     'ArtistShippingPoint',
     'ArtistSocial',
     'ConsentDocument',

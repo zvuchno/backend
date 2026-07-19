@@ -35,12 +35,12 @@ class TestPromocodeAPI:
         variant_author_a = self.variant_factory(
             'merch',
             price=Decimal('1000.00'),
-            owner=self.artist_user,
+            artist=self.artist_user.artist_profile,
         )
         variant_author_b = self.variant_factory(
             'album',
             price=Decimal('500.00'),
-            owner=self.other_artist_user,
+            artist=self.other_artist_user.artist_profile,
         )
 
         promocode = Promocode.objects.create(
@@ -94,7 +94,7 @@ class TestPromocodeAPI:
             self.variant_factory(
                 'merch',
                 price=Decimal('100.00'),
-                owner=self.artist_user,
+                artist=self.artist_user.artist_profile,
             )
             for _ in range(3)
         ]
@@ -153,12 +153,12 @@ class TestPromocodeAPI:
         our_variant = self.variant_factory(
             'merch',
             price=Decimal('1000.00'),
-            owner=self.artist_user,
+            artist=self.artist_user.artist_profile,
         )
         other_variant = self.variant_factory(
             'merch',
             price=Decimal('1500.00'),
-            owner=self.other_artist_user,
+            artist=self.other_artist_user.artist_profile,
         )
 
         promocode = Promocode.objects.create(

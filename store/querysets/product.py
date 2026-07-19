@@ -157,7 +157,7 @@ class ProductQuerySet(models.QuerySet):
     def with_album_card_annotations(self):
         """Добавляет вычисляемые поля карточек альбомов."""
         return self.annotate(
-            artist_name=models.F('album__owner__artist_profile__name'),
+            artist_name=models.F('album__artist__name'),
             kind=models.Case(
                 models.When(
                     album__is_single=True,
@@ -178,7 +178,7 @@ class ProductQuerySet(models.QuerySet):
     def with_merch_card_annotations(self):
         """Добавляет вычисляемые поля карточек мерча и носителей."""
         return self.annotate(
-            artist_name=models.F('merch__owner__artist_profile__name'),
+            artist_name=models.F('merch__artist__name'),
             kind=models.F('merch__kind__name'),
             year=models.Value(
                 None,
@@ -209,7 +209,7 @@ class ProductQuerySet(models.QuerySet):
         """Добавляет вычисляемые поля карточек треков."""
         return self.annotate(
             artist_name=models.F(
-                'track__album__owner__artist_profile__name',
+                'track__album__artist__name',
             ),
             kind=models.Value(
                 'Трек',
@@ -233,11 +233,11 @@ class ProductQuerySet(models.QuerySet):
             artist_name=models.Case(
                 models.When(
                     product_type='album',
-                    then=models.F('album__owner__artist_profile__name'),
+                    then=models.F('album__artist__name'),
                 ),
                 models.When(
                     product_type='merch',
-                    then=models.F('merch__owner__artist_profile__name'),
+                    then=models.F('merch__artist__name'),
                 ),
                 output_field=models.CharField(),
             ),

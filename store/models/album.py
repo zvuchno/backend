@@ -9,14 +9,14 @@ from django.db import models
 from common.storages import get_private_media_storage, get_public_media_storage
 
 from store.constants import MAX_FILE_STATUS_STR, MAX_STR_LENGTH
-from store.models.abstract import BaseContent, VisibilityModel
+from store.models.abstract import ArtistContent, VisibilityModel
 from store.querysets import VisibilityQuerySet
 from store.upload_paths import album_archive_upload_to, album_cover_upload_to
 from store.validators import validate_file_size
 from users.models.abstract import TimestampModel
 
 
-class Album(BaseContent, VisibilityModel):
+class Album(ArtistContent, VisibilityModel):
     """Музыкальный альбом."""
 
     release_date = models.DateField('Дата релиза', blank=True, null=True)

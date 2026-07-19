@@ -1,6 +1,7 @@
 from rest_framework.permissions import BasePermission
 
 from .base import _ActiveProfilePermission
+from users.models.artist_profile import ArtistProfileType
 
 
 class IsListener(_ActiveProfilePermission):
@@ -44,4 +45,26 @@ class IsNotArtist(BasePermission):
         return not hasattr(
             user,
             'artist_profile',
+        )
+
+
+class CanCreateArtistContent(BasePermission):
+    """Разрешает создание контента артисту, лейблу или менеджеру."""
+
+    message = 'У вас нет прав на создание контента артиста.'
+
+    def has_permission(self, request, view):
+        """Проверяет наличие профиля артиста или лейбла."""
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        profile = getattr(request.user, 'artist_profile', None)
+
+        return bool(
+            profile
+            and profile.profile_type
+            in (
+                ArtistProfileType.ARTIST,
+                ArtistProfileType.LABEL,
+            ),
         )

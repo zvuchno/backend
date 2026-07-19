@@ -11,6 +11,7 @@ from store.constants import (
     MAX_FILE_STATUS_STR,
     MAX_STR_LENGTH,
 )
+from store.models.abstract import BaseContent
 from store.querysets.track_visibility import TrackQuerySet
 from store.upload_paths import (
     track_audio_upload_to,
@@ -18,13 +19,13 @@ from store.upload_paths import (
     track_stream_upload_to,
 )
 from store.validators import validate_audiofile_size
-from users.models.abstract import ActivatableModel, TimestampModel
+from users.models.abstract import TimestampModel
 
 
-class Track(ActivatableModel, TimestampModel):
+class Track(BaseContent):
     """Музыкальный трек в составе альбома.
 
-    Владелец трека определяется владельцем связанного альбома.
+    Артист и получатель выплат определяются связанным альбомом.
     """
 
     album = models.ForeignKey(
@@ -58,13 +59,16 @@ class Track(ActivatableModel, TimestampModel):
         blank=True,
         help_text='Порядковый номер трека в альбоме',
     )
-    name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
-    description = models.TextField('Текст трека', blank=True, default='')
 
     @property
-    def owner(self):
-        """Возвращает владельца альбома для обратной совместимости."""
-        return self.album.owner
+    def artist(self):
+        """Возвращает артиста связанного альбома."""
+        return self.album.artist
+
+    @property
+    def payout_recipient(self):
+        """Возвращает получателя выплат связанного альбома."""
+        return self.album.payout_recipient
 
     objects = TrackQuerySet.as_manager()
 

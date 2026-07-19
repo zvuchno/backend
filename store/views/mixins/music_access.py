@@ -12,8 +12,7 @@ class PurchasedMusicAccessMixin:
         """Возвращает queryset доступов к альбомам с данными релиза."""
         return ListenerAlbumAccess.objects.select_related(
             'album',
-            'album__owner',
-            'album__owner__artist_profile',
+            'album__artist',
         )
 
     @staticmethod
@@ -22,8 +21,7 @@ class PurchasedMusicAccessMixin:
         return ListenerTrackAccess.objects.select_related(
             'track',
             'track__album',
-            'track__album__owner',
-            'track__album__owner__artist_profile',
+            'track__album__artist',
         )
 
     def get_album_access_or_404(

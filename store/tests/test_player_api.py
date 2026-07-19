@@ -71,9 +71,7 @@ class TestPlayerAlbumAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['id'] == album.id
         assert response.data['name'] == album.name
-        assert response.data['artist_name'] == (
-            album.owner.artist_profile.name
-        )
+        assert response.data['artist_name'] == (album.artist.name)
         assert response.data['cover_image'] == (
             album.cover_image.url if album.cover_image else None
         )

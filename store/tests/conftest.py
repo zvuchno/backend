@@ -39,6 +39,9 @@ def variant_factory(artist_user):
     def create_variant(
         product_type='merch',
         *,
+        artist=None,
+        payout_recipient=None,
+        created_by=None,
         is_active=True,
         is_published=True,
         visibility='public',
@@ -49,8 +52,20 @@ def variant_factory(artist_user):
         **kwargs,
     ) -> ProductVariant:
 
-        common_fields = {
-            'owner': kwargs.get('owner') or artist_user,
+        content_artist = artist or artist_user.artist_profile
+
+        content_payout_recipient = (
+            payout_recipient or content_artist.default_payout_recipient
+        )
+
+        content_created_by = (
+            created_by or content_artist.user or content_payout_recipient
+        )
+
+        artist_content_fields = {
+            'artist': content_artist,
+            'payout_recipient': content_payout_recipient,
+            'created_by': content_created_by,
             'is_active': is_active,
             'is_published': is_published,
             'visibility': visibility,
@@ -59,7 +74,7 @@ def variant_factory(artist_user):
         if product_type == 'album':
             item = Album.objects.create(
                 name=kwargs.get('name', 'Album'),
-                **common_fields,
+                **artist_content_fields,
             )
             product = Product.objects.create(album=item, price=price or 1000)
             stock_value = None
@@ -67,11 +82,19 @@ def variant_factory(artist_user):
         elif product_type == 'track':
             album = kwargs.get('album') or Album.objects.create(
                 name='Track Album',
-                **common_fields,
+                **artist_content_fields,
             )
+            track_created_by = (
+                created_by
+                or album.created_by
+                or album.artist.user
+                or album.payout_recipient
+            )
+
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
                 album=album,
+                created_by=track_created_by,
                 audio_file=ContentFile(
                     b'fake mp3 content',
                     name='test_track.mp3',
@@ -83,7 +106,7 @@ def variant_factory(artist_user):
         elif product_type == 'merch':
             item = Merch.objects.create(
                 name=kwargs.get('name', 'T-Shirt'),
-                **common_fields,
+                **artist_content_fields,
             )
             product = Product.objects.create(
                 merch=item,

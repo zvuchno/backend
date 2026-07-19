@@ -46,6 +46,7 @@ class TestTrackUploadCleanupService:
 
         track, upload = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='abandoned.flac',
             size=len(file_content),
             content_type='audio/flac',
@@ -106,6 +107,7 @@ class TestTrackUploadCleanupService:
 
         track, upload = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='recent.flac',
             size=10,
             content_type='audio/flac',
@@ -146,6 +148,7 @@ class TestTrackUploadCleanupService:
 
         track, upload = TrackUploadService.create_pending_track(
             album=album,
+            created_by=album.created_by,
             filename='failed-cleanup.flac',
             size=10,
             content_type='audio/flac',

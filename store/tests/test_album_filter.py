@@ -36,17 +36,21 @@ class TestAlbumFilters:
             created_at=now - datetime.timedelta(days=1),
         )  # старый
 
-        v2 = variant_factory(product_type='album', name='Breath')
+        v2 = variant_factory(
+            product_type='album',
+            name='Breath',
+            artist=other_artist_user.artist_profile,
+            created_by=other_artist_user,
+        )
         a2 = v2.product.album
         a2.genre = jazz
-        a2.owner = other_artist_user
         a2.save()
 
         return {'album_1': a1, 'album_2': a2, 'rock': rock, 'jazz': jazz}
 
     def test_filter_by_artist_slug(self, albums, album_list_url, api_client):
         """Фильтр по slug артиста."""
-        artist_slug = albums['album_1'].owner.artist_profile.slug
+        artist_slug = albums['album_1'].artist.slug
         response = api_client.get(album_list_url, {'artist': artist_slug})
 
         assert response.status_code == status.HTTP_200_OK

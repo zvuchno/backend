@@ -1,6 +1,7 @@
 """Модель профиля артиста."""
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxLengthValidator, MinLengthValidator
 from django.db import models
 from slugify import slugify
@@ -12,6 +13,7 @@ from store.validators import validate_file_size
 from users.constants import (
     ARTIST_DESC_FIELD_MAX_LENGTH,
     ARTIST_DESC_FIELD_MIN_LENGTH,
+    ARTIST_LINK_TYPE_MAX_LENGTH,
     ARTIST_NAME_FIELD_MAX_LENGTH,
     ARTIST_NAME_FIELD_MIN_LENGTH,
     CITY_FIELD_MAX_LENGTH,
@@ -20,19 +22,44 @@ from users.constants import (
 from users.upload_paths import artist_cover_upload_to
 
 
-class ArtistProfile(ActivatableModel, TimestampModel):
-    """Профиль артиста.
+class ArtistProfileType(models.TextChoices):
+    """Тип публичного профиля."""
 
-    Связан с пользователем отношением один к одному и хранит
-    основные публичные данные артиста: имя, slug, описание,
-    контактную информацию, город и обложку профиля.
+    ARTIST = 'artist', 'Артист'
+    LABEL = 'label', 'Лейбл'
+
+
+class ArtistProfile(ActivatableModel, TimestampModel):
+    """Публичный профиль артиста или лейбла.
+
+    Профиль артиста может существовать без собственной учётной записи,
+    если он создан и управляется лейблом. Профиль лейбла всегда связан
+    с учётной записью.
+    TODO: название модели уже не отражает смысл.
     """
+
+    profile_type = models.CharField(
+        'Тип профиля',
+        max_length=ARTIST_LINK_TYPE_MAX_LENGTH,
+        choices=ArtistProfileType.choices,
+        default=ArtistProfileType.ARTIST,
+    )
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='artist_profile',
-        verbose_name='Учетная запись',
+        verbose_name='Учётная запись',
+        null=True,
+        blank=True,
+    )
+    label = models.ForeignKey(
+        'self',
+        on_delete=models.PROTECT,
+        related_name='artists',
+        verbose_name='Лейбл',
+        null=True,
+        blank=True,
     )
     name = models.CharField(
         'Имя артиста',
@@ -79,6 +106,20 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         null=True,
     )
 
+    @property
+    def default_payout_recipient(self):
+        """Возвращает аккаунт получателя выплат по умолчанию."""
+        payout_recipient = (
+            self.label.user if self.label_id is not None else self.user
+        )
+
+        if payout_recipient is None:
+            raise ValueError(
+                'Для публичного профиля не настроен получатель выплат.',
+            )
+
+        return payout_recipient
+
     def save(self, *args, **kwargs):
         """Сохраняет профиль артиста и при необходимости создает slug.
 
@@ -105,6 +146,58 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         verbose_name = 'артист'
         verbose_name_plural = 'артисты'
         ordering = ('name',)
+        constraints = (
+            models.CheckConstraint(
+                condition=(
+                    models.Q(user__isnull=False)
+                    | models.Q(label__isnull=False)
+                ),
+                name='artist_profile_has_user_or_label',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(profile_type=ArtistProfileType.ARTIST)
+                    | models.Q(user__isnull=False)
+                ),
+                name='label_profile_has_user',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(profile_type=ArtistProfileType.ARTIST)
+                    | models.Q(label__isnull=True)
+                ),
+                name='label_profile_has_no_parent_label',
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(label__isnull=True)
+                    | ~models.Q(pk=models.F('label'))
+                ),
+                name='profile_is_not_its_own_label',
+            ),
+        )
+
+    def clean(self):
+        """Проверяет корректность связи артиста с лейблом."""
+        super().clean()
+
+        if self.label_id is None:
+            return
+
+        if self.pk is not None and self.label_id == self.pk:
+            raise ValidationError({
+                'label': 'Профиль не может быть собственным лейблом.',
+            })
+
+        if self.profile_type != ArtistProfileType.ARTIST:
+            raise ValidationError({
+                'label': 'Только профиль артиста может быть связан с лейблом.',
+            })
+
+        if self.label.profile_type != ArtistProfileType.LABEL:
+            raise ValidationError({
+                'label': 'Выбранный профиль не является лейблом.',
+            })
 
     def __str__(self):
         return self.name

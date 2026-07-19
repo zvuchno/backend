@@ -38,7 +38,7 @@ class TestCatalogReleaseDetail:
         assert_catalog_release_detail_contract(response.data)
 
         assert response.data['id'] == album.id
-        assert response.data['artist_name'] == album.owner.artist_profile.name
+        assert response.data['artist_name'] == album.artist.name
         assert response.data['is_single'] == album.is_single
 
     def test_catalog_release_detail_contains_album_and_carrier_variants(
@@ -130,7 +130,7 @@ class TestCatalogMerchDetail:
         assert response.data['kind'] == kind.name
         assert response.data['property_name'] == product.property_name
         assert response.data['stock'] == variant.stock
-        assert response.data['artist_name'] == merch.owner.artist_profile.name
+        assert response.data['artist_name'] == merch.artist.name
         assert response.data['images'] == []
 
         assert response.data['variants'] == [

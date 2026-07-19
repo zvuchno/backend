@@ -68,6 +68,7 @@ class TrackUploadService:
         cls,
         *,
         album: Album,
+        created_by,
         filename: str,
         size: int,
         content_type: str = '',
@@ -91,6 +92,7 @@ class TrackUploadService:
 
         track = Track.objects.create(
             album=album,
+            created_by=created_by,
             name=track_name,
             description=description or '',
             position=None,
