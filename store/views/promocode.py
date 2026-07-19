@@ -1,4 +1,7 @@
-"""ViewSet для работы с моделью Promocode."""
+"""ViewSet для работы с моделью Promocode.
+
+TODO: owner -> artist, изменить пермишен, убрать неиспользуемый пермишен.
+"""
 
 from rest_framework import status, viewsets
 from rest_framework.response import Response

@@ -16,7 +16,7 @@ from store.models import (
     ProductVariant,
     Track,
 )
-from users.tests.factories import ArtistUserFactory
+from users.tests.factories import ArtistProfileFactory
 
 
 class GenreFactory(factory.django.DjangoModelFactory):
@@ -46,7 +46,13 @@ class AlbumFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Album
 
-    owner = factory.SubFactory(ArtistUserFactory)
+    artist = factory.SubFactory(ArtistProfileFactory)
+    payout_recipient = factory.LazyAttribute(
+        lambda obj: obj.artist.default_payout_recipient,
+    )
+    created_by = factory.LazyAttribute(
+        lambda obj: obj.artist.user or obj.artist.default_payout_recipient,
+    )
     genre = factory.SubFactory(GenreFactory)
     name = factory.Sequence(lambda n: f'Альбом {n}')
     release_date = date(2026, 1, 1)
@@ -86,6 +92,9 @@ class TrackFactory(factory.django.DjangoModelFactory):
         model = Track
 
     album = factory.SubFactory(AlbumFactory)
+    created_by = factory.LazyAttribute(
+        lambda obj: obj.album.created_by,
+    )
     name = factory.Sequence(lambda n: f'Трек {n}')
     position = factory.Sequence(lambda n: n + 1)
     audio_file = factory.Sequence(
@@ -102,7 +111,13 @@ class MerchFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Merch
 
-    owner = factory.SubFactory(ArtistUserFactory)
+    artist = factory.SubFactory(ArtistProfileFactory)
+    payout_recipient = factory.LazyAttribute(
+        lambda obj: obj.artist.default_payout_recipient,
+    )
+    created_by = factory.LazyAttribute(
+        lambda obj: obj.artist.user or obj.artist.default_payout_recipient,
+    )
     kind = factory.SubFactory(MerchKindFactory)
     name = factory.Sequence(lambda n: f'Мерч {n}')
     description = 'Тестовое описание мерча.'

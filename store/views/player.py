@@ -64,7 +64,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
                 action='retrieve',
             )
             .select_related(
-                'owner__artist_profile',
+                'artist',
             )
             .prefetch_related(
                 Prefetch(

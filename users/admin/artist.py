@@ -62,7 +62,9 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     )
     list_display = (
         'id',
+        'profile_type',
         'user',
+        'label',
         'name',
         'city',
         'is_active',
@@ -70,6 +72,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     )
     list_display_links = ('id', 'name', 'user')
     list_filter = (
+        'profile_type',
         'is_active',
         'created_at',
     )
@@ -88,9 +91,10 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'user__phone',
         'user__username',
         'user__email',
+        'label__name',
     )
     ordering = ('-created_at',)
-    autocomplete_fields = ('user',)
+    autocomplete_fields = ('user', 'label')
 
     def has_delete_permission(self, request, obj=None):
         """Запрещает удаление объектов через админку."""
@@ -102,10 +106,20 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         actions.pop('delete_selected', None)
         return actions
 
-    @admin.display(description='Учетная запись')
+    @admin.display(description='Учётная запись')
     def user_link(self, obj):
-        url = reverse('admin:users_coreuser_change', args=[obj.user_id])
-        return format_html('<a href="{}">{}</a>', url, obj.user.email)
+        if not obj or not obj.user_id:
+            return '—'
+
+        url = reverse(
+            'admin:users_coreuser_change',
+            args=(obj.user_id,),
+        )
+        return format_html(
+            '<a href="{}">{}</a>',
+            url,
+            obj.user.email,
+        )
 
     @admin.display(description='Телефон учетной записи')
     def account_phone(self, obj):
@@ -115,6 +129,9 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
 
     @admin.display(description='Имя пользователя')
     def account_username(self, obj):
+        if not obj or not obj.user_id:
+            return '—'
+
         return obj.user.username or '—'
 
     @admin.display(description='Подключен Telegram-bot', boolean=True)
@@ -156,9 +173,13 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             fieldsets.insert(
                 0,
                 (
-                    'Пользователь',
+                    'Тип и управление',
                     {
-                        'fields': ('user',),
+                        'fields': (
+                            'profile_type',
+                            'user',
+                            'label',
+                        ),
                     },
                 ),
             )
@@ -174,9 +195,11 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             fieldsets.insert(
                 0,
                 (
-                    'Пользователь',
+                    'Тип и управление',
                     {
                         'fields': (
+                            'profile_type',
+                            'label',
                             'user_link',
                             'account_username',
                             'account_phone',

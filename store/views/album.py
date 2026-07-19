@@ -4,7 +4,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
-from common.permissions import IsArtist, IsStoreObjectOwnerOrReadOnly
+from common.permissions import (
+    CanCreateArtistContent,
+    IsStoreObjectManagerOrReadOnly,
+)
 
 from .mixins import ProductActionMixin, SoftDeleteMixin
 from store.filters import AlbumFilter
@@ -47,8 +50,8 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == 'create':
-            return (IsArtist(),)
-        return (IsStoreObjectOwnerOrReadOnly(),)
+            return (CanCreateArtistContent(),)
+        return (IsStoreObjectManagerOrReadOnly(),)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
@@ -71,7 +74,11 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             queryset = queryset.select_related(
                 'product',
                 'genre',
-                'owner__artist_profile',
+                'artist',
+                'artist__user',
+                'artist__label',
+                'artist__label__user',
+                'payout_recipient',
             )
         return queryset
 

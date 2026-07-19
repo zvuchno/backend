@@ -8,17 +8,17 @@ logger = logging.getLogger(__name__)
 def send_order_paid_notifications_to_artists(order) -> None:
     """Отправляет уведомления об оплате артистам чей товар есть в заказе."""
     all_items = order.items.select_related(
-        'product_variant__product__album__owner__artist_profile',
-        'product_variant__product__track__album__owner__artist_profile',
-        'product_variant__product__merch__owner__artist_profile',
+        'product_variant__product__album__artist',
+        'product_variant__product__track__album__artist',
+        'product_variant__product__merch__artist',
     )
 
     artists = set()
     for item in all_items:
-        user = item.product_variant.product.owner
-        profile = getattr(user, 'artist_profile', None)
-        if profile:
-            artists.add(profile)
+        artist = item.product_variant.product.artist
+
+        if artist:
+            artists.add(artist)
 
     if not artists:
         return

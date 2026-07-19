@@ -65,7 +65,7 @@ class TestCatalogCardValues:
 
         assert card['product_id'] == product.id
         assert card['name'] == album.name
-        assert card['artist_name'] == album.owner.artist_profile.name
+        assert card['artist_name'] == album.artist.name
         assert card['kind'] == 'Альбом'
         assert card['year'] == album.release_date.year
         assert card['price'] == str(product.price)
@@ -98,7 +98,7 @@ class TestCatalogCardValues:
 
         assert card['product_id'] == product.id
         assert card['name'] == merch.name
-        assert card['artist_name'] == merch.owner.artist_profile.name
+        assert card['artist_name'] == merch.artist.name
         assert card['kind'] == merch.kind.name
         assert card['year'] is None
         assert card['price'] == str(product.price)
@@ -136,7 +136,7 @@ class TestCatalogCardValues:
 
         assert card['product_id'] == product.id
         assert card['name'] == merch.name
-        assert card['artist_name'] == merch.owner.artist_profile.name
+        assert card['artist_name'] == merch.artist.name
         assert card['kind'] == merch.kind.name
         assert card['year'] == album.release_date.year
         assert card['price'] == str(product.price)
@@ -312,7 +312,7 @@ class TestCatalogArtistFilter:
     def test_catalog_filters_by_artist(self, api_client, catalog_url):
         """Фильтр artist возвращает все товары указанного артиста."""
         products = create_catalog_filter_dataset()
-        artist_slug = products['first_artist'].artist_profile.slug
+        artist_slug = products['first_artist'].slug
 
         response = api_client.get(catalog_url, {'artist': artist_slug})
 

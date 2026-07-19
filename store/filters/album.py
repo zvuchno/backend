@@ -13,7 +13,7 @@ class AlbumFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
 
     artist = filters.BaseInFilter(
-        field_name='owner__artist_profile__slug',
+        field_name='artist__slug',
         lookup_expr='in',
     )
 

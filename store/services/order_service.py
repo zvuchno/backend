@@ -101,9 +101,9 @@ class OrderService:
             .select_for_update()
             .select_related('product_variant__product')
             .prefetch_related(
-                'product_variant__product__album__owner__artist_profile',
-                'product_variant__product__track__album__owner__artist_profile',
-                'product_variant__product__merch__owner__artist_profile',
+                'product_variant__product__album__artist',
+                'product_variant__product__track__album__artist',
+                'product_variant__product__merch__artist',
             )
         )
 
@@ -260,16 +260,7 @@ class OrderService:
             product = variant.product
             item_promocode_discount = item_discounts.get(item.id, ZERO_MONEY)
 
-            owner = getattr(product, 'owner', None)
-            artist_profile = (
-                getattr(
-                    owner,
-                    'artist_profile',
-                    None,
-                )
-                if owner
-                else None
-            )
+            artist_profile = getattr(product, 'artist', None)
             artist_name = getattr(artist_profile, 'name', '')
             product_kind = OrderService._get_product_kind(product)
 

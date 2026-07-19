@@ -104,8 +104,13 @@ class TestPurchasedMusicAPI:
         listener_user,
     ):
         """Частично доступный релиз попадает в список с флагом partial."""
-        owner = self.variant_factory('album').product.album.owner
-        album = Album.objects.create(name='Partial Album', owner=owner)
+        source_album = self.variant_factory('album').product.album
+        album = Album.objects.create(
+            name='Partial Album',
+            artist=source_album.artist,
+            payout_recipient=source_album.payout_recipient,
+            created_by=source_album.created_by,
+        )
 
         bought_track_variant = self.variant_factory(
             'track',

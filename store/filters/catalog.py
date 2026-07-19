@@ -42,11 +42,11 @@ class ProductCatalogFilter(django_filters.FilterSet):
         return queryset.filter(
             models.Q(
                 product_type=Product.ProductType.ALBUM,
-                album__owner__artist_profile__slug=value,
+                album__artist__slug=value,
             )
             | models.Q(
                 product_type=Product.ProductType.MERCH,
-                merch__owner__artist_profile__slug=value,
+                merch__artist__slug=value,
             ),
         )
 

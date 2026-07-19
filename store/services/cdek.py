@@ -363,17 +363,14 @@ class CDEKService:
         cart_items = cart.items.filter(
             product_variant__product__product_type=Product.ProductType.MERCH,
         ).select_related(
-            'product_variant__product__merch__owner__artist_profile',
+            'product_variant__product__merch__artist',
         )
 
         for item in cart_items:
-            owner = item.product_variant.product.merch.owner
-            artist_profile = getattr(owner, 'artist_profile', None)
+            artist_id = item.product_variant.product.merch.artist_id
 
-            if artist_profile:
-                artist_id = artist_profile.id
-                if artist_id in artist_city_code:
-                    artist_quantities[artist_id] += item.quantity
+            if artist_id in artist_city_code:
+                artist_quantities[artist_id] += item.quantity
 
         total_delivery_sum = ZERO_MONEY
 
@@ -536,7 +533,8 @@ class CDEKService:
         merch_items = order.items.filter(
             product_variant__product__product_type=Product.ProductType.MERCH,
         ).select_related(
-            'product_variant__product__merch__owner__artist_profile__shipping_point',
+            'product_variant__product__merch__artist',
+            'product_variant__product__merch__artist__shipping_point',
         )
 
         if not merch_items.exists():
@@ -551,8 +549,7 @@ class CDEKService:
         artist_items = defaultdict(list)
         artist_profiles = {}
         for item in merch_items:
-            owner = item.product_variant.product.owner
-            profile = getattr(owner, 'artist_profile', None)
+            profile = item.product_variant.product.merch.artist
 
             if (
                 not profile

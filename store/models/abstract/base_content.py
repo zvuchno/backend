@@ -8,21 +8,43 @@ from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class BaseContent(ActivatableModel, TimestampModel):
-    """Абстрактная модель для моделей контента.
+    """Абстрактная модель общего контента.
 
-    Содержит общие поля для всех типов контента:
-    название, описание, владелец, признак активности и временные метки.
-    Предназначена для наследования моделями, такими как Album, Track и другими.
+    Содержит название, описание, создателя, признак активности
+    и временные метки.
     """
 
     name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
     description = models.TextField('Описание', blank=True, default='')
-
-    owner = models.ForeignKey(
+    created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='%(class)s_set',
+        on_delete=models.PROTECT,
+        related_name='created_%(class)s_items',
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name='Создал',
+    )
+
+    class Meta:
+        abstract = True
+
+
+class ArtistContent(BaseContent):
+    """Контент, размещённый в каталоге артиста."""
+
+    artist = models.ForeignKey(
+        'users.ArtistProfile',
+        on_delete=models.PROTECT,
+        related_name='%(class)s_items',
         verbose_name='Артист',
+    )
+
+    payout_recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='payout%(class)s_items',
+        verbose_name='Получатель выплат',
     )
 
     class Meta:

@@ -26,6 +26,7 @@ class TestAlbumAdminTrackUpload:
         self,
         mocked_create_instruction,
         admin_client,
+        staff_user,
     ):
         """Создаёт черновой трек и попытку загрузки."""
         mocked_create_instruction.return_value = UploadInstruction(
@@ -64,6 +65,7 @@ class TestAlbumAdminTrackUpload:
         upload = TrackUpload.objects.get(pk=data['upload']['id'])
 
         assert track.album == album
+        assert track.created_by == staff_user
         assert track.name == '01 Intro'
         assert track.position is None
         assert track.is_active is False

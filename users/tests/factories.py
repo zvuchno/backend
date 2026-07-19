@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 
 from users.models import ArtistProfile, ListenerProfile
+from users.models.artist_profile import ArtistProfileType
 
 User = get_user_model()
 
@@ -42,10 +43,27 @@ class ArtistProfileFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ArtistProfile
 
+    profile_type = ArtistProfileType.ARTIST
     user = factory.SubFactory(UserFactory)
+    label = None
     name = factory.Sequence(lambda n: f'Артист {n}')
     city = 'Москва'
     description = 'Тестовое описание артиста.'
+    is_active = True
+
+
+class LabelProfileFactory(factory.django.DjangoModelFactory):
+    """Фабрика публичного профиля лейбла."""
+
+    class Meta:
+        model = ArtistProfile
+
+    profile_type = ArtistProfileType.LABEL
+    user = factory.SubFactory(UserFactory)
+    label = None
+    name = factory.Sequence(lambda n: f'Лейбл {n}')
+    city = 'Москва'
+    description = 'Тестовое описание лейбла.'
     is_active = True
 
 
@@ -67,5 +85,18 @@ class ArtistUserFactory(UserFactory):
     )
     artist_profile = factory.RelatedFactory(
         ArtistProfileFactory,
+        factory_related_name='user',
+    )
+
+
+class LabelUserFactory(UserFactory):
+    """Фабрика пользователя с профилями слушателя и лейбла."""
+
+    listener_profile = factory.RelatedFactory(
+        ListenerProfileFactory,
+        factory_related_name='user',
+    )
+    artist_profile = factory.RelatedFactory(
+        LabelProfileFactory,
         factory_related_name='user',
     )

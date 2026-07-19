@@ -71,10 +71,7 @@ class LibraryAlbumCardSerializer(
     @extend_schema_field(OpenApiTypes.STR)
     def get_artist_name(self, obj) -> str | None:
         """Возвращает имя артиста-владельца."""
-        artist = getattr(obj.album.owner, 'artist_profile', None)
-        if artist is None:
-            return None
-        return artist.name
+        return obj.album.artist.name
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_kind(self, obj) -> str:

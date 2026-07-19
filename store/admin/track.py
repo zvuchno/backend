@@ -10,7 +10,7 @@ from django.utils.html import format_html
 from ..services.audio.schedule import TrackGeneratedAudioScheduler
 from .forms import MoneyForm
 from .mixins import (
-    AutoOwnerAdminMixin,
+    AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
 )
@@ -107,7 +107,7 @@ class TrackGeneratedAudioInline(admin.StackedInline):
 
 @admin.register(Track)
 class TrackAdmin(
-    AutoOwnerAdminMixin,
+    AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
     admin.ModelAdmin,
@@ -117,12 +117,19 @@ class TrackAdmin(
     list_display = (
         'name',
         'album',
-        'owner',
+        'artist',
+        'payout_recipient',
         'get_price',
         'get_allow_overpay',
         'is_active',
     )
-    search_fields = ('album__name', 'description', 'name')
+    search_fields = (
+        'album__name',
+        'album__artist__name',
+        'album__payout_recipient__email',
+        'description',
+        'name',
+    )
     list_filter = (
         'is_active',
         'created_at',
@@ -134,8 +141,10 @@ class TrackAdmin(
         'duration',
         'created_at',
         'updated_at',
+        'created_by',
         'get_sku',
-        'owner',
+        'artist',
+        'payout_recipient',
     )
     list_editable = ('is_active',)
     fieldsets = (
@@ -150,7 +159,8 @@ class TrackAdmin(
                     'formatted_duration',
                     'description',
                     'get_sku',
-                    'owner',
+                    'artist',
+                    'payout_recipient',
                 ),
             },
         ),
@@ -161,11 +171,28 @@ class TrackAdmin(
                 'fields': (
                     'created_at',
                     'updated_at',
+                    'created_by',
                 ),
             },
         ),
     )
     inlines = (ProductInline, TrackGeneratedAudioInline)
+
+    @admin.display(
+        description='Артист',
+        ordering='album__artist__name',
+    )
+    def artist(self, obj):
+        """Возвращает артиста альбома."""
+        return obj.album.artist
+
+    @admin.display(
+        description='Получатель выплат',
+        ordering='album__payout_recipient__email',
+    )
+    def payout_recipient(self, obj):
+        """Возвращает получателя выплат альбома."""
+        return obj.album.payout_recipient
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):
@@ -182,7 +209,10 @@ class TrackAdmin(
             super()
             .get_queryset(request)
             .select_related(
-                'album__owner__artist_profile',
+                'album',
+                'album__artist',
+                'album__payout_recipient',
+                'created_by',
             )
         )
 

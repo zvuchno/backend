@@ -1,6 +1,8 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from common.access import can_manage_artist
+
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     CHAR_PRESET_SIMPLE,
@@ -10,6 +12,7 @@ from store.constants import (
 )
 from store.models import Merch, ProductVariant
 from store.serializers import ImageSerializer
+from store.serializers.mixins import ImmutableFieldsSerializerMixin
 
 
 def validate_not_reserved(value):
@@ -99,7 +102,7 @@ class MerchDetailSerializer(MerchReadSerializer):
         data = super().to_representation(instance)
         data.pop('main_image', None)
         request = self.context.get('request')
-        if request and request.user == instance.owner:
+        if request and can_manage_artist(request.user, instance.artist):
             for field in ('visibility', 'is_published'):
                 data[field] = getattr(instance, field)
         return data
@@ -153,7 +156,7 @@ class MerchDetailSerializer(MerchReadSerializer):
             return []
 
         request = self.context.get('request')
-        is_owner = request and request.user == obj.owner
+        can_manage = request and can_manage_artist(request.user, obj.artist)
 
         qs = (
             product.variants
@@ -166,7 +169,7 @@ class MerchDetailSerializer(MerchReadSerializer):
             .order_by('id')
         )
 
-        if not is_owner:
+        if not can_manage:
             qs = qs.exclude(stock=0)
 
         return VariantReadSerializer(qs, many=True).data
@@ -183,8 +186,13 @@ class VariantWriteSerializer(serializers.Serializer):
     stock = serializers.IntegerField(min_value=DEFAULT_QUANTITY, required=True)
 
 
-class MerchWriteSerializer(serializers.ModelSerializer):
+class MerchWriteSerializer(
+    ImmutableFieldsSerializerMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор для создания и обновления Merch."""
+
+    immutable_fields = ('artist',)
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
@@ -208,6 +216,7 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'kind',
             'price',
             'album',
+            'artist',
             'description',
             'allow_overpay',
             'visibility',
@@ -216,8 +225,14 @@ class MerchWriteSerializer(serializers.ModelSerializer):
             'stock',
             'variants',
         )
+        extra_kwargs = {
+            'artist': {
+                'required': False,
+            },
+        }
 
     def validate(self, attrs):
+        attrs = super().validate(attrs)
         if attrs.get('variants') and attrs.get('stock') is not None:
             raise serializers.ValidationError({
                 'stock': 'Нельзя указывать stock вместе с variants. '

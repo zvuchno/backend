@@ -15,7 +15,7 @@ class MerchFilter(filters.FilterSet):
     album = filters.BaseInFilter(field_name='album_id', lookup_expr='in')
 
     artist = filters.BaseInFilter(
-        field_name='owner__artist_profile__slug',
+        field_name='artist__slug',
         lookup_expr='in',
     )
 

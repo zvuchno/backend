@@ -55,10 +55,10 @@ class CartCalculationService:
             self.cart.items
             .filter(
                 product_variant__product__product_type=Product.ProductType.MERCH,
-                product_variant__product__merch__owner__artist_profile__isnull=False,
+                product_variant__product__merch__artist__isnull=False,
             )
             .values_list(
-                'product_variant__product__merch__owner__artist_profile__id',
+                'product_variant__product__merch__artist__id',
                 flat=True,
             )
             .distinct(),
@@ -93,7 +93,12 @@ class CartCalculationService:
         Необходимо для проверки применимости промокода, так как промокоды
         выпущены конкретными артистами для своих товаров.
         """
-        return item.product_variant.product.content.owner_id
+        content = item.product_variant.product.content
+
+        if not content or not content.artist:
+            return None
+
+        return content.artist.user_id
 
     def get_item_discounts(self) -> dict[int, Decimal]:
         """Рассчитывает и возвращает скидку для каждой позиции корзины.

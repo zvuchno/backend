@@ -103,9 +103,14 @@ class Product(models.Model):
         return self.content.name if self.content else ''
 
     @property
-    def owner(self):
-        """Возвращает владельца на основе типа продукта."""
-        return self.content.owner if self.content else None
+    def artist(self):
+        """Возвращает публичный профиль артиста товара."""
+        return self.content.artist if self.content else None
+
+    @property
+    def payout_recipient(self):
+        """Возвращает получателя выплат товара."""
+        return self.content.payout_recipient if self.content else None
 
     def determine_product_type(self):
         """Автозаполнение поля product_type.
