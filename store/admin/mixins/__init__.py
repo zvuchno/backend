@@ -5,7 +5,7 @@
 не зависящие от конкретной модели.
 """
 
-from .auto_owner_mixin import AutoCreatedByAdminMixin
+from .auto_created_by_mixin import AutoCreatedByAdminMixin
 from .commerce import CommerceBaseMixin, CommerceDisplayMixin
 
 __all__ = [

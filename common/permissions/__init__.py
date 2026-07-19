@@ -11,7 +11,6 @@ from .ownership import (
     IsStoreObjectManager,
     IsStoreObjectManagerOrReadOnly,
     IsStoreObjectOwner,
-    IsStoreObjectOwnerOrReadOnly,
     IsUserObjectOwner,
     IsUserObjectOwnerOrReadOnly,
 )
@@ -27,7 +26,6 @@ __all__ = [
     'IsStoreObjectManager',
     'IsStoreObjectManagerOrReadOnly',
     'IsStoreObjectOwner',
-    'IsStoreObjectOwnerOrReadOnly',
     'IsUserObjectOwner',
     'IsUserObjectOwnerOrReadOnly',
     'IsUserVerified',

@@ -66,19 +66,6 @@ class IsStoreObjectOwner(_IsOwnerByField):
     owner_field_name = 'owner'
 
 
-class IsStoreObjectOwnerOrReadOnly(_IsOwnerByFieldOrReadOnly):
-    """Чтение объекта витрины всем, изменение только владельцу.
-
-    Используется для object-level проверки моделей витрины,
-    в которых владелец хранится в поле `owner`.
-
-    Безопасные методы доступны всем.
-    Небезопасные методы доступны только владельцу объекта.
-    """
-
-    owner_field_name = 'owner'
-
-
 class IsUserObjectOwner(_IsOwnerByField):
     """Доступ к объекту только пользователю, связанному через поле `user`.
 
