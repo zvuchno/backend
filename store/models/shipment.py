@@ -55,7 +55,7 @@ class Shipment(TimestampModel):
         max_length=20,
         choices=State.choices,
         blank=True,
-        default='',
+        default=State.CREATED,
         help_text='Текущее состояние запроса',
     )
     cdek_number = models.CharField(

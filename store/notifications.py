@@ -45,6 +45,11 @@ def send_shipment_registered_notification(shipment) -> None:
     order = shipment.order
 
     shipment_items = OrderItem.objects.filter(shipment=shipment)
+    if not shipment_items.exists():
+        raise ValueError(
+            f'Отправление id={shipment.id} найдено, '
+            'но к нему не привязан ни один товар.',
+        )
 
     item_lines = []
     for item in shipment_items:
