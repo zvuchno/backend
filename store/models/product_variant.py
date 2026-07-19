@@ -43,7 +43,7 @@ class ProductVariant(ActivatableModel, TimestampModel):
         'Значение свойства',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
-        null=True,
+        default='',
     )
 
     def generate_sku(self):

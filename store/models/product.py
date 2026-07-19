@@ -59,7 +59,7 @@ class Product(models.Model):
         'Название свойства',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
-        null=True,
+        default='',
     )
     album = models.OneToOneField(
         'store.Album',
