@@ -58,7 +58,7 @@ class Shipment(TimestampModel):
         default='',
         help_text='Текущее состояние запроса',
     )
-    tracking_number = models.CharField(
+    cdek_number = models.CharField(
         'Номер накладной',
         max_length=MAX_CHAR_LENGTH,
         blank=True,

@@ -59,7 +59,7 @@ def send_shipment_registered_notification(shipment) -> None:
     message = (
         '📦 Сформирована накладная СДЭК\n\n'
         f'Заказ: {order.order_number}\n'
-        f'Номер отправления: `{shipment.tracking_number}`\n'
+        f'Номер отправления: `{shipment.cdek_number}`\n'
         '================================\n'
         'Товары к отправлению:\n'
         f'{goods_list}'

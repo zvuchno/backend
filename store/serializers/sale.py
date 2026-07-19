@@ -43,8 +43,8 @@ class ArtistSaleDetailSerializer(
     """Сериализатор для подробного просмотра заказа продавца."""
 
     total = serializers.SerializerMethodField()
-    tracking_number = serializers.CharField(
-        source='artist_tracking_number',
+    cdek_number = serializers.CharField(
+        source='artist_cdek_number',
         read_only=True,
     )
 
@@ -53,4 +53,4 @@ class ArtistSaleDetailSerializer(
             field
             for field in OrderDetailSerializer.Meta.fields
             if field not in ('delivery_price', 'subtotal')
-        ) + ('tracking_number',)
+        ) + ('cdek_number',)

@@ -183,7 +183,9 @@ class OrderService:
         if pickup_point:
             pickup_point_data = {
                 'address': pickup_point.address,
-                'date': pickup_point.pickup_date.isoformat(),
+                'date': pickup_point.pickup_date.isoformat()
+                if pickup_point.pickup_date
+                else None,
             }
 
         subtotal = calc_service.get_subtotal()

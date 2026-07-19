@@ -146,7 +146,7 @@ class ShipmentInline(admin.TabularInline):
         'artist',
         'cdek_uuid',
         'state',
-        'tracking_number',
+        'cdek_number',
         'weight',
         'display_estimated_delivery_cost',
     )
