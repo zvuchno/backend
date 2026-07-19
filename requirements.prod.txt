@@ -15,6 +15,7 @@ django-storages==1.14.6
 djoser==2.3.3
 drf-spectacular==0.29.0
 djoser==2.3.3
+flower==2.0.1
 gunicorn==25.1.0
 phonenumbers==9.0.25
 pillow==12.1.1
