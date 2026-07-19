@@ -116,9 +116,9 @@ def update_cdek_shipment_task(self, shipment_id: int):
         )
         raise self.retry()
 
-    tracking_number = entity.get('cdek_number')
+    cdek_number = entity.get('cdek_number')
 
-    if not tracking_number:
+    if not cdek_number:
         logger.warning(
             'СДЭК не вернул номер накладной для uuid=%s',
             shipment.cdek_uuid,
@@ -126,12 +126,12 @@ def update_cdek_shipment_task(self, shipment_id: int):
         raise self.retry()
 
     with transaction.atomic():
-        shipment.tracking_number = tracking_number
+        shipment.cdek_number = cdek_number
         shipment.state = state
 
         shipment.save(
             update_fields=[
-                'tracking_number',
+                'cdek_number',
                 'state',
                 'updated_at',
             ],
@@ -145,5 +145,5 @@ def update_cdek_shipment_task(self, shipment_id: int):
     logger.info(
         'Отправление %s успешно зарегистрировано. Трек-номер: %s',
         shipment.cdek_uuid,
-        shipment.tracking_number,
+        shipment.cdek_number,
     )

@@ -146,7 +146,7 @@ class MerchAdmin(
 
         return readonly_fields
 
-    autocomplete_fields = ('album', 'kind')
+    autocomplete_fields = ('album', 'artist', 'kind')
 
     fieldsets = (
         (

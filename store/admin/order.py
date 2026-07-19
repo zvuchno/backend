@@ -3,6 +3,8 @@
 Содержит настройку интерфейса Django Admin для модели заказа покупателя.
 """
 
+from copy import deepcopy
+
 from django.contrib import admin, messages
 from django.db import transaction
 from django.db.models import Exists, OuterRef
@@ -146,12 +148,16 @@ class ShipmentInline(admin.TabularInline):
         'artist',
         'cdek_uuid',
         'state',
-        'tracking_number',
+        'cdek_number',
         'weight',
-        'estimated_delivery_cost',
+        'display_estimated_delivery_cost',
     )
     readonly_fields = fields
     can_delete = False
+
+    @admin.display(description='Расчетная стоимость доставки артиста (руб.)')
+    def display_estimated_delivery_cost(self, obj):
+        return format_money(obj.estimated_delivery_cost)
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -263,6 +269,31 @@ class OrderAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = deepcopy(super().get_fieldsets(request, obj))
+
+        if not obj:
+            return fieldsets
+
+        checks = {
+            'pickup_point': bool(obj.pickup_point),
+            'display_address': bool(self.display_address(obj)),
+            'cdek_city_code': bool(obj.cdek_city_code),
+            'delivery_calculation': bool(obj.delivery_calculation),
+        }
+
+        for title, options in fieldsets:
+            if title == 'Доставка':
+                options['fields'] = tuple(
+                    field
+                    for field in options['fields']
+                    if checks.get(field, True)
+                )
+                break
+
+        return fieldsets
+
     inlines = (OrderItemInline, PaymentInline, ShipmentInline)
 
     @admin.display(description='Сумма товаров (руб.)')
@@ -289,7 +320,7 @@ class OrderAdmin(admin.ModelAdmin):
             f'д. {obj.house}' if obj.house else None,
             f'кв/оф. {obj.apartment}' if obj.apartment else None,
         ]
-        return ', '.join(filter(None, parts)) or '-'
+        return ', '.join(filter(None, parts)) or ''
 
     @admin.display(description='Оплачен', boolean=True)
     def is_paid(self, obj):

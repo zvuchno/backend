@@ -50,10 +50,10 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         if not user.is_authenticated:
             return Order.objects.none()
-        shipment_tracking_subquery = Shipment.objects.filter(
+        shipment_cdek_number_subquery = Shipment.objects.filter(
             order=OuterRef('pk'),
             artist=user.artist_profile,
-        ).values('tracking_number')[:1]
+        ).values('cdek_number')[:1]
 
         # Заказы, где есть товары этого артиста
         order_filter = (
@@ -119,9 +119,9 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
                     filter=order_filter,
                 ),
                 # Номер отправления текущего артиста (с защитой от NULL)
-                artist_tracking_number=Coalesce(
+                artist_cdek_number=Coalesce(
                     Subquery(
-                        shipment_tracking_subquery,
+                        shipment_cdek_number_subquery,
                         output_field=CharField(),
                     ),
                     Value(''),

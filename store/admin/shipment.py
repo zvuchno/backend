@@ -16,7 +16,7 @@ class ShipmentAdmin(admin.ModelAdmin):
         'order',
         'artist',
         'state',
-        'tracking_number',
+        'cdek_number',
         'updated_at',
     )
     list_filter = (
@@ -26,7 +26,7 @@ class ShipmentAdmin(admin.ModelAdmin):
     search_fields = (
         'artist__user__email',
         'order__order_number',
-        'tracking_number',
+        'cdek_number',
     )
     search_help_text = (
         'Поиск по email арстиста, номеру заказа, трек-номеру отправления',
@@ -36,7 +36,7 @@ class ShipmentAdmin(admin.ModelAdmin):
         'artist',
         'state',
         'cdek_uuid',
-        'tracking_number',
+        'cdek_number',
         'weight',
         'estimated_delivery_cost',
         'created_at',
@@ -52,7 +52,7 @@ class ShipmentAdmin(admin.ModelAdmin):
                     'artist',
                     'state',
                     'cdek_uuid',
-                    'tracking_number',
+                    'cdek_number',
                     'estimated_delivery_cost',
                     'weight',
                 ),

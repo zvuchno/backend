@@ -22,10 +22,10 @@ class Shipment(TimestampModel):
     """
 
     class State(models.TextChoices):
-        PENDING = 'PENDING', 'В ожидании'
-        ACCEPTED = 'ACCEPTED', 'Принято'
-        WAITING = 'WAITING', 'Ожидание'
-        SUCCESSFUL = 'SUCCESSFUL', 'Успешно'
+        CREATED = 'CREATED', 'Создан'
+        ACCEPTED = 'ACCEPTED', 'Запрос принят'
+        WAITING = 'WAITING', 'Ожидает обработки'
+        SUCCESSFUL = 'SUCCESSFUL', 'Обработан'
         INVALID = 'INVALID', 'Ошибка'
 
     order = models.ForeignKey(
@@ -58,7 +58,7 @@ class Shipment(TimestampModel):
         default='',
         help_text='Текущее состояние запроса',
     )
-    tracking_number = models.CharField(
+    cdek_number = models.CharField(
         'Номер накладной',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
