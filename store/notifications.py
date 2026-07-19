@@ -52,16 +52,16 @@ def send_shipment_registered_notification(shipment) -> None:
         sku = info.get('sku', '—')
         kind = info.get('kind', '')
         name = info.get('name', 'Товар')
-        item_lines.append(f'• {sku} | {kind} {name} — x{item.quantity} шт.')
+        item_lines.append(f'• {sku} | {kind} {name} — {item.quantity} шт.')
 
     goods_list = '\n'.join(item_lines)
 
     message = (
         '📦 Сформирована накладная СДЭК\n\n'
         f'Заказ: {order.order_number}\n'
-        f'Номер отправления: `{shipment.cdek_number}`\n'
-        '================================\n'
-        'Товары к отправлению:\n'
+        f'Номер отправления: {shipment.cdek_number}\n'
+        '===========================\n'
+        'Товары к отправлению:\n\n'
         f'{goods_list}'
     )
 

@@ -27,6 +27,7 @@ drf-spectacular==0.29.0
 inflection==0.5.1
 djoser==2.3.3
 factory-boy==3.3.3
+flower==2.0.1
 idna==3.11
 isort==8.0.1
 jsonschema==4.26.0

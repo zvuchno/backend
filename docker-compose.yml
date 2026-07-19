@@ -4,6 +4,7 @@ volumes:
   media:
   celery_beat_data:
   redis_data:
+  flower_data:
 
 services:
   db:
@@ -116,6 +117,28 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+  flower:
+    build:
+      context: .
+    env_file:
+      - .env
+    command: >
+      celery -A config flower
+      --address=0.0.0.0
+      --port=5555
+      --url-prefix=internal/flower
+      --xheaders=True
+      --persistent=True
+      --db=/data/flower
+      --state-save-interval=5000
+    volumes:
+      - flower_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5555:5555'
   bot:
     build: .
     env_file: .env
@@ -141,5 +164,6 @@ services:
       - ./media:/media:ro
     depends_on:
       - backend
+      - flower
     ports:
       - 8000:80

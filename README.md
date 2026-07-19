@@ -145,6 +145,35 @@ docker compose exec backend python manage.py collectstatic
 ```
 Проект доступен по адресу: [http://localhost:8000](http://localhost:8000)
 
+
+
+### Мониторинг Celery через Flower
+
+Flower используется для просмотра Celery worker и состояния фоновых задач.
+
+Локально:
+
+```text
+http://localhost:5555/internal/flower/
+```
+
+На тестовом сервере:
+
+```text
+https://dev.zvuchno.space/internal/flower/
+```
+
+Доступ выполняется через Google OAuth. Необходимые переменные перечислены в `.env.example`.
+
+После изменения переменных `FLOWER_*` контейнер необходимо пересоздать:
+
+```bash
+docker compose up -d --force-recreate flower
+```
+
+> [!NOTE]
+> Сразу после запуска Flower при первом открытии worker иногда появляется ошибка `Unknown worker`. Обычно достаточно обновить страницу или открыть worker повторно через несколько секунд.
+
 ---
 
 ## Документация API доступна по следующим URL:
