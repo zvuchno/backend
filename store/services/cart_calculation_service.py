@@ -7,7 +7,7 @@
 
 from decimal import Decimal
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
 from store.constants import ZERO_MONEY
 from store.models import Product, Promocode
@@ -32,7 +32,12 @@ class CartCalculationService:
         self.cart = cart
 
         self.items = list(
-            cart.items.with_prices().select_related(
+            cart.items
+            .with_prices()
+            .filter(
+                ~Q(product_variant__stock=0),
+            )
+            .select_related(
                 'product_variant__product__album',
                 'product_variant__product__track',
                 'product_variant__product__merch',
