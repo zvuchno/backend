@@ -56,7 +56,11 @@ def register_cdek_orders_task(order_id):
 def update_cdek_shipment_task(self, shipment_id: int):
     """Ожидает завершения регистрации отправления в СДЭК."""
     try:
-        shipment = Shipment.objects.get(pk=shipment_id)
+        shipment = Shipment.objects.select_related(
+            'artist__user',
+            'artist__label__user',
+            'order',
+        ).get(pk=shipment_id)
     except Shipment.DoesNotExist:
         logger.warning(
             'Отправление id=%s не найдено.',
