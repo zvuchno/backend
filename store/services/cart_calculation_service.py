@@ -52,16 +52,15 @@ class CartCalculationService:
             return []
 
         return list(
-            self.cart.items
-            .filter(
-                product_variant__product__product_type=Product.ProductType.MERCH,
-                product_variant__product__merch__artist__isnull=False,
-            )
-            .values_list(
-                'product_variant__product__merch__artist__id',
-                flat=True,
-            )
-            .distinct(),
+            set(
+                self.cart.items.filter(
+                    product_variant__product__product_type=Product.ProductType.MERCH,
+                    product_variant__product__merch__artist__isnull=False,
+                ).values_list(
+                    'product_variant__product__merch__artist__id',
+                    flat=True,
+                ),
+            ),
         )
 
     def get_available_pickup_points(self) -> QuerySet:
