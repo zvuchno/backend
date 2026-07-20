@@ -94,13 +94,20 @@ class TrackCommerceSerializer(serializers.Serializer):
 class PlayerAlbumTrackSerializer(TrackReadSerializer):
     """Трек в очереди воспроизведения альбома."""
 
+    variant_id = serializers.IntegerField(
+        allow_null=True,
+        read_only=True,
+    )
     playback = TrackPlaybackSerializer(
         source='*',
         read_only=True,
     )
 
     class Meta(TrackReadSerializer.Meta):
-        fields = TrackReadSerializer.Meta.fields + ('playback',)
+        fields = TrackReadSerializer.Meta.fields + (
+            'variant_id',
+            'playback',
+        )
 
     def to_representation(self, instance):
         """Возвращает данные трека для очереди плеера."""
