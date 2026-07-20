@@ -599,7 +599,7 @@ class CDEKService:
             shipment = Shipment.objects.create(
                 order=order,
                 artist=artist_profiles[artist_id],
-                state=Shipment.State.PENDING,
+                state=Shipment.State.CREATED,
                 estimated_delivery_cost=delivery_data['cost'],
             )
 

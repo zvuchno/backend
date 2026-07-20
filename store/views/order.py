@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Prefetch
 from django.utils import timezone
@@ -13,6 +14,7 @@ from common.permissions import IsUserObjectOwner
 from common.utils import get_client_ip
 
 from store.constants import RESERVATION_TTL_MINUTES
+from store.exceptions import NotEnoughStock
 from store.models import Image, Order, OrderItem
 from store.schema import checkout_schema, order_schema
 from store.serializers import (
@@ -123,24 +125,26 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             context={'request': request, 'cart': cart},
         )
         serializer.is_valid(raise_exception=True)
-
-        with transaction.atomic():
-            order = OrderService.create_order(
-                user=request.user,
-                cart=cart,
-                validated_data=serializer.validated_data,
-                ip_address=ip_address,
-                user_agent=request.META.get('HTTP_USER_AGENT'),
-            )
-            order = ReservationService.reserve_order(
-                order,
-                reserved_until=(
-                    timezone.now()
-                    + timedelta(
-                        minutes=RESERVATION_TTL_MINUTES,
-                    )
-                ),
-            )
+        try:
+            with transaction.atomic():
+                order = OrderService.create_order(
+                    user=user,
+                    cart=cart,
+                    validated_data=serializer.validated_data,
+                    ip_address=ip_address,
+                    user_agent=request.META.get('HTTP_USER_AGENT'),
+                )
+                order = ReservationService.reserve_order(
+                    order,
+                    reserved_until=(
+                        timezone.now()
+                        + timedelta(
+                            minutes=RESERVATION_TTL_MINUTES,
+                        )
+                    ),
+                )
+        except NotEnoughStock as exc:
+            raise ValidationError({'detail': str(exc)})
         return Response(
             self.get_serializer(order).data,
             status=status.HTTP_201_CREATED,
