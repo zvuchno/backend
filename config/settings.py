@@ -449,6 +449,9 @@ REST_FRAMEWORK = {
 }
 
 # TODO: настроить периодический запуск flushexpiredtokens
+ROTATE_REFRESH_TOKENS = (
+    os.getenv('ROTATE_REFRESH_TOKENS', 'False').strip().lower() == 'true'
+)
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(
         minutes=int(os.getenv('JWT_ACCESS_MINUTES', 30))
@@ -456,7 +459,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(
         days=int(os.getenv('JWT_REFRESH_DAYS', 7))
     ),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS': ROTATE_REFRESH_TOKENS,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
