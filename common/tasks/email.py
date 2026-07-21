@@ -1,21 +1,26 @@
 """Celery-задачи отправки email."""
 
+import smtplib
+
 from celery import shared_task
 
-from common.services.email import (
-    EMAIL_SEND_EXCEPTIONS,
-    _send_template_email,
-)
+from common.services.email import _send_template_email
 
 
 @shared_task(
-    autoretry_for=EMAIL_SEND_EXCEPTIONS,
+    bind=True,
+    autoretry_for=(
+        TimeoutError,
+        OSError,
+        smtplib.SMTPServerDisconnected,
+    ),
     retry_backoff=30,
     retry_backoff_max=300,
     retry_jitter=True,
     max_retries=5,
 )
 def send_template_email_task(
+    self,
     *,
     subject: str,
     to_email: str,
@@ -23,9 +28,22 @@ def send_template_email_task(
     context: dict,
 ) -> None:
     """Отправляет текстовое и HTML-письмо."""
-    _send_template_email(
-        subject=subject,
-        to_email=to_email,
-        template_name=template_name,
-        context=context,
-    )
+    try:
+        _send_template_email(
+            subject=subject,
+            to_email=to_email,
+            template_name=template_name,
+            context=context,
+        )
+    except smtplib.SMTPResponseException as exc:
+        if 400 <= exc.smtp_code < 500:
+            countdown = min(
+                30 * 2**self.request.retries,
+                300,
+            )
+            raise self.retry(
+                exc=exc,
+                countdown=countdown,
+            )
+
+        raise
