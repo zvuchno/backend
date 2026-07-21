@@ -10,7 +10,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
-from store.models import Delivery, Product
+from store.models import Delivery
 from store.services import CartCalculationService
 from users.models import ArtistPickupPoint
 
@@ -118,21 +118,13 @@ class CheckoutSerializer(serializers.Serializer):
     def validate(self, attrs):
         """Проверяет данные оформления заказа."""
         cart = self.context['cart']
+        calculation_service = CartCalculationService(cart)
 
-        cart_items = cart.items.select_related(
-            'product_variant__product',
-        )
-
-        if not cart_items.exists():
+        if not calculation_service.checkout_items.exists():
             raise serializers.ValidationError({
                 'cart': 'Корзина пуста.',
             })
-
-        has_merch = cart_items.filter(
-            product_variant__product__product_type=Product.ProductType.MERCH,
-        ).exists()
-
-        if not has_merch:
+        if not calculation_service.has_merch():
             attrs['delivery'] = None
             self._clear_fields(attrs, *CDEK_FIELDS, 'pickup_point')
             return attrs

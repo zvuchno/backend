@@ -360,10 +360,8 @@ class CDEKService:
         )
         # Считаем количество мерча для каждого артиста
         artist_quantities = defaultdict(int)
-        cart_items = cart.items.filter(
+        cart_items = calculation_service.checkout_items.filter(
             product_variant__product__product_type=Product.ProductType.MERCH,
-        ).select_related(
-            'product_variant__product__merch__artist',
         )
 
         for item in cart_items:

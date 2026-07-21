@@ -199,7 +199,7 @@ class CartService:
         has_applicable_items = any(
             calculation_service._get_item_owner_id(item)
             == cart.promocode.owner_id
-            for item in calculation_service.items
+            for item in calculation_service.checkout_items
         )
         # Если подходящих товаров нет — дропаем промокод
         if not has_applicable_items:
