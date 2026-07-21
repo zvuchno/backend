@@ -3,6 +3,7 @@
 from rest_framework import serializers
 
 from store.constants import (
+    CHAR_PRESET_SIMPLE,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
@@ -133,11 +134,15 @@ class CatalogReleaseVariantSerializer(
 
         merch = product.merch
         kind = getattr(merch, 'kind', None)
+        kind_name = kind.name if kind else 'Физический носитель'
 
-        if not kind:
-            return 'Физический носитель'
+        if (
+            not product.property_name
+            or obj.property_value == CHAR_PRESET_SIMPLE
+        ):
+            return kind_name
 
-        return kind.name
+        return f'{kind_name} — {obj.property_value}'
 
 
 class CatalogReleaseDetailSerializer(
@@ -170,10 +175,29 @@ class CatalogReleaseDetailSerializer(
 
         for carrier in getattr(obj, 'active_carriers', []):
             product = getattr(carrier, 'product', None)
-            if product is not None:
-                variants.extend(
-                    getattr(product, 'active_carriers_variants', []),
-                )
+            if product is None:
+                continue
+
+            carrier_variants = getattr(
+                product,
+                'active_carriers_variants',
+                [],
+            )
+
+            if product.property_name:
+                carrier_variants = [
+                    variant
+                    for variant in carrier_variants
+                    if variant.property_value != CHAR_PRESET_SIMPLE
+                ]
+            else:
+                carrier_variants = [
+                    variant
+                    for variant in carrier_variants
+                    if variant.property_value == CHAR_PRESET_SIMPLE
+                ]
+
+            variants.extend(carrier_variants)
 
         return CatalogReleaseVariantSerializer(
             variants,
