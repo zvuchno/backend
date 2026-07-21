@@ -11,7 +11,8 @@ MAX_SLUG_LENGTH = 50
 MAX_STR_LENGTH = 40
 MAX_NUMBER_ORDER_LENGTH = 15
 MAX_COMMENT_LENGTH = 200
-MAX_PROMOCODE_LENGTH = 32
+MIN_PROMOCODE_LENGTH = 8
+MAX_PROMOCODE_LENGTH = 20
 PROMOCODE_FORMAT_HELP_TEXT = (
     'Код промокода может содержать только заглавные '
     'латинские буквы, цифры, дефис и подчеркивание.'
