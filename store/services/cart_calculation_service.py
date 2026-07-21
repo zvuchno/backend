@@ -18,25 +18,26 @@ DISCOUNT_PRECISION = Decimal('0.01')
 
 
 class CartCalculationService:
-    """Сервис расчёта корзины.
+    """Сервис подготовки и расчёта корзины.
 
-    Отвечает за расчёт стоимостных показателей:
-    - subtotal (сумма до скидок)
-    - скидки по каждой конкретной позиции
-    - общая сумма скидки по промокоду
-    - итоговая сумма корзины (total) к оплате
+    Определяет позиции, доступные для оформления заказа, и рассчитывает
+    стоимость корзины, скидки по промокоду и итоговую сумму.
     """
 
     def __init__(self, cart):
         """Инициализирует сервис и кэширует позиции корзины в память."""
         self.cart = cart
 
-        self.items = list(
-            cart.items.with_prices().select_related(
-                'product_variant__product__album',
-                'product_variant__product__track',
-                'product_variant__product__merch',
-            ),
+        self._checkout_items = (
+            cart.items
+            .with_prices()
+            # Недоступные позиции не участвуют в расчёте и оформлении заказа
+            .exclude(product_variant__stock=0)
+            .select_related(
+                'product_variant__product__album__artist',
+                'product_variant__product__track__album__artist',
+                'product_variant__product__merch__artist',
+            )
         )
 
         self.promocode = cart.promocode
@@ -46,21 +47,28 @@ class CartCalculationService:
         self._discount_total = None
         self._total = None
 
+    @property
+    def checkout_items(self):
+        return self._checkout_items
+
     def get_merch_artist_ids(self) -> list[int]:
         """Возвращает список ID уникальных артистов, чей мерч в корзине."""
-        if not self.cart:
-            return []
+        return list({
+            item.product_variant.product.merch.artist_id
+            for item in self.checkout_items
+            if (
+                item.product_variant.product.product_type
+                == Product.ProductType.MERCH
+                and item.product_variant.product.merch.artist_id
+            )
+        })
 
-        return list(
-            set(
-                self.cart.items.filter(
-                    product_variant__product__product_type=Product.ProductType.MERCH,
-                    product_variant__product__merch__artist__isnull=False,
-                ).values_list(
-                    'product_variant__product__merch__artist__id',
-                    flat=True,
-                ),
-            ),
+    def has_merch(self) -> bool:
+        """Определяет факт наличия мерча в корзине."""
+        return any(
+            item.product_variant.product.product_type
+            == Product.ProductType.MERCH
+            for item in self.checkout_items
         )
 
     def get_available_pickup_points(self) -> QuerySet:
@@ -80,7 +88,7 @@ class CartCalculationService:
             return self._subtotal
 
         self._subtotal = sum(
-            (item.base_line_total for item in self.items),
+            (item.base_line_total for item in self.checkout_items),
             ZERO_MONEY,
         ).quantize(ZERO_MONEY)
 
@@ -108,7 +116,7 @@ class CartCalculationService:
         if self._discounts is not None:
             return self._discounts
 
-        discounts = {item.id: ZERO_DISCOUNT for item in self.items}
+        discounts = {item.id: ZERO_DISCOUNT for item in self.checkout_items}
 
         if not self.promocode or not self.promocode.is_available:
             self._discounts = discounts
@@ -117,7 +125,7 @@ class CartCalculationService:
         # Отбираем товары, автор которых совпадает с автором промокода
         applicable_items = [
             item
-            for item in self.items
+            for item in self.checkout_items
             if (
                 self._get_item_owner_id(item) == self.promocode.owner_id
                 and item.base_line_total > ZERO_DISCOUNT

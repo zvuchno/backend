@@ -12,7 +12,7 @@ from django.db.models import F
 
 from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
-from store.models import Delivery, Order, OrderItem
+from store.models import CartItem, Delivery, Order, OrderItem
 from store.services import CDEKService
 from users.models import ConsentDocument, UserConsent
 
@@ -37,19 +37,17 @@ class OrderService:
         - доступные способы доставки (если в корзине есть мерч)
         """
         cart = cart or (user.cart if user else None)
-        calculation_service = CartCalculationService(cart)
+        calc_service = CartCalculationService(cart)
 
         # Получаем список ID уникальных артистов, чей мерч в корзине
-        cart_artist_ids = calculation_service.get_merch_artist_ids()
+        cart_artist_ids = calc_service.get_merch_artist_ids()
 
         if not cart_artist_ids:  # Мерч тут есть?
             deliveries_qs = Delivery.objects.none()
             pickup_points_data = []
         else:
             deliveries_qs = Delivery.objects.filter(is_active=True)
-            pickup_points_data = (
-                calculation_service.get_available_pickup_points()
-            )
+            pickup_points_data = calc_service.get_available_pickup_points()
 
             # Если для текущей корзины нет доступных точек — скрываем самовывоз
             if not pickup_points_data.exists():
@@ -67,7 +65,7 @@ class OrderService:
                 'city': city,
                 'city_code': city_code,
             },
-            'subtotal': calculation_service.get_total(),
+            'subtotal': calc_service.get_total(),
             'deliveries': deliveries_qs,
             'pickup_points': pickup_points_data,
         }
@@ -95,22 +93,16 @@ class OrderService:
             user.id if user else None,
             cart.id,
         )
+        calc_service = CartCalculationService(cart)
         # Блокируем строки корзины
-        cart_items = (
-            cart.items
-            .select_for_update()
-            .select_related('product_variant__product')
-            .prefetch_related(
-                'product_variant__product__album__artist',
-                'product_variant__product__track__album__artist',
-                'product_variant__product__merch__artist',
-            )
+        cart_items = list(
+            calc_service.checkout_items.select_for_update(of=('self',)),
         )
 
-        if not cart_items.exists():
+        if not cart_items:
             raise ValidationError('Нельзя оформить заказ с пустой корзиной.')
 
-        # Проверяем актуальную доступность товаров прямо из БД
+        # Проверяем актуальную доступность товаров
         inactive_items = [
             item
             for item in cart_items
@@ -156,7 +148,6 @@ class OrderService:
             # Обновляем инстанс в корзине
             cart.promocode = promocode
 
-        calc_service = CartCalculationService(cart)
         item_discounts = calc_service.get_item_discounts()
 
         if cart.promocode and calc_service.get_discount_total() == ZERO_MONEY:
@@ -193,6 +184,7 @@ class OrderService:
         delivery_price, delivery_calculation = (
             OrderService._get_delivery_result(
                 cart,
+                calc_service,
                 delivery,
                 cdek_city_code,
                 tariffs,
@@ -232,7 +224,6 @@ class OrderService:
         )
 
         OrderService._finalize_cart_and_promocode(
-            user,
             cart,
             order,
             cart_items,
@@ -389,6 +380,7 @@ class OrderService:
     @staticmethod
     def _get_delivery_result(
         cart,
+        calc_service,
         delivery,
         cdek_city_code,
         tariffs,
@@ -404,7 +396,7 @@ class OrderService:
         ):
             return ZERO_MONEY, {}
 
-        if not CartCalculationService(cart).get_merch_artist_ids():
+        if not calc_service.get_merch_artist_ids():
             return ZERO_MONEY, {}
 
         result = CDEKService().calculate(
@@ -426,15 +418,19 @@ class OrderService:
         return Decimal(delivery_sum), result.get('delivery_calculation', {})
 
     @staticmethod
-    def _finalize_cart_and_promocode(user, cart, order, cart_items) -> None:
+    def _finalize_cart_and_promocode(
+        cart,
+        order,
+        checkout_items,
+    ) -> None:
         """Очищает корзину, промокод, и инкрементирует счетчик."""
-        cart_items.delete()
-
-        if not user or not user.is_authenticated:
-            cart.delete()
-        else:
-            cart.promocode = None
-            cart.save()
+        checkout_item_ids = [item.id for item in checkout_items]
+        CartItem.objects.filter(
+            cart=cart,
+            id__in=checkout_item_ids,
+        ).delete()
+        cart.promocode = None
+        cart.save(update_fields=['promocode'])
 
         if order.promocode_id:
             order.promocode.__class__.objects.filter(
