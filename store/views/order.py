@@ -14,7 +14,7 @@ from common.permissions import IsUserObjectOwner
 from common.utils import get_client_ip
 
 from store.constants import RESERVATION_TTL_MINUTES
-from store.exceptions import NotEnoughStock
+from store.exceptions import NotEnoughStock, PromocodeNotAvailable
 from store.models import Image, Order, OrderItem
 from store.schema import checkout_schema, order_schema
 from store.serializers import (
@@ -145,6 +145,10 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                 )
         except NotEnoughStock as exc:
             raise ValidationError({'detail': str(exc)})
+
+        except PromocodeNotAvailable as exc:
+            raise ValidationError({'promocode': str(exc)})
+
         return Response(
             self.get_serializer(order).data,
             status=status.HTTP_201_CREATED,

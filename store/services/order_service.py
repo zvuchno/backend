@@ -8,7 +8,6 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import F
 
 from .cart_calculation_service import CartCalculationService
 from store.constants import ZERO_MONEY
@@ -431,13 +430,3 @@ class OrderService:
         ).delete()
         cart.promocode = None
         cart.save(update_fields=['promocode'])
-
-        if order.promocode_id:
-            order.promocode.__class__.objects.filter(
-                id=order.promocode_id,
-            ).update(used_count=F('used_count') + 1)
-            logger.info(
-                'Промокод применен: promocode_id=%s, order_id=%s',
-                order.promocode_id,
-                order.id,
-            )

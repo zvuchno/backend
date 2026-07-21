@@ -27,3 +27,7 @@ class TemporaryAudioStorageError(AudioProcessingError):
 
 class NotEnoughStock(Exception):
     """Недостаточно товара на складе."""
+
+
+class PromocodeNotAvailable(Exception):
+    """Промокод недоступен для применения."""

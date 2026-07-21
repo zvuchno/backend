@@ -3,9 +3,10 @@
 import logging
 
 from django.db import transaction
+from django.db.models import F
 
-from store.exceptions import NotEnoughStock
-from store.models import Order, Product, ProductVariant
+from store.exceptions import NotEnoughStock, PromocodeNotAvailable
+from store.models import Order, Product, ProductVariant, Promocode
 
 logger = logging.getLogger(__name__)
 
@@ -30,17 +31,25 @@ class ReservationService:
             ).select_related('product_variant'),
         )
 
-        variant_ids = [item.product_variant_id for item in order_items]
+        variant_ids = sorted({item.product_variant_id for item in order_items})
 
         # Блокируем остатки
         variants = (
             ProductVariant.objects
             .select_for_update()
-            .select_related(
-                'product',
-            )
+            .select_related('product')
+            .order_by('id')
             .in_bulk(variant_ids)
         )
+        # Блокируем промокод
+        promocode = None
+        if order.promocode_id:
+            promocode = (
+                Promocode.objects
+                .select_for_update()
+                .filter(pk=order.promocode_id)
+                .first()
+            )
 
         # Проверка наличия
         for item in order_items:
@@ -52,13 +61,33 @@ class ReservationService:
                     f'({variant.property_value})" на складе.',
                 )
 
-        # Списание
+        if promocode and not promocode.is_available:
+            logger.warning(
+                'Заказ id=%s Данный промокод больше не доступен: '
+                'promocode_id=%s',
+                order.id,
+                order.promocode_id,
+            )
+            raise PromocodeNotAvailable('Данный промокод больше не доступен')
+
+        # Списание остатков
         variants_to_update = []
         for item in order_items:
             variant = variants[item.product_variant_id]
             variant.stock -= item.quantity
             variants_to_update.append(variant)
-        ProductVariant.objects.bulk_update(variants_to_update, ['stock'])
+        if variants_to_update:
+            ProductVariant.objects.bulk_update(variants_to_update, ['stock'])
+
+        if promocode:
+            Promocode.objects.filter(pk=promocode.pk).update(
+                used_count=F('used_count') + 1,
+            )
+            logger.info(
+                'Заказ id=%s зарезервирован промокод: promocode_id=%s',
+                order.id,
+                order.promocode_id,
+            )
 
         order.status = status
         order.reserved_until = reserved_until
@@ -84,18 +113,27 @@ class ReservationService:
             ).select_related('product_variant'),
         )
 
-        variant_ids = [item.product_variant_id for item in order_items]
+        variant_ids = sorted({item.product_variant_id for item in order_items})
 
         # Блокируем остатки
         variants = (
             ProductVariant.objects
             .select_for_update()
-            .select_related(
-                'product',
-            )
+            .select_related('product')
+            .order_by('id')
             .in_bulk(variant_ids)
         )
+        # Блокируем промокод
+        promocode = None
+        if order.promocode_id:
+            promocode = (
+                Promocode.objects
+                .select_for_update()
+                .filter(pk=order.promocode_id)
+                .first()
+            )
 
+        # Возврат остатков
         variants_to_update = []
         for item in order_items:
             variant = variants[item.product_variant_id]
@@ -106,6 +144,14 @@ class ReservationService:
             ProductVariant.objects.bulk_update(
                 variants_to_update,
                 ['stock'],
+            )
+
+        if promocode:
+            Promocode.objects.filter(
+                pk=promocode.pk,
+                used_count__gt=0,
+            ).update(
+                used_count=F('used_count') - 1,
             )
 
         order.status = status
