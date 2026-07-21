@@ -1,9 +1,4 @@
-"""Сервис подтверждения email.
-
-Пока без отправки письма.
-"""
-
-import logging
+"""Сервис подтверждения email."""
 
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
@@ -12,12 +7,9 @@ from django.utils.http import (
     urlsafe_base64_encode,
 )
 
-from common.services.email import EMAIL_SEND_EXCEPTIONS
 from common.utils.urls import build_frontend_url
 
 from users.services import send_email_verification_mail
-
-logger = logging.getLogger(__name__)
 
 
 def generate_email_verification_data(user) -> dict:
@@ -47,18 +39,9 @@ def request_email_verification(user) -> str:
     """Формирует ссылку подтверждения email и отправляет письмо."""
     verification_url = build_email_verification_url(user)
 
-    try:
-        send_email_verification_mail(
-            to_email=user.email,
-            verification_url=verification_url,
-        )
-    except EMAIL_SEND_EXCEPTIONS as exc:
-        logger.warning(
-            'Email verification send '
-            'failed | user_id=%s | email=%s | error=%s',
-            user.id,
-            user.email,
-            exc,
-        )
+    send_email_verification_mail(
+        to_email=user.email,
+        verification_url=verification_url,
+    )
 
     return verification_url
