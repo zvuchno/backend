@@ -45,7 +45,11 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
         allow_null=True,
         help_text='Имя артиста-владельца товара.',
     )
-    stock = serializers.SerializerMethodField()
+    stock = serializers.IntegerField(
+        source='product_variant.stock',
+        read_only=True,
+        allow_null=True,
+    )
     base_line_total = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
@@ -65,14 +69,6 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
             'quantity',
             'stock',
         ) + BaseVariantTargetImageSerializer.Meta.fields
-
-    def get_stock(self, obj) -> int:
-        """Если цифра - наличие = 1."""
-        variant = obj.product_variant
-        product = variant.product
-        if product.product_type != product.ProductType.MERCH:
-            return 1
-        return variant.stock
 
     def get_discount_line_total(self, obj) -> str:
         """Возвращает финальную стоимость позиции из сервиса расчёта."""
