@@ -14,7 +14,10 @@ from store.constants import (
     MAX_PROMOCODE_LENGTH,
     PROMOCODE_FORMAT_HELP_TEXT,
 )
-from store.validators import validate_promocode_format
+from store.validators import (
+    validate_promocode_format,
+    validate_promocode_min_length,
+)
 from users.models.abstract import ActivatableModel, TimestampModel
 
 
@@ -53,7 +56,10 @@ class Promocode(ActivatableModel, TimestampModel):
         'Код промокода',
         max_length=MAX_PROMOCODE_LENGTH,
         unique=True,
-        validators=[validate_promocode_format],
+        validators=[
+            validate_promocode_min_length,
+            validate_promocode_format,
+        ],
         help_text=PROMOCODE_FORMAT_HELP_TEXT,
     )
     description = models.TextField('Описание', blank=True, default='')

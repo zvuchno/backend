@@ -1,10 +1,11 @@
 from django.core.exceptions import ValidationError
 from django.core.files import File
-from django.core.validators import RegexValidator
+from django.core.validators import MinLengthValidator, RegexValidator
 
 from .constants import (
     MAX_AUDIOFILE_SIZE_MB,
     MAX_IMAGE_SIZE_MB,
+    MIN_PROMOCODE_LENGTH,
     PROMOCODE_FORMAT_HELP_TEXT,
 )
 
@@ -95,4 +96,11 @@ validate_promocode_format = RegexValidator(
     regex=r'^[A-Z0-9_-]+$',
     message=PROMOCODE_FORMAT_HELP_TEXT,
     code='invalid_promocode_format',
+)
+
+"""Валидатор минимальной длины промокода."""
+validate_promocode_min_length = MinLengthValidator(
+    MIN_PROMOCODE_LENGTH,
+    message='Код промокода должен содержать '
+    f'минимум {MIN_PROMOCODE_LENGTH} символов.',
 )
