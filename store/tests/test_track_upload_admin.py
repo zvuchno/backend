@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from store.models import Track, TrackUpload
+from store.services.album_archive import AlbumArchiveScheduler
 from store.services.track_upload import UploadInstruction
 from store.tests.factories import AlbumFactory
 
@@ -204,8 +205,13 @@ class TestAlbumAdminTrackUpload:
             'store.services.track_upload.upload_storage.'
             'TrackGeneratedAudioScheduler.schedule',
         ) as mocked_schedule:
-            with django_capture_on_commit_callbacks(execute=True):
-                complete_response = admin_client.post(complete_url)
+            with patch.object(
+                AlbumArchiveScheduler,
+                'schedule',
+                return_value=True,
+            ) as mocked_archive_schedule:
+                with django_capture_on_commit_callbacks(execute=True):
+                    complete_response = admin_client.post(complete_url)
 
         assert complete_response.status_code == HTTPStatus.OK
 
@@ -233,3 +239,4 @@ class TestAlbumAdminTrackUpload:
         assert upload.completed_at is not None
 
         mocked_schedule.assert_called_once_with(track)
+        mocked_archive_schedule.assert_called_once_with(album)
