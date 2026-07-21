@@ -72,12 +72,16 @@ class TestTrackUploadStorageService:
         with patch(
             'store.services.track_upload.upload_storage.'
             'TrackGeneratedAudioScheduler.schedule',
-            return_value=True,
         ) as mocked_schedule:
-            with django_capture_on_commit_callbacks(execute=True):
-                completed_upload = TrackUploadStorageService.complete(
-                    upload=received_upload,
-                )
+            with patch.object(
+                AlbumArchiveScheduler,
+                'schedule',
+                return_value=True,
+            ) as mocked_archive_schedule:
+                with django_capture_on_commit_callbacks(execute=True):
+                    completed_upload = TrackUploadStorageService.complete(
+                        upload=received_upload,
+                    )
 
         track.refresh_from_db()
         completed_upload.refresh_from_db()
@@ -100,6 +104,7 @@ class TestTrackUploadStorageService:
             assert audio_file.read() == file_content
 
         mocked_schedule.assert_called_once_with(track)
+        mocked_archive_schedule.assert_called_once_with(album)
 
     def test_raises_error_when_local_staging_file_is_missing(
         self,
