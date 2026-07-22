@@ -14,9 +14,10 @@ listener_registration_schema = extend_schema(
 artist_registration_schema = extend_schema(
     tags=['Registration'],
     auth=[],
-    summary='Регистрация артиста',
+    summary='Регистрация артиста или лейбла',
     description=(
         'Создает учетную запись пользователя, профиль слушателя '
-        'и связанный профиль артиста.'
+        'и связанный профиль артиста или лейбла. '
+        'Тип профиля определяется полем profile_type.'
     ),
 )

@@ -3,7 +3,7 @@
 from django.urls import path
 
 from users.views import (
-    BecomeArtistView,
+    BecomeArtistOrLabelView,
     ChangePasswordView,
     ChangePhoneView,
     EmailVerificationView,
@@ -37,7 +37,7 @@ urlpatterns = [
     ),
     path(
         'me/become_artist/',
-        BecomeArtistView.as_view(),
+        BecomeArtistOrLabelView.as_view(),
         name='become_artist',
     ),
     path(

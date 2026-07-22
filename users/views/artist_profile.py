@@ -104,8 +104,8 @@ class ArtistListView(ListAPIView):
 
 
 @become_artist_schema
-class BecomeArtistView(GenericAPIView):
-    """Представление для создания профиля артиста существующим слушателем."""
+class BecomeArtistOrLabelView(GenericAPIView):
+    """Представление для создания профиля артиста или лейбла."""
 
     serializer_class = BecomeArtistOrLabelSerializer
     permission_classes = [IsAuthenticated, IsNotArtist]

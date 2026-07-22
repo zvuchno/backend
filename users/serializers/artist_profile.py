@@ -161,7 +161,7 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
 
 
 class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
-    """Сериализатор для реализации возможности стать артистом слушателю."""
+    """Сериализатор создания профиля артиста или лейбла слушателем."""
 
     profile_type = serializers.ChoiceField(
         choices=ArtistProfileType.choices,
