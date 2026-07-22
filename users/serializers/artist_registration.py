@@ -41,7 +41,7 @@ class ArtistRegistrationSerializer(
         сериализатора, затем создает связанный профиль слушателя и артиста
         с переданным именем. Операция выполняется атомарно.
         """
-        name = validated_data.pop('name', None)
+        name = validated_data.pop('name')
         profile_type = validated_data.pop('profile_type')
 
         user = super().create(validated_data)
@@ -62,7 +62,7 @@ class ArtistRegistrationSerializer(
         data = super().to_representation(instance)
         artist_profile = getattr(instance, 'artist_profile', None)
         data['name'] = (
-            str(artist_profile.name)
+            artist_profile.name
             if artist_profile and artist_profile.name
             else None
         )
