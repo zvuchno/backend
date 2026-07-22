@@ -4,7 +4,12 @@ from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from users.helpers import ensure_listener_profile
-from users.models import ArtistContact, ArtistProfile, ArtistSocial
+from users.models import (
+    ArtistContact,
+    ArtistProfile,
+    ArtistProfileType,
+    ArtistSocial,
+)
 
 
 class ArtistCoverUpdateSerializer(serializers.ModelSerializer):
@@ -41,6 +46,7 @@ class ArtistPublicShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistProfile
         fields = (
+            'profile_type',
             'name',
             'description',
             'cover',
@@ -154,18 +160,23 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
         )
 
 
-class BecomeArtistSerializer(serializers.ModelSerializer):
+class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
     """Сериализатор для реализации возможности стать артистом слушателю."""
+
+    profile_type = serializers.ChoiceField(
+        choices=ArtistProfileType.choices,
+        default=ArtistProfileType.ARTIST,
+    )
 
     class Meta:
         model = ArtistProfile
-        fields = ('name',)
+        fields = ('name', 'profile_type')
 
     def validate(self, attrs):
         user = self.context['request'].user
         if hasattr(user, 'artist_profile'):
             raise serializers.ValidationError(
-                {'detail': 'У пользователя уже есть профиль артиста.'},
+                {'detail': 'У пользователя уже есть профиль артиста/лейбла.'},
             )
         return attrs
 
@@ -182,6 +193,11 @@ class BecomeArtistSerializer(serializers.ModelSerializer):
         except IntegrityError:
             if ArtistProfile.objects.filter(user=user).exists():
                 raise serializers.ValidationError(
-                    {'detail': 'У пользователя уже есть профиль артиста.'},
+                    {
+                        'detail': (
+                            'У пользователя уже есть профиль '
+                            'артиста или лейбла.'
+                        ),
+                    },
                 )
             raise

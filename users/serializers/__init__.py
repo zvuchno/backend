@@ -20,7 +20,7 @@ from .artist_profile import (
     ArtistMeSerializer,
     ArtistMeUpdateSerializer,
     ArtistPublicSerializer,
-    BecomeArtistSerializer,
+    BecomeArtistOrLabelSerializer,
 )
 from .artist_registration import ArtistRegistrationSerializer
 from .base_registration import BaseRegistrationSerializer
@@ -47,7 +47,7 @@ __all__ = [
     'ArtistPublicSerializer',
     'ArtistRegistrationSerializer',
     'BaseRegistrationSerializer',
-    'BecomeArtistSerializer',
+    'BecomeArtistOrLabelSerializer',
     'ChangePasswordSerializer',
     'ConsentDocumentDetailSerializer',
     'ConsentDocumentSerializer',

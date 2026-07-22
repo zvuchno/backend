@@ -13,20 +13,23 @@ class BaseRegistrationSerializer(UserCreateSerializer):
     """
 
     phone = serializers.CharField(required=True, allow_blank=False)
-    extra_field_name = None
+    extra_fields_names = []
 
     def validate(self, attrs):
         """Подготавливает данные перед общей валидацией.
 
-        Если в сериализаторе задано дополнительное поле,
-        которое не входит в модель пользователя, оно временно
-        исключается из данных перед вызовом родительской валидации,
-        а затем возвращается обратно.
+        Дополнительные поля, которые не входят в модель пользователя,
+        временно исключаются перед вызовом родительской валидации,
+        а затем возвращаются обратно.
         """
-        extra_field_value = None
-        if self.extra_field_name:
-            extra_field_value = attrs.pop(self.extra_field_name, None)
+        skipped_fields = {}
+
+        for extra_field_name in self.extra_fields_names:
+            skipped_fields[extra_field_name] = attrs.pop(
+                extra_field_name,
+                None,
+            )
         attrs = super().validate(attrs)
-        if self.extra_field_name:
-            attrs[self.extra_field_name] = extra_field_value
+        attrs.update(skipped_fields)
+
         return attrs

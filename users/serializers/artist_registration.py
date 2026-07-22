@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from .base_registration import BaseRegistrationSerializer
 from .mixins import PhoneRegistrationMixin
-from users.models import ArtistProfile, ListenerProfile
+from users.models import ArtistProfile, ArtistProfileType, ListenerProfile
 
 User = get_user_model()
 
@@ -15,34 +15,41 @@ class ArtistRegistrationSerializer(
     PhoneRegistrationMixin,
     BaseRegistrationSerializer,
 ):
-    """Сериализатор регистрации артиста.
+    """Сериализатор регистрации артиста или лейбла.
 
-    Создает пользователя, а затем связанный с ним профиль артиста.
-    Дополнительно принимает имя артиста и возвращает его
-    в ответе после успешной регистрации.
+    Создает пользователя, а затем связанный с ним профиль артиста
+    или лейбла.
     """
 
-    extra_field_name = 'name'
+    extra_fields_names = ['name', 'profile_type']
     name = serializers.CharField(
-        label='Имя артиста',
+        label='Имя артиста / название лейбла',
         required=True,
+        write_only=True,
+    )
+    profile_type = serializers.ChoiceField(
+        choices=ArtistProfileType.choices,
+        default=ArtistProfileType.ARTIST,
         write_only=True,
     )
 
     @transaction.atomic
     def create(self, validated_data):
-        """Создает пользователя и профиль артиста.
+        """Создает пользователя и профиль артиста или лейбла.
 
         Сначала создает объект пользователя средствами базового
         сериализатора, затем создает связанный профиль слушателя и артиста
         с переданным именем. Операция выполняется атомарно.
         """
         name = validated_data.pop('name', None)
+        profile_type = validated_data.pop('profile_type')
+
         user = super().create(validated_data)
         ListenerProfile.objects.create(user=user)
         ArtistProfile.objects.create(
             user=user,
             name=name,
+            profile_type=profile_type,
         )
         return user
 
@@ -54,10 +61,24 @@ class ArtistRegistrationSerializer(
         """
         data = super().to_representation(instance)
         artist_profile = getattr(instance, 'artist_profile', None)
-        name = getattr(artist_profile, 'name', None)
-        data['name'] = str(name) if name else None
+        data['name'] = (
+            str(artist_profile.name)
+            if artist_profile and artist_profile.name
+            else None
+        )
+        data['profile_type'] = (
+            artist_profile.profile_type if artist_profile else None
+        )
         return data
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'phone', 'name', 'password')
+        fields = (
+            'id',
+            'username',
+            'email',
+            'phone',
+            'name',
+            'profile_type',
+            'password',
+        )

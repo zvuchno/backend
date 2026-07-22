@@ -31,7 +31,7 @@ from users.serializers.artist_profile import (
     ArtistMeUpdateSerializer,
     ArtistPublicSerializer,
     ArtistPublicShortSerializer,
-    BecomeArtistSerializer,
+    BecomeArtistOrLabelSerializer,
 )
 from users.views.mixins import CurrentArtistProfileMixin
 
@@ -107,7 +107,7 @@ class ArtistListView(ListAPIView):
 class BecomeArtistView(GenericAPIView):
     """Представление для создания профиля артиста существующим слушателем."""
 
-    serializer_class = BecomeArtistSerializer
+    serializer_class = BecomeArtistOrLabelSerializer
     permission_classes = [IsAuthenticated, IsNotArtist]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'become_artist'

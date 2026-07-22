@@ -27,6 +27,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     is_listener = serializers.SerializerMethodField()
     is_artist = serializers.SerializerMethodField()
+    profile_type = serializers.SerializerMethodField()
     has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
@@ -40,6 +41,7 @@ class MeSerializer(serializers.ModelSerializer):
             'is_email_verified',
             'is_listener',
             'is_artist',
+            'profile_type',
             'has_usable_password',
         )
 
@@ -59,6 +61,10 @@ class MeSerializer(serializers.ModelSerializer):
     def get_has_usable_password(obj) -> bool:
         """Определяет, может ли пользователь войти по паролю."""
         return obj.has_usable_password()
+
+    def get_profile_type(self, obj):
+        artist_profile = getattr(obj, 'artist_profile', None)
+        return artist_profile.profile_type if artist_profile else None
 
 
 class NewPasswordSerializer(serializers.Serializer):
