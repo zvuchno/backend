@@ -41,6 +41,7 @@ class OrderItemSerializer(BaseVariantTargetImageSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    quantity = serializers.SerializerMethodField()
 
     class Meta(BaseVariantTargetImageSerializer.Meta):
         model = OrderItem
@@ -72,6 +73,11 @@ class OrderItemSerializer(BaseVariantTargetImageSerializer):
 
     def get_property_value(self, obj) -> str:
         return obj.product_info.get('property_value') or ''
+
+    def get_quantity(self, obj) -> str:
+        if obj.product_info.get('product_type') in ['album', 'track']:
+            return None
+        return obj.quantity
 
 
 class OrderSerializer(ProductImagesMixin, serializers.ModelSerializer):
