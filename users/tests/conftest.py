@@ -20,6 +20,7 @@ from users.models import (
     ArtistCompanyData,
     ArtistIdentityData,
     ArtistLegalProfile,
+    ArtistProfile,
 )
 from users.tests.factories import UserFactory
 
@@ -233,3 +234,34 @@ def reset_password_verify_url():
 def reset_password_confirm_url():
     """URL подтверждения сброса пароля."""
     return reverse('api:users:reset_password_confirm')
+
+
+@pytest.fixture
+def account_me_url():
+    """URL данных текущей учетной записи."""
+    return reverse('api:users:me')
+
+
+@pytest.fixture
+def become_artist_url():
+    """URL создания профиля артиста или лейбла."""
+    return reverse('api:users:become_artist')
+
+
+@pytest.fixture
+def artist_me_url():
+    """URL профиля текущего артиста или лейбла."""
+    return reverse('api:users:artist_me')
+
+
+@pytest.fixture
+def artist_public_url():
+    """Возвращает URL публичного профиля артиста или лейбла."""
+
+    def build_url(profile: ArtistProfile) -> str:
+        return reverse(
+            'api:users:artist_public',
+            kwargs={'slug': profile.slug},
+        )
+
+    return build_url

@@ -18,7 +18,7 @@ from .artist_profile import (
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
-    BecomeArtistView,
+    BecomeArtistOrLabelView,
 )
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
@@ -51,7 +51,7 @@ __all__ = [
     'ArtistPublicView',
     'ArtistRegistrationView',
     'BaseRegistrationView',
-    'BecomeArtistView',
+    'BecomeArtistOrLabelView',
     'ConsentDocumentViewSet',
     'ChangePasswordView',
     'ChangePhoneView',
