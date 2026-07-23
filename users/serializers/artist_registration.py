@@ -82,3 +82,23 @@ class ArtistRegistrationSerializer(
             'profile_type',
             'password',
         )
+
+
+class ArtistRegistrationResponseSerializer(serializers.ModelSerializer):
+    """Сериализатор ответа регистрации артиста или лейбла."""
+
+    name = serializers.CharField()
+    profile_type = serializers.ChoiceField(
+        choices=ArtistProfileType.choices,
+    )
+
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'username',
+            'email',
+            'phone',
+            'name',
+            'profile_type',
+        )

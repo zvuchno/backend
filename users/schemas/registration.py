@@ -2,6 +2,11 @@
 
 from drf_spectacular.utils import extend_schema
 
+from users.serializers import ArtistRegistrationSerializer
+from users.serializers.artist_registration import (
+    ArtistRegistrationResponseSerializer,
+)
+
 listener_registration_schema = extend_schema(
     tags=['Registration'],
     auth=[],
@@ -20,4 +25,8 @@ artist_registration_schema = extend_schema(
         'и связанный профиль артиста или лейбла. '
         'Тип профиля определяется полем profile_type.'
     ),
+    request=ArtistRegistrationSerializer,
+    responses={
+        201: ArtistRegistrationResponseSerializer,
+    },
 )
