@@ -87,7 +87,7 @@ artist_list_schema = extend_schema(
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description=(
-                'Сортировка. Например: name, -name, created_at, -created_at.',
+                'Сортировка. Например: name, -name, created_at, -created_at.'
             ),
         ),
     ],

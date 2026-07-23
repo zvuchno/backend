@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -97,10 +97,14 @@ class PurchasedMusicDLDetailView(PurchasedMusicAccessMixin, APIView):
 
 
 @track_download_link_schema
-class PurchasedMusicTrackDownloadLinkView(PurchasedMusicAccessMixin, APIView):
+class PurchasedMusicTrackDownloadLinkView(
+    PurchasedMusicAccessMixin,
+    GenericAPIView,
+):
     """Выдаёт временную ссылку на доступный пользователю трек."""
 
     permission_classes = [IsListener]
+    serializer_class = DownloadLinkSerializer
 
     def post(self, request, track_id):
         """Проверяет доступ и возвращает свежую ссылку на трек."""
@@ -139,11 +143,12 @@ class PurchasedMusicTrackDownloadLinkView(PurchasedMusicAccessMixin, APIView):
 @archive_download_link_schema
 class PurchasedMusicArchiveDownloadLinkView(
     PurchasedMusicAccessMixin,
-    APIView,
+    GenericAPIView,
 ):
     """Выдаёт временную ссылку на готовый архив полностью доступного релиза."""
 
     permission_classes = [IsListener]
+    serializer_class = DownloadLinkSerializer
 
     def post(self, request, album_id):
         """Проверяет полный доступ и возвращает свежую ссылку на ZIP."""
