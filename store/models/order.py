@@ -227,7 +227,4 @@ class Order(TimestampModel):
         ordering = ('-created_at',)
 
     def __str__(self):
-        return (
-            f'Заказ {self.order_number} '
-            f'({self.user if self.user else self.full_name})'
-        )
+        return f'Заказ {self.order_number} ({self.user}) [ id: {self.id} ]'
