@@ -12,6 +12,7 @@ from .music_download import (
 )
 from .order_service import OrderService
 from .payment import create_yookassa_payment, process_yookassa_webhook
+from .report import ReportService
 
 __all__ = [
     'CartCalculationService',
@@ -26,5 +27,6 @@ __all__ = [
     'OrderService',
     'process_yookassa_webhook',
     'ProductService',
+    'ReportService',
     'ReservationService',
 ]
