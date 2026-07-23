@@ -18,7 +18,7 @@ favorites_schema = extend_schema_view(
         summary='Список избранного текущего пользователя',
         description=(
             'Возвращает все объекты, добавленные '
-            'текущим пользователем в избранное.',
+            'текущим пользователем в избранное.'
         ),
         tags=FAVORITES_TAGS,
         parameters=[
@@ -38,7 +38,7 @@ favorites_schema = extend_schema_view(
         summary='Добавить в избранное',
         description=(
             'Добавляет указанный продукт в список '
-            'избранного текущего пользователя.',
+            'избранного текущего пользователя.'
         ),
         tags=FAVORITES_TAGS,
     ),

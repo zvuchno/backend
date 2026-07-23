@@ -176,6 +176,20 @@ SPECTACULAR_SETTINGS = {
         'deepLinking': True,
         'persistAuthorization': True,  # Не вылетает логин при обновлении
     },
+    'ENUM_NAME_OVERRIDES': {
+        'AlbumArchiveStatusEnum': (
+            'store.models.album.AlbumArchive.Status'
+        ),
+        'MediaPreparationStatusEnum': (
+            'store.models.track.TrackGeneratedAudio.ProcessingStatus'
+        ),
+        'TrackUploadStatusEnum': (
+            'store.models.track.TrackUpload.Status'
+        ),
+        'OrderStatusEnum': (
+            'store.models.order.Order.Status'
+        ),
+    },
 }
 
 # Internationalization

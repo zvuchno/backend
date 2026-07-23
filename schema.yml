@@ -1,0 +1,6514 @@
+openapi: 3.0.3
+info:
+  title: Zvuchno API
+  version: 1.0.0
+  description: Документация API проекта
+paths:
+  /api/v1/artists/:
+    get:
+      operationId: v1_artists_list
+      description: Возвращает публичный список активных артистов. Фильтр по жанру,
+        поиск, пагинация.
+      summary: Получить список артистов
+      parameters:
+      - in: query
+        name: genre
+        schema:
+          type: string
+        description: Фильтр по жанру альбомов артиста.
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Количество элементов в ответе.
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Смещение от начала выборки.
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: 'Сортировка. Например: name, -name, created_at, -created_at.'
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Поиск по названию, slug, городу.
+      tags:
+      - Artists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedArtistPublicShortList'
+          description: ''
+  /api/v1/artists/me/:
+    get:
+      operationId: v1_artists_me_retrieve
+      description: Возвращает профиль артиста или лейбла текущего пользователя вместе
+        с контактами и ссылками на внешние ресурсы.
+      summary: Получить свой профиль артиста или лейбла
+      tags:
+      - Artists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistMe'
+          description: ''
+    patch:
+      operationId: v1_artists_me_partial_update
+      description: 'Частично обновляет профиль артиста или лейбла текущего пользователя.
+        При передаче contacts и socials списки синхронизируются целиком: новые элементы
+        создаются, существующие обновляются, а отсутствующие в запросе удаляются.'
+      summary: Обновить свой профиль артиста или лейбла
+      tags:
+      - Artists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedArtistMeUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedArtistMeUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedArtistMeUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistMeUpdate'
+          description: ''
+  /api/v1/artists/me/cover/:
+    patch:
+      operationId: v1_artists_me_cover_partial_update
+      description: Загружает или заменяет обложку профиля текущего артиста. Запрос
+        должен быть отправлен в формате multipart/form-data.
+      summary: Обновить обложку своего профиля артиста
+      tags:
+      - Artists
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedArtistCoverUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedArtistCoverUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistCoverUpdate'
+          description: ''
+  /api/v1/artists/me/legal/:
+    get:
+      operationId: v1_artists_me_legal_retrieve
+      description: Возвращает юридический профиль, паспортные и банковские данные
+        текущего артиста.
+      summary: Получить юридические данные артиста
+      tags:
+      - Artists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistLegal'
+          description: ''
+    patch:
+      operationId: v1_artists_me_legal_partial_update
+      description: Частично обновляет юридический профиль, паспортные и банковские
+        данные текущего артиста. Отсутствующие блоки не изменяются.
+      summary: Обновить юридические данные артиста
+      tags:
+      - Artists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedArtistLegalRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedArtistLegalRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedArtistLegalRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistLegal'
+          description: ''
+  /api/v1/artists/me/legal/recipient-types/:
+    get:
+      operationId: v1_artists_me_legal_recipient_types_list
+      description: Возвращает список допустимых значений поля recipient_type.
+      summary: Справочник организационных форм получателя выплат
+      tags:
+      - Artists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Choice'
+          description: ''
+  /api/v1/artists/me/sales/:
+    get:
+      operationId: v1_artists_me_sales_list
+      description: Возвращает список заказов для продавца.
+      summary: Получить список заказов
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Количество элементов в ответе
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Смещение от начала выборки
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: 'Поиск по номеру заказа, названию товара или SKU '
+      tags:
+      - Artists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedArtistSaleList'
+          description: ''
+  /api/v1/artists/me/sales/{id}/:
+    get:
+      operationId: v1_artists_me_sales_retrieve
+      description: Возвращает подробную информацию о заказе для продавца по id.
+      summary: Получить заказ
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Artists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistSaleDetail'
+          description: ''
+  /api/v1/artists/me/telegram/connect/:
+    post:
+      operationId: v1_artists_me_telegram_connect_create
+      description: Генерирует одноразовую ссылку для подключения Telegram-бота и привязывает
+        артиста после /start.
+      summary: Подключение Telegram для артиста
+      tags:
+      - Artists
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  connected:
+                    type: boolean
+          description: ''
+  /api/v1/artists/profile/{slug}/:
+    get:
+      operationId: v1_artists_profile_retrieve
+      description: Возвращает публичные данные активного профиля артиста или лейбла
+        по его slug.
+      summary: Получить публичный профиль артиста или лейбла
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - Artists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistPublic'
+          description: ''
+  /api/v1/auth/account/me/:
+    get:
+      operationId: v1_auth_account_me_retrieve
+      description: Возвращает данные текущего авторизованного пользователя, включая
+        контакты, флаги подтверждения, наличие активных профилей и тип профиля - артист
+        или лейбл.
+      summary: Текущая учетная запись
+      tags:
+      - Account
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+  /api/v1/auth/account/me/become_artist/:
+    post:
+      operationId: v1_auth_account_me_become_artist_create
+      description: Создает профиль артиста или лейбла для текущего авторизованного
+        пользователя. Тип профиля определяется полем profile_type. Если такой профиль
+        уже существует, возвращает ошибку.
+      summary: Стать артистом или лейблом
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BecomeArtistOrLabelRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BecomeArtistOrLabelRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BecomeArtistOrLabelRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BecomeArtistOrLabel'
+          description: ''
+  /api/v1/auth/account/me/change-password/:
+    post:
+      operationId: v1_auth_account_me_change_password_create
+      description: Изменяет пароль текущего пользователя по старому паролю.
+      summary: Изменить пароль
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/account/me/change-phone/:
+    patch:
+      operationId: v1_auth_account_me_change_phone_partial_update
+      description: Обновляет номер телефона текущего пользователя. После изменения
+        телефон помечается как неподтвержденный.
+      summary: Изменить номер телефона
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneChangeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneChangeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneChangeRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneChange'
+          description: ''
+  /api/v1/auth/account/me/change-username/:
+    patch:
+      operationId: v1_auth_account_me_change_username_partial_update
+      description: Меняет имя пользователя, проверяет уникальность.
+      summary: Изменить имя пользователя (username)
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUsernameChangeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUsernameChangeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUsernameChangeRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsernameChange'
+          description: ''
+  /api/v1/auth/account/me/resend-email/:
+    post:
+      operationId: v1_auth_account_me_resend_email_create
+      description: Повторно инициирует отправку ссылки для подтверждения email текущего
+        пользователя.
+      summary: Повторно отправить письмо подтверждения
+      tags:
+      - Account
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/account/me/set-password/:
+    post:
+      operationId: v1_auth_account_me_set_password_create
+      description: Устанавливает пароль текущему авторизованному пользователю, если
+        у его учетной записи ещё нет пригодного для входа пароля. Например, после
+        регистрации через социальную сеть.
+      summary: Установить пароль
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/account/reset-password/:
+    post:
+      operationId: v1_auth_account_reset_password_create
+      description: Принимает email пользователя и инициирует процесс восстановления
+        пароля. Если учетная запись существует, для нее формируется ссылка восстановления.
+      summary: Запросить восстановление пароля
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/account/reset-password-confirm/:
+    post:
+      operationId: v1_auth_account_reset_password_confirm_create
+      description: Повторно проверяет uid и токен восстановления пароля, а затем устанавливает
+        новый пароль пользователя.
+      summary: Подтвердить восстановление пароля
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/account/reset-password-verify/:
+    post:
+      operationId: v1_auth_account_reset_password_verify_create
+      description: Проверяет корректность uid и токена из ссылки восстановления пароля
+        и сообщает, действительна ли ссылка.
+      summary: Проверить ссылку восстановления пароля
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/account/verify-email/:
+    post:
+      operationId: v1_auth_account_verify_email_create
+      description: Подтверждает email пользователя по uid и токену.
+      summary: Подтвердить email
+      tags:
+      - Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailVerificationRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/register/artist/:
+    post:
+      operationId: v1_auth_register_artist_create
+      description: Создает учетную запись пользователя, профиль слушателя и связанный
+        профиль артиста или лейбла. Тип профиля определяется полем profile_type.
+      summary: Регистрация артиста или лейбла
+      tags:
+      - Registration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArtistRegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ArtistRegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ArtistRegistrationRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtistRegistrationResponse'
+          description: ''
+  /api/v1/auth/register/listener/:
+    post:
+      operationId: v1_auth_register_listener_create
+      description: Создает учетную запись пользователя и связанный профиль слушателя.
+      summary: Регистрация слушателя
+      tags:
+      - Registration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListenerRegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ListenerRegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ListenerRegistrationRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListenerRegistration'
+          description: ''
+  /api/v1/auth/social/error-codes/:
+    get:
+      operationId: v1_auth_social_error_codes_retrieve
+      description: Возвращает словарь кодов ошибок social auth и их базовых текстовых
+        описаний. Фронтенд может использовать коды как контракт, а тексты — как fallback
+        или для отладки.
+      summary: Справочник кодов ошибок social auth
+      tags:
+      - Auth
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/social/get_tokens/:
+    post:
+      operationId: v1_auth_social_get_tokens_create
+      description: |-
+        Старый session-based flow. Не стоит использовать для новой интеграции фронтенда.
+
+        Работает только после успешной аутентификации через allauth и установки session cookie: endpoint обменивает текущую серверную сессию на access и refresh JWT токены.
+
+        Точки входа в старый social auth flow:
+        - /accounts/vk/login/
+        - /accounts/yandex/login/
+
+        VK OAuth может требовать альтернативный host из-за ограничений провайдера по разрешенным доменам. Yandex работает на основном dev-домене.
+
+        Требует активной session cookie и CSRF токена.
+
+        Для новой интеграции использовать API endpoints /api/v1/auth/social/vk/ и /api/v1/auth/social/yandex/.
+      summary: 'LEGACY: обмен server session на JWT токены'
+      tags:
+      - Auth
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+  /api/v1/auth/social/vk/:
+    post:
+      operationId: v1_auth_social_vk_create
+      description: |-
+        Основной способ social auth для новой интеграции фронтенда. Использовать эти endpoints вместо старого session exchange flow.
+
+        Принимает code от провайдера и возвращает пару JWT-токенов. Если профиль соцсети ранее не был привязан к аккаунту, выполняется поиск по email или создание нового пользователя.
+
+        VK OAuth может требовать альтернативный host из-за ограничений провайдера по разрешенным доменам. Yandex работает на основном dev-домене.
+
+        Требует совместной проверки с фронтом и реальным OAuth flow.
+      summary: Основной API endpoint для social auth через провайдера
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialAuthInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SocialAuthInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SocialAuthInputRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+  /api/v1/auth/social/yandex/:
+    post:
+      operationId: v1_auth_social_yandex_create
+      description: |-
+        Основной способ social auth для новой интеграции фронтенда. Использовать эти endpoints вместо старого session exchange flow.
+
+        Принимает code от провайдера и возвращает пару JWT-токенов. Если профиль соцсети ранее не был привязан к аккаунту, выполняется поиск по email или создание нового пользователя.
+
+        VK OAuth может требовать альтернативный host из-за ограничений провайдера по разрешенным доменам. Yandex работает на основном dev-домене.
+
+        Требует совместной проверки с фронтом и реальным OAuth flow.
+      summary: Основной API endpoint для social auth через провайдера
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialAuthInputRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SocialAuthInputRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SocialAuthInputRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+  /api/v1/auth/token/create/:
+    post:
+      operationId: v1_auth_token_create_create
+      description: Аутентифицирует пользователя и возвращает access- и refresh-токены.
+      summary: Вход в систему
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+          description: ''
+  /api/v1/auth/token/logout/:
+    post:
+      operationId: v1_auth_token_logout_create
+      description: Инвалидирует refresh-токен пользователя, добавляя его в blacklist.
+      summary: Выход из системы
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+        required: true
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: No response body
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: v1_auth_token_refresh_create
+      description: Возвращает новый access-токен по действующему refresh-токену.
+      summary: Обновление access-токена
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/auth/token/verify/:
+    post:
+      operationId: v1_auth_token_verify_create
+      description: Проверяет корректность и срок действия переданного токена.
+      summary: Проверка токена
+      tags:
+      - Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/v1/compliance/consent-documents/:
+    get:
+      operationId: v1_compliance_consent_documents_list
+      description: Возвращает список юридических документов. Для каждого типа возвращается
+        актуальная активная версия.
+      summary: Список документов
+      tags:
+      - Compliance
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConsentDocument'
+          description: ''
+  /api/v1/compliance/consent-documents/{document_type}/:
+    get:
+      operationId: v1_compliance_consent_documents_retrieve
+      description: Возвращает актуальный юридический документ для выбранного типа
+        (по slug). Каждый тип документа имеет только одну активную версию.
+      summary: Получить документ
+      parameters:
+      - in: path
+        name: document_type
+        schema:
+          enum:
+          - privacy_policy
+          - artist_offer
+          - artist_personal_data
+          - artist_distribution
+          - artist_newsletter
+          - listener_offer
+          - listener_personal_data
+          - listener_distribution
+          - listener_newsletter
+          type: string
+          description: |-
+            * `privacy_policy` - Политика обработки персональных данных
+            * `artist_offer` - Артист: Договор-оферта
+            * `artist_personal_data` - Артист: Согласие на обработку ПДн
+            * `artist_distribution` - Артист: Согласие на распространение ПДн
+            * `artist_newsletter` - Артист: Согласие на получение рассылки
+            * `listener_offer` - Слушатель: Договор-оферта
+            * `listener_personal_data` - Слушатель: Согласие на обработку ПДн
+            * `listener_distribution` - Слушатель: Согласие на распространение ПДн
+            * `listener_newsletter` - Слушатель: Согласие на получение рассылки
+          title: Тип документа
+        required: true
+      tags:
+      - Compliance
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsentDocumentDetail'
+          description: ''
+  /api/v1/listener/me/:
+    get:
+      operationId: v1_listener_me_retrieve
+      description: Возвращает профиль слушателя, связанный с текущей авторизованной
+        учетной записью.
+      summary: Получить свой профиль слушателя
+      tags:
+      - Listener
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListenerMe'
+          description: ''
+    patch:
+      operationId: v1_listener_me_partial_update
+      description: Частично обновляет профиль слушателя, связанный с текущей авторизованной
+        учетной записью.
+      summary: Обновить свой профиль слушателя
+      tags:
+      - Listener
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedListenerMeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedListenerMeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedListenerMeRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListenerMe'
+          description: ''
+  /api/v1/store/albums/:
+    get:
+      operationId: v1_store_albums_list
+      description: Возвращает список альбомов.
+      summary: Список альбомов
+      parameters:
+      - in: query
+        name: artist
+        schema:
+          type: string
+        description: Фильтр по slug артиста
+      - in: query
+        name: genre
+        schema:
+          type: string
+        description: Фильтр по slug жанра
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Количество элементов в ответе.
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Поиск по названию
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Смещение от начала выборки.
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: Сортировка (name, -name, release_date, -release_date, created_at,
+          -created_at)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Общий поиск (название, жанр)
+      tags:
+      - Albums
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAlbumReadList'
+          description: ''
+    post:
+      operationId: v1_store_albums_create
+      description: Создаёт новый альбом.
+      summary: Создать альбом
+      tags:
+      - Albums
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlbumWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AlbumWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AlbumWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumReadDetail'
+          description: ''
+  /api/v1/store/albums/{album_id}/track-uploads/initiate/:
+    post:
+      operationId: v1_store_albums_track_uploads_initiate_create
+      description: Создаёт черновой трек в указанном альбоме и возвращает инструкцию
+        для загрузки оригинального аудиофайла. Клиент должен отправить файл по адресу
+        upload.transport.url, передав все поля из upload.transport.fields и сам файл
+        в поле upload.transport.file_field_name. После успешной отправки файла нужно
+        вызвать upload.complete_url.
+      summary: Инициализировать прямую загрузку трека в альбом
+      parameters:
+      - in: path
+        name: album_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Tracks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackUploadInitiateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrackUploadInitiateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrackUploadInitiateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackUploadResponse'
+          description: ''
+        '400':
+          description: Ошибка валидации файла.
+        '403':
+          description: Нет доступа к альбому.
+        '404':
+          description: Альбом не найден.
+        '503':
+          description: Не настроен транспорт загрузки.
+  /api/v1/store/albums/{id}/:
+    get:
+      operationId: v1_store_albums_retrieve
+      description: Возвращает альбом по id.
+      summary: Получить альбом
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this альбом.
+        required: true
+      tags:
+      - Albums
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumReadDetail'
+          description: ''
+    patch:
+      operationId: v1_store_albums_partial_update
+      description: Обновляет только переданные поля.
+      summary: Частично обновить альбом
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this альбом.
+        required: true
+      tags:
+      - Albums
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAlbumWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAlbumWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAlbumWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumReadDetail'
+          description: ''
+    delete:
+      operationId: v1_store_albums_destroy
+      description: Удаляет альбом пользователя.
+      summary: Удалить альбом
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this альбом.
+        required: true
+      tags:
+      - Albums
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/store/cart/apply-promocode/:
+    post:
+      operationId: v1_store_cart_apply_promocode_create
+      description: Ищет активный промокод по переданному коду, привязывает его к текущей
+        корзине и возвращает её обновленное состояние с учетом примененной скидки.
+      summary: Применить промокод к корзине
+      tags:
+      - Cart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplyPromocodeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ApplyPromocodeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ApplyPromocodeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartRead'
+          description: ''
+        '400':
+          description: Промокод не найден, истёк или не прошёл валидацию формата.
+  /api/v1/store/cart/me/:
+    get:
+      operationId: v1_store_cart_me_retrieve
+      description: "Возвращает состав корзины, итоговые суммы и примененный купон.\n###
+        Логика работы:\n1. **Автосоздание**: \n   - Если у пользователя (или гостя)
+        еще нет корзины, она будет создана автоматически при первом обращении.\n2.
+        **Идентификация**: \n   - Для авторизованных пользователей корзина привязана
+        к `User ID`.\n   - Для гостей используется `session_key` из Cookies (`sessionid`).
+        \n3. **Слияние (Merge)**: \n   - При авторизации (Login) гостевая корзина
+        автоматически объединяется с корзиной пользователя.\n\nДля перехода на карточку
+        товара по клику используйте target.url и selected_variant_id чтобы открыть
+        детальную карточку с заранее выбранным вариантом."
+      summary: Просмотр корзины
+      tags:
+      - Cart
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartRead'
+          description: ''
+    patch:
+      operationId: v1_store_cart_me_partial_update
+      description: Обновляет количество по заданной позиции.
+      summary: Частичное обновление корзины
+      tags:
+      - Cart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCartWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCartWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCartWriteRequest'
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartRead'
+          description: ''
+  /api/v1/store/cart/me/add/:
+    post:
+      operationId: v1_store_cart_me_add_create
+      description: Добавляет один товар или увеличивает количество.
+      summary: Добавить товар
+      tags:
+      - Cart
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartItemWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CartItemWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CartItemWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartRead'
+          description: ''
+  /api/v1/store/cart/me/remove/{variant_id}/:
+    delete:
+      operationId: v1_store_cart_me_remove_destroy
+      description: Удалить товар из корзины.
+      summary: Удалить товар
+      parameters:
+      - in: path
+        name: variant_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Cart
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/store/cart/remove-promocode/:
+    post:
+      operationId: v1_store_cart_remove_promocode_create
+      description: Отвязывает промокод от текущей корзины и возвращает её актуальное
+        состояние.
+      summary: Удалить промокод из корзины
+      tags:
+      - Cart
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartRead'
+          description: ''
+  /api/v1/store/catalog/:
+    get:
+      operationId: v1_store_catalog_list
+      description: |-
+        Возвращает список витринных карточек товаров.
+
+        Карточка может представлять релиз, носитель или обычный мерч. Для перехода по клику фронтенд использует target.url.
+
+        target показывает, какую детальную карточку нужно открыть. Например, карточка носителя может вести на детальную карточку релиза.
+
+        Если карточка должна открыть детальную карточку с заранее выбранным вариантом, фронтенд может использовать selected_variant_id для сопоставления с variant_id в детальной карточке.
+
+        selected_variant_id может быть null. Например, для обычного мерча вариант может выбираться уже на детальной карточке.
+
+        Поле is_favorite показывает, добавлен ли товар в избранное. Сейчас избранное связано с вариантом товара, поэтому карточка считается избранной, если в избранном есть любой вариант этого товара.
+      summary: Список товаров каталога
+      parameters:
+      - in: query
+        name: artist
+        schema:
+          type: string
+        description: Фильтр по slug артиста.
+      - in: query
+        name: genre
+        schema:
+          type: string
+        description: 'Фильтр по slug жанров. Можно передать несколько значений через
+          запятую: genre=rock,jazz. Применяется к релизам и носителям, связанным с
+          релизом.'
+      - in: query
+        name: kind
+        schema:
+          type: string
+        description: 'Фильтр по slug типов мерча. Можно передать несколько значений
+          через запятую: kind=vinyl,tshirt. Применяется к мерчу и носителям.'
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Количество элементов в ответе.
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Смещение от начала выборки.
+      - in: query
+        name: ordering
+        schema:
+          type: string
+          enum:
+          - -created_at
+          - created_at
+          - random
+        description: Сортировка товаров. created_at — сначала старые; -created_at
+          или отсутствие параметра — сначала новые; random — случайный порядок.
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Поиск по названию товара и имени артиста.
+      - in: query
+        name: type
+        schema:
+          type: string
+          enum:
+          - album
+          - all
+          - merch
+        description: Тип витрины. all или отсутствие параметра — релизы, носители
+          и мерч; album — музыкальные релизы; merch — мерч и физические носители.
+      tags:
+      - Catalog
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCatalogCardList'
+              examples:
+                Релиз:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?offset=400&limit=100
+                    previous: http://api.example.org/accounts/?offset=200&limit=100
+                    results:
+                    - name: Название релиза
+                      artist_name: Артист
+                      kind: Альбом
+                      year: 2026
+                      price: '500.00'
+                      image: https://zvuchno.ru/media/albums/cover.jpg
+                      is_favorite: false
+                      target:
+                        type: release
+                        id: 10
+                        url: /api/v1/store/catalog/release/10/
+                        selected_variant_id: 111
+                Носитель:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?offset=400&limit=100
+                    previous: http://api.example.org/accounts/?offset=200&limit=100
+                    results:
+                    - name: Название релиза — винил
+                      artist_name: Артист
+                      kind: Винил
+                      year: null
+                      price: '2500.00'
+                      image: https://zvuchno.ru/media/merch/vinyl.jpg
+                      is_favorite: false
+                      target:
+                        type: release
+                        id: 10
+                        url: /api/v1/store/catalog/release/10/
+                        selected_variant_id: 112
+                ОбычныйМерч:
+                  value:
+                    count: 123
+                    next: http://api.example.org/accounts/?offset=400&limit=100
+                    previous: http://api.example.org/accounts/?offset=200&limit=100
+                    results:
+                    - name: Футболка
+                      artist_name: Артист
+                      kind: Футболка
+                      year: null
+                      price: '1500.00'
+                      image: https://zvuchno.ru/media/merch/tshirt.jpg
+                      is_favorite: false
+                      target:
+                        type: merch
+                        id: 20
+                        url: /api/v1/store/catalog/merch/20/
+                        selected_variant_id: null
+                  summary: Обычный мерч
+          description: ''
+  /api/v1/store/catalog/merch/{id}/:
+    get:
+      operationId: v1_store_catalog_merch_retrieve
+      description: |-
+        Возвращает данные обычного мерча для публичной витрины.
+
+        Носители здесь не отдаются. Носители доступны как варианты покупки в детальной карточке релиза.
+
+        Поле property_name показывает название свойства, по которому выбирается вариант: например размер или цвет.
+
+        Для добавления в корзину используется variant_id выбранного варианта.
+      summary: Детальная карточка мерча в каталоге
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Catalog
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogMerchDetail'
+              examples:
+                ОбычныйМерч:
+                  value:
+                    id: 20
+                    name: Футболка
+                    price: '1500.00'
+                    description: Описание футболки.
+                    artist_name: Артист
+                    kind: Футболка
+                    property_name: Размер
+                    stock: 7
+                    allow_overpay: false
+                    images:
+                    - image: https://zvuchno.ru/media/merch/tshirt.jpg
+                      is_main: true
+                    variants:
+                    - variant_id: 301
+                      sku: MER-20-V301
+                      stock: 3
+                      property_value: M
+                    - variant_id: 302
+                      sku: MER-20-V302
+                      stock: 4
+                      property_value: L
+                  summary: Обычный мерч
+          description: ''
+  /api/v1/store/catalog/release/{id}/:
+    get:
+      operationId: v1_store_catalog_release_retrieve
+      description: |-
+        Возвращает данные релиза для публичной витрины.
+
+        В корне ответа находятся данные самого релиза: название альбома, имя артиста, признак сингла и описание.
+
+        Коммерческие данные находятся в variants. Каждый вариант содержит цену, остаток, возможность переплаты, изображения и variant_id для добавления в корзину.
+
+        Первый элемент variants считается вариантом по умолчанию. Обычно это цифровая версия альбома.
+
+        Если пользователь перешёл из карточки носителя, фронтенд может сопоставить selected_variant_id из карточки каталога с variant_id одного из вариантов в этом ответе и сразу выбрать нужный вариант.
+
+        Для добавления в корзину используется variant_id выбранного варианта.
+      summary: Детальная карточка релиза в каталоге
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Catalog
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogReleaseDetail'
+              examples:
+                РелизСЦифровымВариантомИВинилом:
+                  value:
+                    id: 10
+                    artist_name: Артист
+                    is_single: false
+                    variants:
+                    - variant_id: 101
+                      sku: ALB-10-V101
+                      stock: null
+                      property_value: Диджитал
+                      name: ''
+                      price: '500.00'
+                      allow_overpay: true
+                      description: ''
+                      images:
+                      - image: https://zvuchno.ru/media/albums/cover.jpg
+                        is_main: true
+                    - variant_id: 202
+                      sku: MER-20-V202
+                      stock: 4
+                      property_value: Винил
+                      name: Название релиза — винил
+                      price: '2500.00'
+                      allow_overpay: false
+                      description: Описание винила.
+                      images:
+                      - image: https://zvuchno.ru/media/merch/vinyl.jpg
+                        is_main: true
+                  summary: Релиз с цифровым вариантом и винилом
+          description: ''
+  /api/v1/store/cdek-calculate/:
+    post:
+      operationId: v1_store_cdek_calculate_create
+      description: Принимает код города назначения и метод доставки. Группирует мерч
+        в корзине по артистам, рассчитывает стоимость и сроки доставки для каждого
+        плеча. Возвращает суммарную стоимость и минимальный/максимальный сроки доставки
+        среди всех отправлений.
+      summary: Расчет стоимости доставки СДЭК
+      tags:
+      - Deliveries
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CdekCalculateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CdekCalculateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CdekCalculateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  delivery_sum:
+                    type: number
+                    format: float
+                    description: Итоговая стоимость доставки в рублях
+                  period_min:
+                    type: integer
+                    nullable: true
+                    description: Минимальный срок доставки в днях (с учетом худшего
+                      плеча)
+                  period_max:
+                    type: integer
+                    nullable: true
+                    description: Максимальный срок доставки в днях (с учетом худшего
+                      плеча)
+              examples:
+                УспешныйРасчет:
+                  value:
+                    delivery_sum: 450.0
+                    period_min: 2
+                    period_max: 5
+                  summary: Успешный расчет
+          description: ''
+  /api/v1/store/cdek-cities/:
+    get:
+      operationId: v1_store_cdek_cities_retrieve
+      description: Принимает поисковую строку (минимум 2 символа) в query-параметре
+        и возвращает список подходящих населенных пунктов из базы СДЭК. Используется
+        для динамического автокомплита на фронтенде.
+      summary: Подсказки городов (автокомплит) через СДЭК
+      parameters:
+      - in: query
+        name: query
+        schema:
+          type: string
+        description: Поисковый запрос (название города или первые буквы)
+        required: true
+      tags:
+      - Deliveries
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                description: Список найденных городов и регионов
+                items:
+                  type: object
+                  properties:
+                    city_uuid:
+                      type: string
+                      format: uuid
+                      description: Уникальный идентификатор города в СДЭК
+                    code:
+                      type: integer
+                      description: Код города в СДЭК (используется для расчета доставки)
+                    full_name:
+                      type: string
+                      description: Полное название населенного пункта с регионом и
+                        страной
+                    country_code:
+                      type: string
+                      description: Двухбуквенный код страны (например, RU)
+              examples:
+                УспешныйПоиск:
+                  value:
+                  - city_uuid: 35da643b-b56c-4a70-af07-e125a4458193
+                    code: 288
+                    full_name: Владивосток, Владивостокский городской округ, Приморский
+                      край, Россия
+                    country_code: RU
+                  - city_uuid: 770f3275-921b-4552-a856-a16697d45691
+                    code: 538682
+                    full_name: Владивосток, департамент Луар и Шер, Центр-Долина Луары,
+                      Франция
+                    country_code: FR
+                  summary: Успешный поиск
+          description: ''
+  /api/v1/store/cdek/widget/:
+    get:
+      operationId: v1_store_cdek_widget_retrieve
+      description: |-
+        Прокси-эндпоинт для работы виджета СДЭК v3.0.
+
+        Используется для получения списка ПВЗ (action=offices).
+
+        Для корректной работы виджета при запросе ПВЗ (action=offices) обязательно передавайте параметр "city_code".
+      summary: Прокси для виджета СДЭК
+      parameters:
+      - in: query
+        name: action
+        schema:
+          type: string
+        description: Действие (для получения офисов "offices").
+        required: true
+      - in: query
+        name: city_code
+        schema:
+          type: string
+        description: Код города в СДЭК для поиска ПВЗ.
+        required: true
+      - in: query
+        name: is_handout
+        schema:
+          type: boolean
+        description: 'Фильтр: наличие выдачи заказов.'
+      - in: query
+        name: is_reception
+        schema:
+          type: boolean
+        description: 'Фильтр: наличие приема заказов.'
+      - in: query
+        name: page
+        schema:
+          type: integer
+        description: Номер страницы (начинается с 0).
+      - in: query
+        name: size
+        schema:
+          type: integer
+        description: Количество элементов на странице.
+      tags:
+      - Deliveries
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CDEKWidgetResponse'
+          description: ''
+  /api/v1/store/deliveries/:
+    get:
+      operationId: v1_store_deliveries_list
+      description: Возвращает список вариантов доставки.
+      summary: Варианты доставки
+      tags:
+      - Deliveries
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Delivery'
+          description: ''
+  /api/v1/store/genres/:
+    get:
+      operationId: v1_store_genres_list
+      description: Возвращает список жанров.
+      summary: Список жанров
+      tags:
+      - Genres
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Genre'
+          description: ''
+  /api/v1/store/me/favorites/:
+    get:
+      operationId: v1_store_me_favorites_list
+      description: Возвращает все объекты, добавленные текущим пользователем в избранное.
+      summary: Список избранного текущего пользователя
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Количество элементов в ответе.
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Смещение от начала выборки.
+      tags:
+      - Favorites
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFavoriteReadList'
+          description: ''
+    post:
+      operationId: v1_store_me_favorites_create
+      description: Добавляет указанный продукт в список избранного текущего пользователя.
+      summary: Добавить в избранное
+      tags:
+      - Favorites
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavoriteWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FavoriteWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FavoriteWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavoriteWrite'
+          description: ''
+  /api/v1/store/me/favorites/{product_variant}/:
+    delete:
+      operationId: v1_store_me_favorites_destroy
+      description: Удаляет объект из списка избранного по его ID.
+      summary: Удалить из избранного
+      parameters:
+      - in: path
+        name: product_variant
+        schema:
+          type: integer
+          title: Вариант продукта
+        required: true
+      tags:
+      - Favorites
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/store/me/purchased-music:
+    get:
+      operationId: v1_store_me_purchased_music_list
+      description: Возвращает список релизов, в которых текущему слушателю доступен
+        хотя бы один трек. Флаг is_fully_available показывает, доступен ли релиз полностью.
+      summary: Доступная музыка текущего слушателя
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - Listener
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLibraryAlbumCardList'
+          description: ''
+  /api/v1/store/me/purchased-music/{album_id}/:
+    get:
+      operationId: v1_store_me_purchased_music_retrieve
+      description: Возвращает доступные варианты скачивания одного релиза. Для полного
+        доступа может вернуть ZIP-архив со статусом подготовки. Поле download_action_url
+        содержит URL POST endpoint для получения свежей временной ссылки на скачивание.
+        Для неподготовленного архива возвращается null.
+      summary: Варианты скачивания доступного релиза
+      parameters:
+      - in: path
+        name: album_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Listener
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchasedMusicDLDetail'
+          description: ''
+  /api/v1/store/me/purchased-music/download-link/album-archive/{album_id}/:
+    post:
+      operationId: v1_store_me_purchased_music_download_link_album_archive_create
+      description: Проверяет полный доступ текущего слушателя к релизу и возвращает
+        короткоживущую ссылку на готовый ZIP-архив. Если архив ещё собирается, возвращает
+        его текущее состояние.
+      summary: Получить временную ссылку на ZIP-архив релиза
+      parameters:
+      - in: path
+        name: album_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Listener
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadLink'
+          description: ''
+        '404':
+          description: Релиз недоступен или файл отсутствует.
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArchiveNotReady'
+          description: ''
+  /api/v1/store/me/purchased-music/download-link/track/{track_id}/:
+    post:
+      operationId: v1_store_me_purchased_music_download_link_track_create
+      description: Проверяет доступ текущего слушателя к треку и возвращает короткоживущую
+        ссылку на приватный файл. Ссылку следует использовать сразу после получения.
+      summary: Получить временную ссылку на скачивание трека
+      parameters:
+      - in: path
+        name: track_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Listener
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadLink'
+          description: ''
+        '404':
+          description: Трек недоступен или файл отсутствует.
+  /api/v1/store/merch/:
+    get:
+      operationId: v1_store_merch_list
+      description: Возвращает список мерча.
+      summary: Список мерча
+      parameters:
+      - in: query
+        name: album
+        schema:
+          type: integer
+        description: Фильтр по ID альбома
+      - in: query
+        name: artist
+        schema:
+          type: array
+          items:
+            type: string
+        description: Несколько значений могут быть разделены запятыми.
+        explode: false
+        style: form
+      - in: query
+        name: artist_id
+        schema:
+          type: integer
+        description: Фильтр по ID артиста
+      - in: query
+        name: artist_name
+        schema:
+          type: string
+        description: Поиск по имени артиста
+      - in: query
+        name: kind
+        schema:
+          type: string
+        description: Фильтр по slug типа мерча
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Количество элементов в ответе.
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Поиск по названию
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Смещение от начала выборки.
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: Сортировка (name, created_at)
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Общий поиск (название, описание)
+      tags:
+      - Merch
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMerchReadList'
+          description: ''
+    post:
+      operationId: v1_store_merch_create
+      description: |-
+        Создаёт новый мерч.
+
+        Если поле `variants` передано — оно должно содержать ПОЛНЫЙ список вариантов. Отсутствующие варианты будут деактивированы.
+
+        Логика работы с вариантами:
+        - вариант без `id` → создаёт
+        - вариант с `id` → обновляет
+        - вариант отсутствует в списке → деактивирует
+        - нет `id`, но значение есть среди деактивированных → реанимирует и обновляет
+        - `variants: []` → деактивирует все
+      summary: Создать мерч
+      tags:
+      - Merch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MerchWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MerchWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MerchWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchDetail'
+          description: ''
+  /api/v1/store/merch-kinds/:
+    get:
+      operationId: v1_store_merch_kinds_list
+      description: Возвращает список типов мерча.
+      summary: Типы мерча
+      tags:
+      - Merch
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MerchKind'
+          description: ''
+  /api/v1/store/merch/{id}/:
+    get:
+      operationId: v1_store_merch_retrieve
+      description: Возвращает мерч по id.
+      summary: Получить мерч
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this мерч.
+        required: true
+      tags:
+      - Merch
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchDetail'
+          description: ''
+    patch:
+      operationId: v1_store_merch_partial_update
+      description: |-
+        Обновляет поля мерча. Изображения обновляются через отдельные эндпоинты.
+
+        Если поле `variants` передано — оно должно содержать ПОЛНЫЙ список вариантов. Отсутствующие варианты будут деактивированы.
+
+        Логика работы с вариантами:
+        - вариант без `id` → создаёт
+        - вариант с `id` → обновляет
+        - вариант отсутствует в списке → деактивирует
+        - нет `id`, но значение есть среди деактивированных → реанимирует и обновляет
+        - `variants: []` → деактивирует все
+      summary: Частично обновить мерч
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this мерч.
+        required: true
+      tags:
+      - Merch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMerchWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMerchWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMerchWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchDetail'
+          description: ''
+    delete:
+      operationId: v1_store_merch_destroy
+      description: Удаляет мерч.
+      summary: Удалить мерч
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this мерч.
+        required: true
+      tags:
+      - Merch
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/store/merch/{id}/images/:
+    post:
+      operationId: v1_store_merch_images_create
+      description: Добавляет изображение к мерчу.
+      summary: Добавить изображение
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this мерч.
+        required: true
+      tags:
+      - Merch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Image'
+          description: ''
+  /api/v1/store/merch/{id}/images/{image_id}/:
+    patch:
+      operationId: v1_store_merch_images_partial_update
+      description: Обновляет изображение мерча.
+      summary: Обновить изображение
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this мерч.
+        required: true
+      - in: path
+        name: image_id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - Merch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedImageRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedImageRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedImageRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Image'
+          description: ''
+    delete:
+      operationId: v1_store_merch_images_destroy
+      description: Удаляет изображение мерча.
+      summary: Удалить изображение
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this мерч.
+        required: true
+      - in: path
+        name: image_id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - Merch
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/store/orders/:
+    get:
+      operationId: v1_store_orders_list
+      description: Возвращает список заказов пользователя.
+      summary: Список заказов
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Количество элементов в ответе
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Смещение от начала выборки
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: 'Поиск по номеру заказа, названию товара или SKU '
+      tags:
+      - Listener
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOrderList'
+          description: ''
+  /api/v1/store/orders/{id}/:
+    get:
+      operationId: v1_store_orders_retrieve
+      description: Возвращает подробную информацию о заказе по id.
+      summary: Получить заказ
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this заказ.
+        required: true
+      tags:
+      - Listener
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+          description: ''
+  /api/v1/store/orders/checkout/:
+    get:
+      operationId: v1_store_orders_checkout_retrieve
+      description: |-
+        Возвращает дефолтные данные пользователя, сумму корзины, список доступных доставок и точки самовывоза у артиста.
+
+        Особенность: если в корзине физические позиции от нескольких артистов - точки самовывоза артиста не возвращаются.
+      summary: Данные для оформления заказа
+      tags:
+      - Checkout
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutInfoResponse'
+          description: ''
+    post:
+      operationId: v1_store_orders_checkout_create
+      description: Валидирует данные и создает заказ на основе корзины.
+      summary: Создание заказа
+      tags:
+      - Checkout
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+          description: ''
+  /api/v1/store/payments/create/:
+    post:
+      operationId: v1_store_payments_create_create
+      description: Инициирует создание платежа в ЮKassa для указанного заказа и возвращает
+        токен для инициализации виджета оплаты на фронтенде.
+      summary: Инициализация платежа
+      tags:
+      - Payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order_id:
+                  type: integer
+                  description: Идентификатор заказа
+              required:
+              - order_id
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  confirmation_token:
+                    type: string
+                    description: Токен подтверждения для встроенного виджета ЮKassa
+              examples:
+                УспешныйОтвет:
+                  value:
+                    confirmation_token: ct-2845c43d-000f-5000-9000-1123456789ab
+                  summary: Успешный ответ
+          description: Платеж успешно инициирован
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+          description: Заказ не найден
+  /api/v1/store/player/albums/{album_id}/:
+    get:
+      operationId: v1_store_player_albums_retrieve
+      description: Возвращает альбом и доступные для текущего пользователя треки в
+        порядке их позиции. Каждый трек содержит товарные данные и объект playback.
+        Поле playback.duration показывает длительность фактически доступного источника,
+        которая может отличаться от полной длительности трека.
+      summary: Получить очередь воспроизведения релиза
+      parameters:
+      - in: path
+        name: album_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Player
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerAlbum'
+          description: ''
+        '404':
+          description: Релиз не найден или недоступен.
+  /api/v1/store/player/tracks/{track_id}/play/:
+    get:
+      operationId: v1_store_player_tracks_play_retrieve
+      description: Проверяет доступность трека и перенаправляет браузер на подходящий
+        источник аудио. Сейчас доступно публичное preview; позднее endpoint сможет
+        выбирать полный stream для пользователя с правом доступа. Клиенту следует
+        передавать этот URL непосредственно в src элемента audio и позволить браузеру
+        обработать redirect.
+      summary: Запустить воспроизведение трека
+      parameters:
+      - in: path
+        name: track_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Player
+      responses:
+        '302':
+          description: Перенаправление на аудиофайл. Адрес источника передаётся в
+            заголовке Location.
+        '404':
+          description: Трек не найден, недоступен или preview временно не содержит
+            готового файла.
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybackNotReady'
+          description: ''
+  /api/v1/store/promocodes/:
+    get:
+      operationId: v1_store_promocodes_list
+      description: Возвращает промокоды текущего артиста.
+      summary: Список промокодов
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - Promocodes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPromocodeReadList'
+          description: ''
+    post:
+      operationId: v1_store_promocodes_create
+      description: 'Создаёт промокод от имени текущего артиста. '
+      summary: Создать промокод
+      tags:
+      - Promocodes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromocodeWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PromocodeWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PromocodeWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromocodeReadDetail'
+          description: ''
+  /api/v1/store/promocodes/{id}/:
+    get:
+      operationId: v1_store_promocodes_retrieve
+      description: Детальная информация о промокоде.
+      summary: Получить промокод
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this промокод.
+        required: true
+      tags:
+      - Promocodes
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromocodeReadDetail'
+          description: ''
+    patch:
+      operationId: v1_store_promocodes_partial_update
+      description: Обновляет только переданные поля.
+      summary: Частично обновить промокод
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this промокод.
+        required: true
+      tags:
+      - Promocodes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPromocodeWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPromocodeWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPromocodeWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromocodeReadDetail'
+          description: ''
+    delete:
+      operationId: v1_store_promocodes_destroy
+      description: Удаляет промокод.
+      summary: Удалить промокод
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this промокод.
+        required: true
+      tags:
+      - Promocodes
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/store/track-uploads/{upload_id}/complete/:
+    post:
+      operationId: v1_store_track_uploads_complete_create
+      description: Завершает прямую загрузку после того, как клиент успешно отправил
+        файл по transport-инструкции. Проверяет staging-файл, переносит его в постоянное
+        хранилище, назначает audio_file и position треку, помечает загрузку завершённой
+        и запускает подготовку audio preview/stream.
+      summary: Завершить загрузку трека
+      parameters:
+      - in: path
+        name: upload_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Tracks
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackUploadResponse'
+          description: ''
+        '400':
+          description: Staging-файл не найден или не прошёл проверку.
+        '403':
+          description: Нет доступа к загрузке.
+        '404':
+          description: Загрузка не найдена.
+  /api/v1/store/track-uploads/{upload_id}/file/:
+    post:
+      operationId: v1_store_track_uploads_file_create
+      description: Локальный dev-endpoint для загрузки файла через Django, когда Object
+        Storage отключён. В production при USE_S3_MEDIA=True этот endpoint недоступен.
+      summary: Передать файл в локальное staging-хранилище
+      parameters:
+      - in: path
+        name: upload_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Tracks
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackUploadLocalFileResponse'
+          description: ''
+        '400':
+          description: Файл не передан или невалиден.
+        '403':
+          description: Нет доступа к загрузке.
+        '404':
+          description: Загрузка не найдена или endpoint отключен.
+  /api/v1/store/tracks/:
+    get:
+      operationId: v1_store_tracks_list
+      description: Возвращает список всех аудиозаписей.
+      summary: Список треков
+      parameters:
+      - in: query
+        name: album
+        schema:
+          type: integer
+        description: Фильтр по ID альбома
+      - in: query
+        name: artist
+        schema:
+          type: string
+        description: Фильтр по slug артиста
+      - in: query
+        name: genre
+        schema:
+          type: string
+        description: Фильтр по slug жанра
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: Количество элементов в ответе.
+      - in: query
+        name: name
+        schema:
+          type: string
+        description: Фильтр по названию трека (icontains)
+      - in: query
+        name: offset
+        schema:
+          type: integer
+        description: Смещение от начала выборки.
+      - in: query
+        name: ordering
+        schema:
+          type: string
+        description: 'Сортировка: position, -position, name, -name'
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Поиск по названию
+      tags:
+      - Tracks
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTrackReadList'
+          description: ''
+    post:
+      operationId: v1_store_tracks_create
+      description: 'Создаёт новую запись трека и принимает аудиофайл через multipart/form-data.
+        Этот способ оставлен для простых одиночных загрузок и обратной совместимости.
+        Для больших файлов и стабильной загрузки рекомендуется использовать прямую
+        загрузку: инициализация → загрузка файла по transport-инструкции → завершение
+        загрузки.'
+      summary: Загрузить трек простым способом
+      tags:
+      - Tracks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrackWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrackWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackReadDetail'
+          description: ''
+  /api/v1/store/tracks/{id}/:
+    get:
+      operationId: v1_store_tracks_retrieve
+      description: Возвращает детальную информацию о треке по id.
+      summary: Получить трек
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this трек.
+        required: true
+      tags:
+      - Tracks
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackReadDetail'
+          description: ''
+    patch:
+      operationId: v1_store_tracks_partial_update
+      description: Обновляет только переданные поля трека. Если передан audio_file,
+        файл загружается через backend простым multipart-способом. Для больших файлов
+        предпочтительнее прямой upload flow.
+      summary: Частично обновить трек
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this трек.
+        required: true
+      tags:
+      - Tracks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTrackWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTrackWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTrackWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackReadDetail'
+          description: ''
+    delete:
+      operationId: v1_store_tracks_destroy
+      description: Удаляет запись трека.
+      summary: Удалить трек
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this трек.
+        required: true
+      tags:
+      - Tracks
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/store/tracks/{track_id}/file-upload/initiate/:
+    post:
+      operationId: v1_store_tracks_file_upload_initiate_create
+      description: Создаёт попытку прямой загрузки нового оригинального аудиофайла
+        для существующего трека и возвращает инструкцию для отправки файла. Клиент
+        должен отправить файл по адресу upload.transport.url, передав все поля из
+        upload.transport.fields и сам файл в поле upload.transport.file_field_name.
+        После успешной отправки файла нужно вызвать upload.complete_url. При завершении
+        загрузки сохраняются id трека, альбом, позиция и данные продажи.
+      summary: Инициализировать замену файла трека
+      parameters:
+      - in: path
+        name: track_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Tracks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackUploadFileInitiateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TrackUploadFileInitiateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TrackUploadFileInitiateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackUploadResponse'
+          description: ''
+        '400':
+          description: Ошибка валидации файла.
+        '403':
+          description: Нет доступа к треку.
+        '404':
+          description: Трек не найден.
+        '503':
+          description: Не настроен транспорт загрузки.
+components:
+  schemas:
+    AlbumArchiveStatusEnum:
+      enum:
+      - pending
+      - building
+      - ready
+      - failed
+      type: string
+      description: |-
+        * `pending` - Ожидает сборки
+        * `building` - Собирается
+        * `ready` - Готов
+        * `failed` - Ошибка
+    AlbumRead:
+      type: object
+      description: Сериализатор для чтения Album.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        description:
+          type: string
+          title: Описание
+        cover_image:
+          type: string
+          format: uri
+          nullable: true
+          title: Обложка релиза
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          title: Приватность
+        is_published:
+          type: boolean
+          title: Опубликовано
+          description: Если включено, объект виден пользователям.
+      required:
+      - id
+      - name
+      - price
+    AlbumReadDetail:
+      type: object
+      description: Сериализатор для подробного просмотра (retrieve) объекта Album.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        description:
+          type: string
+          title: Описание
+        cover_image:
+          type: string
+          format: uri
+          nullable: true
+          title: Обложка релиза
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          title: Приватность
+        is_published:
+          type: boolean
+          title: Опубликовано
+          description: Если включено, объект виден пользователям.
+        is_single:
+          type: boolean
+          title: Сингл
+        genre:
+          type: string
+          readOnly: true
+        release_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата релиза
+        allow_overpay:
+          type: boolean
+          readOnly: true
+        variants:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: |-
+            Унифицирует формат вариантов для альбома.
+
+            Возвращает список с единственным дефолтным вариантом, чтобы фронтенд
+            мог использовать общую логику обработки (как для мерча).
+            'value' пустое, так как выбор не требуется.
+          readOnly: true
+      required:
+      - allow_overpay
+      - genre
+      - id
+      - name
+      - price
+      - variants
+    AlbumWriteRequest:
+      type: object
+      description: Сериализатор для создания и обновления Album.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Название
+          maxLength: 255
+        artist:
+          type: integer
+          title: Артист
+        is_single:
+          type: boolean
+          title: Сингл
+        release_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата релиза
+        genre:
+          type: integer
+          nullable: true
+          title: Жанр
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        description:
+          type: string
+          title: Описание
+        cover_image:
+          type: string
+          format: binary
+          nullable: true
+          title: Обложка релиза
+        allow_overpay:
+          type: boolean
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          title: Приватность
+        is_published:
+          type: boolean
+          title: Опубликовано
+          description: Если включено, объект виден пользователям.
+      required:
+      - name
+      - price
+    ApplyPromocodeRequest:
+      type: object
+      description: Сериализатор входящего промокода.
+      properties:
+        code:
+          type: string
+          minLength: 1
+          pattern: ^[A-Z0-9_-]+$
+          maxLength: 20
+      required:
+      - code
+    ArchiveNotReady:
+      type: object
+      description: Состояние неподготовленного альбомного архива.
+      properties:
+        detail:
+          type: string
+        status:
+          $ref: '#/components/schemas/AlbumArchiveStatusEnum'
+      required:
+      - detail
+      - status
+    ArtistBankData:
+      type: object
+      description: Сериализатор банковских данных артиста.
+      properties:
+        bank_name:
+          type: string
+          title: Название банка
+          maxLength: 255
+        bik:
+          type: string
+          title: БИК
+          maxLength: 9
+        correspondent_account:
+          type: string
+          title: Корреспондентский счет
+          maxLength: 20
+        checking_account:
+          type: string
+          title: Расчетный счет
+          maxLength: 20
+    ArtistBankDataRequest:
+      type: object
+      description: Сериализатор банковских данных артиста.
+      properties:
+        bank_name:
+          type: string
+          title: Название банка
+          maxLength: 255
+        bik:
+          type: string
+          title: БИК
+          maxLength: 9
+        correspondent_account:
+          type: string
+          title: Корреспондентский счет
+          maxLength: 20
+        checking_account:
+          type: string
+          title: Расчетный счет
+          maxLength: 20
+    ArtistCompanyData:
+      type: object
+      description: Сериализатор данных юридического лица.
+      properties:
+        company_name:
+          type: string
+          title: Наименование получателя
+          maxLength: 150
+        company_address:
+          type: string
+          title: Юридический адрес
+          maxLength: 500
+        inn:
+          type: string
+          title: ИНН
+          maxLength: 10
+        ogrn:
+          type: string
+          title: ОГРН
+          maxLength: 13
+    ArtistCompanyDataRequest:
+      type: object
+      description: Сериализатор данных юридического лица.
+      properties:
+        company_name:
+          type: string
+          title: Наименование получателя
+          maxLength: 150
+        company_address:
+          type: string
+          title: Юридический адрес
+          maxLength: 500
+        inn:
+          type: string
+          title: ИНН
+          maxLength: 10
+        ogrn:
+          type: string
+          title: ОГРН
+          maxLength: 13
+    ArtistContact:
+      type: object
+      description: Сериализатор контактных данных артиста.
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+          title: Название контакта
+          maxLength: 254
+          minLength: 3
+        value:
+          type: string
+          format: email
+          title: Контакт
+          maxLength: 254
+      required:
+      - label
+      - value
+    ArtistContactRequest:
+      type: object
+      description: Сериализатор контактных данных артиста.
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+          minLength: 3
+          title: Название контакта
+          maxLength: 254
+        value:
+          type: string
+          format: email
+          minLength: 1
+          title: Контакт
+          maxLength: 254
+      required:
+      - label
+      - value
+    ArtistCoverUpdate:
+      type: object
+      description: Сериализатор обновления обложки артиста.
+      properties:
+        cover:
+          type: string
+          format: uri
+          nullable: true
+          title: Обложка артиста
+    ArtistIdentityData:
+      type: object
+      description: Сериализатор паспортных данных артиста.
+      properties:
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        middle_name:
+          type: string
+          title: Отчество
+          maxLength: 150
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата рождения
+        registration_address:
+          type: string
+          title: Адрес регистрации
+          maxLength: 500
+        passport_series:
+          type: string
+          title: Серия паспорта
+          maxLength: 4
+        passport_number:
+          type: string
+          title: Номер паспорта
+          maxLength: 6
+        passport_issued_by:
+          type: string
+          title: Кем выдан паспорт
+          maxLength: 255
+        passport_issue_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата выдачи паспорта
+        inn:
+          type: string
+          title: ИНН
+          maxLength: 12
+    ArtistIdentityDataRequest:
+      type: object
+      description: Сериализатор паспортных данных артиста.
+      properties:
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        middle_name:
+          type: string
+          title: Отчество
+          maxLength: 150
+        birth_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата рождения
+        registration_address:
+          type: string
+          title: Адрес регистрации
+          maxLength: 500
+        passport_series:
+          type: string
+          title: Серия паспорта
+          maxLength: 4
+        passport_number:
+          type: string
+          title: Номер паспорта
+          maxLength: 6
+        passport_issued_by:
+          type: string
+          title: Кем выдан паспорт
+          maxLength: 255
+        passport_issue_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата выдачи паспорта
+        inn:
+          type: string
+          title: ИНН
+          maxLength: 12
+    ArtistLegal:
+      type: object
+      description: Агрегирующий сериализатор юридических данных артиста.
+      properties:
+        legal_profile:
+          $ref: '#/components/schemas/ArtistLegalProfile'
+        identity_data:
+          allOf:
+          - $ref: '#/components/schemas/ArtistIdentityData'
+          nullable: true
+        bank_data:
+          allOf:
+          - $ref: '#/components/schemas/ArtistBankData'
+          nullable: true
+        company_data:
+          allOf:
+          - $ref: '#/components/schemas/ArtistCompanyData'
+          nullable: true
+    ArtistLegalProfile:
+      type: object
+      description: Сериализатор юридического профиля артиста.
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email для юридических документов
+          maxLength: 254
+        phone:
+          type: string
+          nullable: true
+        recipient_type:
+          title: Организационная форма
+          oneOf:
+          - $ref: '#/components/schemas/RecipientTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        is_verified:
+          type: boolean
+          readOnly: true
+        comment:
+          type: string
+          readOnly: true
+      required:
+      - comment
+      - is_verified
+    ArtistLegalProfileRequest:
+      type: object
+      description: Сериализатор юридического профиля артиста.
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email для юридических документов
+          maxLength: 254
+        phone:
+          type: string
+          nullable: true
+        recipient_type:
+          title: Организационная форма
+          oneOf:
+          - $ref: '#/components/schemas/RecipientTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+    ArtistMe:
+      type: object
+      description: Сериализатор профиля текущего артиста.
+      properties:
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistContact'
+          readOnly: true
+        socials:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistSocial'
+          readOnly: true
+        profile_type:
+          allOf:
+          - $ref: '#/components/schemas/ProfileTypeEnum'
+          title: Тип профиля
+        name:
+          type: string
+          title: Имя артиста
+          maxLength: 254
+          minLength: 2
+        description:
+          type: string
+          title: Об исполнителе
+          minLength: 10
+          maxLength: 3000
+        cover:
+          type: string
+          format: uri
+          nullable: true
+          title: Обложка артиста
+        city:
+          type: string
+          title: Город
+          maxLength: 254
+          minLength: 2
+        url:
+          type: string
+          format: uri
+          maxLength: 200
+        slug:
+          type: string
+          maxLength: 254
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - contacts
+      - name
+      - socials
+    ArtistMeUpdate:
+      type: object
+      description: Сериализатор обновления профиля артиста.
+      properties:
+        name:
+          type: string
+          title: Имя артиста
+          maxLength: 254
+          minLength: 2
+        description:
+          type: string
+          title: Об исполнителе
+          minLength: 10
+          maxLength: 3000
+        city:
+          type: string
+          title: Город
+          maxLength: 254
+          minLength: 2
+        url:
+          type: string
+          format: uri
+          maxLength: 200
+        socials:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistSocial'
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistContact'
+      required:
+      - name
+    ArtistPickupPoints:
+      type: object
+      description: Сериализатор для конкретной точки самовывоза мерча артиста.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        address:
+          type: string
+          title: Адрес
+          maxLength: 500
+        date:
+          type: string
+          format: date
+      required:
+      - address
+      - date
+      - id
+    ArtistPublic:
+      type: object
+      description: Расширенный сериализатор публичного профиля артиста.
+      properties:
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistContact'
+          readOnly: true
+        socials:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistSocial'
+          readOnly: true
+        profile_type:
+          allOf:
+          - $ref: '#/components/schemas/ProfileTypeEnum'
+          title: Тип профиля
+        name:
+          type: string
+          title: Имя артиста
+          maxLength: 254
+          minLength: 2
+        description:
+          type: string
+          title: Об исполнителе
+          minLength: 10
+          maxLength: 3000
+        cover:
+          type: string
+          format: uri
+          nullable: true
+          title: Обложка артиста
+        city:
+          type: string
+          title: Город
+          maxLength: 254
+          minLength: 2
+        url:
+          type: string
+          format: uri
+          maxLength: 200
+        slug:
+          type: string
+          maxLength: 254
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - contacts
+      - name
+      - socials
+    ArtistPublicShort:
+      type: object
+      description: Сериализатор публичного профиля артиста.
+      properties:
+        profile_type:
+          allOf:
+          - $ref: '#/components/schemas/ProfileTypeEnum'
+          title: Тип профиля
+        name:
+          type: string
+          title: Имя артиста
+          maxLength: 254
+          minLength: 2
+        description:
+          type: string
+          title: Об исполнителе
+          minLength: 10
+          maxLength: 3000
+        cover:
+          type: string
+          format: uri
+          nullable: true
+          title: Обложка артиста
+        city:
+          type: string
+          title: Город
+          maxLength: 254
+          minLength: 2
+        url:
+          type: string
+          format: uri
+          maxLength: 200
+        slug:
+          type: string
+          maxLength: 254
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - name
+    ArtistRegistrationRequest:
+      type: object
+      description: |-
+        Сериализатор регистрации артиста или лейбла.
+
+        Создает пользователя, а затем связанный с ним профиль артиста
+        или лейбла.
+      properties:
+        username:
+          type: string
+          minLength: 1
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        phone:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Имя артиста / название лейбла
+        profile_type:
+          allOf:
+          - $ref: '#/components/schemas/ProfileTypeEnum'
+          writeOnly: true
+          default: artist
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - name
+      - password
+      - phone
+      - username
+    ArtistRegistrationResponse:
+      type: object
+      description: Сериализатор ответа регистрации артиста или лейбла.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          nullable: true
+          title: Номер телефона
+          description: Номер телефона
+          maxLength: 128
+        name:
+          type: string
+        profile_type:
+          $ref: '#/components/schemas/ProfileTypeEnum'
+      required:
+      - email
+      - id
+      - name
+      - profile_type
+      - username
+    ArtistSale:
+      type: object
+      description: Сериализтор заказа продавца.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        order_number:
+          type: string
+          readOnly: true
+          title: Номер заказа
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+        status:
+          allOf:
+          - $ref: '#/components/schemas/OrderStatusEnum'
+          title: Статус
+        items_count:
+          type: integer
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - images
+      - items_count
+      - order_number
+      - total
+    ArtistSaleDetail:
+      type: object
+      description: Сериализатор для подробного просмотра заказа продавца.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        order_number:
+          type: string
+          readOnly: true
+          title: Номер заказа
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+        status:
+          allOf:
+          - $ref: '#/components/schemas/OrderStatusEnum'
+          title: Статус
+        full_name:
+          type: string
+          title: Имя и фамилия
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          title: Номер телефона
+          maxLength: 128
+        delivery:
+          type: string
+          readOnly: true
+        full_address:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        cdek_number:
+          type: string
+          readOnly: true
+      required:
+      - cdek_number
+      - created_at
+      - delivery
+      - email
+      - full_address
+      - full_name
+      - id
+      - items
+      - order_number
+      - phone
+      - total
+    ArtistSocial:
+      type: object
+      description: Сериализатор ссылок на соцсети артиста.
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+          title: Название соцсети
+          maxLength: 254
+          minLength: 3
+        value:
+          type: string
+          format: uri
+          title: Ссылка
+          maxLength: 200
+      required:
+      - label
+      - value
+    ArtistSocialRequest:
+      type: object
+      description: Сериализатор ссылок на соцсети артиста.
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+          minLength: 3
+          title: Название соцсети
+          maxLength: 254
+        value:
+          type: string
+          format: uri
+          minLength: 1
+          title: Ссылка
+          maxLength: 200
+      required:
+      - label
+      - value
+    BecomeArtistOrLabel:
+      type: object
+      description: Сериализатор создания профиля артиста или лейбла слушателем.
+      properties:
+        name:
+          type: string
+          title: Имя артиста
+          maxLength: 254
+          minLength: 2
+        profile_type:
+          allOf:
+          - $ref: '#/components/schemas/ProfileTypeEnum'
+          default: artist
+      required:
+      - name
+    BecomeArtistOrLabelRequest:
+      type: object
+      description: Сериализатор создания профиля артиста или лейбла слушателем.
+      properties:
+        name:
+          type: string
+          minLength: 2
+          title: Имя артиста
+          maxLength: 254
+        profile_type:
+          allOf:
+          - $ref: '#/components/schemas/ProfileTypeEnum'
+          default: artist
+      required:
+      - name
+    BlankEnum:
+      enum:
+      - ''
+    CDEKWidgetResponse:
+      type: object
+      properties:
+        points:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        page:
+          type: integer
+        size:
+          type: integer
+        total_elements:
+          type: integer
+        total_pages:
+          type: integer
+      required:
+      - page
+      - points
+      - size
+      - total_elements
+      - total_pages
+    CartItemRead:
+      type: object
+      description: Сериализатор товаров в корзине пользователя - чтение.
+      properties:
+        product_variant:
+          type: integer
+          readOnly: true
+        artist_name:
+          type: string
+          readOnly: true
+          nullable: true
+          description: Имя артиста-владельца товара.
+        name:
+          type: string
+          readOnly: true
+        kind:
+          type: string
+          readOnly: true
+          nullable: true
+          description: 'Человекочитаемый вид карточки: Альбом, Сингл, Винил, Футболка,
+            Трек и т.п.'
+        base_line_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        discount_line_total:
+          type: string
+          description: Возвращает финальную стоимость позиции из сервиса расчёта.
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+          title: Количество
+        stock:
+          type: integer
+          readOnly: true
+          nullable: true
+        image:
+          type: string
+          description: Возвращает изображение карточки товара.
+          readOnly: true
+        target:
+          allOf:
+          - $ref: '#/components/schemas/CatalogCardTarget'
+          readOnly: true
+          description: Данные для перехода по клику. Например, карточка носителя может
+            вести на detail альбома.
+      required:
+      - artist_name
+      - base_line_total
+      - discount_line_total
+      - image
+      - kind
+      - name
+      - product_variant
+      - stock
+      - target
+    CartItemUpdateRequest:
+      type: object
+      description: Сериализатор для обновления количества товара в корзине.
+      properties:
+        product_variant:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+      required:
+      - product_variant
+      - quantity
+    CartItemWriteRequest:
+      type: object
+      description: Сериализатор для записи позиции в корзину.
+      properties:
+        product_variant:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        price_with_donation:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,4})?$
+          nullable: true
+          title: Хочет заплатить, руб.
+          description: Цена с донатом, руб.
+        comment:
+          type: string
+          nullable: true
+          title: Комментарий к заказу
+          description: Сообщение для артиста
+          maxLength: 200
+        is_artist_subscription:
+          type: boolean
+          default: false
+      required:
+      - product_variant
+      - quantity
+    CartRead:
+      type: object
+      description: Сериализатор корзины покупок пользователя - чтение.
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemRead'
+          readOnly: true
+        code:
+          type: string
+          readOnly: true
+          nullable: true
+        subtotal:
+          type: string
+          description: Возвращает базовую сумму корзины до применения скидок.
+          readOnly: true
+        discount_promocode:
+          type: string
+          description: Возвращает общую сумму скидки по применённому промокоду.
+          readOnly: true
+        total:
+          type: string
+          description: Возвращает финальную сумму корзины к оплате после вычета скидок.
+          readOnly: true
+      required:
+      - code
+      - discount_promocode
+      - items
+      - subtotal
+      - total
+    CatalogCard:
+      type: object
+      description: Сериализатор карточки товара для публичного каталога.
+      properties:
+        product_id:
+          type: integer
+          description: ID товара (Product). Используется как уникальный идентификатор
+            карточки каталога. Для перехода в детальный эндпоинт используйте target.
+        name:
+          type: string
+          readOnly: true
+          description: Название товара.
+        artist_name:
+          type: string
+          readOnly: true
+          nullable: true
+          description: Имя артиста-владельца товара.
+        kind:
+          type: string
+          readOnly: true
+          nullable: true
+          description: 'Человекочитаемый вид карточки: Альбом, Сингл, Винил, Футболка,
+            Трек и т.п.'
+        year:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Год релиза для музыкального контента. Для обычного мерча возвращается
+            null.
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Базовая цена товара.
+        image:
+          type: string
+          description: Основное изображение карточки товара. Для трека временно используется
+            обложка родительского альбома.
+          readOnly: true
+        is_favorite:
+          type: boolean
+          description: Признак добавления товара в избранное.
+          readOnly: true
+          default: false
+        favorite_variant_id:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: ID активного варианта, используемый для добавления товара в
+            избранное. null, если у товара нет активных вариантов.
+        target:
+          allOf:
+          - $ref: '#/components/schemas/CatalogCardTarget'
+          readOnly: true
+          description: Данные для перехода по клику. Например, карточка носителя может
+            вести на детальную карточку релиза.
+      required:
+      - artist_name
+      - favorite_variant_id
+      - image
+      - is_favorite
+      - kind
+      - name
+      - price
+      - product_id
+      - target
+      - year
+    CatalogCardTarget:
+      type: object
+      description: Данные для перехода из карточки товара.
+      properties:
+        type:
+          type: string
+          description: 'Тип детальной карточки: release или merch.'
+        id:
+          type: integer
+          nullable: true
+          description: ID сущности, на которую ведёт карточка.
+        url:
+          type: string
+          nullable: true
+          description: URL endpoint для перехода.
+        selected_variant_id:
+          type: integer
+          nullable: true
+          description: Id варианта, который предвыбрать после перехода.
+      required:
+      - id
+      - type
+      - url
+    CatalogMerchDetail:
+      type: object
+      description: Вариант обычного мерча в витринной detail странице.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        description:
+          type: string
+          title: Описание
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        main_image:
+          type: string
+          nullable: true
+          readOnly: true
+        allow_overpay:
+          type: boolean
+          readOnly: true
+        images_merch:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+          readOnly: true
+        kind:
+          type: string
+          readOnly: true
+        album:
+          type: string
+          readOnly: true
+        property_name:
+          type: string
+          readOnly: true
+        stock:
+          type: integer
+          readOnly: true
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantRead'
+          readOnly: true
+        artist_name:
+          type: string
+          nullable: true
+          description: Возвращает имя артиста-владельца.
+          readOnly: true
+        artist_image:
+          type: string
+          nullable: true
+          description: Возвращает изображение артиста.
+          readOnly: true
+      required:
+      - album
+      - allow_overpay
+      - artist_image
+      - artist_name
+      - id
+      - images_merch
+      - kind
+      - main_image
+      - name
+      - price
+      - property_name
+      - stock
+      - variants
+    CatalogReleaseDetail:
+      type: object
+      description: Витринная detail-карточка релиза.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        artist_name:
+          type: string
+          nullable: true
+          description: Возвращает имя артиста-владельца.
+          readOnly: true
+        artist_image:
+          type: string
+          nullable: true
+          description: Возвращает изображение артиста.
+          readOnly: true
+        is_single:
+          type: boolean
+          title: Сингл
+        variants:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Варианты покупки альбома.
+          readOnly: true
+      required:
+      - artist_image
+      - artist_name
+      - id
+      - variants
+    CdekCalculateRequest:
+      type: object
+      description: Сериализатор входных данных для расчёта стоимости доставки СДЭК.
+      properties:
+        tariffs:
+          allOf:
+          - $ref: '#/components/schemas/TariffsEnum'
+          description: |-
+            Тип доставки: office (до ПВЗ), door (до двери), pickup (постомат)
+
+            * `office` - Самовывоз из ПВЗ
+            * `door` - Курьер (до двери)
+            * `pickup` - Постомат
+        city_code:
+          type: integer
+          description: Код города выдачи заказа от СДЭК
+      required:
+      - city_code
+      - tariffs
+    ChangePasswordRequest:
+      type: object
+      description: Сериализатор смены уже установленного пароля.
+      properties:
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Новый пароль
+        retype_new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Подтверждение нового пароля
+        old_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Старый пароль
+      required:
+      - new_password
+      - old_password
+      - retype_new_password
+    CheckoutInfoResponse:
+      type: object
+      properties:
+        user_defaults:
+          $ref: '#/components/schemas/UserDefaults'
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Сумма товаров в корзине без учета доставки
+        deliveries:
+          type: array
+          items:
+            $ref: '#/components/schemas/Delivery'
+          readOnly: true
+        pickup_points:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistPickupPoints'
+          readOnly: true
+      required:
+      - deliveries
+      - pickup_points
+      - subtotal
+      - user_defaults
+    CheckoutRequest:
+      type: object
+      description: |-
+        Сериализатор оформления заказа.
+
+        Валидирует:
+        - контактные данные покупателя
+        - согласие на обработку персональных данных
+        - способ доставки
+        - обязательность адреса для физических товаров
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          minLength: 1
+        phone:
+          type: string
+          minLength: 1
+        personal_data_consent:
+          type: boolean
+          writeOnly: true
+        city:
+          type: string
+          maxLength: 255
+        street:
+          type: string
+          maxLength: 255
+        house:
+          type: string
+          maxLength: 255
+        apartment:
+          type: string
+          maxLength: 255
+        cdek_city_code:
+          type: string
+          maxLength: 32
+        tariffs:
+          oneOf:
+          - $ref: '#/components/schemas/TariffsEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        delivery_point:
+          type: string
+          maxLength: 255
+        pickup_point:
+          type: integer
+          nullable: true
+        delivery:
+          type: integer
+          nullable: true
+      required:
+      - email
+      - full_name
+      - personal_data_consent
+      - phone
+    Choice:
+      type: object
+      description: Сериализатор элемента справочника.
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+      required:
+      - label
+      - value
+    ConsentDocument:
+      type: object
+      description: Сериализатор модели ConsentDocument.
+      properties:
+        document_type:
+          allOf:
+          - $ref: '#/components/schemas/DocumentTypeEnum'
+          title: Тип документа
+        version:
+          type: string
+          title: Версия
+          maxLength: 20
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+      required:
+      - created_at
+      - document_type
+      - version
+    ConsentDocumentDetail:
+      type: object
+      description: Сериализатор для детального отображения документа.
+      properties:
+        document_type:
+          allOf:
+          - $ref: '#/components/schemas/DocumentTypeEnum'
+          title: Тип документа
+        version:
+          type: string
+          title: Версия
+          maxLength: 20
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+        content:
+          type: string
+          title: Содержание
+      required:
+      - content
+      - created_at
+      - document_type
+      - version
+    CustomTokenObtainPairRequest:
+      type: object
+      description: Переопределенный сериализатор выпуска токенов.
+      properties:
+        email:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    Delivery:
+      type: object
+      description: Сериализатор для Delivery.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        delivery_type:
+          allOf:
+          - $ref: '#/components/schemas/DeliveryTypeEnum'
+          title: Тип доставки
+      required:
+      - delivery_type
+      - id
+      - name
+    DeliveryTypeEnum:
+      enum:
+      - courier
+      - pickpoint
+      - artist_pickup
+      type: string
+      description: |-
+        * `courier` - СДЭК - курьером до двери
+        * `pickpoint` - СДЭК - в пункт выдачи
+        * `artist_pickup` - Самовывоз от артиста
+    DiscountTypeEnum:
+      enum:
+      - PERCENT
+      - FIXED
+      type: string
+      description: |-
+        * `PERCENT` - Процент
+        * `FIXED` - Фиксированная (руб)
+    DocumentTypeEnum:
+      enum:
+      - privacy_policy
+      - artist_offer
+      - artist_personal_data
+      - artist_distribution
+      - artist_newsletter
+      - listener_offer
+      - listener_personal_data
+      - listener_distribution
+      - listener_newsletter
+      type: string
+      description: |-
+        * `privacy_policy` - Политика обработки персональных данных
+        * `artist_offer` - Артист: Договор-оферта
+        * `artist_personal_data` - Артист: Согласие на обработку ПДн
+        * `artist_distribution` - Артист: Согласие на распространение ПДн
+        * `artist_newsletter` - Артист: Согласие на получение рассылки
+        * `listener_offer` - Слушатель: Договор-оферта
+        * `listener_personal_data` - Слушатель: Согласие на обработку ПДн
+        * `listener_distribution` - Слушатель: Согласие на распространение ПДн
+        * `listener_newsletter` - Слушатель: Согласие на получение рассылки
+    DownloadLink:
+      type: object
+      description: Временная ссылка на скачивание приватного файла.
+      properties:
+        url:
+          type: string
+          description: Возвращает абсолютный URL ссылки.
+          readOnly: true
+        filename:
+          type: string
+          readOnly: true
+        expires_in:
+          type: integer
+          readOnly: true
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - expires_at
+      - expires_in
+      - filename
+      - url
+    EmailVerificationRequest:
+      type: object
+      description: Сериализатор подтверждения email по uid и токену.
+      properties:
+        uid:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Идентификатор пользователя
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Токен подтверждения
+      required:
+      - token
+      - uid
+    FavoriteRead:
+      type: object
+      description: Сериализатор для чтения модели Favorite.
+      properties:
+        artist_name:
+          type: string
+          readOnly: true
+          nullable: true
+          description: Имя артиста-владельца товара.
+        name:
+          type: string
+          readOnly: true
+        kind:
+          type: string
+          readOnly: true
+          nullable: true
+          description: 'Человекочитаемый вид карточки: Альбом, Сингл, Винил, Футболка,
+            Трек и т.п.'
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        product_variant:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          description: Возвращает изображение карточки товара.
+          readOnly: true
+        target:
+          allOf:
+          - $ref: '#/components/schemas/CatalogCardTarget'
+          readOnly: true
+          description: Данные для перехода по клику. Например, карточка носителя может
+            вести на detail альбома.
+      required:
+      - artist_name
+      - image
+      - kind
+      - name
+      - price
+      - product_variant
+      - target
+    FavoriteWrite:
+      type: object
+      description: Сериализатор для записи модели Favorite.
+      properties:
+        product_variant:
+          type: integer
+          title: Вариант продукта
+      required:
+      - product_variant
+    FavoriteWriteRequest:
+      type: object
+      description: Сериализатор для записи модели Favorite.
+      properties:
+        product_variant:
+          type: integer
+          title: Вариант продукта
+      required:
+      - product_variant
+    Genre:
+      type: object
+      description: Сериализатор для Genre.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название жанра
+          maxLength: 255
+        slug:
+          type: string
+          title: Слаг
+          description: Разрешены только буквы, цифры, дефисы и подчеркивания. Должен
+            быть уникальным.
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - id
+      - name
+      - slug
+    Image:
+      type: object
+      description: Сериализатор для изображений мерча.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          format: uri
+        is_main:
+          type: boolean
+          default: false
+      required:
+      - id
+      - image
+    ImageRequest:
+      type: object
+      description: Сериализатор для изображений мерча.
+      properties:
+        image:
+          type: string
+          format: binary
+        is_main:
+          type: boolean
+          default: false
+      required:
+      - image
+    KindEnum:
+      enum:
+      - preview
+      - full
+      type: string
+      description: |-
+        * `preview` - Превью
+        * `full` - Полная версия
+    LibraryAlbumCard:
+      type: object
+      description: Карточка доступного релиза в библиотеке слушателя.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: id альбома
+        name:
+          type: string
+          readOnly: true
+          description: Название товара.
+        artist_name:
+          type: string
+          description: Имя артиста-владельца релиза.
+          readOnly: true
+        kind:
+          type: string
+          description: 'Человекочитаемый вид карточки: Альбом, Сингл, Винил, Футболка,
+            Трек и т.п.'
+          readOnly: true
+        year:
+          type: integer
+          description: Год релиза для музыкального контента. Для обычного мерча возвращается
+            null.
+          readOnly: true
+        image:
+          type: string
+          description: Основное изображение карточки релиза.
+          readOnly: true
+        is_fully_available:
+          type: boolean
+          readOnly: true
+          description: Признак полной доступности релиза.
+      required:
+      - artist_name
+      - id
+      - image
+      - is_fully_available
+      - kind
+      - name
+      - year
+    ListenerMe:
+      type: object
+      description: Сериализатор профиля слушателя.
+      properties:
+        full_name:
+          type: string
+          title: Имя и фамилия
+          maxLength: 254
+    ListenerRegistration:
+      type: object
+      description: |-
+        Сериализатор регистрации слушателя.
+
+        Создает пользователя, а затем связанный с ним профиль слушателя.
+        Дополнительно принимает номер телефона, проверяет его
+        и возвращает в ответе после успешной регистрации.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+      required:
+      - email
+      - id
+      - phone
+      - username
+    ListenerRegistrationRequest:
+      type: object
+      description: |-
+        Сериализатор регистрации слушателя.
+
+        Создает пользователя, а затем связанный с ним профиль слушателя.
+        Дополнительно принимает номер телефона, проверяет его
+        и возвращает в ответе после успешной регистрации.
+      properties:
+        username:
+          type: string
+          minLength: 1
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        phone:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+      - phone
+      - username
+    LogoutRequest:
+      type: object
+      description: Сериализатор выхода пользователя.
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+          title: Refresh токен
+      required:
+      - refresh
+    Me:
+      type: object
+      description: Сериализатор текущего пользователя.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          nullable: true
+          title: Номер телефона
+          description: Номер телефона
+          maxLength: 128
+        is_phone_verified:
+          type: boolean
+          title: Телефон подтвержден
+        is_email_verified:
+          type: boolean
+          title: Email подтвержден
+        is_listener:
+          type: boolean
+          description: Определяет, есть ли активный профиль слушателя.
+          readOnly: true
+        is_artist:
+          type: boolean
+          description: Определяет, есть ли активный профиль артиста.
+          readOnly: true
+        profile_type:
+          nullable: true
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/ProfileTypeEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        has_usable_password:
+          type: boolean
+          description: Определяет, может ли пользователь войти по паролю.
+          readOnly: true
+      required:
+      - email
+      - has_usable_password
+      - id
+      - is_artist
+      - is_listener
+      - profile_type
+      - username
+    MediaPreparationStatusEnum:
+      enum:
+      - pending
+      - building
+      - ready
+      - failed
+      type: string
+      description: |-
+        * `pending` - Ожидает подготовки
+        * `building` - Подготавливается
+        * `ready` - Готов
+        * `failed` - Ошибка подготовки
+    MerchDetail:
+      type: object
+      description: Сериализатор для подробного просмотра (retrieve) объекта Merch.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        description:
+          type: string
+          title: Описание
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        main_image:
+          type: string
+          nullable: true
+          readOnly: true
+        allow_overpay:
+          type: boolean
+          readOnly: true
+        images_merch:
+          type: array
+          items:
+            $ref: '#/components/schemas/Image'
+          readOnly: true
+        kind:
+          type: string
+          readOnly: true
+        album:
+          type: string
+          readOnly: true
+        property_name:
+          type: string
+          readOnly: true
+        stock:
+          type: integer
+          readOnly: true
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantRead'
+          readOnly: true
+      required:
+      - album
+      - allow_overpay
+      - id
+      - images_merch
+      - kind
+      - main_image
+      - name
+      - price
+      - property_name
+      - stock
+      - variants
+    MerchKind:
+      type: object
+      description: Сериализатор для типов мерча.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+      required:
+      - id
+      - name
+      - slug
+    MerchRead:
+      type: object
+      description: Сериализатор для чтения Merch.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        description:
+          type: string
+          title: Описание
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        main_image:
+          type: string
+          nullable: true
+          readOnly: true
+      required:
+      - id
+      - main_image
+      - name
+      - price
+    MerchWriteRequest:
+      type: object
+      description: Сериализатор для создания и обновления Merch.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Название
+          maxLength: 255
+        kind:
+          type: integer
+          nullable: true
+          title: Тип
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          writeOnly: true
+        album:
+          type: integer
+          nullable: true
+          title: Альбом
+        artist:
+          type: integer
+          title: Артист
+        description:
+          type: string
+          title: Описание
+        allow_overpay:
+          type: boolean
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          title: Приватность
+        is_published:
+          type: boolean
+          title: Опубликовано
+          description: Если включено, объект виден пользователям.
+        property_name:
+          type: string
+        stock:
+          type: integer
+          minimum: 0
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantWriteRequest'
+      required:
+      - name
+      - price
+    NullEnum:
+      enum:
+      - null
+    Order:
+      type: object
+      description: Сериализтор заказа.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        order_number:
+          type: string
+          readOnly: true
+          title: Номер заказа
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+        status:
+          allOf:
+          - $ref: '#/components/schemas/OrderStatusEnum'
+          title: Статус
+        items_count:
+          type: integer
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - images
+      - items_count
+      - order_number
+      - total
+    OrderDetail:
+      type: object
+      description: Сериализтор для подробного просмотра (retrieve) заказа.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        order_number:
+          type: string
+          readOnly: true
+          title: Номер заказа
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Дата создания
+        status:
+          allOf:
+          - $ref: '#/components/schemas/OrderStatusEnum'
+          title: Статус
+        full_name:
+          type: string
+          title: Имя и фамилия
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        phone:
+          type: string
+          title: Номер телефона
+          maxLength: 128
+        delivery:
+          type: string
+          readOnly: true
+        full_address:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+          readOnly: true
+        subtotal:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        delivery_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+      required:
+      - created_at
+      - delivery
+      - delivery_price
+      - email
+      - full_address
+      - full_name
+      - id
+      - items
+      - order_number
+      - phone
+      - subtotal
+      - total
+    OrderItem:
+      type: object
+      description: Сериализатор товаров в заказе.
+      properties:
+        sku:
+          type: string
+          readOnly: true
+        kind:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        property_name:
+          type: string
+          readOnly: true
+        property_value:
+          type: string
+          readOnly: true
+        price_at_purchase:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        quantity:
+          type: string
+          readOnly: true
+        donation:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        promocode_discount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        line_total:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        comment:
+          type: string
+          title: Комментарий артисту
+          maxLength: 200
+        image:
+          type: string
+          description: Возвращает изображение карточки товара.
+          readOnly: true
+        target:
+          allOf:
+          - $ref: '#/components/schemas/CatalogCardTarget'
+          readOnly: true
+          description: Данные для перехода по клику. Например, карточка носителя может
+            вести на detail альбома.
+      required:
+      - donation
+      - image
+      - kind
+      - line_total
+      - name
+      - price_at_purchase
+      - promocode_discount
+      - property_name
+      - property_value
+      - quantity
+      - sku
+      - target
+    OrderStatusEnum:
+      enum:
+      - created
+      - reserved
+      - paid
+      - shipped
+      - completed
+      - canceled
+      type: string
+      description: |-
+        * `created` - Создан
+        * `reserved` - Резерв
+        * `paid` - Оплачен
+        * `shipped` - Отправлен
+        * `completed` - Завершен
+        * `canceled` - Отменен
+    PaginatedAlbumReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlbumRead'
+    PaginatedArtistPublicShortList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistPublicShort'
+    PaginatedArtistSaleList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistSale'
+    PaginatedCatalogCardList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CatalogCard'
+    PaginatedFavoriteReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/FavoriteRead'
+    PaginatedLibraryAlbumCardList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryAlbumCard'
+    PaginatedMerchReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchRead'
+    PaginatedOrderList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+    PaginatedPromocodeReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PromocodeRead'
+    PaginatedTrackReadList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackRead'
+    PasswordResetConfirmRequest:
+      type: object
+      description: Сериализатор установки нового пароля.
+      properties:
+        uid:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Идентификатор пользователя
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Токен восстановления пароля
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Новый пароль
+        retype_new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Повторный ввод пароля
+      required:
+      - new_password
+      - retype_new_password
+      - token
+      - uid
+    PasswordResetRequestRequest:
+      type: object
+      description: Сериализатор запроса на восстановление пароля.
+      properties:
+        email:
+          type: string
+          format: email
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+    PasswordResetVerifyRequest:
+      type: object
+      description: Сериализатор проверки ссылки восстановления пароля.
+      properties:
+        uid:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Идентификатор пользователя
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Токен восстановления пароля
+      required:
+      - token
+      - uid
+    PatchedAlbumWriteRequest:
+      type: object
+      description: Сериализатор для создания и обновления Album.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Название
+          maxLength: 255
+        artist:
+          type: integer
+          title: Артист
+        is_single:
+          type: boolean
+          title: Сингл
+        release_date:
+          type: string
+          format: date
+          nullable: true
+          title: Дата релиза
+        genre:
+          type: integer
+          nullable: true
+          title: Жанр
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        description:
+          type: string
+          title: Описание
+        cover_image:
+          type: string
+          format: binary
+          nullable: true
+          title: Обложка релиза
+        allow_overpay:
+          type: boolean
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          title: Приватность
+        is_published:
+          type: boolean
+          title: Опубликовано
+          description: Если включено, объект виден пользователям.
+    PatchedArtistCoverUpdateRequest:
+      type: object
+      description: Сериализатор обновления обложки артиста.
+      properties:
+        cover:
+          type: string
+          format: binary
+          nullable: true
+          title: Обложка артиста
+    PatchedArtistLegalRequest:
+      type: object
+      description: Агрегирующий сериализатор юридических данных артиста.
+      properties:
+        legal_profile:
+          $ref: '#/components/schemas/ArtistLegalProfileRequest'
+        identity_data:
+          allOf:
+          - $ref: '#/components/schemas/ArtistIdentityDataRequest'
+          nullable: true
+        bank_data:
+          allOf:
+          - $ref: '#/components/schemas/ArtistBankDataRequest'
+          nullable: true
+        company_data:
+          allOf:
+          - $ref: '#/components/schemas/ArtistCompanyDataRequest'
+          nullable: true
+    PatchedArtistMeUpdateRequest:
+      type: object
+      description: Сериализатор обновления профиля артиста.
+      properties:
+        name:
+          type: string
+          minLength: 2
+          title: Имя артиста
+          maxLength: 254
+        description:
+          type: string
+          title: Об исполнителе
+          minLength: 10
+          maxLength: 3000
+        city:
+          type: string
+          title: Город
+          maxLength: 254
+          minLength: 2
+        url:
+          type: string
+          format: uri
+          maxLength: 200
+        socials:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistSocialRequest'
+        contacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistContactRequest'
+    PatchedCartWriteRequest:
+      type: object
+      description: Сериализатор для обновления количества товаров в корзине (PATCH).
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemUpdateRequest'
+    PatchedImageRequest:
+      type: object
+      description: Сериализатор для изображений мерча.
+      properties:
+        image:
+          type: string
+          format: binary
+        is_main:
+          type: boolean
+          default: false
+    PatchedListenerMeRequest:
+      type: object
+      description: Сериализатор профиля слушателя.
+      properties:
+        full_name:
+          type: string
+          title: Имя и фамилия
+          maxLength: 254
+    PatchedMerchWriteRequest:
+      type: object
+      description: Сериализатор для создания и обновления Merch.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Название
+          maxLength: 255
+        kind:
+          type: integer
+          nullable: true
+          title: Тип
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          writeOnly: true
+        album:
+          type: integer
+          nullable: true
+          title: Альбом
+        artist:
+          type: integer
+          title: Артист
+        description:
+          type: string
+          title: Описание
+        allow_overpay:
+          type: boolean
+        visibility:
+          allOf:
+          - $ref: '#/components/schemas/VisibilityEnum'
+          title: Приватность
+        is_published:
+          type: boolean
+          title: Опубликовано
+          description: Если включено, объект виден пользователям.
+        property_name:
+          type: string
+        stock:
+          type: integer
+          minimum: 0
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/VariantWriteRequest'
+    PatchedPhoneChangeRequest:
+      type: object
+      description: Сериализатор для изменения телефона аккаунта.
+      properties:
+        phone:
+          type: string
+          nullable: true
+          title: Номер телефона
+          description: Номер телефона
+          maxLength: 128
+    PatchedPromocodeWriteRequest:
+      type: object
+      description: Сериализатор для создания и обновления Promocode.
+      properties:
+        code:
+          type: string
+          minLength: 1
+          pattern: ^[A-Z0-9_-]+$
+          maxLength: 20
+        description:
+          type: string
+          title: Описание
+        usage_limit:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Макс. количество использований
+          description: Пусто = неограничено
+        discount_type:
+          $ref: '#/components/schemas/DiscountTypeEnum'
+        discount_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        start_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Начало действия
+        end_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Окончание действия
+        is_enabled:
+          type: boolean
+          title: Включен
+    PatchedTrackWriteRequest:
+      type: object
+      description: Сериализатор для создания и обновления.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Название
+          maxLength: 255
+        album:
+          type: integer
+          title: Альбом
+        audio_file:
+          type: string
+          format: binary
+          title: Файл трека
+          description: Оригинальный аудиофайл трека.
+          pattern: (?:mp3|wav|flac)$
+        position:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Порядок
+          description: Порядковый номер трека в альбоме
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        allow_overpay:
+          type: boolean
+        description:
+          type: string
+          title: Описание
+    PatchedUsernameChangeRequest:
+      type: object
+      description: Меняет username.
+      properties:
+        username:
+          type: string
+          minLength: 1
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+    PhoneChange:
+      type: object
+      description: Сериализатор для изменения телефона аккаунта.
+      properties:
+        phone:
+          type: string
+          nullable: true
+          title: Номер телефона
+          description: Номер телефона
+          maxLength: 128
+    PlaybackNotReady:
+      type: object
+      description: Ошибка при недоступном для воспроизведения аудио.
+      properties:
+        detail:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MediaPreparationStatusEnum'
+          readOnly: true
+      required:
+      - detail
+      - status
+    PlayerAlbum:
+      type: object
+      description: Альбом и очередь треков для плеера.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        artist_name:
+          type: string
+          nullable: true
+          description: Возвращает имя исполнителя альбома.
+          readOnly: true
+        cover_image:
+          type: string
+          format: uri
+          nullable: true
+          title: Обложка релиза
+        tracks:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerAlbumTrack'
+          readOnly: true
+      required:
+      - artist_name
+      - id
+      - name
+      - tracks
+    PlayerAlbumTrack:
+      type: object
+      description: Трек в очереди воспроизведения альбома.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        artist_name:
+          type: string
+          nullable: true
+          description: Возвращает имя исполнителя альбома.
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        album:
+          type: integer
+          title: Альбом
+        duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Длительность
+          description: Длительность трека в секундах
+        position:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Порядок
+          description: Порядковый номер трека в альбоме
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        allow_overpay:
+          type: boolean
+          default: false
+        image:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        is_favorite:
+          type: boolean
+          readOnly: true
+        variant_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        playback:
+          allOf:
+          - $ref: '#/components/schemas/TrackPlayback'
+          readOnly: true
+      required:
+      - album
+      - artist_name
+      - id
+      - image
+      - is_favorite
+      - name
+      - playback
+      - price
+      - variant_id
+    ProfileTypeEnum:
+      enum:
+      - artist
+      - label
+      type: string
+      description: |-
+        * `artist` - Артист
+        * `label` - Лейбл
+    PromocodeRead:
+      type: object
+      description: Сериализатор для чтения Promocode.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          title: Код промокода
+          description: Код промокода может содержать только заглавные латинские буквы,
+            цифры, дефис и подчеркивание.
+          pattern: ^[A-Z0-9_-]+$
+          maxLength: 20
+          minLength: 8
+        discount_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          title: Размер скидки
+        discount_type:
+          allOf:
+          - $ref: '#/components/schemas/DiscountTypeEnum'
+          title: Тип скидки
+        start_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Начало действия
+        end_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Окончание действия
+        usage_limit:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Макс. количество использований
+          description: Пусто = неограничено
+        used_count:
+          type: integer
+          readOnly: true
+          title: Использовано раз
+        is_enabled:
+          type: boolean
+          title: Включен
+      required:
+      - code
+      - discount_value
+      - id
+      - used_count
+    PromocodeReadDetail:
+      type: object
+      description: Сериализатор для подробного просмотра (retrieve) объекта Promocode.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          title: Код промокода
+          description: Код промокода может содержать только заглавные латинские буквы,
+            цифры, дефис и подчеркивание.
+          pattern: ^[A-Z0-9_-]+$
+          maxLength: 20
+          minLength: 8
+        discount_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          title: Размер скидки
+        discount_type:
+          allOf:
+          - $ref: '#/components/schemas/DiscountTypeEnum'
+          title: Тип скидки
+        start_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Начало действия
+        end_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Окончание действия
+        usage_limit:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Макс. количество использований
+          description: Пусто = неограничено
+        used_count:
+          type: integer
+          readOnly: true
+          title: Использовано раз
+        is_enabled:
+          type: boolean
+          title: Включен
+        description:
+          type: string
+          title: Описание
+      required:
+      - code
+      - discount_value
+      - id
+      - used_count
+    PromocodeWriteRequest:
+      type: object
+      description: Сериализатор для создания и обновления Promocode.
+      properties:
+        code:
+          type: string
+          minLength: 1
+          pattern: ^[A-Z0-9_-]+$
+          maxLength: 20
+        description:
+          type: string
+          title: Описание
+        usage_limit:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Макс. количество использований
+          description: Пусто = неограничено
+        discount_type:
+          $ref: '#/components/schemas/DiscountTypeEnum'
+        discount_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        start_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Начало действия
+        end_at:
+          type: string
+          format: date-time
+          nullable: true
+          title: Окончание действия
+        is_enabled:
+          type: boolean
+          title: Включен
+      required:
+      - code
+      - discount_type
+      - discount_value
+    PurchasedMusicDLDetail:
+      type: object
+      description: Детальная информация для скачивания релиза.
+      properties:
+        album_id:
+          type: integer
+          readOnly: true
+        access:
+          type: string
+          description: Возвращает тип доступа пользователя к релизу.
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PurchasedMusicDLItem'
+          readOnly: true
+      required:
+      - access
+      - album_id
+      - items
+    PurchasedMusicDLItem:
+      type: object
+      description: Вариант скачивания доступного релиза.
+      properties:
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AlbumArchiveStatusEnum'
+          readOnly: true
+        download_action_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+          description: URL POST-ручки для получения свежей временной ссылки на скачивание.
+            null, если скачивание пока недоступно.
+      required:
+      - download_action_url
+      - status
+      - title
+      - type
+    RecipientTypeEnum:
+      enum:
+      - individual_entrepreneur
+      - self_employed
+      - legal_entity
+      type: string
+      description: |-
+        * `` - Не указано
+        * `individual_entrepreneur` - ИП
+        * `self_employed` - СМЗ
+        * `legal_entity` - Юридическое лицо
+    SetPasswordRequest:
+      type: object
+      description: Устанавливает пароль для аккаунта без пароля.
+      properties:
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Новый пароль
+        retype_new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          title: Подтверждение нового пароля
+      required:
+      - new_password
+      - retype_new_password
+    SocialAuthInputRequest:
+      type: object
+      description: Сериализатор принимает code / token от провайдера.
+      properties:
+        access_token:
+          type: string
+          minLength: 1
+          description: Альтернативный способ. Готовый токен доступа провайдера.
+        code:
+          type: string
+          minLength: 1
+          description: Рекомендуемый способ. Код для обмена на бэкенде.
+    TariffsEnum:
+      enum:
+      - office
+      - door
+      - pickup
+      type: string
+      description: |-
+        * `office` - Самовывоз из ПВЗ
+        * `door` - Курьер (до двери)
+        * `pickup` - Постомат
+    TokenPair:
+      type: object
+      description: Пара JWT токенов.
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    TokenVerifyRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - token
+    TrackPlayback:
+      type: object
+      description: Данные доступного источника воспроизведения трека.
+      properties:
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MediaPreparationStatusEnum'
+          readOnly: true
+        kind:
+          readOnly: true
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/KindEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        duration:
+          type: integer
+          minimum: 1
+          readOnly: true
+          nullable: true
+        url:
+          type: string
+          readOnly: true
+          nullable: true
+      required:
+      - duration
+      - kind
+      - status
+      - url
+    TrackRead:
+      type: object
+      description: Сериализатор для чтения Track.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        artist_name:
+          type: string
+          nullable: true
+          description: Возвращает имя исполнителя альбома.
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        album:
+          type: integer
+          title: Альбом
+        duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Длительность
+          description: Длительность трека в секундах
+        position:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Порядок
+          description: Порядковый номер трека в альбоме
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        allow_overpay:
+          type: boolean
+          default: false
+        image:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        is_favorite:
+          type: boolean
+          readOnly: true
+      required:
+      - album
+      - artist_name
+      - id
+      - image
+      - is_favorite
+      - name
+      - price
+    TrackReadDetail:
+      type: object
+      description: Сериализатор для подробного просмотра (retrieve) объекта Track.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        artist_name:
+          type: string
+          nullable: true
+          description: Возвращает имя исполнителя альбома.
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        album:
+          type: integer
+          title: Альбом
+        duration:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Длительность
+          description: Длительность трека в секундах
+        position:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Порядок
+          description: Порядковый номер трека в альбоме
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        allow_overpay:
+          type: boolean
+          default: false
+        image:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        is_favorite:
+          type: boolean
+          readOnly: true
+        audio_file:
+          type: string
+          format: uri
+          title: Файл трека
+          description: Оригинальный аудиофайл трека.
+          pattern: (?:mp3|wav|flac)$
+        description:
+          type: string
+          title: Описание
+        variants:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: |-
+            Унифицирует формат вариантов для альбома.
+
+            Возвращает список с единственным дефолтным вариантом, чтобы фронтенд
+            мог использовать общую логику обработки (как для мерча).
+            'value' пустое, так как выбор не требуется.
+          readOnly: true
+      required:
+      - album
+      - artist_name
+      - id
+      - image
+      - is_favorite
+      - name
+      - price
+      - variants
+    TrackUploadFileInitiateRequest:
+      type: object
+      description: Валидирует начало загрузки файла для существующего трека.
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        size:
+          type: integer
+          minimum: 1
+        content_type:
+          type: string
+          default: ''
+          maxLength: 255
+      required:
+      - filename
+      - size
+    TrackUploadInitiateRequest:
+      type: object
+      description: Валидирует создание чернового трека и попытки загрузки.
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 255
+        size:
+          type: integer
+          minimum: 1
+        content_type:
+          type: string
+          default: ''
+          maxLength: 255
+        name:
+          type: string
+          default: ''
+          maxLength: 255
+        description:
+          type: string
+          default: ''
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          default: '0.00'
+        allow_overpay:
+          type: boolean
+          default: false
+      required:
+      - filename
+      - size
+    TrackUploadLocalFileResponse:
+      type: object
+      description: Ответ локальной ручки приёма файла.
+      properties:
+        upload:
+          $ref: '#/components/schemas/TrackUploadLocalFileState'
+      required:
+      - upload
+    TrackUploadLocalFileState:
+      type: object
+      description: Объект upload локальной ручки приёма файла.
+      properties:
+        id:
+          type: integer
+        status:
+          $ref: '#/components/schemas/TrackUploadStatusEnum'
+        uploaded_size:
+          type: integer
+      required:
+      - id
+      - status
+      - uploaded_size
+    TrackUploadResponse:
+      type: object
+      description: Ответ API прямой загрузки трека.
+      properties:
+        track:
+          $ref: '#/components/schemas/TrackUploadTrack'
+        upload:
+          $ref: '#/components/schemas/TrackUploadState'
+      required:
+      - track
+      - upload
+    TrackUploadState:
+      type: object
+      description: Описывает состояние попытки загрузки.
+      properties:
+        id:
+          type: integer
+        status:
+          $ref: '#/components/schemas/TrackUploadStatusEnum'
+        uploaded_size:
+          type: integer
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        complete_url:
+          type: string
+          format: uri
+        transport:
+          $ref: '#/components/schemas/TrackUploadTransport'
+      required:
+      - complete_url
+      - completed_at
+      - expires_at
+      - id
+      - status
+      - uploaded_size
+    TrackUploadStatusEnum:
+      enum:
+      - initiated
+      - uploaded
+      - completed
+      - failed
+      - expired
+      type: string
+      description: |-
+        * `initiated` - Ожидает загрузки
+        * `uploaded` - Файл загружен
+        * `completed` - Загрузка завершена
+        * `failed` - Ошибка загрузки
+        * `expired` - Срок загрузки истёк
+    TrackUploadTrack:
+      type: object
+      description: Описывает черновой или финализированный трек загрузки.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        position:
+          type: integer
+          nullable: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        allow_overpay:
+          type: boolean
+      required:
+      - allow_overpay
+      - description
+      - id
+      - name
+      - position
+      - price
+    TrackUploadTransport:
+      type: object
+      description: Описывает инструкцию для отправки файла клиентом.
+      properties:
+        method:
+          type: string
+        url:
+          type: string
+          format: uri
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+        file_field_name:
+          type: string
+      required:
+      - fields
+      - file_field_name
+      - headers
+      - method
+      - url
+    TrackWriteRequest:
+      type: object
+      description: Сериализатор для создания и обновления.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Название
+          maxLength: 255
+        album:
+          type: integer
+          title: Альбом
+        audio_file:
+          type: string
+          format: binary
+          title: Файл трека
+          description: Оригинальный аудиофайл трека.
+          pattern: (?:mp3|wav|flac)$
+        position:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Порядок
+          description: Порядковый номер трека в альбоме
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        allow_overpay:
+          type: boolean
+        description:
+          type: string
+          title: Описание
+      required:
+      - album
+      - name
+    TypeEnum:
+      enum:
+      - archive
+      - track
+      type: string
+      description: |-
+        * `archive` - archive
+        * `track` - track
+    UserDefaults:
+      type: object
+      properties:
+        full_name:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        phone:
+          type: string
+          readOnly: true
+        city:
+          type: string
+          readOnly: true
+        city_code:
+          type: string
+          readOnly: true
+      required:
+      - city
+      - city_code
+      - email
+      - full_name
+      - phone
+    UsernameChange:
+      type: object
+      description: Меняет username.
+      properties:
+        username:
+          type: string
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+      required:
+      - username
+    VariantRead:
+      type: object
+      description: Сериализатор для чтения варианта мерча.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        sku:
+          type: string
+          maxLength: 255
+        stock:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          title: Доступно
+          description: Наличие на складе
+        value:
+          type: string
+      required:
+      - id
+      - value
+    VariantWriteRequest:
+      type: object
+      description: Сериализатор для записи варианта мерча.
+      properties:
+        id:
+          type: integer
+        value:
+          type: string
+          minLength: 1
+        stock:
+          type: integer
+          minimum: 0
+      required:
+      - stock
+      - value
+    VisibilityEnum:
+      enum:
+      - public
+      - link_only
+      - hidden
+      type: string
+      description: |-
+        * `public` - Для всех
+        * `link_only` - Доступно по ссылке
+        * `hidden` - Скрыто
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
