@@ -8,10 +8,14 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from common.access import can_manage_store_object
+from common.access import can_manage_artist
 
 from .mixins import ImmutableFieldsSerializerMixin
-from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from store.constants import (
+    CHAR_PRESET_DIGITAL,
+    MAX_PRICE_DIGITS,
+    MONEY_DISPLAY_PRECISION,
+)
 from store.models import Album
 
 
@@ -34,14 +38,29 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'name',
             'price',
             'cover_image',
-            'is_published',
         )
 
-    def get_sku(self, obj) -> int | None:
-        if hasattr(obj, 'product') and obj.product:
-            variant = obj.product.variants.first()
-            return variant.sku if variant else None
-        return None
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and can_manage_artist(request.user, instance.artist):
+            data['is_published'] = instance.is_published
+        return data
+
+    def get_sku(self, obj) -> str | None:
+        product = getattr(obj, 'product', None)
+        if not product:
+            return None
+
+        variant = next(
+            (
+                v
+                for v in product.variants.all()
+                if v.is_active and v.property_value == CHAR_PRESET_DIGITAL
+            ),
+            None,
+        )
+        return variant.sku if variant else None
 
 
 class AlbumReadDetailSerializer(AlbumReadSerializer):
@@ -57,7 +76,6 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
             'description',
             'release_date',
             'allow_overpay',
-            'visibility',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -67,20 +85,12 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
         return False
 
     def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        user = (
-            self.context.get('request').user
-            if self.context.get('request')
-            else None
-        )
+        data = super().to_representation(instance)
+        request = self.context.get('request')
 
-        # Скрываем поля, если юзера нет, если не владелец и не админ
-        if not (
-            user and (user.is_staff or can_manage_store_object(user, instance))
-        ):
-            ret.pop('visibility', None)
-            ret.pop('is_published', None)
-        return ret
+        if request and can_manage_artist(request.user, instance.artist):
+            data['visibility'] = instance.visibility
+        return data
 
 
 class AlbumWriteSerializer(
