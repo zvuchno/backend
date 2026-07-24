@@ -19,7 +19,7 @@ from .artist_profile import (
     ArtistMeView,
     ArtistPublicView,
     BecomeArtistOrLabelView,
-    LabelManagedArtistListView,
+    LabelManagedProfileListView,
 )
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
@@ -61,7 +61,7 @@ __all__ = [
     'CustomTokenRefreshView',
     'CustomTokenVerifyView',
     'EmailVerificationView',
-    'LabelManagedArtistListView',
+    'LabelManagedProfileListView',
     'ListenerMeView',
     'ListenerRegistrationView',
     'MeView',

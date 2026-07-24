@@ -9,7 +9,7 @@ from users.views import (
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
-    LabelManagedArtistListView,
+    LabelManagedProfileListView,
     RecipientTypeListView,
     TelegramConnectView,
 )
@@ -21,9 +21,9 @@ urlpatterns = [
         name='artist_me',
     ),
     path(
-        'me/managed-artists/',
-        LabelManagedArtistListView.as_view(),
-        name='label-managed-artists',
+        'me/managed-profiles/',
+        LabelManagedProfileListView.as_view(),
+        name='label-managed-profiles',
     ),
     path(
         'me/legal/',

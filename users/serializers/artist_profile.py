@@ -46,6 +46,7 @@ class ArtistPublicShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistProfile
         fields = (
+            'id',
             'profile_type',
             'name',
             'description',

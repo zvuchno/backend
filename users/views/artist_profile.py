@@ -25,6 +25,7 @@ from users.schemas import (
     artist_me_schema,
     artist_public_schema,
     become_artist_schema,
+    label_managed_profile_list_schema,
 )
 from users.serializers.artist_profile import (
     ArtistCoverUpdateSerializer,
@@ -125,7 +126,8 @@ class BecomeArtistOrLabelView(GenericAPIView):
         )
 
 
-class LabelManagedArtistListView(ListAPIView):
+@label_managed_profile_list_schema
+class LabelManagedProfileListView(ListAPIView):
     """Список артистов текущего лейбла."""
 
     permission_classes = [IsLabel]
