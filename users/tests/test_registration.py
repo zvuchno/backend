@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework.settings import api_settings
 from rest_framework.throttling import ScopedRateThrottle
 
-from users.models import ArtistProfile, ListenerProfile
+from users.models import ArtistProfile, ArtistProfileType, ListenerProfile
 from users.views import BaseRegistrationView
 
 User = get_user_model()
@@ -192,6 +192,8 @@ class TestArtistRegistration:
         assert response.data['phone'] == artist_register_payload['phone']
         assert response.data['name'] == artist_register_payload['name']
 
+        assert response.data['profile_type'] == ArtistProfileType.ARTIST
+
         assert user.check_password(artist_register_payload['password'])
         assert not user.is_email_verified
         assert not user.is_phone_verified
@@ -200,6 +202,7 @@ class TestArtistRegistration:
 
         artist_profile = ArtistProfile.objects.get(user=user)
         assert artist_profile.name == artist_register_payload['name']
+        assert artist_profile.profile_type == ArtistProfileType.ARTIST
         assert artist_profile.is_active
         assert artist_profile.slug
 
@@ -263,6 +266,64 @@ class TestArtistRegistration:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert field in response.data
         assert User.objects.count() == 1
+        assert ListenerProfile.objects.count() == 0
+        assert ArtistProfile.objects.count() == 0
+        verification_email_mock.assert_not_called()
+
+    def test_register_label_creates_label_profile(
+        self,
+        api_client,
+        artist_register_url,
+        artist_register_payload,
+        verification_email_mock,
+    ):
+        """Регистрация лейбла создает профиль с типом лейбла."""
+        payload = {
+            **artist_register_payload,
+            'profile_type': ArtistProfileType.LABEL,
+        }
+
+        response = api_client.post(
+            artist_register_url,
+            data=payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        user = User.objects.get(email=payload['email'])
+        artist_profile = ArtistProfile.objects.get(user=user)
+
+        assert response.data['name'] == payload['name']
+        assert response.data['profile_type'] == ArtistProfileType.LABEL
+        assert artist_profile.name == payload['name']
+        assert artist_profile.profile_type == ArtistProfileType.LABEL
+
+        assert ListenerProfile.objects.filter(user=user).exists()
+        verification_email_mock.assert_called_once_with(user)
+
+    def test_register_artist_rejects_invalid_profile_type(
+        self,
+        api_client,
+        artist_register_url,
+        artist_register_payload,
+        verification_email_mock,
+    ):
+        """Регистрация отклоняет неизвестный тип профиля."""
+        payload = {
+            **artist_register_payload,
+            'profile_type': 'unknown',
+        }
+
+        response = api_client.post(
+            artist_register_url,
+            data=payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'profile_type' in response.data
+        assert User.objects.count() == 0
         assert ListenerProfile.objects.count() == 0
         assert ArtistProfile.objects.count() == 0
         verification_email_mock.assert_not_called()

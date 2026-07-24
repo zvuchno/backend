@@ -1,4 +1,4 @@
-"""Схемы OpenAPI для эндпоинтов профиля артиста."""
+"""Схемы OpenAPI для эндпоинтов профиля артиста или лейбла."""
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
@@ -19,17 +19,19 @@ artist_cover_update_schema = extend_schema(
 artist_me_schema = extend_schema_view(
     get=extend_schema(
         tags=['Artists'],
-        summary='Получить свой профиль артиста',
+        summary='Получить свой профиль артиста или лейбла',
         description=(
-            'Возвращает профиль артиста текущего пользователя вместе '
+            'Возвращает профиль артиста или лейбла '
+            'текущего пользователя вместе '
             'с контактами и ссылками на внешние ресурсы.'
         ),
     ),
     patch=extend_schema(
         tags=['Artists'],
-        summary='Обновить свой профиль артиста',
+        summary='Обновить свой профиль артиста или лейбла',
         description=(
-            'Частично обновляет профиль артиста текущего пользователя. '
+            'Частично обновляет профиль артиста или лейбла '
+            'текущего пользователя. '
             'При передаче contacts и socials списки синхронизируются '
             'целиком: новые элементы создаются, существующие обновляются, '
             'а отсутствующие в запросе удаляются.'
@@ -40,8 +42,11 @@ artist_me_schema = extend_schema_view(
 artist_public_schema = extend_schema(
     tags=['Artists'],
     auth=[],
-    summary='Получить публичный профиль артиста',
-    description='Возвращает публичные данные активного артиста по его slug.',
+    summary='Получить публичный профиль артиста или лейбла',
+    description=(
+        'Возвращает публичные данные активного профиля артиста '
+        'или лейбла по его slug.'
+    ),
 )
 
 artist_list_schema = extend_schema(
@@ -82,7 +87,7 @@ artist_list_schema = extend_schema(
             type=OpenApiTypes.STR,
             location=OpenApiParameter.QUERY,
             description=(
-                'Сортировка. Например: name, -name, created_at, -created_at.',
+                'Сортировка. Например: name, -name, created_at, -created_at.'
             ),
         ),
     ],

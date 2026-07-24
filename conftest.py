@@ -266,7 +266,6 @@ def listener_user(listener_user_factory):
         email='listener@listener.ru',
         username='listener',
     )
-    return user
 
 
 @pytest.fixture

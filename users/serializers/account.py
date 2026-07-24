@@ -3,8 +3,10 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from users.models import ArtistProfileType
 from users.serializers.mixins import PhoneRegistrationMixin
 from users.services import (
     get_user_from_uid,
@@ -27,6 +29,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     is_listener = serializers.SerializerMethodField()
     is_artist = serializers.SerializerMethodField()
+    profile_type = serializers.SerializerMethodField()
     has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
@@ -40,6 +43,7 @@ class MeSerializer(serializers.ModelSerializer):
             'is_email_verified',
             'is_listener',
             'is_artist',
+            'profile_type',
             'has_usable_password',
         )
 
@@ -59,6 +63,16 @@ class MeSerializer(serializers.ModelSerializer):
     def get_has_usable_password(obj) -> bool:
         """Определяет, может ли пользователь войти по паролю."""
         return obj.has_usable_password()
+
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=ArtistProfileType.choices,
+            allow_null=True,
+        ),
+    )
+    def get_profile_type(self, obj):
+        artist_profile = getattr(obj, 'artist_profile', None)
+        return artist_profile.profile_type if artist_profile else None
 
 
 class NewPasswordSerializer(serializers.Serializer):
