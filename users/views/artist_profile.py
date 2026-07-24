@@ -132,6 +132,7 @@ class LabelManagedProfileListView(ListAPIView):
 
     permission_classes = [IsLabel]
     serializer_class = ManagedArtistProfileSerializer
+    pagination_class = None
 
     def get_queryset(self):
         """Возвращает профили, доступные текущему лейблу для управления."""

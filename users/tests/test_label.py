@@ -20,7 +20,8 @@ class TestLabelManagedProfileList:
         response = label_client.get(label_managed_profiles_url)
 
         assert response.status_code == HTTPStatus.OK
-        profiles = response.data['results']
+
+        profiles = response.data
 
         assert [item['id'] for item in profiles] == [
             label_user.artist_profile.id,
@@ -78,9 +79,9 @@ class TestLabelManagedProfileList:
 
         assert response.status_code == HTTPStatus.OK
 
-        profiles = response.data['results']
+        profiles = response.data
 
-        assert response.data['count'] == 2
+        assert len(profiles) == 2
         assert {item['id'] for item in profiles} == {
             label_user.artist_profile.id,
             own_artist.id,
