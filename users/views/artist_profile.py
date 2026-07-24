@@ -1,5 +1,6 @@
 """Представления профиля артиста."""
 
+from django.db.models import Case, Q, When
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status
 from rest_framework.generics import (
@@ -14,7 +15,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from common.permissions import IsNotArtist
+from common.permissions import IsLabel, IsNotArtist
 
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
@@ -32,6 +33,7 @@ from users.serializers.artist_profile import (
     ArtistPublicSerializer,
     ArtistPublicShortSerializer,
     BecomeArtistOrLabelSerializer,
+    ManagedArtistProfileSerializer,
 )
 from users.views.mixins import CurrentArtistProfileMixin
 
@@ -120,4 +122,31 @@ class BecomeArtistOrLabelView(GenericAPIView):
         return Response(
             response_serializer.data,
             status=status.HTTP_201_CREATED,
+        )
+
+
+class LabelManagedArtistListView(ListAPIView):
+    """Список артистов текущего лейбла."""
+
+    permission_classes = [IsLabel]
+    serializer_class = ManagedArtistProfileSerializer
+
+    def get_queryset(self):
+        """Возвращает профили, доступные текущему лейблу для управления."""
+        label = self.request.user.artist_profile
+
+        return (
+            ArtistProfile.objects
+            .filter(
+                Q(pk=label.pk) | Q(label=label),
+                is_active=True,
+            )
+            .select_related('user')
+            .order_by(
+                Case(
+                    When(pk=label.pk, then=0),
+                    default=1,
+                ),
+                'name',
+            )
         )

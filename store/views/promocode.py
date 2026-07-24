@@ -6,7 +6,10 @@ TODO: owner -> artist, изменить пермишен, убрать неис�
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
-from common.permissions import IsArtist, IsStoreObjectOwner
+from common.permissions import (
+    IsArtistOrLabel,
+    IsStoreObjectOwner,
+)
 
 from .mixins import SoftDeleteMixin
 from store.models import Promocode
@@ -27,7 +30,7 @@ class PromocodeViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     """
 
     queryset = Promocode.objects.all()
-    permission_classes = (IsArtist, IsStoreObjectOwner)
+    permission_classes = (IsArtistOrLabel, IsStoreObjectOwner)
     http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_queryset(self):
