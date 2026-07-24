@@ -10,7 +10,7 @@ from rest_framework import serializers
 
 from common.access import can_manage_store_object
 
-from .mixins import ImmutableFieldsSerializerMixin, ProductVariantsMixin
+from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Album
 
@@ -24,18 +24,47 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    sku = serializers.SerializerMethodField()
 
     class Meta:
         model = Album
         fields = (
             'id',
+            'sku',
             'name',
             'price',
-            'description',
             'cover_image',
-            'visibility',
             'is_published',
         )
+
+    def get_sku(self, obj) -> int | None:
+        if hasattr(obj, 'product') and obj.product:
+            variant = obj.product.variants.first()
+            return variant.sku if variant else None
+        return None
+
+
+class AlbumReadDetailSerializer(AlbumReadSerializer):
+    """Сериализатор для подробного просмотра (retrieve) объекта Album."""
+
+    allow_overpay = serializers.SerializerMethodField()
+    genre = serializers.StringRelatedField()
+
+    class Meta(AlbumReadSerializer.Meta):
+        fields = AlbumReadSerializer.Meta.fields + (
+            'is_single',
+            'genre',
+            'description',
+            'release_date',
+            'allow_overpay',
+            'visibility',
+        )
+
+    def get_allow_overpay(self, obj) -> bool:
+        product = getattr(obj, 'product', None)
+        if product:
+            return product.allow_overpay
+        return False
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -52,29 +81,6 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             ret.pop('visibility', None)
             ret.pop('is_published', None)
         return ret
-
-
-class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
-    """Сериализатор для подробного просмотра (retrieve) объекта Album."""
-
-    allow_overpay = serializers.SerializerMethodField()
-    variants = serializers.SerializerMethodField()
-    genre = serializers.StringRelatedField()
-
-    class Meta(AlbumReadSerializer.Meta):
-        fields = AlbumReadSerializer.Meta.fields + (
-            'is_single',
-            'genre',
-            'release_date',
-            'allow_overpay',
-            'variants',
-        )
-
-    def get_allow_overpay(self, obj) -> bool:
-        product = getattr(obj, 'product', None)
-        if product:
-            return product.allow_overpay
-        return False
 
 
 class AlbumWriteSerializer(
