@@ -15,7 +15,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from common.permissions import IsLabel, IsNotArtist
+from common.permissions import IsArtistOrLabel, IsLabel, IsNotArtist
 
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
@@ -43,7 +43,7 @@ from users.views.mixins import CurrentArtistProfileMixin
 class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
     """Обновление обложки артиста."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsArtistOrLabel]
     serializer_class = ArtistCoverUpdateSerializer
     parser_classes = [MultiPartParser, FormParser]
     http_method_names = ['patch']
@@ -57,7 +57,7 @@ class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
 class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
     """Просмотр и редактирование профиля текущего артиста."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsArtistOrLabel]
     http_method_names = ['get', 'patch']
     select_related = ('user',)
     prefetch_related = ('contacts', 'socials')
