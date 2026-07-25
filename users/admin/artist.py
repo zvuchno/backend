@@ -2,13 +2,14 @@
 
 from django.contrib import admin
 from django.urls import reverse
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 
 from users.admin.mixins import ImagePreviewMixin
 from users.models import (
     ArtistContact,
     ArtistPickupPoint,
     ArtistProfile,
+    ArtistProfileType,
     ArtistShippingPoint,
     ArtistSocial,
 )
@@ -62,10 +63,11 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     )
     list_display = (
         'id',
-        'profile_type',
-        'user',
-        'label',
         'name',
+        'slug',
+        'profile_type',
+        'label',
+        'user',
         'city',
         'is_active',
         'created_at',
@@ -80,6 +82,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'account_phone',
         'account_username',
         'user_link',
+        'managed_artists',
         'image_preview',
         'created_at',
         'updated_at',
@@ -87,6 +90,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     )
     search_fields = (
         'name',
+        'slug',
         'city',
         'user__phone',
         'user__username',
@@ -105,6 +109,27 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         actions = super().get_actions(request)
         actions.pop('delete_selected', None)
         return actions
+
+    @admin.display(description='Управляемые артисты')
+    def managed_artists(self, obj):
+        """Отображает артистов, которыми управляет лейбл."""
+        if not obj or not obj.pk or not obj.artists.exists():
+            return '—'
+
+        return format_html_join(
+            '<br>',
+            '<a href="{}">{}</a>',
+            (
+                (
+                    reverse(
+                        'admin:users_artistprofile_change',
+                        args=(artist.pk,),
+                    ),
+                    artist.name,
+                )
+                for artist in obj.artists.order_by('name')
+            ),
+        )
 
     @admin.display(description='Учётная запись')
     def user_link(self, obj):
@@ -147,6 +172,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                 {
                     'fields': (
                         'name',
+                        'slug',
                         'description',
                         'city',
                     ),
@@ -192,22 +218,28 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                 ),
             )
         else:
+            management_fields = [
+                'profile_type',
+                'label',
+                'user_link',
+                'account_username',
+                'account_phone',
+                'display_connect_to_telegram',
+            ]
+
+            if obj.profile_type == ArtistProfileType.LABEL:
+                management_fields.append('managed_artists')
+
             fieldsets.insert(
                 0,
                 (
                     'Тип и управление',
                     {
-                        'fields': (
-                            'profile_type',
-                            'label',
-                            'user_link',
-                            'account_username',
-                            'account_phone',
-                            'display_connect_to_telegram',
-                        ),
+                        'fields': tuple(management_fields),
                     },
                 ),
             )
+
             fieldsets.append(
                 (
                     'Ссылки',

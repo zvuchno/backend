@@ -22,6 +22,7 @@ from .artist_profile import (
     artist_list_schema,
     artist_me_schema,
     artist_public_schema,
+    label_managed_profile_list_schema,
 )
 from .auth import (
     logout_schema,
@@ -55,6 +56,7 @@ __all__ = [
     'change_username_schema',
     'consent_doc_schema',
     'email_verification_schema',
+    'label_managed_profile_list_schema',
     'listener_me_schema',
     'listener_registration_schema',
     'logout_schema',

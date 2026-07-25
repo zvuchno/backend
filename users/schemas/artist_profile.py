@@ -7,6 +7,8 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
+from users.serializers import ManagedArtistProfileSerializer
+
 artist_cover_update_schema = extend_schema(
     tags=['Artists'],
     summary='Обновить обложку своего профиля артиста',
@@ -91,4 +93,18 @@ artist_list_schema = extend_schema(
             ),
         ),
     ],
+)
+
+
+label_managed_profile_list_schema = extend_schema(
+    tags=['Artists'],
+    summary='Получить профили, доступные текущему лейблу',
+    description=(
+        'Возвращает профиль текущего лейбла и активные профили артистов, '
+        'которыми он управляет. Профиль самого лейбла возвращается первым '
+        'и помечается полем is_self=true.'
+    ),
+    responses={
+        200: ManagedArtistProfileSerializer(many=True),
+    },
 )

@@ -14,12 +14,21 @@ from .ownership import (
     IsUserObjectOwner,
     IsUserObjectOwnerOrReadOnly,
 )
-from .profiles import CanCreateArtistContent, IsArtist, IsListener, IsNotArtist
+from .profiles import (
+    CanCreateArtistContent,
+    IsArtist,
+    IsArtistOrLabel,
+    IsLabel,
+    IsListener,
+    IsNotArtist,
+)
 from .verification import IsUserVerified
 
 __all__ = [
     'CanCreateArtistContent',
     'IsArtist',
+    'IsArtistOrLabel',
+    'IsLabel',
     'IsListener',
     'IsNotArtist',
     'IsSalesOwner',
