@@ -2,13 +2,13 @@
 
 from rest_framework import serializers
 
+from .mixins import ProductVariantSelectionMixin
 from store.constants import (
     CHAR_PRESET_SIMPLE,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
-from store.models import Album, ProductVariant
-from store.serializers.merch import MerchDetailSerializer
+from store.models import Album, Merch, ProductVariant
 from store.serializers.mixins import ProductImagesMixin
 
 
@@ -206,9 +206,37 @@ class CatalogReleaseDetailSerializer(
         ).data
 
 
+class CatalogMerchVariantSerializer(serializers.ModelSerializer):
+    """Вариант обычного мерча в витринной detail-карточке."""
+
+    variant_id = serializers.IntegerField(
+        source='id',
+        read_only=True,
+    )
+    property_value = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductVariant
+        fields = (
+            'variant_id',
+            'sku',
+            'stock',
+            'property_value',
+        )
+        read_only_fields = fields
+
+    def get_property_value(self, obj) -> str:
+        """Возвращает значение свойства варианта."""
+        if obj.property_value == CHAR_PRESET_SIMPLE:
+            return ''
+
+        return obj.property_value
+
+
 class CatalogMerchDetailSerializer(
-    MerchDetailSerializer,
     CatalogDetailBaseSerializer,
+    ProductVariantSelectionMixin,
+    serializers.ModelSerializer,
 ):
     """Вариант обычного мерча в витринной detail странице."""
 
@@ -219,22 +247,69 @@ class CatalogMerchDetailSerializer(
         read_only=True,
     )
 
-    class Meta(MerchDetailSerializer.Meta):
-        fields = MerchDetailSerializer.Meta.fields + (
+    allow_overpay = serializers.BooleanField(
+        source='product.allow_overpay',
+        read_only=True,
+    )
+    images = serializers.SerializerMethodField(
+        help_text='Изображения мерча.',
+    )
+    kind = serializers.StringRelatedField()
+    property_name = serializers.CharField(
+        source='product.property_name',
+        read_only=True,
+    )
+    stock = serializers.SerializerMethodField()
+    variants = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Merch
+        fields = (
+            'id',
+            'name',
+            'description',
+            'price',
             'artist_name',
             'artist_image',
+            'allow_overpay',
+            'images',
+            'kind',
+            'property_name',
+            'stock',
+            'variants',
         )
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
+    def get_stock(self, obj) -> int:
+        """Возвращает общий остаток учитываемых вариантов."""
+        product = getattr(obj, 'product', None)
+        if product is None:
+            return 0
 
-        data['images'] = data.pop('images_merch', [])
-        data.pop('album', None)
-        data.pop('visibility', None)
-        data.pop('is_published', None)
+        return self.calculate_product_stock(
+            product,
+            getattr(product, 'active_catalog_variants', []),
+        )
 
-        for variant in data.get('variants', []):
-            variant['variant_id'] = variant.pop('id', None)
-            variant['property_value'] = variant.pop('value', '')
+    def get_variants(self, obj) -> list[dict]:
+        """Возвращает активные варианты мерча."""
+        product = getattr(obj, 'product', None)
+        if product is None:
+            return []
 
-        return data
+        variants = self.select_product_variants(
+            product,
+            getattr(product, 'active_catalog_variants', []),
+        )
+
+        return CatalogMerchVariantSerializer(
+            variants,
+            many=True,
+            context=self.context,
+        ).data
+
+    def get_images(self, obj) -> list[dict]:
+        """Возвращает изображения мерча."""
+        items = self.get_merch_image_items(
+            getattr(obj, 'prefetched_images', []),
+        )
+        return self.serialize_image_items(items)

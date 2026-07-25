@@ -188,6 +188,10 @@ class CatalogMerchDetailView(RetrieveAPIView):
 
     def get_queryset(self):
         """Возвращает публичный обычный мерч."""
+        active_variants = ProductVariant.objects.filter(
+            is_active=True,
+        ).order_by('id')
+
         return (
             Merch.objects
             .filter(
@@ -207,7 +211,15 @@ class CatalogMerchDetailView(RetrieveAPIView):
                 'payout_recipient',
             )
             .prefetch_related(
-                'images_merch',
-                'product__variants',
+                Prefetch(
+                    'images_merch',
+                    queryset=Image.objects.order_by('id'),
+                    to_attr='prefetched_images',
+                ),
+                Prefetch(
+                    'product__variants',
+                    queryset=active_variants,
+                    to_attr='active_catalog_variants',
+                ),
             )
         )
