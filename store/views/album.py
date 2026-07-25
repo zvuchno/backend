@@ -1,9 +1,11 @@
 """ViewSet для управления альбомами."""
 
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
+from common.access import managed_artist_q
 from common.permissions import (
     CanCreateArtistContent,
     IsStoreObjectManagerOrReadOnly,
@@ -61,15 +63,16 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         return AlbumReadSerializer
 
     def get_queryset(self):
-        # Вызываем базовый QS с фильтрацией
-        queryset = (
-            super()
-            .get_queryset()
-            .visible_for(
-                user=self.request.user,
-                action=self.action,
-            )
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if not user.is_authenticated:
+            return queryset.none()
+
+        queryset = queryset.filter(
+            Q(is_active=True) & managed_artist_q(user),
         )
+
         if self.action in ('list', 'retrieve'):
             queryset = queryset.select_related(
                 'product',

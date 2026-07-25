@@ -1,9 +1,11 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from common.access import managed_artist_q
 from common.permissions import (
     CanCreateArtistContent,
     IsStoreObjectManagerOrReadOnly,
@@ -43,6 +45,7 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         - Синхронизирует коммерческие поля (price, allow_overpay).
     """
 
+    queryset = Merch.objects.all()
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
         DjangoFilterBackend,
@@ -67,7 +70,15 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         return MerchWriteSerializer
 
     def get_queryset(self):
-        queryset = Merch.objects.visible_for(self.request.user, self.action)
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if not user.is_authenticated:
+            return queryset.none()
+
+        queryset = queryset.filter(
+            Q(is_active=True) & managed_artist_q(user),
+        )
         if self.action == 'list':
             queryset = queryset.select_related(
                 'product',
