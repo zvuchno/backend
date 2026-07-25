@@ -13,7 +13,6 @@ class ProductVariantsMixin:
                 for variant in variants
                 if variant.property_value != CHAR_PRESET_SIMPLE
             ]
-
         return [
             variant
             for variant in variants

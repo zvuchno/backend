@@ -8,7 +8,7 @@ from rest_framework import serializers
 
 from common.access import can_manage_artist
 
-from .mixins import ImmutableFieldsSerializerMixin, ProductVariantsMixin
+from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
 from store.models import Track
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
@@ -59,16 +59,13 @@ class TrackReadSerializer(serializers.ModelSerializer):
         )
 
 
-class TrackReadDetailSerializer(ProductVariantsMixin, TrackReadSerializer):
+class TrackReadDetailSerializer(TrackReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Track."""
-
-    variants = serializers.SerializerMethodField()
 
     class Meta(TrackReadSerializer.Meta):
         fields = TrackReadSerializer.Meta.fields + (
             'audio_file',
             'description',
-            'variants',
         )
 
 

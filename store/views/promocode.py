@@ -3,6 +3,7 @@
 TODO: owner -> artist, изменить пермишен, убрать неиспользуемый пермишен.
 """
 
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
@@ -12,6 +13,7 @@ from common.permissions import (
 )
 
 from .mixins import SoftDeleteMixin
+from store.filters import PromoCodeFilter
 from store.models import Promocode
 from store.schema import promocode_schema
 from store.serializers import (
@@ -32,6 +34,8 @@ class PromocodeViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     queryset = Promocode.objects.all()
     permission_classes = (IsArtistOrLabel, IsStoreObjectOwner)
     http_method_names = ('get', 'post', 'patch', 'delete')
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = PromoCodeFilter
 
     def get_queryset(self):
         return Promocode.objects.filter(owner=self.request.user)

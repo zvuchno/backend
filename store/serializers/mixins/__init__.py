@@ -8,9 +8,7 @@
 from .images import ProductImagesMixin
 from .immutable_fields import ImmutableFieldsSerializerMixin
 from .product_variant_url_mixin import ProductVariantURLMixin
-from .product_variants import (
-    ProductVariantsMixin,
-)
+from .product_variants import ProductVariantsMixin
 
 __all__ = [
     'ImmutableFieldsSerializerMixin',

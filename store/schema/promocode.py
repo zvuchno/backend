@@ -16,8 +16,11 @@ PROMOCODES_TAGS = ['Promocodes']
 promocode_schema = extend_schema_view(
     list=extend_schema(
         summary='Список промокодов',
-        description='Возвращает промокоды текущего артиста.',
-        responses={200: PromocodeReadSerializer},
+        description=(
+            'Возвращает промокоды текущего артиста с фильтрацией '
+            'по типу скидки (PERCENT/FIXED) и доступности (is_available).'
+        ),
+        responses={200: PromocodeReadSerializer(many=True)},
         tags=PROMOCODES_TAGS,
     ),
     retrieve=extend_schema(
@@ -28,7 +31,7 @@ promocode_schema = extend_schema_view(
     ),
     create=extend_schema(
         summary='Создать промокод',
-        description=('Создаёт промокод от имени текущего артиста. '),
+        description='Создаёт промокод от имени текущего артиста.',
         responses={201: PromocodeReadDetailSerializer},
         tags=PROMOCODES_TAGS,
     ),
