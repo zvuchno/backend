@@ -56,12 +56,12 @@ urlpatterns = [
     path('catalog/', ProductCatalogListView.as_view(), name='catalog'),
     path(
         'catalog/release/<int:pk>/',
-        CatalogReleaseDetailView.as_view({'get': 'retrieve'}),
+        CatalogReleaseDetailView.as_view(),
         name='catalog-release-detail',
     ),
     path(
         'catalog/merch/<int:pk>/',
-        CatalogMerchDetailView.as_view({'get': 'retrieve'}),
+        CatalogMerchDetailView.as_view(),
         name='catalog-merch-detail',
     ),
     path(
