@@ -2,14 +2,16 @@
 
 from rest_framework import serializers
 
-from .mixins import ProductVariantSelectionMixin
 from store.constants import (
     CHAR_PRESET_SIMPLE,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album, Merch, ProductVariant
-from store.serializers.mixins import ProductImagesMixin
+from store.serializers.mixins import (
+    ProductImagesMixin,
+    ProductVariantsMixin,
+)
 
 
 class CatalogDetailBaseSerializer(ProductImagesMixin, serializers.Serializer):
@@ -146,6 +148,7 @@ class CatalogReleaseVariantSerializer(
 
 
 class CatalogReleaseDetailSerializer(
+    ProductVariantsMixin,
     CatalogDetailBaseSerializer,
     serializers.ModelSerializer,
 ):
@@ -178,24 +181,10 @@ class CatalogReleaseDetailSerializer(
             if product is None:
                 continue
 
-            carrier_variants = getattr(
+            carrier_variants = self.select_product_variants(
                 product,
-                'active_carriers_variants',
-                [],
+                getattr(product, 'active_carriers_variants', []),
             )
-
-            if product.property_name:
-                carrier_variants = [
-                    variant
-                    for variant in carrier_variants
-                    if variant.property_value != CHAR_PRESET_SIMPLE
-                ]
-            else:
-                carrier_variants = [
-                    variant
-                    for variant in carrier_variants
-                    if variant.property_value == CHAR_PRESET_SIMPLE
-                ]
 
             variants.extend(carrier_variants)
 
@@ -234,8 +223,8 @@ class CatalogMerchVariantSerializer(serializers.ModelSerializer):
 
 
 class CatalogMerchDetailSerializer(
+    ProductVariantsMixin,
     CatalogDetailBaseSerializer,
-    ProductVariantSelectionMixin,
     serializers.ModelSerializer,
 ):
     """Вариант обычного мерча в витринной detail странице."""

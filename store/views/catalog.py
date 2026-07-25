@@ -82,14 +82,6 @@ class CatalogReleaseDetailView(RetrieveAPIView):
     permission_classes = (AllowAny,)
     throttle_classes = (AnonRateThrottle, UserRateThrottle)
 
-    def get_permissions(self):
-        """Разрешает публичный доступ к витринной карточке."""
-        return (AllowAny(),)
-
-    def get_serializer_class(self):
-        """Возвращает сериализатор витринной карточки релиза."""
-        return CatalogReleaseDetailSerializer
-
     def get_queryset(self):
         """Возвращает публичные релизы с вариантами покупки."""
         digital_active_variants = (
@@ -177,14 +169,6 @@ class CatalogMerchDetailView(RetrieveAPIView):
     serializer_class = CatalogMerchDetailSerializer
     permission_classes = (AllowAny,)
     throttle_classes = (AnonRateThrottle, UserRateThrottle)
-
-    def get_permissions(self):
-        """Разрешает публичный доступ к витринной карточке."""
-        return (AllowAny(),)
-
-    def get_serializer_class(self):
-        """Возвращает сериализатор витринной карточки мерча."""
-        return CatalogMerchDetailSerializer
 
     def get_queryset(self):
         """Возвращает публичный обычный мерч."""
