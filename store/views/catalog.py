@@ -2,7 +2,7 @@ from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view
 from rest_framework import filters
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
@@ -25,8 +25,6 @@ from store.serializers.catalog_detail import (
     CatalogMerchDetailSerializer,
     CatalogReleaseDetailSerializer,
 )
-from store.views.album import AlbumViewSet
-from store.views.merch import MerchViewSet
 
 
 @catalog_list_schema
@@ -76,12 +74,13 @@ class ProductCatalogListView(ListAPIView):
         return context
 
 
-@extend_schema_view(retrieve=catalog_release_detail_schema)
-class CatalogReleaseDetailView(AlbumViewSet):
+@extend_schema_view(get=catalog_release_detail_schema)
+class CatalogReleaseDetailView(RetrieveAPIView):
     """Витринная detail-карточка релиза."""
 
     serializer_class = CatalogReleaseDetailSerializer
-    http_method_names = ('get',)
+    permission_classes = (AllowAny,)
+    throttle_classes = (AnonRateThrottle, UserRateThrottle)
 
     def get_permissions(self):
         """Разрешает публичный доступ к витринной карточке."""
@@ -171,12 +170,13 @@ class CatalogReleaseDetailView(AlbumViewSet):
         )
 
 
-@extend_schema_view(retrieve=catalog_merch_detail_schema)
-class CatalogMerchDetailView(MerchViewSet):
+@extend_schema_view(get=catalog_merch_detail_schema)
+class CatalogMerchDetailView(RetrieveAPIView):
     """Витринная detail-карточка обычного мерча."""
 
     serializer_class = CatalogMerchDetailSerializer
-    http_method_names = ('get',)
+    permission_classes = (AllowAny,)
+    throttle_classes = (AnonRateThrottle, UserRateThrottle)
 
     def get_permissions(self):
         """Разрешает публичный доступ к витринной карточке."""
@@ -187,12 +187,27 @@ class CatalogMerchDetailView(MerchViewSet):
         return CatalogMerchDetailSerializer
 
     def get_queryset(self):
-        """Не брать носители."""
+        """Возвращает публичный обычный мерч."""
         return (
-            super()
-            .get_queryset()
+            Merch.objects
+            .filter(
+                is_active=True,
+                is_published=True,
+                visibility=Merch.Visibility.PUBLIC,
+            )
             .exclude(
                 kind__is_carrier=True,
                 album__isnull=False,
+            )
+            .select_related(
+                'product',
+                'kind',
+                'album',
+                'artist',
+                'payout_recipient',
+            )
+            .prefetch_related(
+                'images_merch',
+                'product__variants',
             )
         )
