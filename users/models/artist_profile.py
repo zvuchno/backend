@@ -58,6 +58,9 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         on_delete=models.PROTECT,
         related_name='artists',
         verbose_name='Лейбл',
+        limit_choices_to={
+            'profile_type': ArtistProfileType.LABEL,
+        },
         null=True,
         blank=True,
     )
