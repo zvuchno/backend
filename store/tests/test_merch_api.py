@@ -357,21 +357,19 @@ class TestMerchVariants:
     def merch_detail_url(self, merch):
         return reverse('api:store:merch-detail', kwargs={'pk': merch.pk})
 
-    def test_zero_stock_variant_hidden_from_non_owner(
+    def test_merch_detail_hidden_from_non_owner_and_anonymous(
         self,
         merch,
         merch_detail_url,
-        artist_client,
+        other_artist_client,
         api_client,
     ):
-        """Вариант с stock=0 не виден не-владельцу."""
-        artist_client.patch(
-            merch_detail_url,
-            {'variants': [{'value': 'S', 'stock': 0}]},
-            format='json',
-        )
-        response = api_client.get(merch_detail_url)
-        assert response.data['variants'] == []
+        """Мерч недоступен для чужого артиста и анонимного пользователя."""
+        response_other_artist = other_artist_client.get(merch_detail_url)
+        assert response_other_artist.status_code == status.HTTP_404_NOT_FOUND
+
+        response_anonymous = api_client.get(merch_detail_url)
+        assert response_anonymous.status_code == status.HTTP_404_NOT_FOUND
 
     def test_cannot_update_variant_of_other_merch(
         self,
