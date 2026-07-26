@@ -142,7 +142,7 @@ class ReportService:
                         **data,
                         'delivery_amount': delivery_amount,
                         'payout_amount': payout_amount,
-                        'status': Report.Status.READY,
+                        'status': Report.Status.PENDING,
                     },
                 )
 

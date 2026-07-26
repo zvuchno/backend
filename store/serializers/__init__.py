@@ -52,6 +52,7 @@ from .purchased_music import (
     PurchasedMusicDLDetailSerializer,
     PurchasedMusicDLItemSerializer,
 )
+from .report import ArtistReportSerializer
 from .sale import ArtistSaleDetailSerializer, ArtistSaleSerializer
 from .track import (
     TrackReadDetailSerializer,
@@ -72,6 +73,7 @@ __all__ = [
     'ApplyPromocodeSerializer',
     'ArchiveNotReadySerializer',
     'ArtistPickupPointsSerializer',
+    'ArtistReportSerializer',
     'ArtistSaleDetailSerializer',
     'ArtistSaleSerializer',
     'BaseCardSerializer',

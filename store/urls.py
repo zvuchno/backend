@@ -9,6 +9,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AlbumTrackUploadInitiateView,
     AlbumViewSet,
+    ArtistReportViewSet,
     CDEKWidgetView,
     CartViewSet,
     CatalogMerchDetailView,
@@ -50,6 +51,7 @@ router.register(r'deliveries', DeliveryViewSet, basename='deliveries')
 router.register(r'me/favorites', FavoritesViewSet, basename='me-favorites')
 router.register(r'orders', OrderViewSet, basename='orders')
 router.register(r'promocodes', PromocodeViewSet, basename='promocodes')
+router.register(r'me/reports', ArtistReportViewSet, basename='me-reports')
 
 urlpatterns = [
     path('', include(router.urls)),

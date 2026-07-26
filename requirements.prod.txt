@@ -24,5 +24,6 @@ pyTelegramBotAPI==4.34.0
 python-dotenv==1.2.2
 python-slugify==8.0.4
 redis==8.0.0
+reportlab==5.0.0
 sentry-sdk==2.58.0
 yookassa==3.11.0

@@ -11,6 +11,14 @@ from users.models import ArtistProfile
 from users.models.abstract import TimestampModel
 
 
+def report_upload_path(instance, filename):
+    """Путь для хранения файла отчета."""
+    return (
+        f'reports/artist_id_{instance.artist_id}/'
+        f'{instance.period_type}/{filename}'
+    )
+
+
 class Report(TimestampModel):
     """Агрегированный отчет о продажах артиста за период."""
 
@@ -87,7 +95,7 @@ class Report(TimestampModel):
 
     report_file = models.FileField(
         'Файл отчета',
-        upload_to='reports/%Y/%m/',
+        upload_to=report_upload_path,
         null=True,
         blank=True,
     )

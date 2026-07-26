@@ -4,11 +4,13 @@ import datetime
 import logging
 
 from celery import shared_task
+from django.core.files.base import ContentFile
 from django.db.models import Case, F, IntegerField, When
 from django.utils import timezone
 
 from store.models import Order, OrderItem, Product, Report
 from store.services.report import ReportService
+from store.services.report_file_builder import ReportFileBuilder
 from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
@@ -92,6 +94,21 @@ def generate_report_task(
             period_start=period_start,
             period_end=period_end,
         )
+
+        buffer = ReportFileBuilder.build(report)
+        filename = (
+            f'report_{report.period_type}_{report.period_start}'
+            f'_{report.period_end}.pdf'
+        )
+        if report.report_file:
+            report.report_file.delete(save=False)
+        report.report_file.save(
+            filename,
+            ContentFile(buffer.getvalue()),
+            save=False,
+        )
+        report.status = Report.Status.READY
+        report.save(update_fields=['report_file', 'status'])
     except (ValueError, ArtistProfile.DoesNotExist) as exc:
         logger.error(
             'Невозможно сформировать отчет artist=%s period=%s—%s: %s',
@@ -113,7 +130,7 @@ def generate_report_task(
         raise self.retry(exc=exc)
 
     logger.info(
-        'Отчет сформирован: id=%s artist=%s type=%s period=%s—%s',
+        'Отчет id=%s сформирован: artist=%s type=%s period=%s—%s',
         report.id,
         artist_id,
         period_type,
