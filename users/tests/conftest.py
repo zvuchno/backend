@@ -265,3 +265,9 @@ def artist_public_url():
         )
 
     return build_url
+
+
+@pytest.fixture
+def label_managed_profiles_url() -> str:
+    """Возвращает URL списка управляемых профилей."""
+    return reverse('api:users:label-managed-profiles')

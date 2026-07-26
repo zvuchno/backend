@@ -46,6 +46,7 @@ class ArtistPublicShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistProfile
         fields = (
+            'id',
             'profile_type',
             'name',
             'description',
@@ -201,3 +202,25 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                     },
                 )
             raise
+
+
+class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
+    """Профиль, доступный для управления текущему аккаунту."""
+
+    has_account = serializers.SerializerMethodField()
+    is_self = serializers.SerializerMethodField()
+
+    class Meta(ArtistPublicShortSerializer.Meta):
+        fields = ArtistPublicShortSerializer.Meta.fields + (
+            'has_account',
+            'is_self',
+        )
+
+    def get_has_account(self, obj: ArtistProfile) -> bool:
+        """Определяет наличие аккаунта у профиля."""
+        return obj.user_id is not None
+
+    def get_is_self(self, obj: ArtistProfile) -> bool:
+        """Определяет, принадлежит ли профиль текущему аккаунту."""
+        request = self.context.get('request')
+        return bool(request and obj.user_id == request.user.id)

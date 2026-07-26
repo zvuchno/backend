@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -34,17 +35,54 @@ class MerchReadSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    sku = serializers.SerializerMethodField()
+    stock = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Merch
         fields = (
             'id',
+            'sku',
             'name',
             'description',
             'price',
+            'stock',
             'main_image',
         )
+
+    def get_sku(self, obj) -> str | None:
+        product = getattr(obj, 'product', None)
+        if not product or product.property_name:
+            return None
+
+        simple = next(
+            (
+                v
+                for v in product.variants.all()
+                if v.is_active and v.property_value == CHAR_PRESET_SIMPLE
+            ),
+            None,
+        )
+        return simple.sku if simple else None
+
+    def get_stock(self, obj) -> int:
+        product = getattr(obj, 'product', None)
+        if not product:
+            return 0
+
+        active_variants = product.variants.filter(is_active=True)
+
+        if not product.property_name:
+            simple = active_variants.filter(
+                property_value=CHAR_PRESET_SIMPLE,
+            ).first()
+            return (simple.stock or 0) if simple else 0
+        total_stock = active_variants.exclude(
+            property_value=CHAR_PRESET_SIMPLE,
+        ).aggregate(total=Sum('stock'))['total']
+
+        return total_stock or 0
 
     def get_main_image(self, obj) -> str | None:
         request = self.context.get('request')
@@ -61,6 +99,13 @@ class MerchReadSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(url) if request else url
 
         return None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and can_manage_artist(request.user, instance.artist):
+            data['is_published'] = instance.is_published
+        return data
 
 
 class VariantReadSerializer(serializers.ModelSerializer):
@@ -85,7 +130,6 @@ class MerchDetailSerializer(MerchReadSerializer):
         source='product.property_name',
         read_only=True,
     )
-    stock = serializers.SerializerMethodField()
 
     class Meta(MerchReadSerializer.Meta):
         fields = MerchReadSerializer.Meta.fields + (
@@ -94,7 +138,6 @@ class MerchDetailSerializer(MerchReadSerializer):
             'kind',
             'album',
             'property_name',
-            'stock',
             'variants',
         )
 
@@ -103,33 +146,8 @@ class MerchDetailSerializer(MerchReadSerializer):
         data.pop('main_image', None)
         request = self.context.get('request')
         if request and can_manage_artist(request.user, instance.artist):
-            for field in ('visibility', 'is_published'):
-                data[field] = getattr(instance, field)
+            data['visibility'] = instance.visibility
         return data
-
-    def get_stock(self, obj) -> int:
-        product = getattr(obj, 'product', None)
-        if not product:
-            return 0
-
-        variants = list(product.variants.all())
-
-        if not product.property_name:
-            simple = next(
-                (
-                    v
-                    for v in variants
-                    if v.property_value == CHAR_PRESET_SIMPLE and v.is_active
-                ),
-                None,
-            )
-            return simple.stock if simple else 0
-
-        return sum(
-            v.stock
-            for v in variants
-            if v.is_active and v.property_value != CHAR_PRESET_SIMPLE
-        )
 
     def get_allow_overpay(self, obj) -> bool:
         product = getattr(obj, 'product', None)

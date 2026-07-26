@@ -8,10 +8,14 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from common.access import can_manage_store_object
+from common.access import can_manage_artist
 
-from .mixins import ImmutableFieldsSerializerMixin, ProductVariantsMixin
-from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from .mixins import ImmutableFieldsSerializerMixin
+from store.constants import (
+    CHAR_PRESET_DIGITAL,
+    MAX_PRICE_DIGITS,
+    MONEY_DISPLAY_PRECISION,
+)
 from store.models import Album
 
 
@@ -24,50 +28,54 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
         read_only=True,
     )
+    sku = serializers.SerializerMethodField()
 
     class Meta:
         model = Album
         fields = (
             'id',
+            'sku',
             'name',
             'price',
-            'description',
             'cover_image',
-            'visibility',
-            'is_published',
         )
 
     def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        user = (
-            self.context.get('request').user
-            if self.context.get('request')
-            else None
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and can_manage_artist(request.user, instance.artist):
+            data['is_published'] = instance.is_published
+        return data
+
+    def get_sku(self, obj) -> str | None:
+        product = getattr(obj, 'product', None)
+        if not product:
+            return None
+
+        variant = next(
+            (
+                v
+                for v in product.variants.all()
+                if v.is_active and v.property_value == CHAR_PRESET_DIGITAL
+            ),
+            None,
         )
-
-        # Скрываем поля, если юзера нет, если не владелец и не админ
-        if not (
-            user and (user.is_staff or can_manage_store_object(user, instance))
-        ):
-            ret.pop('visibility', None)
-            ret.pop('is_published', None)
-        return ret
+        return variant.sku if variant else None
 
 
-class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
+class AlbumReadDetailSerializer(AlbumReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Album."""
 
     allow_overpay = serializers.SerializerMethodField()
-    variants = serializers.SerializerMethodField()
     genre = serializers.StringRelatedField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
             'is_single',
             'genre',
+            'description',
             'release_date',
             'allow_overpay',
-            'variants',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -75,6 +83,14 @@ class AlbumReadDetailSerializer(ProductVariantsMixin, AlbumReadSerializer):
         if product:
             return product.allow_overpay
         return False
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+
+        if request and can_manage_artist(request.user, instance.artist):
+            data['visibility'] = instance.visibility
+        return data
 
 
 class AlbumWriteSerializer(

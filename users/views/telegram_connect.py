@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import Serializer
 from rest_framework.views import APIView
 
-from common.permissions import IsArtist
+from common.permissions import IsArtistOrLabel
 
 from users.schemas import telegram_connect_schema
 
@@ -15,7 +15,7 @@ class TelegramConnectView(APIView):
     """Генерирует ссылку для подключения Telegram-бота."""
 
     serializer_class = Serializer
-    permission_classes = (IsArtist,)
+    permission_classes = (IsArtistOrLabel,)
 
     def post(self, request):
         artist = request.user.artist_profile

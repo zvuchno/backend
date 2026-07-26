@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from common.permissions import IsArtist
+from common.permissions import IsArtistOrLabel
 from common.serializers import ChoiceSerializer
 
 from users.models import ArtistLegalProfile
@@ -33,7 +33,7 @@ class ArtistLegalProfileView(RetrieveUpdateAPIView):
     Используется для формы "Реквизиты артиста" на фронтенде.
     """
 
-    permission_classes = [IsArtist]
+    permission_classes = [IsArtistOrLabel]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'artist_legal_profile'
     http_method_names = ['get', 'patch']

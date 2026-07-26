@@ -2,6 +2,8 @@ from django.db import models
 from django.db.models import Exists, OuterRef, Prefetch, Subquery
 from django.db.models.functions import ExtractYear
 
+from store.constants import CHAR_PRESET_SIMPLE
+
 
 class ProductQuerySet(models.QuerySet):
     """QuerySet товаров.
@@ -14,13 +16,26 @@ class ProductQuerySet(models.QuerySet):
     CATALOG_TYPE_MERCH = 'merch'
 
     def with_available_variant(self):
-        """Добавляет признак наличия активного варианта с остатком."""
+        """Добавляет признак наличия доступного варианта товара.
+
+        Для товара без названия свойства учитывается только вариант simple.
+        Если название свойства задано, вариант simple игнорируется.
+        """
         from store.models import ProductVariant
 
         available_variant = ProductVariant.objects.filter(
             product_id=OuterRef('pk'),
             is_active=True,
             stock__gt=0,
+        ).filter(
+            models.Q(
+                product__property_name='',
+                property_value=CHAR_PRESET_SIMPLE,
+            )
+            | (
+                ~models.Q(product__property_name='')
+                & ~models.Q(property_value=CHAR_PRESET_SIMPLE)
+            ),
         )
 
         return self.annotate(

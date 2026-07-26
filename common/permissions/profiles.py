@@ -23,7 +23,31 @@ class IsArtist(_ActiveProfilePermission):
     """
 
     profile_attr = 'artist_profile'
+    allowed_profile_types = (ArtistProfileType.ARTIST,)
     message = 'Требуется профиль артиста.'
+
+
+class IsLabel(_ActiveProfilePermission):
+    """Доступ только пользователю с активным профилем лейбла."""
+
+    profile_attr = 'artist_profile'
+    allowed_profile_types = (ArtistProfileType.LABEL,)
+    message = 'Требуется профиль лейбла.'
+
+
+class IsArtistOrLabel(_ActiveProfilePermission):
+    """Доступ только пользователю с активным профилем артиста или лейбла.
+
+    Проверяет наличие у текущего пользователя связанного
+    `artist_profile` и его активный статус.
+    """
+
+    profile_attr = 'artist_profile'
+    allowed_profile_types = (
+        ArtistProfileType.ARTIST,
+        ArtistProfileType.LABEL,
+    )
+    message = 'Требуется профиль артиста или лейбла.'
 
 
 class IsNotArtist(BasePermission):

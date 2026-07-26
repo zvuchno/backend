@@ -9,6 +9,7 @@ from users.views import (
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
+    LabelManagedProfileListView,
     RecipientTypeListView,
     TelegramConnectView,
 )
@@ -18,6 +19,11 @@ urlpatterns = [
         'me/',
         ArtistMeView.as_view(),
         name='artist_me',
+    ),
+    path(
+        'me/managed-profiles/',
+        LabelManagedProfileListView.as_view(),
+        name='label-managed-profiles',
     ),
     path(
         'me/legal/',

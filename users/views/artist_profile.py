@@ -1,5 +1,6 @@
 """Представления профиля артиста."""
 
+from django.db.models import Case, Q, When
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status
 from rest_framework.generics import (
@@ -14,7 +15,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from common.permissions import IsNotArtist
+from common.permissions import IsArtistOrLabel, IsLabel, IsNotArtist
 
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
@@ -24,6 +25,7 @@ from users.schemas import (
     artist_me_schema,
     artist_public_schema,
     become_artist_schema,
+    label_managed_profile_list_schema,
 )
 from users.serializers.artist_profile import (
     ArtistCoverUpdateSerializer,
@@ -32,6 +34,7 @@ from users.serializers.artist_profile import (
     ArtistPublicSerializer,
     ArtistPublicShortSerializer,
     BecomeArtistOrLabelSerializer,
+    ManagedArtistProfileSerializer,
 )
 from users.views.mixins import CurrentArtistProfileMixin
 
@@ -40,7 +43,7 @@ from users.views.mixins import CurrentArtistProfileMixin
 class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
     """Обновление обложки артиста."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsArtistOrLabel]
     serializer_class = ArtistCoverUpdateSerializer
     parser_classes = [MultiPartParser, FormParser]
     http_method_names = ['patch']
@@ -54,7 +57,7 @@ class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
 class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
     """Просмотр и редактирование профиля текущего артиста."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsArtistOrLabel]
     http_method_names = ['get', 'patch']
     select_related = ('user',)
     prefetch_related = ('contacts', 'socials')
@@ -120,4 +123,33 @@ class BecomeArtistOrLabelView(GenericAPIView):
         return Response(
             response_serializer.data,
             status=status.HTTP_201_CREATED,
+        )
+
+
+@label_managed_profile_list_schema
+class LabelManagedProfileListView(ListAPIView):
+    """Список артистов текущего лейбла."""
+
+    permission_classes = [IsLabel]
+    serializer_class = ManagedArtistProfileSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        """Возвращает профили, доступные текущему лейблу для управления."""
+        label = self.request.user.artist_profile
+
+        return (
+            ArtistProfile.objects
+            .filter(
+                Q(pk=label.pk) | Q(label=label),
+                is_active=True,
+            )
+            .select_related('user')
+            .order_by(
+                Case(
+                    When(pk=label.pk, then=0),
+                    default=1,
+                ),
+                'name',
+            )
         )

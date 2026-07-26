@@ -30,10 +30,16 @@ merch_schema = extend_schema_view(
         description='Возвращает список мерча.',
         parameters=[
             OpenApiParameter(
-                name='name',
+                name='kind',
                 type=OpenApiTypes.STR,
                 location=OpenApiParameter.QUERY,
-                description='Поиск по названию',
+                description='Фильтр по slug типа мерча',
+            ),
+            OpenApiParameter(
+                name='in_stock',
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description='Фильтр по наличию',
             ),
             OpenApiParameter(
                 name='kind',
