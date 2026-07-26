@@ -1,10 +1,12 @@
 """ViewSet для работы с моделью track."""
 
 from django.db import transaction
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
+from common.access import managed_artist_q
 from common.permissions import (
     CanCreateArtistContent,
     IsStoreObjectManagerOrReadOnly,
@@ -60,9 +62,18 @@ class TrackViewSet(
 
     def get_queryset(self):
         """Возвращает треки, доступные текущему пользователю."""
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if not user.is_authenticated:
+            return queryset.none()
+
+        queryset = queryset.filter(
+            Q(is_active=True) & managed_artist_q(user, prefix='album__artist'),
+        )
         return self.get_track_read_queryset(
             action=self.action,
-            queryset=super().get_queryset(),
+            queryset=queryset,
         )
 
     def perform_create(self, serializer):
