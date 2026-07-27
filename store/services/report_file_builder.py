@@ -49,8 +49,8 @@ class ReportFileBuilder:
         doc = SimpleDocTemplate(
             buffer,
             pagesize=landscape(A4),
-            leftMargin=15 * mm,
-            rightMargin=15 * mm,
+            leftMargin=10 * mm,
+            rightMargin=10 * mm,
             topMargin=10 * mm,
             bottomMargin=10 * mm,
         )
@@ -90,9 +90,12 @@ class ReportFileBuilder:
         )
 
         elements = []
-        elements.append(Paragraph('Отчет о продажах', title_style))
+        elements.append(Paragraph('ZVUCHNO - Отчет о продажах', title_style))
         elements.append(
-            Paragraph(f'Артист: {report.artist.name}', subtitle_style),
+            Paragraph(
+                f'Артист: {report.artist.name} (ID: {report.artist.id})',
+                subtitle_style,
+            ),
         )
         elements.append(
             Paragraph(
@@ -123,9 +126,10 @@ class ReportFileBuilder:
             ['Показатель', 'Значение'],
             ['Количество заказов', str(report.orders_count)],
             ['Количество товаров', str(report.items_count)],
-            ['Валовая выручка, руб.', cls._fmt(report.gross_amount)],
-            ['Сумма скидок, руб.', cls._fmt(report.discount_amount)],
+            ['Сумма доната, руб.', cls._fmt(report.donation_amount)],
+            ['Сумма скидки, руб.', cls._fmt(report.discount_amount)],
             ['Стоимость доставки, руб.', cls._fmt(report.delivery_amount)],
+            ['Валовая выручка, руб.', cls._fmt(report.gross_amount)],
             ['Комиссия платформы, руб.', cls._fmt(report.commission_amount)],
             ['К выплате, руб.', cls._fmt(report.payout_amount)],
         ]
@@ -157,25 +161,41 @@ class ReportFileBuilder:
         )
 
         rows = [
-            ['Дата', '№ заказа', 'Товар', 'Кол-во', 'Цена', 'Скидка', 'Сумма'],
+            [
+                'Дата',
+                '№ заказа',
+                'sku',
+                'Товар',
+                'Кол-во',
+                'Цена',
+                'Донат',
+                'Скидка',
+                'Сумма',
+                'Промокод',
+            ],
         ]
         has_rows = False
         for item in items.iterator():
+            product_info = item.product_info or {}
             has_rows = True
             line_total = (
                 item.unit_price * item.quantity - item.promocode_discount
             )
             rows.append([
-                item.order.created_at.strftime('%d.%m.%Y'),
-                str(item.order.id),
+                item.order.created_at.strftime('%d.%m.%y'),
+                str(item.order.order_number),
+                product_info.get('sku', ''),
                 Paragraph(
-                    str(item.product_variant.product),
+                    f'{product_info.get("kind", "")} '
+                    f'{product_info.get("name", "")}',
                     product_cell_style,
                 ),
                 str(item.quantity),
                 cls._fmt(item.unit_price),
+                cls._fmt(item.donation),
                 cls._fmt(item.promocode_discount),
                 cls._fmt(line_total),
+                product_info.get('promocode', ''),
             ])
 
         if not has_rows:
@@ -184,13 +204,16 @@ class ReportFileBuilder:
         table = Table(
             rows,
             colWidths=[
-                25 * mm,  # Дата
-                20 * mm,  # № заказа
-                105 * mm,  # Товар
-                18 * mm,  # Кол-во
-                25 * mm,  # Цена
-                30 * mm,  # Скидка
-                34 * mm,  # Сумма
+                19 * mm,  # Дата
+                25 * mm,  # № заказа
+                25 * mm,  # sku
+                62 * mm,  # Товар
+                15 * mm,  # Кол-во
+                22 * mm,  # Цена
+                22 * mm,  # Донат
+                22 * mm,  # Скидка
+                22 * mm,  # Сумма
+                40 * mm,  # Промокод
             ],
             hAlign='LEFT',
             repeatRows=1,  # заголовок повторяется на каждой странице

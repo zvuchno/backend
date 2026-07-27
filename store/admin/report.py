@@ -43,6 +43,7 @@ class ReportAdmin(admin.ModelAdmin):
         'orders_count',
         'items_count',
         'get_gross_amount',
+        'get_donation_amount',
         'get_discount_amount',
         'get_delivery_amount',
         'get_commission_amount',
@@ -53,6 +54,10 @@ class ReportAdmin(admin.ModelAdmin):
     )
     ordering = ('-created_at',)
     list_display_links = ('id', 'artist')
+    list_select_related = (
+        'artist',
+        'artist__user',
+    )
 
     @admin.display(
         description='Валовая выручка (руб.)',
@@ -74,6 +79,14 @@ class ReportAdmin(admin.ModelAdmin):
     def get_payout_amount(self, obj):
         """Сумма к выплате."""
         return format_money(obj.payout_amount)
+
+    @admin.display(
+        description='Донаты (руб.)',
+        ordering='donation_amount',
+    )
+    def get_donation_amount(self, obj):
+        """Сумма донатов."""
+        return format_money(obj.donation_amount)
 
     @admin.display(description='Скидки по промокоду (в т.ч) (руб.)')
     def get_discount_amount(self, obj):
@@ -114,10 +127,11 @@ class ReportAdmin(admin.ModelAdmin):
                     'period_end',
                     'orders_count',
                     'items_count',
-                    'get_gross_amount',
+                    'get_donation_amount',
                     'get_discount_amount',
                     'get_delivery_amount',
                     'get_commission_amount',
+                    'get_gross_amount',
                     'get_payout_amount',
                 ),
             },

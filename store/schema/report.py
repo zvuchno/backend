@@ -6,12 +6,13 @@
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
+    OpenApiExample,
     OpenApiParameter,
     extend_schema,
     extend_schema_view,
 )
 
-ARTIST_REPORTS_TAGS = ['Artist Reports']
+ARTIST_REPORTS_TAGS = ['Artists']
 
 
 artist_reports_schema = extend_schema_view(
@@ -25,28 +26,42 @@ artist_reports_schema = extend_schema_view(
         tags=ARTIST_REPORTS_TAGS,
         parameters=[
             OpenApiParameter(
-                name='period_type',
-                type=OpenApiTypes.STR,
-                description=(
-                    'Тип периода отчета: daily — дневной, monthly — месячный.'
-                ),
-                required=False,
+                name='date_from',
+                type=OpenApiTypes.DATE,
+                description='Начало периода фильтрации.',
+                examples=[
+                    OpenApiExample(
+                        'Пример',
+                        value='2026-06-01',
+                    ),
+                ],
             ),
             OpenApiParameter(
-                name='status',
+                name='date_to',
+                type=OpenApiTypes.DATE,
+                description='Конец периода фильтрации.',
+                examples=[
+                    OpenApiExample(
+                        'Пример',
+                        value='2026-06-30',
+                    ),
+                ],
+            ),
+            OpenApiParameter(
+                name='period_type',
                 type=OpenApiTypes.STR,
-                description=('Статус отчета: pending, ready, failed.'),
-                required=False,
+                enum=['day', 'month'],
+                description='Тип отчета: day — дневной, month — месячный.',
             ),
             OpenApiParameter(
                 name='limit',
                 type=OpenApiTypes.INT,
-                description='Количество элементов в ответе.',
+                description='Количество элементов в ответе',
             ),
             OpenApiParameter(
                 name='offset',
                 type=OpenApiTypes.INT,
-                description='Смещение от начала выборки.',
+                description='Смещение от начала выборки',
             ),
         ],
     ),

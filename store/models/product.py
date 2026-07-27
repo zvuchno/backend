@@ -33,9 +33,9 @@ class Product(models.Model):
     """
 
     class ProductType(models.TextChoices):
-        TRACK = 'track', 'Track'
-        ALBUM = 'album', 'Album'
-        MERCH = 'merch', 'Merch'
+        TRACK = 'track', 'Трек'
+        ALBUM = 'album', 'Альбом'
+        MERCH = 'merch', 'Мерч'
 
     product_type = models.CharField(
         'Тип продукта',

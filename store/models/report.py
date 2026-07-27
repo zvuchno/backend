@@ -68,6 +68,12 @@ class Report(TimestampModel):
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,
     )
+    donation_amount = models.DecimalField(
+        'Сумма доната, руб.',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+    )
     discount_amount = models.DecimalField(
         'Сумма скидок, руб.',
         max_digits=MAX_PRICE_DIGITS,
@@ -118,7 +124,8 @@ class Report(TimestampModel):
 
     def __str__(self):
         return (
-            f'{self.artist_id} / '
+            f'{self.artist.name} (ID: {self.artist_id}) / '
             f'{self.period_type} / '
-            f'{self.period_start}—{self.period_end}'
+            f'{self.period_start.strftime("%d.%m.%y")} — '
+            f'{self.period_end.strftime("%d.%m.%y")}'
         )

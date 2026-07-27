@@ -78,6 +78,14 @@ class ReportService:
                         decimal_places=MONEY_INTERNAL_PRECISION,
                     ),
                 )
+                donation_expression = Greatest(
+                    (F('unit_price') - F('price_at_purchase')) * F('quantity'),
+                    Value(ZERO_MONEY),
+                    output_field=DecimalField(
+                        max_digits=MAX_PRICE_DIGITS,
+                        decimal_places=MONEY_INTERNAL_PRECISION,
+                    ),
+                )
 
                 data = items.aggregate(
                     orders_count=Count(
@@ -90,6 +98,10 @@ class ReportService:
                     ),
                     gross_amount=Coalesce(
                         Sum(line_total_expression),
+                        ZERO_MONEY,
+                    ),
+                    donation_amount=Coalesce(
+                        Sum(donation_expression),
                         ZERO_MONEY,
                     ),
                     discount_amount=Coalesce(
@@ -145,7 +157,6 @@ class ReportService:
                         'status': Report.Status.PENDING,
                     },
                 )
-
                 return report
         except Exception as exc:
             logger.exception(
