@@ -6,7 +6,12 @@ from unittest.mock import patch
 import pytest
 
 from store.models import Album, Merch, Track
-from store.tests.factories import AlbumFactory, GenreFactory, MerchKindFactory
+from store.tests.factories import (
+    AlbumFactory,
+    GenreFactory,
+    MerchKindFactory,
+    make_audio_file,
+)
 
 
 @pytest.mark.django_db
@@ -245,20 +250,18 @@ class TestLabelTrackCreate:
         label_user,
         label_created_artist,
         track_list_url,
-        make_audio_file,
     ):
         album = AlbumFactory(
             artist=label_created_artist,
             created_by=label_user,
             payout_recipient=label_user,
         )
-        audio_file = make_audio_file()
         response = label_client.post(
             track_list_url,
             {
                 'album': album.id,
                 'name': 'Трек артиста лейбла',
-                'audio_file': audio_file,
+                'audio_file': make_audio_file(),
                 'position': 1,
                 'price': '100.00',
                 'allow_overpay': False,
@@ -288,21 +291,19 @@ class TestLabelTrackCreate:
         label_client,
         other_artist_user,
         track_list_url,
-        make_audio_file,
     ):
         foreign_album = AlbumFactory(
             artist=other_artist_user.artist_profile,
             created_by=other_artist_user,
             payout_recipient=other_artist_user,
         )
-        audio_file = make_audio_file()
 
         response = label_client.post(
             track_list_url,
             {
                 'album': foreign_album.id,
                 'name': 'Чужой трек',
-                'audio_file': audio_file,
+                'audio_file': make_audio_file(),
                 'position': 1,
                 'price': '100.00',
                 'allow_overpay': False,
