@@ -47,7 +47,8 @@ class TestPromocodeAPI:
             code='AUTHOR_A_10',
             discount_type=Promocode.DiscountType.PERCENT,
             discount_value=Decimal('10.00'),
-            owner_id=self.artist_user.id,
+            artist=self.artist_user.artist_profile,
+            created_by=self.artist_user,
         )
 
         self.auth_client.post(
@@ -103,7 +104,8 @@ class TestPromocodeAPI:
             code='FIXED_100',
             discount_type=Promocode.DiscountType.FIXED,
             discount_value=Decimal('100.00'),
-            owner_id=self.artist_user.id,
+            artist=self.artist_user.artist_profile,
+            created_by=self.artist_user,
         )
 
         for variant in variants:
@@ -165,7 +167,8 @@ class TestPromocodeAPI:
             code='ARTIST_500',
             discount_type=Promocode.DiscountType.FIXED,
             discount_value=Decimal('500.00'),
-            owner_id=self.artist_user.id,
+            artist=self.artist_user.artist_profile,
+            created_by=self.artist_user,
         )
 
         self.auth_client.post(

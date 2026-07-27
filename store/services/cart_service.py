@@ -197,8 +197,8 @@ class CartService:
         # Проверяем наличие товаров владельца промокода
         calculation_service = CartCalculationService(cart)
         has_applicable_items = any(
-            calculation_service._get_item_owner_id(item)
-            == cart.promocode.owner_id
+            calculation_service._get_item_artist_id(item)
+            == cart.promocode.artist_id
             for item in calculation_service.checkout_items
         )
         # Если подходящих товаров нет — дропаем промокод
