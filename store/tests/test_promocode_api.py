@@ -293,7 +293,7 @@ class TestPromocodeManagementAPI:
         response = label_client.post(
             promocode_list_url,
             data={
-                'code': 'LABEL10',
+                'code': 'LABEL_10',
                 'discount_type': Promocode.DiscountType.PERCENT,
                 'discount_value': '10.00',
             },
@@ -302,7 +302,7 @@ class TestPromocodeManagementAPI:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'artist' in response.data
-        assert not Promocode.objects.filter(code='LABEL10').exists()
+        assert not Promocode.objects.filter(code='LABEL_10').exists()
 
     def test_label_creates_promocode_for_managed_artist(
         self,

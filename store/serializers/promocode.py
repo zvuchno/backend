@@ -18,7 +18,10 @@ from store.constants import (
     ZERO_MONEY,
 )
 from store.models import Promocode
-from store.validators import validate_promocode_format
+from store.validators import (
+    validate_promocode_format,
+    validate_promocode_min_length,
+)
 from users.models import ArtistProfile
 
 
@@ -64,6 +67,7 @@ class PromocodeWriteSerializer(
         max_length=MAX_PROMOCODE_LENGTH,
         required=True,
         validators=[
+            validate_promocode_min_length,
             validate_promocode_format,
             UniqueValidator(
                 queryset=Promocode.objects.all(),
