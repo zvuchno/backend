@@ -4,6 +4,7 @@ from django.contrib import admin
 
 from common.utils.money import format_money
 
+from store.constants import CHAR_PRESET_SIMPLE
 from store.models import ProductVariant
 from store.services import ProductService
 
@@ -31,19 +32,31 @@ class CommerceBaseMixin:
         # Ищем формсет с вариантами
         for formset in formsets:
             if formset.model.__name__ == 'ProductVariant':
-                # Собираем список словарей, как это делает DRF
-                variants_list = []
-                for sub_form in formset.forms:
-                    if sub_form.cleaned_data and not sub_form.cleaned_data.get(
-                        'DELETE',
-                    ):
-                        data = sub_form.cleaned_data.copy()
-                        # Преобразуем объект id в число
-                        if isinstance(data.get('id'), ProductVariant):
-                            data['id'] = data['id'].pk
-                        variants_list.append(data)
+                active_variants = []
 
-                validated_data['variants'] = variants_list
+                for sub_form in formset.forms:
+                    if not sub_form.cleaned_data:
+                        continue
+
+                    data = sub_form.cleaned_data.copy()
+                    is_deleted = data.get('DELETE', False)
+                    is_active = data.get('is_active', True)
+                    val = data.get('property_value')
+                    is_simple = val and str(val).strip() == CHAR_PRESET_SIMPLE
+
+                    if is_deleted or not is_active or is_simple:
+                        continue
+
+                    if isinstance(data.get('id'), ProductVariant):
+                        data['id'] = data['id'].pk
+                    elif hasattr(data.get('id'), 'pk'):
+                        data['id'] = data['id'].pk
+
+                    active_variants.append(data)
+
+                validated_data['variants'] = (
+                    active_variants if active_variants else None
+                )
 
         ProductService.ensure_commerce(
             form.instance,

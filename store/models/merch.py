@@ -1,5 +1,6 @@
 from django.db import models
 
+from store.constants import MAX_STR_LENGTH
 from store.models.abstract.base_content import ArtistContent
 from store.models.abstract.visibility_model import VisibilityModel
 from store.models.album import Album
@@ -39,4 +40,4 @@ class Merch(ArtistContent, VisibilityModel):
         ordering = ('name',)
 
     def __str__(self):
-        return self.name
+        return f'{self.kind} {self.name[:MAX_STR_LENGTH]} [ id: {self.id} ]'
