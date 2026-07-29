@@ -29,6 +29,7 @@ class PromocodeReadSerializer(serializers.ModelSerializer):
         model = Promocode
         fields = (
             'id',
+            'artist',
             'code',
             'discount_value',
             'discount_type',

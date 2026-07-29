@@ -2,9 +2,6 @@
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
-from rest_framework.exceptions import PermissionDenied
-
-from common.access import can_manage_artist
 
 from store.services import ProductService
 from store.views.mixins.managed_artist import ManagedArtistActionMixin
@@ -26,14 +23,6 @@ class ProductActionMixin(ManagedArtistActionMixin):
     def _get_create_save_kwargs(self, serializer) -> dict:
         """Формирует служебные поля создаваемого контента."""
         artist = self._get_managed_artist(serializer)
-
-        if not can_manage_artist(
-            self.request.user,
-            artist,
-        ):
-            raise PermissionDenied(
-                'У вас нет прав создавать контент этого артиста.',
-            )
 
         save_kwargs = {
             'created_by': self.request.user,

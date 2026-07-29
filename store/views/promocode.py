@@ -1,14 +1,10 @@
-"""ViewSet для работы с моделью Promocode.
-
-TODO: owner -> artist, изменить пермишен, убрать неиспользуемый пермишен.
-"""
+"""ViewSet для работы с моделью Promocode."""
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
-from common.access import can_manage_artist, managed_artist_q
+from common.access import managed_artist_q
 from common.permissions import (
     IsArtistOrLabel,
     IsStoreObjectManager,
@@ -83,11 +79,7 @@ class PromocodeViewSet(
     def perform_create(self, serializer):
         artist = self._get_managed_artist(serializer)
 
-        if not can_manage_artist(self.request.user, artist):
-            raise PermissionDenied(
-                'У вас нет прав создавать промокод этого артиста.',
-            )
         serializer.save(
-            artist=self.request.user.artist_profile,
+            artist=artist,
             created_by=self.request.user,
         )
