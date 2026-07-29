@@ -10,7 +10,7 @@ from store.models import Report
 class ArtistReportSerializer(serializers.ModelSerializer):
     """Финансовый отчет артиста."""
 
-    gross_amount = serializers.DecimalField(
+    sales_amount = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=DISCOUNT_VALUE_PRECISION,
     )
@@ -20,10 +20,11 @@ class ArtistReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
         fields = (
+            'id',
             'period_start',
             'period_end',
             'items_count',
-            'gross_amount',
+            'sales_amount',
             'file_url',
             'created_at',
         )

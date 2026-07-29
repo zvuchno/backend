@@ -62,8 +62,8 @@ class Report(TimestampModel):
         'Количество проданных товаров',
         default=0,
     )
-    gross_amount = models.DecimalField(
-        'Валовая выручка, руб.',
+    sales_amount = models.DecimalField(
+        'Сумма проданных товаров, руб.',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,

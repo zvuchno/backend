@@ -119,13 +119,32 @@ def generate_report_task(
         )
         raise
     except Exception as exc:
+        if self.request.retries >= self.max_retries:
+            Report.objects.filter(
+                artist_id=artist_id,
+                period_type=period_type,
+                period_start=period_start,
+                period_end=period_end,
+            ).update(
+                status=Report.Status.FAILED,
+            )
+
+            logger.exception(
+                'Не удалось сформировать отчет после всех попыток '
+                'artist=%s period=%s—%s',
+                artist_id,
+                period_start,
+                period_end,
+            )
+            raise
+
         logger.warning(
             'Повтор генерации отчета artist=%s period=%s—%s, попытка %s/%s',
             artist_id,
             period_start,
             period_end,
             self.request.retries + 1,
-            self.max_retries,
+            self.max_retries + 1,
         )
         raise self.retry(exc=exc)
 

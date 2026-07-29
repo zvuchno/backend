@@ -10,6 +10,7 @@ from django.db.models import (
     DecimalField,
     F,
     Q,
+    QuerySet,
     Sum,
     Value,
 )
@@ -22,7 +23,7 @@ from store.constants import (
     MONEY_INTERNAL_PRECISION,
     ZERO_MONEY,
 )
-from store.models import Order, OrderItem, Report
+from store.models import Order, OrderItem, Payment, Report
 from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
@@ -30,12 +31,6 @@ logger = logging.getLogger(__name__)
 
 class ReportService:
     """Сервис формирования агрегированных отчетов."""
-
-    PAID_STATUSES = (
-        Order.Status.PAID,
-        Order.Status.SHIPPED,
-        Order.Status.COMPLETED,
-    )
 
     @classmethod
     def generate(
@@ -51,25 +46,11 @@ class ReportService:
             raise ValueError('period_start должен быть <= period_end')
         try:
             with transaction.atomic():
-                tz = timezone.get_current_timezone()
-                start_dt = timezone.make_aware(
-                    datetime.datetime.combine(period_start, datetime.time.min),
-                    tz,
+                items = cls.get_report_items_queryset(
+                    artist=artist,
+                    period_start=period_start,
+                    period_end=period_end,
                 )
-                end_dt = timezone.make_aware(
-                    datetime.datetime.combine(period_end, datetime.time.max),
-                    tz,
-                )
-
-                items = OrderItem.objects.filter(
-                    order__status__in=cls.PAID_STATUSES,
-                    order__created_at__range=(start_dt, end_dt),
-                ).filter(
-                    Q(product_variant__product__album__artist=artist)
-                    | Q(product_variant__product__track__album__artist=artist)
-                    | Q(product_variant__product__merch__artist=artist),
-                )
-
                 line_total_expression = Greatest(
                     F('unit_price') * F('quantity') - F('promocode_discount'),
                     Value(ZERO_MONEY),
@@ -96,7 +77,7 @@ class ReportService:
                         Sum('quantity'),
                         0,
                     ),
-                    gross_amount=Coalesce(
+                    sales_amount=Coalesce(
                         Sum(line_total_expression),
                         ZERO_MONEY,
                     ),
@@ -116,7 +97,9 @@ class ReportService:
 
                 delivery_amount = (
                     Order.objects
-                    .filter(items__in=items)
+                    .filter(
+                        id__in=items.values('order_id'),
+                    )
                     .distinct()
                     .annotate(
                         artist_delivery=Cast(
@@ -139,9 +122,7 @@ class ReportService:
                 )
 
                 payout_amount = max(
-                    data['gross_amount']
-                    - data['commission_amount']
-                    - delivery_amount,
+                    data['sales_amount'] - data['commission_amount'],
                     ZERO_MONEY,
                 )
 
@@ -155,13 +136,16 @@ class ReportService:
                         'delivery_amount': delivery_amount,
                         'payout_amount': payout_amount,
                         'status': Report.Status.PENDING,
+                        'report_file': None,
                     },
                 )
                 return report
-        except Exception as exc:
+        except Exception:
             logger.exception(
-                'Генерация отчета якнулась на artist=%s period=%s—%s',
+                'Не удалось сформировать отчет '
+                'artist=%s, period_type=%s, period=%s—%s',
                 artist.id,
+                period_type,
                 period_start,
                 period_end,
             )
@@ -172,7 +156,38 @@ class ReportService:
                 period_end=period_end,
                 defaults={
                     'status': Report.Status.FAILED,
-                    'error_message': str(exc),
                 },
             )
             raise
+
+    @staticmethod
+    def get_report_items_queryset(
+        *,
+        artist: ArtistProfile,
+        period_start: date,
+        period_end: date,
+    ) -> QuerySet[OrderItem]:
+        """Возвращает queryset товаров, входящих в финансовый отчет."""
+        tz = timezone.get_current_timezone()
+        start_dt = timezone.make_aware(
+            datetime.datetime.combine(period_start, datetime.time.min),
+            tz,
+        )
+        end_dt = timezone.make_aware(
+            datetime.datetime.combine(period_end, datetime.time.max),
+            tz,
+        )
+
+        return (
+            OrderItem.objects
+            .filter(
+                order__payments__status=Payment.PaymentStatus.SUCCEEDED,
+                order__payments__created_at__range=(start_dt, end_dt),
+            )
+            .filter(
+                Q(product_variant__product__album__artist=artist)
+                | Q(product_variant__product__track__album__artist=artist)
+                | Q(product_variant__product__merch__artist=artist),
+            )
+            .distinct()
+        )

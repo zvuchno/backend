@@ -22,7 +22,7 @@ class ReportAdmin(admin.ModelAdmin):
         'period_start',
         'period_end',
         'status',
-        'get_gross_amount',
+        'get_sales_amount',
         'created_at',
     )
     list_filter = (
@@ -42,7 +42,7 @@ class ReportAdmin(admin.ModelAdmin):
         'period_end',
         'orders_count',
         'items_count',
-        'get_gross_amount',
+        'get_sales_amount',
         'get_donation_amount',
         'get_discount_amount',
         'get_delivery_amount',
@@ -61,11 +61,11 @@ class ReportAdmin(admin.ModelAdmin):
 
     @admin.display(
         description='Валовая выручка (руб.)',
-        ordering='gross_amount',
+        ordering='sales_amount',
     )
-    def get_gross_amount(self, obj):
+    def get_sales_amount(self, obj):
         """Валовая выручка за период."""
-        return format_money(obj.gross_amount)
+        return format_money(obj.sales_amount)
 
     @admin.display(description='Комиссия (руб.)', ordering='commission_amount')
     def get_commission_amount(self, obj):
@@ -131,7 +131,7 @@ class ReportAdmin(admin.ModelAdmin):
                     'get_discount_amount',
                     'get_delivery_amount',
                     'get_commission_amount',
-                    'get_gross_amount',
+                    'get_sales_amount',
                     'get_payout_amount',
                 ),
             },
