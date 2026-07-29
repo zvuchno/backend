@@ -8,18 +8,12 @@ from django.core.files.base import ContentFile
 from django.db.models import Case, F, IntegerField, When
 from django.utils import timezone
 
-from store.models import Order, OrderItem, Product, Report
+from store.models import OrderItem, Payment, Product, Report
 from store.services.report import ReportService
 from store.services.report_file_builder import ReportFileBuilder
 from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
-
-PAID_STATUSES = (
-    Order.Status.PAID,
-    Order.Status.SHIPPED,
-    Order.Status.COMPLETED,
-)
 
 
 def _artists_with_sales(period_start, period_end) -> set[int]:
@@ -37,8 +31,8 @@ def _artists_with_sales(period_start, period_end) -> set[int]:
     artist_ids = (
         OrderItem.objects
         .filter(
-            order__status__in=PAID_STATUSES,
-            order__created_at__range=(start_dt, end_dt),
+            order__payments__status=Payment.PaymentStatus.SUCCEEDED,
+            order__payments__paid_at__range=(start_dt, end_dt),
         )
         .annotate(
             artist_id=Case(

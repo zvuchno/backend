@@ -60,11 +60,11 @@ class ReportAdmin(admin.ModelAdmin):
     )
 
     @admin.display(
-        description='Валовая выручка (руб.)',
+        description='Продано товаров на сумму (руб.)',
         ordering='sales_amount',
     )
     def get_sales_amount(self, obj):
-        """Валовая выручка за период."""
+        """Сумма продаж."""
         return format_money(obj.sales_amount)
 
     @admin.display(description='Комиссия (руб.)', ordering='commission_amount')
@@ -88,12 +88,12 @@ class ReportAdmin(admin.ModelAdmin):
         """Сумма донатов."""
         return format_money(obj.donation_amount)
 
-    @admin.display(description='Скидки по промокоду (в т.ч) (руб.)')
+    @admin.display(description='Скидки по промокоду (руб.)')
     def get_discount_amount(self, obj):
         """Скидка по промокоду."""
         return format_money(obj.discount_amount)
 
-    @admin.display(description='Стоимость доставок (в т.ч) (руб.)')
+    @admin.display(description='Стоимость доставок (руб.)')
     def get_delivery_amount(self, obj):
         """Стоимость доставки."""
         return format_money(obj.delivery_amount)
@@ -129,9 +129,9 @@ class ReportAdmin(admin.ModelAdmin):
                     'items_count',
                     'get_donation_amount',
                     'get_discount_amount',
-                    'get_delivery_amount',
-                    'get_commission_amount',
                     'get_sales_amount',
+                    'get_commission_amount',
+                    'get_delivery_amount',
                     'get_payout_amount',
                 ),
             },

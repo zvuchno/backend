@@ -12,7 +12,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-ARTIST_REPORTS_TAGS = ['Artists']
+ARTIST_REPORTS_TAGS = ['Reports']
 
 
 artist_reports_schema = extend_schema_view(

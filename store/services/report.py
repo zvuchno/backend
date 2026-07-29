@@ -182,7 +182,7 @@ class ReportService:
             OrderItem.objects
             .filter(
                 order__payments__status=Payment.PaymentStatus.SUCCEEDED,
-                order__payments__created_at__range=(start_dt, end_dt),
+                order__payments__paid_at__range=(start_dt, end_dt),
             )
             .filter(
                 Q(product_variant__product__album__artist=artist)
