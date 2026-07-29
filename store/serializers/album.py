@@ -8,8 +8,6 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from common.access import can_manage_artist
-
 from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
@@ -38,14 +36,8 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'name',
             'price',
             'cover_image',
+            'is_published',
         )
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        request = self.context.get('request')
-        if request and can_manage_artist(request.user, instance.artist):
-            data['is_published'] = instance.is_published
-        return data
 
     def get_sku(self, obj) -> str | None:
         product = getattr(obj, 'product', None)
@@ -76,6 +68,7 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
             'description',
             'release_date',
             'allow_overpay',
+            'visibility',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -83,14 +76,6 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
         if product:
             return product.allow_overpay
         return False
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        request = self.context.get('request')
-
-        if request and can_manage_artist(request.user, instance.artist):
-            data['visibility'] = instance.visibility
-        return data
 
 
 class AlbumWriteSerializer(

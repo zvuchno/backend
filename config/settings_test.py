@@ -57,3 +57,7 @@ STORAGES = {
         'BACKEND': ('django.contrib.staticfiles.storage.StaticFilesStorage'),
     },
 }
+
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_STORE_EAGER_RESULT = False

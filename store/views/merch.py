@@ -6,10 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from common.access import managed_artist_q
-from common.permissions import (
-    CanCreateArtistContent,
-    IsStoreObjectManagerOrReadOnly,
-)
+from common.permissions import IsArtistOrLabel, IsStoreObjectManager
 
 from store.filters.merch import MerchFilter
 from store.models import Image, Merch
@@ -46,6 +43,7 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     """
 
     queryset = Merch.objects.all()
+    permission_classes = (IsArtistOrLabel, IsStoreObjectManager)
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
         DjangoFilterBackend,
@@ -56,11 +54,6 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     search_fields = ('name', 'description')
     ordering_fields = ('name', 'created_at')
     ordering = ('name',)
-
-    def get_permissions(self):
-        if self.action == 'create':
-            return (CanCreateArtistContent(),)
-        return (IsStoreObjectManagerOrReadOnly(),)
 
     def get_serializer_class(self):
         if self.action == 'list':

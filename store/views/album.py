@@ -6,10 +6,7 @@ from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
 from common.access import managed_artist_q
-from common.permissions import (
-    CanCreateArtistContent,
-    IsStoreObjectManagerOrReadOnly,
-)
+from common.permissions import IsArtistOrLabel, IsStoreObjectManager
 
 from .mixins import ProductActionMixin, SoftDeleteMixin
 from store.filters import AlbumFilter
@@ -39,6 +36,7 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     """
 
     queryset = Album.objects.all()
+    permission_classes = (IsArtistOrLabel, IsStoreObjectManager)
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
         DjangoFilterBackend,
@@ -49,11 +47,6 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     search_fields = ('name', 'genre__name')
     ordering_fields = ('name', 'created_at', 'release_date')
     ordering = ('-created_at', 'name')
-
-    def get_permissions(self):
-        if self.action == 'create':
-            return (CanCreateArtistContent(),)
-        return (IsStoreObjectManagerOrReadOnly(),)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
