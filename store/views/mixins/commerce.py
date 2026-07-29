@@ -2,15 +2,15 @@
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import PermissionDenied
 
 from common.access import can_manage_artist
 
 from store.services import ProductService
-from users.models import ArtistProfile, ArtistProfileType
+from store.views.mixins.managed_artist import ManagedArtistActionMixin
 
 
-class ProductActionMixin:
+class ProductActionMixin(ManagedArtistActionMixin):
     """Миксин для ViewSet, интегрирующий контент с коммерческим слоем системы.
 
     Обеспечивает автоматический запуск бизнес-логики через ProductService
@@ -20,37 +20,12 @@ class ProductActionMixin:
     """
 
     def _update_product_data(self, instance, validated_data) -> None:
-        """Инициирует процесс синхронизации коммерческих данных.."""
+        """Инициирует процесс синхронизации коммерческих данных..."""
         ProductService.ensure_commerce(instance, validated_data)
-
-    def _resolve_create_artist(self, serializer) -> ArtistProfile:
-        """Определяет артиста создаваемого контента."""
-        validated_data = serializer.validated_data
-
-        album = validated_data.get('album')
-        if album is not None:
-            return album.artist
-
-        artist = validated_data.get('artist')
-        if artist is not None:
-            return artist
-
-        profile = getattr(
-            self.request.user,
-            'artist_profile',
-            None,
-        )
-
-        if profile is None or profile.profile_type != ArtistProfileType.ARTIST:
-            raise ValidationError({
-                'artist': 'Необходимо указать профиль артиста или лейбла.',
-            })
-
-        return profile
 
     def _get_create_save_kwargs(self, serializer) -> dict:
         """Формирует служебные поля создаваемого контента."""
-        artist = self._resolve_create_artist(serializer)
+        artist = self._get_managed_artist(serializer)
 
         if not can_manage_artist(
             self.request.user,

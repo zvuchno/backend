@@ -8,6 +8,7 @@ from store.models import Promocode
 class PromoCodeFilter(django_filters.FilterSet):
     """Набор фильтров для модели Промокодов."""
 
+    artist = django_filters.NumberFilter(field_name='artist_id')
     discount_type = django_filters.ChoiceFilter(
         field_name='discount_type',
         choices=Promocode.DiscountType.choices,
@@ -19,7 +20,7 @@ class PromoCodeFilter(django_filters.FilterSet):
 
     class Meta:
         model = Promocode
-        fields = ['discount_type', 'is_available']
+        fields = ['artist', 'discount_type', 'is_available']
 
     def filter_is_available(self, queryset, name, value):
         now = timezone.now()
