@@ -2,8 +2,6 @@ from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from common.access import can_manage_artist
-
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     CHAR_PRESET_SIMPLE,
@@ -49,6 +47,7 @@ class MerchReadSerializer(serializers.ModelSerializer):
             'price',
             'stock',
             'main_image',
+            'is_published',
         )
 
     def get_sku(self, obj) -> str | None:
@@ -100,13 +99,6 @@ class MerchReadSerializer(serializers.ModelSerializer):
 
         return None
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        request = self.context.get('request')
-        if request and can_manage_artist(request.user, instance.artist):
-            data['is_published'] = instance.is_published
-        return data
-
 
 class VariantReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения варианта мерча."""
@@ -139,14 +131,12 @@ class MerchDetailSerializer(MerchReadSerializer):
             'album',
             'property_name',
             'variants',
+            'visibility',
         )
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data.pop('main_image', None)
-        request = self.context.get('request')
-        if request and can_manage_artist(request.user, instance.artist):
-            data['visibility'] = instance.visibility
         return data
 
     def get_allow_overpay(self, obj) -> bool:
@@ -173,9 +163,6 @@ class MerchDetailSerializer(MerchReadSerializer):
 
             return []
 
-        request = self.context.get('request')
-        can_manage = request and can_manage_artist(request.user, obj.artist)
-
         qs = (
             product.variants
             .filter(
@@ -186,9 +173,6 @@ class MerchDetailSerializer(MerchReadSerializer):
             )
             .order_by('id')
         )
-
-        if not can_manage:
-            qs = qs.exclude(stock=0)
 
         return VariantReadSerializer(qs, many=True).data
 
