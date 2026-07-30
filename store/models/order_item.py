@@ -67,6 +67,14 @@ class OrderItem(models.Model):
         validators=[MinValueValidator(ZERO_MONEY)],
         help_text='Скидка по промокоду продавца, руб.',
     )
+    platform_commission = models.DecimalField(
+        'Комиссия платформы (руб.)',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+
     shipment = models.ForeignKey(
         'store.Shipment',
         on_delete=models.SET_NULL,

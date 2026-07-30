@@ -47,8 +47,8 @@ ADMIN_REORDER = (
     },
     {
         'app': 'store',
-        'label': 'Платежи',
-        'models': ('store.Payment',),
+        'label': 'Финансы',
+        'models': ('store.Payment', 'store.Report'),
     },
     # Объединяем пользователей (users) и системные права доступа (auth)
     # в один раздел админки для удобного управления аккаунтами и ролями

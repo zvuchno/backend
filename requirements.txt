@@ -50,6 +50,7 @@ PyYAML==6.0.3
 redis==8.0.0
 referencing==0.37.0
 rpds-py==0.30.0
+reportlab==5.0.0
 ruff==0.15.5
 python3-openid==3.2.0
 requests==2.32.5

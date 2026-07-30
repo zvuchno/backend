@@ -7,10 +7,12 @@ from .album import AlbumFilter
 from .catalog import ProductCatalogFilter
 from .merch import MerchFilter
 from .promocode import PromoCodeFilter
+from .report import ArtistReportFilter
 from .track import TrackFilter
 
 __all__ = [
     'AlbumFilter',
+    'ArtistReportFilter',
     'MerchFilter',
     'ProductCatalogFilter',
     'PromoCodeFilter',
