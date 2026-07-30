@@ -9,6 +9,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from store.serializers import (
     PromocodeReadDetailSerializer,
     PromocodeReadSerializer,
+    PromocodeWriteSerializer,
 )
 
 PROMOCODES_TAGS = ['Promocodes']
@@ -17,8 +18,11 @@ promocode_schema = extend_schema_view(
     list=extend_schema(
         summary='Список промокодов',
         description=(
-            'Возвращает промокоды текущего артиста с фильтрацией '
-            'по типу скидки (PERCENT/FIXED) и доступности (is_available).'
+            'Возвращает промокоды доступных пользователю профилей. '
+            'Артист получает только свои промокоды, лейбл — промокоды '
+            'собственного профиля и управляемых артистов. '
+            'Поддерживается фильтрация по артисту, типу скидки '
+            '(PERCENT/FIXED) и доступности (is_available).'
         ),
         responses={200: PromocodeReadSerializer(many=True)},
         tags=PROMOCODES_TAGS,
@@ -31,13 +35,23 @@ promocode_schema = extend_schema_view(
     ),
     create=extend_schema(
         summary='Создать промокод',
-        description='Создаёт промокод от имени текущего артиста.',
+        description=(
+            'Создаёт промокод для выбранного профиля. '
+            'Артист может не передавать поле artist — бэкенд подставит '
+            'его собственный профиль. Лейбл должен явно передать ID '
+            'собственного или управляемого профиля.'
+        ),
+        request=PromocodeWriteSerializer,
         responses={201: PromocodeReadDetailSerializer},
         tags=PROMOCODES_TAGS,
     ),
     partial_update=extend_schema(
         summary='Частично обновить промокод',
-        description='Обновляет только переданные поля.',
+        description=(
+            'Обновляет только переданные поля. '
+            'Поля artist и code нельзя изменить после создания.'
+        ),
+        request=PromocodeWriteSerializer,
         responses={200: PromocodeReadDetailSerializer},
         tags=PROMOCODES_TAGS,
     ),

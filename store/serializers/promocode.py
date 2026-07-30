@@ -1,7 +1,8 @@
-"""Сериализатор для работы с промокодами артиста.
+"""Сериализатор для работы с промокодами артистов и лейблов.
 
-Поддерживает процентную и фиксированную скидку.
-Поле owner подставляется автоматически из request.user во ViewSet.
+Поддерживают процентные и фиксированные скидки.
+При создании промокод связывается с выбранным управляемым профилем артиста,
+а пользователь-создатель сохраняется в поле created_by во ViewSet.
 """
 
 from decimal import Decimal
@@ -10,6 +11,7 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
+from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
     DISCOUNT_VALUE_PRECISION,
     MAX_PRICE_DIGITS,
@@ -17,7 +19,11 @@ from store.constants import (
     ZERO_MONEY,
 )
 from store.models import Promocode
-from store.validators import validate_promocode_format
+from store.validators import (
+    validate_promocode_format,
+    validate_promocode_min_length,
+)
+from users.models import ArtistProfile
 
 
 class PromocodeReadSerializer(serializers.ModelSerializer):
@@ -27,6 +33,7 @@ class PromocodeReadSerializer(serializers.ModelSerializer):
         model = Promocode
         fields = (
             'id',
+            'artist',
             'code',
             'discount_value',
             'discount_type',
@@ -49,19 +56,29 @@ class PromocodeReadDetailSerializer(PromocodeReadSerializer):
         fields = PromocodeReadSerializer.Meta.fields + ('description',)
 
 
-class PromocodeWriteSerializer(serializers.ModelSerializer):
+class PromocodeWriteSerializer(
+    ImmutableFieldsSerializerMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор для создания и обновления Promocode."""
+
+    immutable_fields = ('artist', 'code')
 
     code = serializers.CharField(
         max_length=MAX_PROMOCODE_LENGTH,
         required=True,
         validators=[
+            validate_promocode_min_length,
             validate_promocode_format,
             UniqueValidator(
                 queryset=Promocode.objects.all(),
                 message='Этот код уже занят.',
             ),
         ],
+    )
+    artist = serializers.PrimaryKeyRelatedField(
+        queryset=ArtistProfile.objects.filter(is_active=True),
+        required=False,
     )
     discount_type = serializers.ChoiceField(
         choices=Promocode.DiscountType.choices,
@@ -77,6 +94,7 @@ class PromocodeWriteSerializer(serializers.ModelSerializer):
         model = Promocode
         fields = (
             'code',
+            'artist',
             'description',
             'usage_limit',
             'discount_type',
@@ -85,13 +103,6 @@ class PromocodeWriteSerializer(serializers.ModelSerializer):
             'end_at',
             'is_enabled',
         )
-
-    def validate_code(self, value):
-        if self.instance is not None and self.instance.code != value:
-            raise serializers.ValidationError(
-                'Код промокода нельзя изменить.',
-            )
-        return value
 
     def validate_start_at(self, value):
         if (

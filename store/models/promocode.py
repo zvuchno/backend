@@ -46,11 +46,20 @@ class Promocode(ActivatableModel, TimestampModel):
         default=DiscountType.PERCENT,
         verbose_name='Тип скидки',
     )
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+    artist = models.ForeignKey(
+        'users.ArtistProfile',
         on_delete=models.CASCADE,
         related_name='promocodes',
         verbose_name='Артист',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='created_promocodes',
+        null=True,
+        blank=True,
+        editable=False,
+        verbose_name='Создал',
     )
     code = models.CharField(
         'Код промокода',
