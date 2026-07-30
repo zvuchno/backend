@@ -10,6 +10,10 @@ from .account import (
     SetPasswordSerializer,
     UsernameChangeSerializer,
 )
+from .artist_delivery import (
+    ArtistPickupPointManageSerializer,
+    ArtistShippingPointSerializer,
+)
 from .artist_legal_profile import (
     ArtistBankDataSerializer,
     ArtistIdentityDataSerializer,
@@ -45,8 +49,10 @@ __all__ = [
     'ArtistLegalSerializer',
     'ArtistMeSerializer',
     'ArtistMeUpdateSerializer',
+    'ArtistPickupPointManageSerializer',
     'ArtistPublicSerializer',
     'ArtistRegistrationSerializer',
+    'ArtistShippingPointSerializer',
     'BaseRegistrationSerializer',
     'BecomeArtistOrLabelSerializer',
     'ChangePasswordSerializer',

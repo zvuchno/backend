@@ -8,11 +8,24 @@ from users.views import (
     ArtistLegalProfileView,
     ArtistListView,
     ArtistMeView,
+    ArtistPickupPointViewSet,
     ArtistPublicView,
+    ArtistShippingPointView,
     LabelManagedProfileListView,
     RecipientTypeListView,
     TelegramConnectView,
 )
+
+managed_pickup_point_list = ArtistPickupPointViewSet.as_view({
+    'get': 'list',
+    'post': 'create',
+})
+
+managed_pickup_point_detail = ArtistPickupPointViewSet.as_view({
+    'get': 'retrieve',
+    'patch': 'partial_update',
+    'delete': 'destroy',
+})
 
 urlpatterns = [
     path(
@@ -24,6 +37,21 @@ urlpatterns = [
         'me/managed-profiles/',
         LabelManagedProfileListView.as_view(),
         name='label-managed-profiles',
+    ),
+    path(
+        ('me/managed-profiles/<int:profile_id>/pickup-points/'),
+        managed_pickup_point_list,
+        name='managed-profile-pickup-point-list',
+    ),
+    path(
+        ('me/managed-profiles/<int:profile_id>/pickup-points/<int:pk>/'),
+        managed_pickup_point_detail,
+        name='managed-profile-pickup-point-detail',
+    ),
+    path(
+        ('me/managed-profiles/<int:profile_id>/shipping-point/'),
+        ArtistShippingPointView.as_view(),
+        name='managed-profile-shipping-point',
     ),
     path(
         'me/legal/',
