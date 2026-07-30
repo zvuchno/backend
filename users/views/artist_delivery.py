@@ -5,6 +5,10 @@ from rest_framework.response import Response
 from common.permissions import IsArtistOrLabel
 
 from users.models import ArtistPickupPoint, ArtistShippingPoint
+from users.schemas import (
+    artist_pickup_point_schema,
+    artist_shipping_point_schema,
+)
 from users.serializers import (
     ArtistPickupPointManageSerializer,
     ArtistShippingPointSerializer,
@@ -12,6 +16,7 @@ from users.serializers import (
 from users.views.mixins import ManagedArtistProfileMixin
 
 
+@artist_pickup_point_schema
 class ArtistPickupPointViewSet(
     ManagedArtistProfileMixin,
     viewsets.ModelViewSet,
@@ -36,6 +41,7 @@ class ArtistPickupPointViewSet(
         )
 
 
+@artist_shipping_point_schema
 class ArtistShippingPointView(
     ManagedArtistProfileMixin,
     GenericAPIView,

@@ -32,6 +32,13 @@ class ArtistPickupPoint(ActivatableModel, TimestampModel):
         verbose_name = 'пункт самовывоза артиста'
         verbose_name_plural = 'пункты самовывоза артистов'
         ordering = ('id',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['address', 'pickup_date'],
+                condition=models.Q(is_active=True),
+                name='unique_active_address_pickup_date',
+            ),
+        ]
 
     def __str__(self):
         return f'Самовывоз: {self.address}'
