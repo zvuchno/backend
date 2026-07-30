@@ -14,7 +14,7 @@ def can_manage_artist(user, artist: ArtistProfile | None) -> bool:
 
 
 def managed_artist_q(user, prefix='artist') -> Q:
-    """Строит условие объектов управляемых артистов."""
-    return Q(**{f'{prefix}__user': user}) | Q(**{
-        f'{prefix}__label__user': user,
-    })
+    """Строит условие доступа к управляемым профилям артистов."""
+    prefix = f'{prefix}__' if prefix else ''
+
+    return Q(**{f'{prefix}user': user}) | Q(**{f'{prefix}label__user': user})

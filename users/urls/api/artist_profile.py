@@ -39,17 +39,17 @@ urlpatterns = [
         name='label-managed-profiles',
     ),
     path(
-        ('me/managed-profiles/<int:profile_id>/pickup-points/'),
+        'me/managed-profiles/<int:profile_id>/pickup-points/',
         managed_pickup_point_list,
         name='managed-profile-pickup-point-list',
     ),
     path(
-        ('me/managed-profiles/<int:profile_id>/pickup-points/<int:pk>/'),
+        'me/managed-profiles/<int:profile_id>/pickup-points/<int:pk>/',
         managed_pickup_point_detail,
         name='managed-profile-pickup-point-detail',
     ),
     path(
-        ('me/managed-profiles/<int:profile_id>/shipping-point/'),
+        'me/managed-profiles/<int:profile_id>/shipping-point/',
         ArtistShippingPointView.as_view(),
         name='managed-profile-shipping-point',
     ),

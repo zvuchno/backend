@@ -271,3 +271,45 @@ def artist_public_url():
 def label_managed_profiles_url() -> str:
     """Возвращает URL списка управляемых профилей."""
     return reverse('api:users:label-managed-profiles')
+
+
+@pytest.fixture
+def managed_pickup_point_list_url():
+    """Возвращает URL списка точек самовывоза управляемого профиля."""
+
+    def build(profile) -> str:
+        return reverse(
+            'api:users:managed-profile-pickup-point-list',
+            kwargs={'profile_id': profile.id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def managed_pickup_point_detail_url():
+    """Возвращает URL точки самовывоза управляемого профиля."""
+
+    def build(profile, pickup_point) -> str:
+        return reverse(
+            'api:users:managed-profile-pickup-point-detail',
+            kwargs={
+                'profile_id': profile.id,
+                'pk': pickup_point.id,
+            },
+        )
+
+    return build
+
+
+@pytest.fixture
+def managed_shipping_point_url():
+    """Возвращает URL ПВЗ отправления управляемого профиля."""
+
+    def build(profile) -> str:
+        return reverse(
+            'api:users:managed-profile-shipping-point',
+            kwargs={'profile_id': profile.id},
+        )
+
+    return build

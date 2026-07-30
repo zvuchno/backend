@@ -21,12 +21,13 @@ class ArtistPickupPointViewSet(
     permission_classes = (IsArtistOrLabel,)
     serializer_class = ArtistPickupPointManageSerializer
     http_method_names = ('get', 'post', 'patch', 'delete')
+    pagination_class = None
 
     def get_queryset(self):
         """Возвращает точки самовывоза выбранного профиля."""
         return ArtistPickupPoint.objects.filter(
             artist=self.get_artist_profile(),
-        )
+        ).order_by('id')
 
     def perform_create(self, serializer):
         """Создаёт точку самовывоза выбранного профиля."""
@@ -44,6 +45,7 @@ class ArtistShippingPointView(
     permission_classes = (IsArtistOrLabel,)
     serializer_class = ArtistShippingPointSerializer
     http_method_names = ('get', 'put', 'delete')
+    pagination_class = None
 
     def get(self, request, *args, **kwargs):
         """Возвращает сохранённый ПВЗ отправления."""
