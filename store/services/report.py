@@ -126,6 +126,16 @@ class ReportService:
                     ZERO_MONEY,
                 )
 
+                report = Report.objects.filter(
+                    artist=artist,
+                    period_type=period_type,
+                    period_start=period_start,
+                    period_end=period_end,
+                ).first()
+
+                if report and report.report_file:
+                    report.report_file.delete(save=False)
+
                 report, _ = Report.objects.update_or_create(
                     artist=artist,
                     period_type=period_type,
@@ -148,15 +158,6 @@ class ReportService:
                 period_type,
                 period_start,
                 period_end,
-            )
-            Report.objects.update_or_create(
-                artist=artist,
-                period_type=period_type,
-                period_start=period_start,
-                period_end=period_end,
-                defaults={
-                    'status': Report.Status.FAILED,
-                },
             )
             raise
 

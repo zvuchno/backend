@@ -94,8 +94,6 @@ def generate_report_task(
             f'report_{report.period_type}_{report.period_start}'
             f'_{report.period_end}.pdf'
         )
-        if report.report_file:
-            report.report_file.delete(save=False)
         report.report_file.save(
             filename,
             ContentFile(buffer.getvalue()),
@@ -138,7 +136,7 @@ def generate_report_task(
             period_start,
             period_end,
             self.request.retries + 1,
-            self.max_retries + 1,
+            self.max_retries,
         )
         raise self.retry(exc=exc)
 
