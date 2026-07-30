@@ -333,3 +333,22 @@ def player_track_play_url():
 def merch_list_url():
     """Возвращает URL-адрес эндпоинта для списка мерча."""
     return reverse('api:store:merch-list')
+
+
+@pytest.fixture
+def promocode_list_url():
+    """Возвращает URL списка и создания промокодов."""
+    return reverse('api:store:promocodes-list')
+
+
+@pytest.fixture
+def promocode_detail_url():
+    """Возвращает URL конкретного промокода."""
+
+    def build(promocode) -> str:
+        return reverse(
+            'api:store:promocodes-detail',
+            args=(promocode.id,),
+        )
+
+    return build

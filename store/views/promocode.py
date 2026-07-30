@@ -1,18 +1,19 @@
-"""ViewSet для работы с моделью Promocode.
-
-TODO: owner -> artist, изменить пермишен, убрать неиспользуемый пермишен.
-"""
+"""ViewSet для работы с моделью Promocode."""
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
+from common.access import managed_artist_q
 from common.permissions import (
     IsArtistOrLabel,
-    IsStoreObjectOwner,
+    IsStoreObjectManager,
 )
 
-from .mixins import SoftDeleteMixin
+from .mixins import (
+    ManagedArtistActionMixin,
+    SoftDeleteMixin,
+)
 from store.filters import PromoCodeFilter
 from store.models import Promocode
 from store.schema import promocode_schema
@@ -24,7 +25,11 @@ from store.serializers import (
 
 
 @promocode_schema
-class PromocodeViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
+class PromocodeViewSet(
+    ManagedArtistActionMixin,
+    SoftDeleteMixin,
+    viewsets.ModelViewSet,
+):
     """API для работы с промокодами.
 
     Промокод может создать только артист.
@@ -32,13 +37,15 @@ class PromocodeViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     """
 
     queryset = Promocode.objects.all()
-    permission_classes = (IsArtistOrLabel, IsStoreObjectOwner)
+    permission_classes = (IsArtistOrLabel, IsStoreObjectManager)
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (DjangoFilterBackend,)
     filterset_class = PromoCodeFilter
 
     def get_queryset(self):
-        return Promocode.objects.filter(owner=self.request.user)
+        return Promocode.objects.filter(
+            managed_artist_q(self.request.user),
+        ).select_related('artist', 'created_by')
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
@@ -70,4 +77,9 @@ class PromocodeViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
         return Response(read_serializer.data)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        artist = self._get_managed_artist(serializer)
+
+        serializer.save(
+            artist=artist,
+            created_by=self.request.user,
+        )

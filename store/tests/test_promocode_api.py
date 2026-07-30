@@ -47,7 +47,8 @@ class TestPromocodeAPI:
             code='AUTHOR_A_10',
             discount_type=Promocode.DiscountType.PERCENT,
             discount_value=Decimal('10.00'),
-            owner_id=self.artist_user.id,
+            artist=self.artist_user.artist_profile,
+            created_by=self.artist_user,
         )
 
         self.auth_client.post(
@@ -103,7 +104,8 @@ class TestPromocodeAPI:
             code='FIXED_100',
             discount_type=Promocode.DiscountType.FIXED,
             discount_value=Decimal('100.00'),
-            owner_id=self.artist_user.id,
+            artist=self.artist_user.artist_profile,
+            created_by=self.artist_user,
         )
 
         for variant in variants:
@@ -165,7 +167,8 @@ class TestPromocodeAPI:
             code='ARTIST_500',
             discount_type=Promocode.DiscountType.FIXED,
             discount_value=Decimal('500.00'),
-            owner_id=self.artist_user.id,
+            artist=self.artist_user.artist_profile,
+            created_by=self.artist_user,
         )
 
         self.auth_client.post(
@@ -204,3 +207,173 @@ class TestPromocodeAPI:
         assert Decimal(data['discount_promocode']) == Decimal('0.00')
         user_cart = Cart.objects.get(user=user)
         assert user_cart.promocode is None
+
+
+@pytest.mark.django_db
+class TestPromocodeManagementAPI:
+    """Тесты управления промокодами артистами и лейблами."""
+
+    def test_artist_creates_promocode_without_artist(
+        self,
+        artist_client,
+        artist_user,
+        promocode_list_url,
+    ):
+        """Для артиста профиль автоматически определяется бэкендом."""
+        response = artist_client.post(
+            promocode_list_url,
+            data={
+                'code': 'ARTIST10',
+                'discount_type': Promocode.DiscountType.PERCENT,
+                'discount_value': '10.00',
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        promocode = Promocode.objects.get(code='ARTIST10')
+
+        assert promocode.artist == artist_user.artist_profile
+        assert promocode.created_by == artist_user
+        assert response.data['artist'] == artist_user.artist_profile.id
+
+    def test_artist_can_explicitly_provide_own_profile(
+        self,
+        artist_client,
+        artist_user,
+        promocode_list_url,
+    ):
+        """Артист может явно передать собственный профиль."""
+        response = artist_client.post(
+            promocode_list_url,
+            data={
+                'artist': artist_user.artist_profile.id,
+                'code': 'OWNPROFILE10',
+                'discount_type': Promocode.DiscountType.PERCENT,
+                'discount_value': '10.00',
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        promocode = Promocode.objects.get(code='OWNPROFILE10')
+
+        assert promocode.artist == artist_user.artist_profile
+        assert promocode.created_by == artist_user
+
+    def test_artist_cannot_create_promocode_for_another_artist(
+        self,
+        artist_client,
+        other_artist_user,
+        promocode_list_url,
+    ):
+        """Артист не может создать промокод для чужого профиля."""
+        response = artist_client.post(
+            promocode_list_url,
+            data={
+                'artist': other_artist_user.artist_profile.id,
+                'code': 'FOREIGN10',
+                'discount_type': Promocode.DiscountType.PERCENT,
+                'discount_value': '10.00',
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not Promocode.objects.filter(code='FOREIGN10').exists()
+
+    def test_label_must_provide_artist(
+        self,
+        label_client,
+        promocode_list_url,
+    ):
+        """Лейбл должен явно выбрать профиль для промокода."""
+        response = label_client.post(
+            promocode_list_url,
+            data={
+                'code': 'LABEL_10',
+                'discount_type': Promocode.DiscountType.PERCENT,
+                'discount_value': '10.00',
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'artist' in response.data
+        assert not Promocode.objects.filter(code='LABEL_10').exists()
+
+    def test_label_creates_promocode_for_managed_artist(
+        self,
+        label_client,
+        label_user,
+        label_created_artist,
+        promocode_list_url,
+    ):
+        """Лейбл создаёт промокод для управляемого артиста."""
+        response = label_client.post(
+            promocode_list_url,
+            data={
+                'artist': label_created_artist.id,
+                'code': 'MANAGED10',
+                'discount_type': Promocode.DiscountType.PERCENT,
+                'discount_value': '10.00',
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        promocode = Promocode.objects.get(code='MANAGED10')
+
+        assert promocode.artist == label_created_artist
+        assert promocode.created_by == label_user
+        assert response.data['artist'] == label_created_artist.id
+
+    def test_label_creates_promocode_for_signed_artist(
+        self,
+        label_client,
+        label_user,
+        signed_artist_user,
+        promocode_list_url,
+    ):
+        """Лейбл создаёт промокод для подключённого артиста."""
+        response = label_client.post(
+            promocode_list_url,
+            data={
+                'artist': signed_artist_user.artist_profile.id,
+                'code': 'SIGNED10',
+                'discount_type': Promocode.DiscountType.PERCENT,
+                'discount_value': '10.00',
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        promocode = Promocode.objects.get(code='SIGNED10')
+
+        assert promocode.artist == signed_artist_user.artist_profile
+        assert promocode.created_by == label_user
+
+    def test_label_cannot_create_promocode_for_unmanaged_artist(
+        self,
+        label_client,
+        other_artist_user,
+        promocode_list_url,
+    ):
+        """Лейбл не может создать промокод чужого артиста."""
+        response = label_client.post(
+            promocode_list_url,
+            data={
+                'artist': other_artist_user.artist_profile.id,
+                'code': 'UNMANAGED10',
+                'discount_type': Promocode.DiscountType.PERCENT,
+                'discount_value': '10.00',
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not Promocode.objects.filter(code='UNMANAGED10').exists()
