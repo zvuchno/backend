@@ -34,9 +34,13 @@ class ArtistPickupPoint(ActivatableModel, TimestampModel):
         ordering = ('id',)
         constraints = [
             models.UniqueConstraint(
-                fields=['address', 'pickup_date'],
+                fields=[
+                    'artist',
+                    'address',
+                    'pickup_date',
+                ],
                 condition=models.Q(is_active=True),
-                name='unique_active_address_pickup_date',
+                name='unique_active_artist_pickup_point',
             ),
         ]
 
