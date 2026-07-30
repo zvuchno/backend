@@ -54,10 +54,10 @@ class ProductVariant(ActivatableModel, TimestampModel):
         if not self.product or not self.product.product_type:
             return f'TMP-{uuid.uuid4().hex[:6].upper()}'
 
-        p_type = self.product.product_type[:3].upper()  # ALB, TRA, MER
-        p_id = self.product.content_id
+        product_type = self.product.product_type[:3].upper()  # ALB, TRA, MER
+        profile_id = self.product.artist.id
 
-        new_sku = f'{p_type}-{p_id}-V{self.id}'
+        new_sku = f'{product_type}-{profile_id}-{self.id}'
         # Проверка на уникальность (на случай коллизий или ручного ввода)
         if ProductVariant.objects.filter(sku=new_sku).exists():
             return f'{new_sku}-{uuid.uuid4().hex[:2].upper()}'

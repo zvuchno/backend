@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from .cart_calculation_service import CartCalculationService
-from store.constants import ZERO_MONEY
+from store.constants import PLATFORM_COMMISSION_RATE, ZERO_MONEY
 from store.models import CartItem, Delivery, Order, OrderItem
 from store.services import CDEKService
 from users.models import ConsentDocument, UserConsent
@@ -251,6 +251,13 @@ class OrderService:
             variant = item.product_variant
             product = variant.product
             item_promocode_discount = item_discounts.get(item.id, ZERO_MONEY)
+            item_line_total = max(
+                item.unit_price * item.quantity - item_promocode_discount,
+                ZERO_MONEY,
+            )
+            item_platform_commission = (
+                item_line_total * PLATFORM_COMMISSION_RATE
+            )
 
             artist_profile = getattr(product, 'artist', None)
             artist_name = getattr(artist_profile, 'name', '')
@@ -282,6 +289,7 @@ class OrderService:
                     quantity=item.quantity,
                     promocode_discount=item_promocode_discount,
                     product_info=product_info_snapshot,
+                    platform_commission=item_platform_commission,
                 ),
             )
             if item.is_artist_subscription and artist_profile:

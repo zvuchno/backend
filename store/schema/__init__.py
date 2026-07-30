@@ -38,6 +38,7 @@ from .purchased_music import (
     purchased_music_schema,
     track_download_link_schema,
 )
+from .report import artist_reports_schema
 from .sale import artist_sale_schema
 from .track import track_schema
 from .track_upload import (
@@ -50,6 +51,7 @@ from .track_upload import (
 __all__ = [
     'album_schema',
     'archive_download_link_schema',
+    'artist_reports_schema',
     'artist_sale_schema',
     'cart_apply_promocode_schema',
     'cart_remove_promocode_schema',

@@ -26,4 +26,4 @@ class Delivery(ActivatableModel, TimestampModel):
         verbose_name_plural = 'доставки'
 
     def __str__(self):
-        return self.name
+        return self.get_delivery_type_display()

@@ -24,6 +24,7 @@ from .purchased_music import (
     PurchasedMusicTrackDownloadLinkView,
     PurchasedMusicView,
 )
+from .report import ArtistReportViewSet
 from .sale import ArtistSaleViewSet
 from .track import TrackViewSet
 from .track_upload import (
@@ -36,6 +37,7 @@ from .track_upload import (
 __all__ = [
     'AlbumTrackUploadInitiateView',
     'AlbumViewSet',
+    'ArtistReportViewSet',
     'ArtistSaleViewSet',
     'CartViewSet',
     'CatalogMerchDetailView',
