@@ -36,7 +36,7 @@ class ArtistPickupPointManageSerializer(serializers.ModelSerializer):
         if not is_active:
             return attrs
 
-        duplicates = ArtistPickupPoint.objects.filter(
+        existing_points = ArtistPickupPoint.objects.filter(
             artist=artist,
             address=address,
             pickup_date=pickup_date,
@@ -44,9 +44,9 @@ class ArtistPickupPointManageSerializer(serializers.ModelSerializer):
         )
 
         if self.instance is not None:
-            duplicates = duplicates.exclude(pk=self.instance.pk)
+            existing_points = existing_points.exclude(pk=self.instance.pk)
 
-        if duplicates.exists():
+        if existing_points.exists():
             raise serializers.ValidationError({
                 'non_field_errors': (
                     'Активная точка самовывоза с таким адресом '

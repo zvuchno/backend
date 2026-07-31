@@ -8,8 +8,8 @@ from users.constants import ADDRESS_FIELD_MAX_LENGTH
 class ArtistPickupPoint(ActivatableModel, TimestampModel):
     """Модель точки самовывоза артиста.
 
-    Артист может иметь несколько точек самовывоза,
-    каждая с адресом и датой доступности.
+    Артист может иметь несколько точек самовывоза.
+    Дата доступности может быть указана для временной точки.
     """
 
     artist = models.ForeignKey(
@@ -40,6 +40,7 @@ class ArtistPickupPoint(ActivatableModel, TimestampModel):
                     'pickup_date',
                 ],
                 condition=models.Q(is_active=True),
+                nulls_distinct=False,
                 name='unique_active_artist_pickup_point',
             ),
         ]

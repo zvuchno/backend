@@ -385,6 +385,34 @@ class TestArtistPickupPointAPI:
         assert pickup_point.artist == label_user.artist_profile
         assert pickup_point.artist != label_created_artist
 
+    def test_artist_cannot_create_duplicate_active_pickup_point_without_date(
+        self,
+        artist_client,
+        artist_user,
+        managed_pickup_point_list_url,
+    ):
+        """Нельзя создать одинаковые активные точки без даты."""
+        profile = artist_user.artist_profile
+        data = {
+            'address': 'Постоянная точка',
+            'pickup_date': None,
+            'is_active': True,
+        }
+
+        first_response = artist_client.post(
+            managed_pickup_point_list_url(profile),
+            data=data,
+            format='json',
+        )
+        second_response = artist_client.post(
+            managed_pickup_point_list_url(profile),
+            data=data,
+            format='json',
+        )
+
+        assert first_response.status_code == HTTPStatus.CREATED
+        assert second_response.status_code == HTTPStatus.BAD_REQUEST
+
 
 class TestArtistShippingPointAPI:
     """Тесты управления ПВЗ отправления."""
