@@ -34,6 +34,21 @@ urlpatterns = [
         name='artist_me',
     ),
     path(
+        'me/pickup-points/',
+        managed_pickup_point_list,
+        name='artist-me-pickup-point-list',
+    ),
+    path(
+        'me/pickup-points/<int:pk>/',
+        managed_pickup_point_detail,
+        name='artist-me-pickup-point-detail',
+    ),
+    path(
+        'me/shipping-point/',
+        ArtistShippingPointView.as_view(),
+        name='artist-me-shipping-point',
+    ),
+    path(
         'me/managed-profiles/',
         LabelManagedProfileListView.as_view(),
         name='label-managed-profiles',

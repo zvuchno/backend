@@ -251,6 +251,63 @@ class TestArtistPickupPointAPI:
 
         assert response.status_code == HTTPStatus.NOT_FOUND
 
+    def test_artist_cannot_create_duplicate_active_pickup_point(
+        self,
+        artist_client,
+        artist_user,
+        managed_pickup_point_list_url,
+    ):
+        """Нельзя создать одинаковые активные точки одного артиста."""
+        profile = artist_user.artist_profile
+        data = {
+            'address': 'Одинаковый адрес',
+            'pickup_date': '2026-08-15',
+            'is_active': True,
+        }
+
+        first_response = artist_client.post(
+            managed_pickup_point_list_url(profile),
+            data=data,
+            format='json',
+        )
+        second_response = artist_client.post(
+            managed_pickup_point_list_url(profile),
+            data=data,
+            format='json',
+        )
+
+        assert first_response.status_code == HTTPStatus.CREATED
+        assert second_response.status_code == HTTPStatus.BAD_REQUEST
+
+    def test_different_artists_can_have_same_active_pickup_point(
+        self,
+        artist_client,
+        artist_user,
+        other_artist_user,
+        managed_pickup_point_list_url,
+    ):
+        """Разным артистам разрешены одинаковые точки самовывоза."""
+        data = {
+            'address': 'Общий концертный зал',
+            'pickup_date': '2026-08-15',
+            'is_active': True,
+        }
+
+        ArtistPickupPoint.objects.create(
+            artist=other_artist_user.artist_profile,
+            **data,
+        )
+
+        response = artist_client.post(
+            managed_pickup_point_list_url(
+                artist_user.artist_profile,
+            ),
+            data=data,
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
 
 class TestArtistShippingPointAPI:
     """Тесты управления ПВЗ отправления."""

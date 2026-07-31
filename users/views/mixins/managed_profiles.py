@@ -25,10 +25,15 @@ class ManagedArtistProfileMixin(ArtistProfileQuerysetMixin):
         )
 
     def get_artist_profile(self):
-        """Возвращает доступный профиль из параметров URL."""
+        """Возвращает собственный или выбранный управляемый профиль."""
+        profile_id = self.kwargs.get(self.profile_url_kwarg)
+
+        if profile_id is None:
+            lookup = {'user': self.request.user}
+        else:
+            lookup = {'pk': profile_id}
+
         try:
-            return self.get_artist_queryset().get(
-                pk=self.kwargs[self.profile_url_kwarg],
-            )
+            return self.get_artist_queryset().get(**lookup)
         except ArtistProfile.DoesNotExist:
             raise Http404('Профиль артиста не найден.')
