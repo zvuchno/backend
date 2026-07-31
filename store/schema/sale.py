@@ -16,7 +16,7 @@ from store.serializers import (
     ArtistSaleSerializer,
 )
 
-ORDER_TAGS = ['Artists']
+ORDER_TAGS = ['Artist: sales']
 
 artist_sale_schema = extend_schema_view(
     list=extend_schema(

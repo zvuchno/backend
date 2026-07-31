@@ -10,7 +10,7 @@ from users.serializers import (
 
 artist_pickup_point_schema = extend_schema_view(
     list=extend_schema(
-        tags=['Artists'],
+        tags=['Artist: delivery'],
         summary='Получить точки самовывоза профиля',
         description=(
             'Возвращает точки самовывоза собственного или выбранного '
@@ -19,7 +19,7 @@ artist_pickup_point_schema = extend_schema_view(
         responses=ArtistPickupPointManageSerializer(many=True),
     ),
     create=extend_schema(
-        tags=['Artists'],
+        tags=['Artist: delivery'],
         summary='Добавить точку самовывоза профиля',
         description=(
             'Создаёт точку самовывоза для собственного или выбранного '
@@ -31,7 +31,7 @@ artist_pickup_point_schema = extend_schema_view(
         },
     ),
     retrieve=extend_schema(
-        tags=['Artists'],
+        tags=['Artist: delivery'],
         summary='Получить точку самовывоза профиля',
         description=(
             'Возвращает конкретную точку самовывоза собственного или '
@@ -40,7 +40,7 @@ artist_pickup_point_schema = extend_schema_view(
         responses=ArtistPickupPointManageSerializer,
     ),
     partial_update=extend_schema(
-        tags=['Artists'],
+        tags=['Artist: delivery'],
         summary='Изменить точку самовывоза профиля',
         description=(
             'Частично обновляет точку самовывоза собственного или '
@@ -50,7 +50,7 @@ artist_pickup_point_schema = extend_schema_view(
         responses=ArtistPickupPointManageSerializer,
     ),
     destroy=extend_schema(
-        tags=['Artists'],
+        tags=['Artist: delivery'],
         summary='Удалить точку самовывоза профиля',
         description=(
             'Удаляет точку самовывоза собственного или выбранного '
@@ -65,7 +65,7 @@ artist_pickup_point_schema = extend_schema_view(
 
 artist_shipping_point_schema = extend_schema_view(
     get=extend_schema(
-        tags=['Artists'],
+        tags=['Artist: delivery'],
         summary='Получить ПВЗ отправления профиля',
         description=(
             'Возвращает текущий ПВЗ СДЭК собственного или выбранного '
@@ -76,7 +76,7 @@ artist_shipping_point_schema = extend_schema_view(
         },
     ),
     put=extend_schema(
-        tags=['Artists'],
+        tags=['Artist: delivery'],
         summary='Настроить ПВЗ отправления профиля',
         description=(
             'Создаёт или полностью заменяет ПВЗ СДЭК собственного или '
@@ -90,7 +90,7 @@ artist_shipping_point_schema = extend_schema_view(
         },
     ),
     delete=extend_schema(
-        tags=['Artists'],
+        tags=['Artist: delivery'],
         summary='Удалить ПВЗ отправления профиля',
         description=(
             'Удаляет текущий ПВЗ отправления собственного или выбранного '
