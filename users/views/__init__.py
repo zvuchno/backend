@@ -9,6 +9,10 @@ from .account import (
     ResendVerificationEmailView,
     SetPasswordView,
 )
+from .artist_delivery import (
+    ArtistPickupPointViewSet,
+    ArtistShippingPointView,
+)
 from .artist_legal_profile import (
     ArtistLegalProfileView,
     RecipientTypeListView,
@@ -49,8 +53,10 @@ __all__ = [
     'ArtistLegalProfileView',
     'ArtistListView',
     'ArtistMeView',
+    'ArtistPickupPointViewSet',
     'ArtistPublicView',
     'ArtistRegistrationView',
+    'ArtistShippingPointView',
     'BaseRegistrationView',
     'BecomeArtistOrLabelView',
     'ConsentDocumentViewSet',

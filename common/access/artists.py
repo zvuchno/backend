@@ -14,7 +14,26 @@ def can_manage_artist(user, artist: ArtistProfile | None) -> bool:
 
 
 def managed_artist_q(user, prefix='artist') -> Q:
-    """Строит условие объектов управляемых артистов."""
-    return Q(**{f'{prefix}__user': user}) | Q(**{
-        f'{prefix}__label__user': user,
-    })
+    """Строит условие доступа пользователя к профилю артиста.
+
+    Профиль считается доступным, если пользователь:
+
+    - напрямую связан с ним через ArtistProfile.user;
+    - является владельцем лейбла, указанного в
+      ArtistProfile.label, то есть находится через
+      ArtistProfile.label.user.
+
+    prefix задаёт ORM-путь от модели текущего queryset до
+    ArtistProfile. По умолчанию предполагается, что текущая модель
+    связана с профилем полем artist, тогда:
+
+    artist__user=user или artist__label__user=user.
+
+    При фильтрации самого ArtistProfile нужно передать пустой
+    префикс, чтобы получить:
+
+    user=user или label__user=user.
+    """
+    prefix = f'{prefix}__' if prefix else ''
+
+    return Q(**{f'{prefix}user': user}) | Q(**{f'{prefix}label__user': user})

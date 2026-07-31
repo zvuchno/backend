@@ -97,7 +97,7 @@ artist_list_schema = extend_schema(
 
 
 label_managed_profile_list_schema = extend_schema(
-    tags=['Artists'],
+    tags=['Label: managed profiles'],
     summary='Получить профили, доступные текущему лейблу',
     description=(
         'Возвращает профиль текущего лейбла и активные профили артистов, '

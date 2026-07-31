@@ -13,6 +13,10 @@ from .account import (
     resend_verification_email_schema,
     set_password_schema,
 )
+from .artist_delivery import (
+    artist_pickup_point_schema,
+    artist_shipping_point_schema,
+)
 from .artist_legal_profile import (
     artist_legal_data_schema,
     recipient_type_list_schema,
@@ -48,8 +52,10 @@ __all__ = [
     'artist_legal_data_schema',
     'artist_list_schema',
     'artist_me_schema',
+    'artist_pickup_point_schema',
     'artist_public_schema',
     'artist_registration_schema',
+    'artist_shipping_point_schema',
     'become_artist_schema',
     'change_password_schema',
     'change_phone_schema',

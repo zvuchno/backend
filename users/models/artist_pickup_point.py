@@ -8,8 +8,8 @@ from users.constants import ADDRESS_FIELD_MAX_LENGTH
 class ArtistPickupPoint(ActivatableModel, TimestampModel):
     """Модель точки самовывоза артиста.
 
-    Артист может иметь несколько точек самовывоза,
-    каждая с адресом и датой доступности.
+    Артист может иметь несколько точек самовывоза.
+    Дата доступности может быть указана для временной точки.
     """
 
     artist = models.ForeignKey(
@@ -32,6 +32,18 @@ class ArtistPickupPoint(ActivatableModel, TimestampModel):
         verbose_name = 'пункт самовывоза артиста'
         verbose_name_plural = 'пункты самовывоза артистов'
         ordering = ('id',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    'artist',
+                    'address',
+                    'pickup_date',
+                ],
+                condition=models.Q(is_active=True),
+                nulls_distinct=False,
+                name='unique_active_artist_pickup_point',
+            ),
+        ]
 
     def __str__(self):
         return f'Самовывоз: {self.address}'

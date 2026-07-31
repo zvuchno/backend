@@ -200,6 +200,25 @@ def artist_user(artist_user_factory):
 
 
 @pytest.fixture
+def artist_without_shipping_point(artist_user_factory):
+    """Создаёт артиста без настроенного ПВЗ отправления."""
+    return artist_user_factory(
+        email='artist_without_shipping@example.com',
+        username='artist_without_shipping',
+        name='Artist Without Shipping',
+    )
+
+
+@pytest.fixture
+def artist_without_shipping_point_client(
+    client_factory,
+    artist_without_shipping_point,
+):
+    """Возвращает API-клиент артиста без ПВЗ отправления."""
+    return client_factory(artist_without_shipping_point)
+
+
+@pytest.fixture
 def other_artist_user(artist_user_factory):
     """Другой пользователь с профилем независимого артиста."""
     user = artist_user_factory(
