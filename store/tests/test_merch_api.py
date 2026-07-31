@@ -369,7 +369,7 @@ class TestMerchVariants:
         assert response_other_artist.status_code == status.HTTP_404_NOT_FOUND
 
         response_anonymous = api_client.get(merch_detail_url)
-        assert response_anonymous.status_code == status.HTTP_404_NOT_FOUND
+        assert response_anonymous.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_cannot_update_variant_of_other_merch(
         self,

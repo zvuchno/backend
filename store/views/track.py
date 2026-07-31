@@ -6,10 +6,7 @@ from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
 from common.access import managed_artist_q
-from common.permissions import (
-    CanCreateArtistContent,
-    IsStoreObjectManagerOrReadOnly,
-)
+from common.permissions import IsArtistOrLabel, IsStoreObjectManager
 
 from .mixins import (
     ProductActionMixin,
@@ -36,6 +33,7 @@ class TrackViewSet(
     """API для работы с треками."""
 
     queryset = Track.objects.all()
+    permission_classes = (IsArtistOrLabel, IsStoreObjectManager)
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
         DjangoFilterBackend,
@@ -46,11 +44,6 @@ class TrackViewSet(
     search_fields = ('name',)
     ordering_fields = ('name', 'position')
     ordering = ('album', 'position')
-
-    def get_permissions(self):
-        if self.action == 'create':
-            return (CanCreateArtistContent(),)
-        return (IsStoreObjectManagerOrReadOnly(),)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
