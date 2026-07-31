@@ -278,6 +278,14 @@ class TestArtistPickupPointAPI:
 
         assert first_response.status_code == HTTPStatus.CREATED
         assert second_response.status_code == HTTPStatus.BAD_REQUEST
+        assert second_response.data == {
+            'non_field_errors': [
+                (
+                    'Активная точка самовывоза с таким адресом '
+                    'и датой уже существует.'
+                ),
+            ],
+        }
 
     def test_different_artists_can_have_same_active_pickup_point(
         self,
@@ -307,6 +315,75 @@ class TestArtistPickupPointAPI:
         )
 
         assert response.status_code == HTTPStatus.CREATED
+
+    def test_artist_creates_pickup_point_via_me_alias(
+        self,
+        artist_client,
+        artist_user,
+        artist_me_pickup_point_list_url,
+    ):
+        """Алиас me создаёт точку собственного профиля."""
+        response = artist_client.post(
+            artist_me_pickup_point_list_url,
+            data={
+                'address': 'Точка через me',
+                'pickup_date': '2026-08-15',
+                'is_active': True,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+        assert ArtistPickupPoint.objects.filter(
+            artist=artist_user.artist_profile,
+            address='Точка через me',
+        ).exists()
+
+    def test_me_alias_does_not_access_foreign_pickup_point(
+        self,
+        artist_client,
+        other_artist_user,
+        artist_me_pickup_point_detail_url,
+    ):
+        """Алиас me не получает точку чужого профиля."""
+        pickup_point = ArtistPickupPoint.objects.create(
+            artist=other_artist_user.artist_profile,
+            address='Чужая точка',
+            pickup_date='2026-08-15',
+        )
+
+        response = artist_client.get(
+            artist_me_pickup_point_detail_url(pickup_point),
+        )
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+
+    def test_label_me_alias_uses_label_own_profile(
+        self,
+        label_client,
+        label_user,
+        label_created_artist,
+        artist_me_pickup_point_list_url,
+    ):
+        """Алиас me лейбла работает с собственным профилем лейбла."""
+        response = label_client.post(
+            artist_me_pickup_point_list_url,
+            data={
+                'address': 'Точка самого лейбла',
+                'pickup_date': '2026-08-15',
+                'is_active': True,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        pickup_point = ArtistPickupPoint.objects.get(
+            address='Точка самого лейбла',
+        )
+
+        assert pickup_point.artist == label_user.artist_profile
+        assert pickup_point.artist != label_created_artist
 
 
 class TestArtistShippingPointAPI:
@@ -498,6 +575,30 @@ class TestArtistShippingPointAPI:
         )
 
         assert response.status_code == HTTPStatus.NOT_FOUND
+
+    def test_put_shipping_point_via_me_alias(
+        self,
+        artist_without_shipping_point_client,
+        artist_without_shipping_point,
+        artist_me_shipping_point_url,
+    ):
+        """Алиас me создаёт ПВЗ собственного профиля."""
+        response = artist_without_shipping_point_client.put(
+            artist_me_shipping_point_url,
+            data={
+                'pvz_code': 'KGN12',
+                'city_code': '123',
+                'city': 'Курган',
+                'address': 'ул. Гоголя, 55',
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+        assert ArtistShippingPoint.objects.filter(
+            artist=artist_without_shipping_point.artist_profile,
+            pvz_code='KGN12',
+        ).exists()
 
 
 class TestArtistDeliveryPermissions:

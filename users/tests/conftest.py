@@ -313,3 +313,28 @@ def managed_shipping_point_url():
         )
 
     return build
+
+
+@pytest.fixture
+def artist_me_pickup_point_list_url() -> str:
+    """Возвращает URL точек самовывоза собственного профиля."""
+    return reverse('api:users:artist-me-pickup-point-list')
+
+
+@pytest.fixture
+def artist_me_pickup_point_detail_url():
+    """Возвращает URL точки самовывоза собственного профиля."""
+
+    def build(pickup_point) -> str:
+        return reverse(
+            'api:users:artist-me-pickup-point-detail',
+            kwargs={'pk': pickup_point.id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def artist_me_shipping_point_url() -> str:
+    """Возвращает URL ПВЗ отправления собственного профиля."""
+    return reverse('api:users:artist-me-shipping-point')

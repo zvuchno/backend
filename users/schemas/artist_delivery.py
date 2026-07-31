@@ -13,8 +13,8 @@ artist_pickup_point_schema = extend_schema_view(
         tags=['Artists'],
         summary='Получить точки самовывоза профиля',
         description=(
-            'Возвращает точки самовывоза выбранного профиля артиста '
-            'или лейбла, доступного текущему пользователю для управления.'
+            'Возвращает точки самовывоза собственного или выбранного '
+            'управляемого профиля.'
         ),
         responses=ArtistPickupPointManageSerializer(many=True),
     ),
@@ -22,7 +22,8 @@ artist_pickup_point_schema = extend_schema_view(
         tags=['Artists'],
         summary='Добавить точку самовывоза профиля',
         description=(
-            'Создаёт точку самовывоза для выбранного управляемого профиля.'
+            'Создаёт точку самовывоза для собственного или выбранного '
+            'управляемого профиля.'
         ),
         request=ArtistPickupPointManageSerializer,
         responses={
@@ -33,8 +34,8 @@ artist_pickup_point_schema = extend_schema_view(
         tags=['Artists'],
         summary='Получить точку самовывоза профиля',
         description=(
-            'Возвращает конкретную точку самовывоза выбранного '
-            'управляемого профиля.'
+            'Возвращает конкретную точку самовывоза собственного или '
+            'выбранного управляемого профиля.'
         ),
         responses=ArtistPickupPointManageSerializer,
     ),
@@ -42,8 +43,8 @@ artist_pickup_point_schema = extend_schema_view(
         tags=['Artists'],
         summary='Изменить точку самовывоза профиля',
         description=(
-            'Частично обновляет точку самовывоза выбранного '
-            'управляемого профиля.'
+            'Частично обновляет точку самовывоза собственного или '
+            'выбранного управляемого профиля.'
         ),
         request=ArtistPickupPointManageSerializer,
         responses=ArtistPickupPointManageSerializer,
@@ -52,7 +53,8 @@ artist_pickup_point_schema = extend_schema_view(
         tags=['Artists'],
         summary='Удалить точку самовывоза профиля',
         description=(
-            'Удаляет точку самовывоза выбранного управляемого профиля.'
+            'Удаляет точку самовывоза собственного или выбранного '
+            'управляемого профиля.'
         ),
         responses={
             204: OpenApiTypes.NONE,
@@ -66,8 +68,8 @@ artist_shipping_point_schema = extend_schema_view(
         tags=['Artists'],
         summary='Получить ПВЗ отправления профиля',
         description=(
-            'Возвращает текущий ПВЗ СДЭК, из которого выбранный профиль '
-            'отправляет заказы. Если ПВЗ не настроен, возвращает null.'
+            'Возвращает текущий ПВЗ СДЭК собственного или выбранного '
+            'управляемого профиля. Если ПВЗ не настроен, возвращает null.'
         ),
         responses={
             200: ArtistShippingPointSerializer(allow_null=True),
@@ -77,9 +79,9 @@ artist_shipping_point_schema = extend_schema_view(
         tags=['Artists'],
         summary='Настроить ПВЗ отправления профиля',
         description=(
-            'Создаёт или полностью заменяет ПВЗ СДЭК для выбранного '
-            'управляемого профиля. При создании возвращает 201, '
-            'при обновлении существующего ПВЗ — 200.'
+            'Создаёт или полностью заменяет ПВЗ СДЭК собственного или '
+            'выбранного управляемого профиля. При создании возвращает '
+            '201, при обновлении существующего ПВЗ — 200.'
         ),
         request=ArtistShippingPointSerializer,
         responses={
@@ -91,9 +93,9 @@ artist_shipping_point_schema = extend_schema_view(
         tags=['Artists'],
         summary='Удалить ПВЗ отправления профиля',
         description=(
-            'Удаляет текущий ПВЗ отправления выбранного управляемого '
-            'профиля. Если ПВЗ отсутствует, операция также завершается '
-            'успешно.'
+            'Удаляет текущий ПВЗ отправления собственного или выбранного '
+            'управляемого профиля. Если ПВЗ отсутствует, операция также '
+            'завершается успешно.'
         ),
         responses={
             204: OpenApiTypes.NONE,
