@@ -12,6 +12,8 @@ from .account import (
 from .artist_delivery import (
     ArtistPickupPointViewSet,
     ArtistShippingPointView,
+    ManagedArtistPickupPointViewSet,
+    ManagedArtistShippingPointView,
 )
 from .artist_legal_profile import (
     ArtistLegalProfileView,
@@ -70,6 +72,8 @@ __all__ = [
     'LabelManagedProfileListView',
     'ListenerMeView',
     'ListenerRegistrationView',
+    'ManagedArtistPickupPointViewSet',
+    'ManagedArtistShippingPointView',
     'MeView',
     'PasswordResetConfirmView',
     'PasswordResetRequestView',

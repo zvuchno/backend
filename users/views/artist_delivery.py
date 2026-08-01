@@ -9,6 +9,10 @@ from users.schemas import (
     artist_pickup_point_schema,
     artist_shipping_point_schema,
 )
+from users.schemas.artist_delivery import (
+    managed_artist_pickup_point_schema,
+    managed_artist_shipping_point_schema,
+)
 from users.serializers import (
     ArtistPickupPointManageSerializer,
     ArtistShippingPointSerializer,
@@ -17,11 +21,11 @@ from users.views.mixins import ManagedArtistProfileMixin
 
 
 @artist_pickup_point_schema
-class ArtistPickupPointViewSet(
+class ArtistPickupPointBaseViewSet(
     ManagedArtistProfileMixin,
     viewsets.ModelViewSet,
 ):
-    """Управление точками самовывоза выбранного профиля."""
+    """Управление точками самовывоза доступного профиля."""
 
     permission_classes = (IsArtistOrLabel,)
     serializer_class = ArtistPickupPointManageSerializer
@@ -41,12 +45,24 @@ class ArtistPickupPointViewSet(
         )
 
 
+@artist_pickup_point_schema
+class ArtistPickupPointViewSet(ArtistPickupPointBaseViewSet):
+    """Управление своими точками самовывоза."""
+
+
+@managed_artist_pickup_point_schema
+class ManagedArtistPickupPointViewSet(
+    ArtistPickupPointBaseViewSet,
+):
+    """Управление точками самовывоза управляемого профиля."""
+
+
 @artist_shipping_point_schema
-class ArtistShippingPointView(
+class ArtistShippingPointBaseView(
     ManagedArtistProfileMixin,
     GenericAPIView,
 ):
-    """Получение и настройка ПВЗ отправления выбранного профиля."""
+    """Управление ПВЗ отправления доступного профиля."""
 
     permission_classes = (IsArtistOrLabel,)
     serializer_class = ArtistShippingPointSerializer
@@ -103,3 +119,15 @@ class ArtistShippingPointView(
             shipping_point.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@artist_shipping_point_schema
+class ArtistShippingPointView(ArtistShippingPointBaseView):
+    """Управление собственным ПВЗ отправления."""
+
+
+@managed_artist_shipping_point_schema
+class ManagedArtistShippingPointView(
+    ArtistShippingPointBaseView,
+):
+    """Управление ПВЗ отправления управляемого профиля."""

@@ -12,16 +12,29 @@ from users.views import (
     ArtistPublicView,
     ArtistShippingPointView,
     LabelManagedProfileListView,
+    ManagedArtistPickupPointViewSet,
+    ManagedArtistShippingPointView,
     RecipientTypeListView,
     TelegramConnectView,
 )
 
-managed_pickup_point_list = ArtistPickupPointViewSet.as_view({
+me_pickup_point_list = ArtistPickupPointViewSet.as_view({
     'get': 'list',
     'post': 'create',
 })
 
-managed_pickup_point_detail = ArtistPickupPointViewSet.as_view({
+me_pickup_point_detail = ArtistPickupPointViewSet.as_view({
+    'get': 'retrieve',
+    'patch': 'partial_update',
+    'delete': 'destroy',
+})
+
+managed_pickup_point_list = ManagedArtistPickupPointViewSet.as_view({
+    'get': 'list',
+    'post': 'create',
+})
+
+managed_pickup_point_detail = ManagedArtistPickupPointViewSet.as_view({
     'get': 'retrieve',
     'patch': 'partial_update',
     'delete': 'destroy',
@@ -35,38 +48,38 @@ urlpatterns = [
     ),
     path(
         'me/pickup-points/',
-        managed_pickup_point_list,
-        name='artist-me-pickup-point-list',
+        me_pickup_point_list,
+        name='artist_me_pickup_point_list',
     ),
     path(
         'me/pickup-points/<int:pk>/',
-        managed_pickup_point_detail,
-        name='artist-me-pickup-point-detail',
+        me_pickup_point_detail,
+        name='artist_me_pickup_point_detail',
     ),
     path(
         'me/shipping-point/',
         ArtistShippingPointView.as_view(),
-        name='artist-me-shipping-point',
+        name='artist_me_shipping_point',
     ),
     path(
         'me/managed-profiles/',
         LabelManagedProfileListView.as_view(),
-        name='label-managed-profiles',
+        name='label_managed_profiles',
     ),
     path(
         'me/managed-profiles/<int:profile_id>/pickup-points/',
         managed_pickup_point_list,
-        name='managed-profile-pickup-point-list',
+        name='managed_profile_pickup_point_list',
     ),
     path(
         'me/managed-profiles/<int:profile_id>/pickup-points/<int:pk>/',
         managed_pickup_point_detail,
-        name='managed-profile-pickup-point-detail',
+        name='managed_profile_pickup_point_detail',
     ),
     path(
         'me/managed-profiles/<int:profile_id>/shipping-point/',
-        ArtistShippingPointView.as_view(),
-        name='managed-profile-shipping-point',
+        ManagedArtistShippingPointView.as_view(),
+        name='managed_profile_shipping_point',
     ),
     path(
         'me/legal/',
