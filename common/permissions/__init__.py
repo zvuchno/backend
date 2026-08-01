@@ -21,6 +21,7 @@ from .profiles import (
     IsLabel,
     IsListener,
     IsNotArtist,
+    IsNotLabel,
 )
 from .verification import IsUserVerified
 
@@ -31,6 +32,7 @@ __all__ = [
     'IsLabel',
     'IsListener',
     'IsNotArtist',
+    'IsNotLabel',
     'IsSalesOwner',
     'IsStoreObjectManager',
     'IsStoreObjectManagerOrReadOnly',

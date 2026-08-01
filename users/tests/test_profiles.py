@@ -1,6 +1,9 @@
 """Тесты API профилей артистов и лейблов."""
 
+from http import HTTPStatus
+
 import pytest
+from django.core.cache import cache
 from rest_framework import status
 
 from users.models import ArtistProfile, ArtistProfileType
@@ -10,6 +13,13 @@ pytestmark = pytest.mark.django_db
 
 class TestBecomeArtistOrLabelApi:
     """Тесты создания профиля артиста или лейбла слушателем."""
+
+    @pytest.fixture(autouse=True)
+    def clear_throttle_cache(self):
+        """Изолирует счётчики throttling между тестами."""
+        cache.clear()
+        yield
+        cache.clear()
 
     def test_listener_becomes_artist_by_default(
         self,
@@ -80,40 +90,6 @@ class TestBecomeArtistOrLabelApi:
             user=listener_user,
         ).exists()
 
-    def test_artist_cannot_create_second_profile(
-        self,
-        artist_client,
-        become_artist_url,
-    ):
-        """Артист не может создать второй профессиональный профиль."""
-        response = artist_client.post(
-            become_artist_url,
-            data={
-                'name': 'Второй профиль',
-                'profile_type': ArtistProfileType.LABEL,
-            },
-            format='json',
-        )
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
-    def test_label_cannot_create_second_profile(
-        self,
-        label_client,
-        become_artist_url,
-    ):
-        """Лейбл не может создать второй профессиональный профиль."""
-        response = label_client.post(
-            become_artist_url,
-            data={
-                'name': 'Второй профиль',
-                'profile_type': ArtistProfileType.ARTIST,
-            },
-            format='json',
-        )
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
     def test_requires_authentication(
         self,
         api_client,
@@ -127,6 +103,207 @@ class TestBecomeArtistOrLabelApi:
         )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_independent_artist_becomes_label(
+        self,
+        artist_client,
+        artist_user,
+        become_artist_url,
+    ):
+        profile = artist_user.artist_profile
+        original_id = profile.id
+        original_name = profile.name
+        original_slug = profile.slug
+
+        response = artist_client.post(
+            become_artist_url,
+            data={
+                'profile_type': ArtistProfileType.LABEL,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        profile.refresh_from_db()
+
+        assert profile.id == original_id
+        assert profile.profile_type == ArtistProfileType.LABEL
+        assert profile.name == original_name
+        assert profile.slug == original_slug
+        assert profile.user == artist_user
+        assert profile.label is None
+
+    def test_becoming_label_does_not_change_artist_name(
+        self,
+        artist_client,
+        artist_user,
+        become_artist_url,
+    ):
+        profile = artist_user.artist_profile
+        original_name = profile.name
+
+        response = artist_client.post(
+            become_artist_url,
+            data={
+                'profile_type': ArtistProfileType.LABEL,
+                'name': 'Новое название лейбла',
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        profile.refresh_from_db()
+
+        assert profile.profile_type == ArtistProfileType.LABEL
+        assert profile.name == original_name
+
+    def test_managed_artist_cannot_become_label(
+        self,
+        client_factory,
+        signed_artist_user,
+        become_artist_url,
+    ):
+        client = client_factory(signed_artist_user)
+
+        response = client.post(
+            become_artist_url,
+            data={
+                'profile_type': ArtistProfileType.LABEL,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.data == {
+            'profile_type': [
+                (
+                    'Нельзя стать лейблом, находясь под управлением '
+                    'другого лейбла.'
+                ),
+            ],
+        }
+
+        signed_artist_user.artist_profile.refresh_from_db()
+
+        assert (
+            signed_artist_user.artist_profile.profile_type
+            == ArtistProfileType.ARTIST
+        )
+
+    def test_existing_artist_cannot_become_artist_again(
+        self,
+        artist_client,
+        artist_user,
+        become_artist_url,
+    ):
+        response = artist_client.post(
+            become_artist_url,
+            data={
+                'profile_type': ArtistProfileType.ARTIST,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.data == {
+            'profile_type': [
+                (
+                    'У пользователя уже есть профиль артиста. '
+                    'Допустим только переход к профилю лейбла.'
+                ),
+            ],
+        }
+
+        artist_user.artist_profile.refresh_from_db()
+
+        assert (
+            artist_user.artist_profile.profile_type == ArtistProfileType.ARTIST
+        )
+
+    @pytest.mark.parametrize(
+        'profile_type',
+        (
+            ArtistProfileType.ARTIST,
+            ArtistProfileType.LABEL,
+        ),
+    )
+    def test_label_cannot_use_become_artist_endpoint(
+        self,
+        label_client,
+        become_artist_url,
+        profile_type,
+    ):
+        response = label_client.post(
+            become_artist_url,
+            data={'profile_type': profile_type},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+
+    def test_artist_gets_label_permissions_after_upgrade(
+        self,
+        artist_client,
+        artist_user,
+        become_artist_url,
+        label_managed_profiles_url,
+    ):
+        response = artist_client.post(
+            become_artist_url,
+            data={'profile_type': ArtistProfileType.LABEL},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        response = artist_client.get(label_managed_profiles_url)
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.data[0]['id'] == artist_user.artist_profile.id
+        assert response.data[0]['is_self'] is True
+
+    def test_name_is_required_when_creating_profile(
+        self,
+        auth_client,
+        become_artist_url,
+    ):
+        response = auth_client.post(
+            become_artist_url,
+            data={
+                'profile_type': ArtistProfileType.ARTIST,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.data == {
+            'name': [
+                'Это поле обязательно при создании профиля.',
+            ],
+        }
+
+    def test_user_creates_artist_with_default_profile_type(
+        self,
+        auth_client,
+        user,
+        become_artist_url,
+    ):
+        response = auth_client.post(
+            become_artist_url,
+            data={
+                'name': 'Новый артист',
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        profile = ArtistProfile.objects.get(user=user)
+
+        assert profile.name == 'Новый артист'
+        assert profile.profile_type == ArtistProfileType.ARTIST
 
 
 class TestArtistMeApi:

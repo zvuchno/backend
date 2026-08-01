@@ -35,6 +35,20 @@ class IsLabel(_ActiveProfilePermission):
     message = 'Требуется профиль лейбла.'
 
 
+class IsNotLabel(BasePermission):
+    """Разрешает доступ пользователям без профиля лейбла."""
+
+    message = 'Операция недоступна для профиля лейбла.'
+
+    def has_permission(self, request, view):
+        """Проверяет, что пользователь не является лейблом."""
+        profile = getattr(request.user, 'artist_profile', None)
+
+        return (
+            profile is None or profile.profile_type != ArtistProfileType.LABEL
+        )
+
+
 class IsArtistOrLabel(_ActiveProfilePermission):
     """Доступ только пользователю с активным профилем артиста или лейбла.
 

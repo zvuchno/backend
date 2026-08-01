@@ -16,7 +16,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from common.permissions import IsArtistOrLabel, IsLabel, IsNotArtist
+from common.permissions import (
+    IsArtistOrLabel,
+    IsLabel,
+    IsNotLabel,
+)
 
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
@@ -138,7 +142,7 @@ class BecomeArtistOrLabelView(GenericAPIView):
     """Представление для создания профиля артиста или лейбла."""
 
     serializer_class = BecomeArtistOrLabelSerializer
-    permission_classes = [IsAuthenticated, IsNotArtist]
+    permission_classes = [IsAuthenticated, IsNotLabel]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'become_artist'
 

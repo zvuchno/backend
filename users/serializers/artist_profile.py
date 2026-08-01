@@ -190,11 +190,6 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 })
             return attrs
 
-        if profile.profile_type == ArtistProfileType.LABEL:
-            raise serializers.ValidationError({
-                'profile_type': 'Профиль уже является профилем лейбла.',
-            })
-
         if target_type != ArtistProfileType.LABEL:
             raise serializers.ValidationError({
                 'profile_type': (
@@ -215,13 +210,13 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        """Создает профиль артиста для текущего пользователя."""
+        """Создаёт профиль или повышает независимого артиста до лейбла."""
         user = self.context['request'].user
         profile = getattr(user, 'artist_profile', None)
 
         if profile is not None:
             profile.profile_type = ArtistProfileType.LABEL
-            profile.save(update_fields=('profile_type',))
+            profile.save(update_fields=('profile_type', 'updated_at'))
             return profile
 
         ensure_listener_profile(user)

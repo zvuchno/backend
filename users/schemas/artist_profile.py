@@ -23,7 +23,7 @@ artist_cover_update_schema = extend_schema(
 )
 
 managed_artist_cover_update_schema = extend_schema(
-    tags=['Artists'],
+    tags=['Label: managed profiles'],
     summary='Обновить обложку управляемого профиля',
     description=(
         'Загружает или заменяет обложку выбранного профиля артиста '
@@ -57,7 +57,7 @@ artist_me_schema = extend_schema_view(
 
 managed_artist_schema = extend_schema_view(
     get=extend_schema(
-        tags=['Artists'],
+        tags=['Label: managed profiles'],
         summary='Получить управляемый профиль артиста или лейбла',
         description=(
             'Возвращает выбранный доступный профиль артиста или лейбла '
@@ -65,7 +65,7 @@ managed_artist_schema = extend_schema_view(
         ),
     ),
     patch=extend_schema(
-        tags=['Artists'],
+        tags=['Label: managed profiles'],
         summary='Обновить управляемый профиль артиста или лейбла',
         description=(
             'Частично обновляет выбранный доступный профиль артиста '
