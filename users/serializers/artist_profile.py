@@ -224,3 +224,29 @@ class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
         """Определяет, принадлежит ли профиль текущему аккаунту."""
         request = self.context.get('request')
         return bool(request and obj.user_id == request.user.id)
+
+
+class ManagedArtistProfileCreateSerializer(serializers.ModelSerializer):
+    """Сериализатор создания артиста лейблом."""
+
+    class Meta:
+        model = ArtistProfile
+        fields = (
+            'id',
+            'name',
+            'description',
+            'city',
+            'url',
+        )
+        read_only_fields = ('id',)
+
+    def create(self, validated_data):
+        """Создает профиль артиста, управляемый текущим лейблом."""
+        label = self.context['request'].user.artist_profile
+
+        return ArtistProfile.objects.create(
+            profile_type=ArtistProfileType.ARTIST,
+            label=label,
+            user=None,
+            **validated_data,
+        )

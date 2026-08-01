@@ -2,7 +2,7 @@ from http import HTTPStatus
 
 import pytest
 
-from users.models import ArtistProfileType
+from users.models import ArtistProfile, ArtistProfileType
 
 
 @pytest.mark.django_db
@@ -113,3 +113,76 @@ class TestLabelManagedProfileList:
         response = api_client.get(label_managed_profiles_url)
 
         assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+    def test_label_creates_managed_artist(
+        self,
+        label_client,
+        label_user,
+        label_managed_profiles_url,
+    ):
+        payload = {
+            'name': 'Новый артист',
+            'description': 'Описание нового артиста.',
+            'city': 'Курган',
+            'url': 'https://example.com/artist',
+        }
+
+        response = label_client.post(
+            label_managed_profiles_url,
+            data=payload,
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        artist = ArtistProfile.objects.get(pk=response.data['id'])
+
+        assert artist.name == payload['name']
+        assert artist.description == payload['description']
+        assert artist.city == payload['city']
+        assert artist.url == payload['url']
+        assert artist.profile_type == ArtistProfileType.ARTIST
+        assert artist.label == label_user.artist_profile
+        assert artist.user is None
+        assert artist.is_active is True
+        assert artist.slug
+
+    def test_label_cannot_override_managed_artist_system_fields(
+        self,
+        label_client,
+        label_user,
+        label_managed_profiles_url,
+    ):
+        response = label_client.post(
+            label_managed_profiles_url,
+            data={
+                'name': 'Новый артист',
+                'profile_type': ArtistProfileType.LABEL,
+                'label': 999999,
+                'user': label_user.id,
+                'is_active': False,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        artist = ArtistProfile.objects.get(pk=response.data['id'])
+
+        assert artist.profile_type == ArtistProfileType.ARTIST
+        assert artist.label == label_user.artist_profile
+        assert artist.user is None
+        assert artist.is_active is True
+
+    def test_artist_cannot_create_managed_profile(
+        self,
+        artist_client,
+        label_managed_profiles_url,
+    ):
+        response = artist_client.post(
+            label_managed_profiles_url,
+            data={'name': 'Новый артист'},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.FORBIDDEN

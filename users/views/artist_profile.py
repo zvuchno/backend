@@ -6,6 +6,7 @@ from rest_framework import filters, status
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
+    ListCreateAPIView,
     RetrieveAPIView,
     RetrieveUpdateAPIView,
     UpdateAPIView,
@@ -36,6 +37,7 @@ from users.serializers.artist_profile import (
     ArtistPublicSerializer,
     ArtistPublicShortSerializer,
     BecomeArtistOrLabelSerializer,
+    ManagedArtistProfileCreateSerializer,
     ManagedArtistProfileSerializer,
 )
 from users.views.mixins import (
@@ -153,12 +155,17 @@ class BecomeArtistOrLabelView(GenericAPIView):
 
 
 @label_managed_profile_list_schema
-class LabelManagedProfileListView(ListAPIView):
-    """Список артистов текущего лейбла."""
+class LabelManagedProfileListView(ListCreateAPIView):
+    """Список и создание профилей, управляемых текущим лейблом."""
 
     permission_classes = [IsLabel]
-    serializer_class = ManagedArtistProfileSerializer
     pagination_class = None
+
+    def get_serializer_class(self):
+        """Возвращает сериализатор для требуемой операции."""
+        if self.request.method == 'POST':
+            return ManagedArtistProfileCreateSerializer
+        return ManagedArtistProfileSerializer
 
     def get_queryset(self):
         """Возвращает профили, доступные текущему лейблу для управления."""

@@ -7,7 +7,10 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-from users.serializers import ManagedArtistProfileSerializer
+from users.serializers import (
+    ManagedArtistProfileCreateSerializer,
+    ManagedArtistProfileSerializer,
+)
 
 artist_cover_update_schema = extend_schema(
     tags=['Artists'],
@@ -128,15 +131,30 @@ artist_list_schema = extend_schema(
 )
 
 
-label_managed_profile_list_schema = extend_schema(
-    tags=['Label: managed profiles'],
-    summary='Получить профили, доступные текущему лейблу',
-    description=(
-        'Возвращает профиль текущего лейбла и активные профили артистов, '
-        'которыми он управляет. Профиль самого лейбла возвращается первым '
-        'и помечается полем is_self=true.'
+label_managed_profile_list_schema = extend_schema_view(
+    get=extend_schema(
+        tags=['Label: managed profiles'],
+        summary='Получить профили, доступные текущему лейблу',
+        description=(
+            'Возвращает профиль текущего лейбла и активные профили '
+            'артистов, которыми он управляет. Профиль самого лейбла '
+            'возвращается первым и помечается полем is_self=true.'
+        ),
+        responses={
+            200: ManagedArtistProfileSerializer(many=True),
+        },
     ),
-    responses={
-        200: ManagedArtistProfileSerializer(many=True),
-    },
+    post=extend_schema(
+        tags=['Label: managed profiles'],
+        summary='Создать подопечного артиста',
+        description=(
+            'Создаёт активный профиль артиста без собственной учётной '
+            'записи и передаёт его под управление текущего лейбла. '
+            'Тип профиля и связь с лейблом определяются сервером.'
+        ),
+        request=ManagedArtistProfileCreateSerializer,
+        responses={
+            201: ManagedArtistProfileCreateSerializer,
+        },
+    ),
 )
