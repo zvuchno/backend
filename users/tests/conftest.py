@@ -270,7 +270,7 @@ def artist_public_url():
 @pytest.fixture
 def label_managed_profiles_url() -> str:
     """Возвращает URL списка управляемых профилей."""
-    return reverse('api:users:label-managed-profiles')
+    return reverse('api:users:label_managed_profiles')
 
 
 @pytest.fixture
@@ -279,7 +279,7 @@ def managed_pickup_point_list_url():
 
     def build(profile) -> str:
         return reverse(
-            'api:users:managed-profile-pickup-point-list',
+            'api:users:managed_profile_pickup_point_list',
             kwargs={'profile_id': profile.id},
         )
 
@@ -292,7 +292,7 @@ def managed_pickup_point_detail_url():
 
     def build(profile, pickup_point) -> str:
         return reverse(
-            'api:users:managed-profile-pickup-point-detail',
+            'api:users:managed_profile_pickup_point_detail',
             kwargs={
                 'profile_id': profile.id,
                 'pk': pickup_point.id,
@@ -308,7 +308,7 @@ def managed_shipping_point_url():
 
     def build(profile) -> str:
         return reverse(
-            'api:users:managed-profile-shipping-point',
+            'api:users:managed_profile_shipping_point',
             kwargs={'profile_id': profile.id},
         )
 
@@ -318,7 +318,7 @@ def managed_shipping_point_url():
 @pytest.fixture
 def artist_me_pickup_point_list_url() -> str:
     """Возвращает URL точек самовывоза собственного профиля."""
-    return reverse('api:users:artist-me-pickup-point-list')
+    return reverse('api:users:artist_me_pickup_point_list')
 
 
 @pytest.fixture
@@ -327,7 +327,7 @@ def artist_me_pickup_point_detail_url():
 
     def build(pickup_point) -> str:
         return reverse(
-            'api:users:artist-me-pickup-point-detail',
+            'api:users:artist_me_pickup_point_detail',
             kwargs={'pk': pickup_point.id},
         )
 
@@ -337,4 +337,4 @@ def artist_me_pickup_point_detail_url():
 @pytest.fixture
 def artist_me_shipping_point_url() -> str:
     """Возвращает URL ПВЗ отправления собственного профиля."""
-    return reverse('api:users:artist-me-shipping-point')
+    return reverse('api:users:artist_me_shipping_point')
