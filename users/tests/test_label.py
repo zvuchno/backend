@@ -146,6 +146,13 @@ class TestLabelManagedProfileList:
         assert artist.user is None
         assert artist.is_active is True
         assert artist.slug
+        assert response.data == {
+            'id': artist.id,
+            'name': payload['name'],
+            'description': payload['description'],
+            'city': payload['city'],
+            'url': payload['url'],
+        }
 
     def test_label_cannot_override_managed_artist_system_fields(
         self,
@@ -186,3 +193,22 @@ class TestLabelManagedProfileList:
         )
 
         assert response.status_code == HTTPStatus.FORBIDDEN
+
+    def test_label_creates_managed_artist_with_name_only(
+        self,
+        label_client,
+        label_user,
+        label_managed_profiles_url,
+    ):
+        response = label_client.post(
+            label_managed_profiles_url,
+            data={'name': 'Новый артист'},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        artist = ArtistProfile.objects.get(pk=response.data['id'])
+
+        assert artist.name == 'Новый артист'
+        assert artist.label == label_user.artist_profile

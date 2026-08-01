@@ -71,7 +71,6 @@ class ManagedArtistCoverUpdateView(ArtistCoverUpdateBaseView):
     """Обновление обложки управляемого профиля."""
 
 
-@artist_me_schema
 class ArtistProfileBaseView(ManagedArtistProfileMixin, RetrieveUpdateAPIView):
     """Просмотр и редактирование доступного профиля."""
 

@@ -106,7 +106,7 @@ urlpatterns = [
     path(
         'me/managed-profiles/<int:profile_id>/cover/',
         ManagedArtistCoverUpdateView.as_view(),
-        name='managed-artist-cover-update',
+        name='managed_artist_cover_update',
     ),
     path(
         '',
