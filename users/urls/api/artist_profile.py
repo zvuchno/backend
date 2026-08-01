@@ -84,6 +84,11 @@ urlpatterns = [
         name='artist_cover_update',
     ),
     path(
+        'artists/me/managed-profiles/<int:profile_id>/cover/',
+        ArtistCoverUpdateView.as_view(),
+        name='managed-artist-cover-update',
+    ),
+    path(
         '',
         ArtistListView.as_view(),
         name='artist_list',

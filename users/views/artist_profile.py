@@ -26,6 +26,7 @@ from users.schemas import (
     artist_public_schema,
     become_artist_schema,
     label_managed_profile_list_schema,
+    managed_artist_cover_update_schema,
 )
 from users.serializers.artist_profile import (
     ArtistCoverUpdateSerializer,
@@ -36,12 +37,17 @@ from users.serializers.artist_profile import (
     BecomeArtistOrLabelSerializer,
     ManagedArtistProfileSerializer,
 )
-from users.views.mixins import CurrentArtistProfileMixin
+from users.views.mixins import (
+    CurrentArtistProfileMixin,
+    ManagedArtistProfileMixin,
+)
 
 
-@artist_cover_update_schema
-class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
-    """Обновление обложки артиста."""
+class ArtistCoverUpdateBaseView(
+    ManagedArtistProfileMixin,
+    UpdateAPIView,
+):
+    """Базовое обновление обложки доступного профиля."""
 
     permission_classes = [IsArtistOrLabel]
     serializer_class = ArtistCoverUpdateSerializer
@@ -49,8 +55,18 @@ class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
     http_method_names = ['patch']
 
     def get_object(self):
-        """Возвращает профиль артиста текущего пользователя."""
+        """Возвращает доступный профиль артиста или лейбла."""
         return self.get_artist_profile()
+
+
+@artist_cover_update_schema
+class ArtistCoverUpdateView(ArtistCoverUpdateBaseView):
+    """Обновление обложки собственного профиля."""
+
+
+@managed_artist_cover_update_schema
+class ManagedArtistCoverUpdateView(ArtistCoverUpdateBaseView):
+    """Обновление обложки управляемого профиля."""
 
 
 @artist_me_schema

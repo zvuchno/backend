@@ -11,9 +11,20 @@ from users.serializers import ManagedArtistProfileSerializer
 
 artist_cover_update_schema = extend_schema(
     tags=['Artists'],
-    summary='Обновить обложку своего профиля артиста',
+    summary='Обновить обложку своего профиля',
     description=(
-        'Загружает или заменяет обложку профиля текущего артиста. '
+        'Загружает или заменяет обложку профиля текущего артиста '
+        'или лейбла. Запрос должен быть отправлен '
+        'в формате multipart/form-data.'
+    ),
+)
+
+managed_artist_cover_update_schema = extend_schema(
+    tags=['Artists'],
+    summary='Обновить обложку управляемого профиля',
+    description=(
+        'Загружает или заменяет обложку выбранного профиля артиста '
+        'или лейбла, доступного текущему пользователю. '
         'Запрос должен быть отправлен в формате multipart/form-data.'
     ),
 )
