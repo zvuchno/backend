@@ -162,11 +162,15 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
 
 
 class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
-    """Сериализатор создания профиля артиста или лейбла слушателем."""
+    """Сериализатор создания профиля или повышения артиста до лейбла."""
 
     profile_type = serializers.ChoiceField(
         choices=ArtistProfileType.choices,
         default=ArtistProfileType.ARTIST,
+    )
+    name = serializers.CharField(
+        required=False,
+        allow_blank=False,
     )
 
     class Meta:
@@ -174,17 +178,52 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
         fields = ('name', 'profile_type')
 
     def validate(self, attrs):
+        """Проверяет создание профиля или повышение артиста до лейбла."""
         user = self.context['request'].user
-        if hasattr(user, 'artist_profile'):
-            raise serializers.ValidationError(
-                {'detail': 'У пользователя уже есть профиль артиста/лейбла.'},
-            )
+        profile = getattr(user, 'artist_profile', None)
+        target_type = attrs['profile_type']
+
+        if profile is None:
+            if not attrs.get('name'):
+                raise serializers.ValidationError({
+                    'name': 'Это поле обязательно при создании профиля.',
+                })
+            return attrs
+
+        if profile.profile_type == ArtistProfileType.LABEL:
+            raise serializers.ValidationError({
+                'profile_type': 'Профиль уже является профилем лейбла.',
+            })
+
+        if target_type != ArtistProfileType.LABEL:
+            raise serializers.ValidationError({
+                'profile_type': (
+                    'У пользователя уже есть профиль артиста. '
+                    'Допустим только переход к профилю лейбла.'
+                ),
+            })
+
+        if profile.label_id is not None:
+            raise serializers.ValidationError({
+                'profile_type': (
+                    'Нельзя стать лейблом, находясь под управлением '
+                    'другого лейбла.'
+                ),
+            })
+
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
         """Создает профиль артиста для текущего пользователя."""
         user = self.context['request'].user
+        profile = getattr(user, 'artist_profile', None)
+
+        if profile is not None:
+            profile.profile_type = ArtistProfileType.LABEL
+            profile.save(update_fields=('profile_type',))
+            return profile
+
         ensure_listener_profile(user)
         try:
             return ArtistProfile.objects.create(
