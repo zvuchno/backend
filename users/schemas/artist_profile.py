@@ -52,6 +52,27 @@ artist_me_schema = extend_schema_view(
     ),
 )
 
+managed_artist_schema = extend_schema_view(
+    get=extend_schema(
+        tags=['Artists'],
+        summary='Получить управляемый профиль артиста или лейбла',
+        description=(
+            'Возвращает выбранный доступный профиль артиста или лейбла '
+            'вместе с контактами и ссылками на внешние ресурсы.'
+        ),
+    ),
+    patch=extend_schema(
+        tags=['Artists'],
+        summary='Обновить управляемый профиль артиста или лейбла',
+        description=(
+            'Частично обновляет выбранный доступный профиль артиста '
+            'или лейбла. При передаче contacts и socials списки '
+            'синхронизируются целиком: новые элементы создаются, '
+            'существующие обновляются, а отсутствующие в запросе удаляются.'
+        ),
+    ),
+)
+
 artist_public_schema = extend_schema(
     tags=['Artists'],
     auth=[],

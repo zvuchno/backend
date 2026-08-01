@@ -12,7 +12,9 @@ from users.views import (
     ArtistPublicView,
     ArtistShippingPointView,
     LabelManagedProfileListView,
+    ManagedArtistCoverUpdateView,
     ManagedArtistPickupPointViewSet,
+    ManagedArtistProfileView,
     ManagedArtistShippingPointView,
     RecipientTypeListView,
     TelegramConnectView,
@@ -67,6 +69,11 @@ urlpatterns = [
         name='label_managed_profiles',
     ),
     path(
+        'me/managed-profiles/<int:profile_id>/',
+        ManagedArtistProfileView.as_view(),
+        name='managed_profile_detail',
+    ),
+    path(
         'me/managed-profiles/<int:profile_id>/pickup-points/',
         managed_pickup_point_list,
         name='managed_profile_pickup_point_list',
@@ -97,8 +104,8 @@ urlpatterns = [
         name='artist_cover_update',
     ),
     path(
-        'artists/me/managed-profiles/<int:profile_id>/cover/',
-        ArtistCoverUpdateView.as_view(),
+        'me/managed-profiles/<int:profile_id>/cover/',
+        ManagedArtistCoverUpdateView.as_view(),
         name='managed-artist-cover-update',
     ),
     path(

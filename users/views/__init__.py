@@ -26,6 +26,8 @@ from .artist_profile import (
     ArtistPublicView,
     BecomeArtistOrLabelView,
     LabelManagedProfileListView,
+    ManagedArtistCoverUpdateView,
+    ManagedArtistProfileView,
 )
 from .artist_registration import ArtistRegistrationView
 from .base_registration import BaseRegistrationView
@@ -72,7 +74,9 @@ __all__ = [
     'LabelManagedProfileListView',
     'ListenerMeView',
     'ListenerRegistrationView',
+    'ManagedArtistCoverUpdateView',
     'ManagedArtistPickupPointViewSet',
+    'ManagedArtistProfileView',
     'ManagedArtistShippingPointView',
     'MeView',
     'PasswordResetConfirmView',

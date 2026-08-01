@@ -27,6 +27,7 @@ from users.schemas import (
     become_artist_schema,
     label_managed_profile_list_schema,
     managed_artist_cover_update_schema,
+    managed_artist_schema,
 )
 from users.serializers.artist_profile import (
     ArtistCoverUpdateSerializer,
@@ -38,7 +39,6 @@ from users.serializers.artist_profile import (
     ManagedArtistProfileSerializer,
 )
 from users.views.mixins import (
-    CurrentArtistProfileMixin,
     ManagedArtistProfileMixin,
 )
 
@@ -70,8 +70,8 @@ class ManagedArtistCoverUpdateView(ArtistCoverUpdateBaseView):
 
 
 @artist_me_schema
-class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
-    """Просмотр и редактирование профиля текущего артиста."""
+class ArtistProfileBaseView(ManagedArtistProfileMixin, RetrieveUpdateAPIView):
+    """Просмотр и редактирование доступного профиля."""
 
     permission_classes = [IsArtistOrLabel]
     http_method_names = ['get', 'patch']
@@ -79,7 +79,7 @@ class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
     prefetch_related = ('contacts', 'socials')
 
     def get_object(self):
-        """Возвращает профиль артиста текущего пользователя."""
+        """Возвращает профиль артиста или лейбла."""
         return self.get_artist_profile()
 
     def get_serializer_class(self):
@@ -87,6 +87,16 @@ class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
         if self.request.method == 'PATCH':
             return ArtistMeUpdateSerializer
         return ArtistMeSerializer
+
+
+@artist_me_schema
+class ArtistMeView(ArtistProfileBaseView):
+    """Просмотр и редактирование собственного профиля."""
+
+
+@managed_artist_schema
+class ManagedArtistProfileView(ArtistProfileBaseView):
+    """Просмотр и редактирование управляемого профиля."""
 
 
 @artist_public_schema
