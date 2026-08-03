@@ -23,7 +23,6 @@ class ArtistReportSerializer(serializers.ModelSerializer):
             'id',
             'period_start',
             'period_end',
-            'items_count',
             'sales_amount',
             'file_url',
             'created_at',
@@ -68,9 +67,7 @@ class ArtistDetailReportSerializer(ArtistReportSerializer):
 
     class Meta(ArtistReportSerializer.Meta):
         fields = ArtistReportSerializer.Meta.fields + (
-            'period_type',
             'status',
-            'orders_count',
             'donation_amount',
             'discount_amount',
             'delivery_amount',

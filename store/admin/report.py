@@ -18,7 +18,6 @@ class ReportAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'artist',
-        'period_type',
         'period_start',
         'period_end',
         'status',
@@ -27,7 +26,6 @@ class ReportAdmin(admin.ModelAdmin):
     )
     list_filter = (
         'status',
-        'period_type',
         'created_at',
     )
     search_fields = (
@@ -37,11 +35,8 @@ class ReportAdmin(admin.ModelAdmin):
     readonly_fields = (
         'status',
         'artist',
-        'period_type',
         'period_start',
         'period_end',
-        'orders_count',
-        'items_count',
         'get_sales_amount',
         'get_donation_amount',
         'get_discount_amount',
@@ -122,11 +117,8 @@ class ReportAdmin(admin.ModelAdmin):
                 'fields': (
                     'status',
                     'artist',
-                    'period_type',
                     'period_start',
                     'period_end',
-                    'orders_count',
-                    'items_count',
                     'get_donation_amount',
                     'get_discount_amount',
                     'get_sales_amount',

@@ -6,7 +6,6 @@ from datetime import date
 
 from django.db import transaction
 from django.db.models import (
-    Count,
     DecimalField,
     F,
     Q,
@@ -30,18 +29,17 @@ logger = logging.getLogger(__name__)
 
 
 class ReportService:
-    """Сервис формирования агрегированных отчетов."""
+    """Сервис формирования финансовых отчетов артистов."""
 
     @classmethod
     def generate(
         cls,
         *,
         artist: ArtistProfile,
-        period_type: str,
         period_start: date,
         period_end: date,
     ) -> Report:
-        """Формирует отчет артиста за указанный период."""
+        """Формирует отчет артиста за отчетный период."""
         if period_start > period_end:
             raise ValueError('period_start должен быть <= period_end')
         try:
@@ -59,34 +57,10 @@ class ReportService:
                         decimal_places=MONEY_INTERNAL_PRECISION,
                     ),
                 )
-                donation_expression = Greatest(
-                    (F('unit_price') - F('price_at_purchase')) * F('quantity'),
-                    Value(ZERO_MONEY),
-                    output_field=DecimalField(
-                        max_digits=MAX_PRICE_DIGITS,
-                        decimal_places=MONEY_INTERNAL_PRECISION,
-                    ),
-                )
 
                 data = items.aggregate(
-                    orders_count=Count(
-                        'order',
-                        distinct=True,
-                    ),
-                    items_count=Coalesce(
-                        Sum('quantity'),
-                        0,
-                    ),
                     sales_amount=Coalesce(
                         Sum(line_total_expression),
-                        ZERO_MONEY,
-                    ),
-                    donation_amount=Coalesce(
-                        Sum(donation_expression),
-                        ZERO_MONEY,
-                    ),
-                    discount_amount=Coalesce(
-                        Sum('promocode_discount'),
                         ZERO_MONEY,
                     ),
                     commission_amount=Coalesce(
@@ -128,7 +102,6 @@ class ReportService:
 
                 report = Report.objects.filter(
                     artist=artist,
-                    period_type=period_type,
                     period_start=period_start,
                     period_end=period_end,
                 ).first()
@@ -138,7 +111,6 @@ class ReportService:
 
                 report, _ = Report.objects.update_or_create(
                     artist=artist,
-                    period_type=period_type,
                     period_start=period_start,
                     period_end=period_end,
                     defaults={
@@ -152,10 +124,8 @@ class ReportService:
                 return report
         except Exception:
             logger.exception(
-                'Не удалось сформировать отчет '
-                'artist=%s, period_type=%s, period=%s—%s',
+                'Не удалось сформировать отчет artist=%s, period=%s—%s',
                 artist.id,
-                period_type,
                 period_start,
                 period_end,
             )
@@ -168,7 +138,7 @@ class ReportService:
         period_start: date,
         period_end: date,
     ) -> QuerySet[OrderItem]:
-        """Возвращает queryset товаров, входящих в финансовый отчет."""
+        """Возвращает позиции оплаченных заказов за отчетный период."""
         tz = timezone.get_current_timezone()
         start_dt = timezone.make_aware(
             datetime.datetime.combine(period_start, datetime.time.min),
