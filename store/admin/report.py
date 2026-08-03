@@ -22,11 +22,11 @@ class ReportAdmin(admin.ModelAdmin):
         'period_end',
         'status',
         'get_sales_amount',
-        'created_at',
+        'updated_at',
     )
     list_filter = (
         'status',
-        'created_at',
+        'updated_at',
     )
     search_fields = (
         'artist__name',

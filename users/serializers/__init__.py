@@ -25,6 +25,7 @@ from .artist_profile import (
     ArtistMeUpdateSerializer,
     ArtistPublicSerializer,
     BecomeArtistOrLabelSerializer,
+    ManagedArtistProfileCreateSerializer,
     ManagedArtistProfileSerializer,
 )
 from .artist_registration import ArtistRegistrationSerializer
@@ -64,6 +65,7 @@ __all__ = [
     'ListenerMeSerializer',
     'ListenerRegistrationSerializer',
     'LogoutSerializer',
+    'ManagedArtistProfileCreateSerializer',
     'ManagedArtistProfileSerializer',
     'MeSerializer',
     'PasswordResetConfirmSerializer',

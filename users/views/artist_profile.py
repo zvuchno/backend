@@ -6,6 +6,7 @@ from rest_framework import filters, status
 from rest_framework.generics import (
     GenericAPIView,
     ListAPIView,
+    ListCreateAPIView,
     RetrieveAPIView,
     RetrieveUpdateAPIView,
     UpdateAPIView,
@@ -15,7 +16,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
-from common.permissions import IsArtistOrLabel, IsLabel, IsNotArtist
+from common.permissions import (
+    IsArtistOrLabel,
+    IsLabel,
+    IsNotLabel,
+)
 
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
@@ -26,6 +31,8 @@ from users.schemas import (
     artist_public_schema,
     become_artist_schema,
     label_managed_profile_list_schema,
+    managed_artist_cover_update_schema,
+    managed_artist_schema,
 )
 from users.serializers.artist_profile import (
     ArtistCoverUpdateSerializer,
@@ -34,14 +41,19 @@ from users.serializers.artist_profile import (
     ArtistPublicSerializer,
     ArtistPublicShortSerializer,
     BecomeArtistOrLabelSerializer,
+    ManagedArtistProfileCreateSerializer,
     ManagedArtistProfileSerializer,
 )
-from users.views.mixins import CurrentArtistProfileMixin
+from users.views.mixins import (
+    ManagedArtistProfileMixin,
+)
 
 
-@artist_cover_update_schema
-class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
-    """Обновление обложки артиста."""
+class ArtistCoverUpdateBaseView(
+    ManagedArtistProfileMixin,
+    UpdateAPIView,
+):
+    """Базовое обновление обложки доступного профиля."""
 
     permission_classes = [IsArtistOrLabel]
     serializer_class = ArtistCoverUpdateSerializer
@@ -49,21 +61,29 @@ class ArtistCoverUpdateView(CurrentArtistProfileMixin, UpdateAPIView):
     http_method_names = ['patch']
 
     def get_object(self):
-        """Возвращает профиль артиста текущего пользователя."""
+        """Возвращает доступный профиль артиста или лейбла."""
         return self.get_artist_profile()
 
 
-@artist_me_schema
-class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
-    """Просмотр и редактирование профиля текущего артиста."""
+@artist_cover_update_schema
+class ArtistCoverUpdateView(ArtistCoverUpdateBaseView):
+    """Обновление обложки собственного профиля."""
+
+
+@managed_artist_cover_update_schema
+class ManagedArtistCoverUpdateView(ArtistCoverUpdateBaseView):
+    """Обновление обложки управляемого профиля."""
+
+
+class ArtistProfileBaseView(ManagedArtistProfileMixin, RetrieveUpdateAPIView):
+    """Просмотр и редактирование доступного профиля."""
 
     permission_classes = [IsArtistOrLabel]
     http_method_names = ['get', 'patch']
-    select_related = ('user',)
     prefetch_related = ('contacts', 'socials')
 
     def get_object(self):
-        """Возвращает профиль артиста текущего пользователя."""
+        """Возвращает профиль артиста или лейбла."""
         return self.get_artist_profile()
 
     def get_serializer_class(self):
@@ -71,6 +91,16 @@ class ArtistMeView(CurrentArtistProfileMixin, RetrieveUpdateAPIView):
         if self.request.method == 'PATCH':
             return ArtistMeUpdateSerializer
         return ArtistMeSerializer
+
+
+@artist_me_schema
+class ArtistMeView(ArtistProfileBaseView):
+    """Просмотр и редактирование собственного профиля."""
+
+
+@managed_artist_schema
+class ManagedArtistProfileView(ArtistProfileBaseView):
+    """Просмотр и редактирование управляемого профиля."""
 
 
 @artist_public_schema
@@ -111,7 +141,7 @@ class BecomeArtistOrLabelView(GenericAPIView):
     """Представление для создания профиля артиста или лейбла."""
 
     serializer_class = BecomeArtistOrLabelSerializer
-    permission_classes = [IsAuthenticated, IsNotArtist]
+    permission_classes = [IsAuthenticated, IsNotLabel]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'become_artist'
 
@@ -127,12 +157,17 @@ class BecomeArtistOrLabelView(GenericAPIView):
 
 
 @label_managed_profile_list_schema
-class LabelManagedProfileListView(ListAPIView):
-    """Список артистов текущего лейбла."""
+class LabelManagedProfileListView(ListCreateAPIView):
+    """Список и создание профилей, управляемых текущим лейблом."""
 
     permission_classes = [IsLabel]
-    serializer_class = ManagedArtistProfileSerializer
     pagination_class = None
+
+    def get_serializer_class(self):
+        """Возвращает сериализатор для требуемой операции."""
+        if self.request.method == 'POST':
+            return ManagedArtistProfileCreateSerializer
+        return ManagedArtistProfileSerializer
 
     def get_queryset(self):
         """Возвращает профили, доступные текущему лейблу для управления."""

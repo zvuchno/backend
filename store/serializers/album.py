@@ -34,6 +34,7 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'id',
             'sku',
             'name',
+            'is_single',
             'price',
             'cover_image',
             'is_published',
@@ -63,7 +64,6 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
-            'is_single',
             'genre',
             'description',
             'release_date',

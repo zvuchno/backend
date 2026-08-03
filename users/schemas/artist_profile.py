@@ -7,13 +7,27 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-from users.serializers import ManagedArtistProfileSerializer
+from users.serializers import (
+    ManagedArtistProfileCreateSerializer,
+    ManagedArtistProfileSerializer,
+)
 
 artist_cover_update_schema = extend_schema(
     tags=['Artists'],
-    summary='Обновить обложку своего профиля артиста',
+    summary='Обновить обложку своего профиля',
     description=(
-        'Загружает или заменяет обложку профиля текущего артиста. '
+        'Загружает или заменяет обложку профиля текущего артиста '
+        'или лейбла. Запрос должен быть отправлен '
+        'в формате multipart/form-data.'
+    ),
+)
+
+managed_artist_cover_update_schema = extend_schema(
+    tags=['Label: managed profiles'],
+    summary='Обновить обложку управляемого профиля',
+    description=(
+        'Загружает или заменяет обложку выбранного профиля артиста '
+        'или лейбла, доступного текущему пользователю. '
         'Запрос должен быть отправлен в формате multipart/form-data.'
     ),
 )
@@ -37,6 +51,27 @@ artist_me_schema = extend_schema_view(
             'При передаче contacts и socials списки синхронизируются '
             'целиком: новые элементы создаются, существующие обновляются, '
             'а отсутствующие в запросе удаляются.'
+        ),
+    ),
+)
+
+managed_artist_schema = extend_schema_view(
+    get=extend_schema(
+        tags=['Label: managed profiles'],
+        summary='Получить управляемый профиль артиста или лейбла',
+        description=(
+            'Возвращает выбранный доступный профиль артиста или лейбла '
+            'вместе с контактами и ссылками на внешние ресурсы.'
+        ),
+    ),
+    patch=extend_schema(
+        tags=['Label: managed profiles'],
+        summary='Обновить управляемый профиль артиста или лейбла',
+        description=(
+            'Частично обновляет выбранный доступный профиль артиста '
+            'или лейбла. При передаче contacts и socials списки '
+            'синхронизируются целиком: новые элементы создаются, '
+            'существующие обновляются, а отсутствующие в запросе удаляются.'
         ),
     ),
 )
@@ -96,15 +131,30 @@ artist_list_schema = extend_schema(
 )
 
 
-label_managed_profile_list_schema = extend_schema(
-    tags=['Label: managed profiles'],
-    summary='Получить профили, доступные текущему лейблу',
-    description=(
-        'Возвращает профиль текущего лейбла и активные профили артистов, '
-        'которыми он управляет. Профиль самого лейбла возвращается первым '
-        'и помечается полем is_self=true.'
+label_managed_profile_list_schema = extend_schema_view(
+    get=extend_schema(
+        tags=['Label: managed profiles'],
+        summary='Получить профили, доступные текущему лейблу',
+        description=(
+            'Возвращает профиль текущего лейбла и активные профили '
+            'артистов, которыми он управляет. Профиль самого лейбла '
+            'возвращается первым и помечается полем is_self=true.'
+        ),
+        responses={
+            200: ManagedArtistProfileSerializer(many=True),
+        },
     ),
-    responses={
-        200: ManagedArtistProfileSerializer(many=True),
-    },
+    post=extend_schema(
+        tags=['Label: managed profiles'],
+        summary='Создать подопечного артиста',
+        description=(
+            'Создаёт активный профиль артиста без собственной учётной '
+            'записи и передаёт его под управление текущего лейбла. '
+            'Тип профиля и связь с лейблом определяются сервером.'
+        ),
+        request=ManagedArtistProfileCreateSerializer,
+        responses={
+            201: ManagedArtistProfileCreateSerializer,
+        },
+    ),
 )
