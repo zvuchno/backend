@@ -41,6 +41,7 @@ from .jwt import (
 )
 from .listener_profile import ListenerMeSerializer
 from .listener_registration import ListenerRegistrationSerializer
+from .session import SessionLoginSerializer
 from .social_auth import SocialAuthInputSerializer
 
 __all__ = [
@@ -72,6 +73,7 @@ __all__ = [
     'PasswordResetRequestSerializer',
     'PasswordResetVerifySerializer',
     'PhoneChangeSerializer',
+    'SessionLoginSerializer',
     'SetPasswordSerializer',
     'SocialAuthInputSerializer',
     'TokenPairSerializer',
