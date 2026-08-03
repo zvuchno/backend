@@ -482,6 +482,22 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+JWT_ACCESS_COOKIE_NAME = os.getenv(
+    'JWT_ACCESS_COOKIE_NAME',
+    'zvuchno_access',
+)
+JWT_REFRESH_COOKIE_NAME = os.getenv(
+    'JWT_REFRESH_COOKIE_NAME',
+    'zvuchno_refresh',
+)
+JWT_COOKIE_SECURE = (
+    os.getenv('JWT_COOKIE_SECURE', str(not DEBUG)).strip().lower() == 'true'
+)
+JWT_COOKIE_SAMESITE = os.getenv('JWT_COOKIE_SAMESITE', 'Lax')
+JWT_COOKIE_DOMAIN = os.getenv('JWT_COOKIE_DOMAIN') or None
+JWT_ACCESS_COOKIE_PATH = '/'
+# JWT_REFRESH_COOKIE_PATH = '/api/v1/auth/token/'
+JWT_REFRESH_COOKIE_PATH = '/'
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
