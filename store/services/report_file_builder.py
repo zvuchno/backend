@@ -104,12 +104,7 @@ class ReportFileBuilder:
             if offer and offer.created_at
             else ''
         )
-        legal_profile = getattr(report.artist.user, 'legal_profile', None)
-        artist_status = (
-            legal_profile.get_recipient_type_display()
-            if legal_profile and legal_profile.recipient_type
-            else ''
-        )
+        artist_status, principal = cls._get_principal(report)
 
         elements.append(
             Paragraph(
@@ -144,10 +139,7 @@ class ReportFileBuilder:
 
         elements.append(
             Paragraph(
-                (
-                    f'Продавец (принципал): {artist_status} '
-                    f'{report.artist.name}'
-                ),
+                (f'Продавец (принципал): {artist_status} {principal}'),
                 section_style,
             ),
         )
@@ -483,3 +475,57 @@ class ReportFileBuilder:
     @staticmethod
     def _fmt(value) -> str:
         return f'{value:,.2f}'.replace(',', ' ').replace('.', ',')
+
+    @classmethod
+    def _get_principal(
+        cls,
+        report,
+    ) -> tuple[str, str]:
+        """Возвращает статус и наименование принципала."""
+        legal_profile = getattr(
+            report.artist.user,
+            'legal_profile',
+            None,
+        )
+
+        if legal_profile is None:
+            return '', report.artist.name
+
+        recipient_type = legal_profile.recipient_type
+        artist_status = legal_profile.get_recipient_type_display()
+
+        if recipient_type == legal_profile.RecipientType.LEGAL_ENTITY:
+            company_data = getattr(
+                legal_profile,
+                'company_data',
+                None,
+            )
+
+            principal = (
+                company_data.company_name
+                if company_data and company_data.company_name
+                else report.artist.name
+            )
+
+            return artist_status, principal
+
+        identity_data = getattr(
+            legal_profile,
+            'identity_data',
+            None,
+        )
+
+        if identity_data is None:
+            return artist_status, report.artist.name
+
+        principal = ' '.join(
+            part
+            for part in (
+                identity_data.last_name,
+                identity_data.first_name,
+                identity_data.middle_name,
+            )
+            if part
+        )
+
+        return artist_status, principal or report.artist.name
