@@ -38,8 +38,6 @@ class ReportAdmin(admin.ModelAdmin):
         'period_start',
         'period_end',
         'get_sales_amount',
-        'get_donation_amount',
-        'get_discount_amount',
         'get_delivery_amount',
         'get_commission_amount',
         'get_payout_amount',
@@ -75,19 +73,6 @@ class ReportAdmin(admin.ModelAdmin):
         """Сумма к выплате."""
         return format_money(obj.payout_amount)
 
-    @admin.display(
-        description='Донаты (руб.)',
-        ordering='donation_amount',
-    )
-    def get_donation_amount(self, obj):
-        """Сумма донатов."""
-        return format_money(obj.donation_amount)
-
-    @admin.display(description='Скидки по промокоду (руб.)')
-    def get_discount_amount(self, obj):
-        """Скидка по промокоду."""
-        return format_money(obj.discount_amount)
-
     @admin.display(description='Стоимость доставок (руб.)')
     def get_delivery_amount(self, obj):
         """Стоимость доставки."""
@@ -119,8 +104,6 @@ class ReportAdmin(admin.ModelAdmin):
                     'artist',
                     'period_start',
                     'period_end',
-                    'get_donation_amount',
-                    'get_discount_amount',
                     'get_sales_amount',
                     'get_commission_amount',
                     'get_delivery_amount',

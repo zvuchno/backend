@@ -94,7 +94,7 @@ class ReportFileBuilder:
 
         elements = []
 
-        report_date = report.created_at.strftime('%d.%m.%Y')
+        report_date = report.updated_at.strftime('%d.%m.%Y')
         offer = ConsentDocument.objects.filter(
             document_type=ConsentDocument.DocumentType.ARTIST_OFFER,
             is_active=True,
@@ -346,7 +346,7 @@ class ReportFileBuilder:
                 'order',
                 'product_variant__product',
             )
-            .order_by('order__payments__created_at')
+            .order_by('order__payments__paid_at')
         )
         if not items.exists():
             return None
