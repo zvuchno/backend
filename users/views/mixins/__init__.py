@@ -6,7 +6,7 @@ from .social_auth import SocialAuthMixin
 __all__ = [
     'CurrentArtistProfileMixin',
     'ManagedArtistProfileMixin',
-    'CookieResponseMixin',
     'CookieRefreshResponseMixin',
+    'CookieResponseMixin',
     'SocialAuthMixin',
 ]

@@ -7,7 +7,7 @@ from users.serializers import (
     CookieLoginSerializer,
     CookieRefreshResponseSerializer,
 )
-from users.views.mixins import CookieResponseMixin
+from users.views.mixins import CookieRefreshResponseMixin, CookieResponseMixin
 
 BaseCookieRefreshView = get_refresh_view()
 
@@ -33,14 +33,17 @@ class CookieLoginView(CookieResponseMixin, LoginView):
 class CookieLogoutView(LogoutView):
     """Завершает JWT-сессию и удаляет cookie."""
 
+    http_method_names = ['post', 'options']
+
 
 @extend_schema_view(
     post=extend_schema(
         tags=['Auth: JWT cookie'],
+        request=None,
         responses={
             200: CookieRefreshResponseSerializer,
         },
     ),
 )
-class CookieRefreshView(BaseCookieRefreshView):
+class CookieRefreshView(CookieRefreshResponseMixin, BaseCookieRefreshView):
     """Обновляет JWT-cookie."""
