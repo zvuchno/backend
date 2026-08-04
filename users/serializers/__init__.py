@@ -34,6 +34,7 @@ from .consent_documents import (
     ConsentDocumentDetailSerializer,
     ConsentDocumentSerializer,
 )
+from .cookie_auth import SessionLoginResponseSerializer, SessionLoginSerializer
 from .jwt import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
@@ -41,7 +42,6 @@ from .jwt import (
 )
 from .listener_profile import ListenerMeSerializer
 from .listener_registration import ListenerRegistrationSerializer
-from .session import SessionLoginResponseSerializer, SessionLoginSerializer
 from .social_auth import SocialAuthInputSerializer
 
 __all__ = [

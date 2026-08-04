@@ -3,16 +3,16 @@
 Модуль содержит маршруты для аутентификации пользователей.
 """
 
-from dj_rest_auth.jwt_auth import get_refresh_view
-from dj_rest_auth.views import LogoutView
 from django.urls import path
 
 from users.views import (
+    CookieLoginView,
+    CookieLogoutView,
+    CookieRefreshView,
     CustomLogoutView,
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
-    SessionLoginView,
     SocialAuthErrorCodesView,
     VKLogin,
     YandexLogin,
@@ -29,26 +29,30 @@ urlpatterns = [
         CustomTokenRefreshView.as_view(),
         name='token_refresh',
     ),
-    path('token/logout/', CustomLogoutView.as_view(), name='token_logout'),
+    path(
+        'token/logout/',
+        CustomLogoutView.as_view(),
+        name='token_logout',
+    ),
     path(
         'token/verify/',
         CustomTokenVerifyView.as_view(),
         name='token_verify',
     ),
     path(
-        'session/login/',
-        SessionLoginView.as_view(),
-        name='session_login',
+        'cookie/login/',
+        CookieLoginView.as_view(),
+        name='cookie_login',
     ),
     path(
-        'session/refresh/',
-        get_refresh_view().as_view(),
-        name='session_refresh',
+        'cookie/refresh/',
+        CookieRefreshView.as_view(),
+        name='cookie_refresh',
     ),
     path(
-        'session/logout/',
-        LogoutView.as_view(),
-        name='session_logout',
+        'cookie/logout/',
+        CookieLogoutView.as_view(),
+        name='cookie_logout',
     ),
     path(
         'social/error-codes/',

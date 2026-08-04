@@ -4,28 +4,6 @@ from drf_spectacular.utils import extend_schema
 
 from users.serializers import SocialAuthInputSerializer, TokenPairSerializer
 
-social_token_exchange_schema = extend_schema(
-    tags=['Auth'],
-    summary='LEGACY: обмен server session на JWT токены',
-    description=(
-        'Старый session-based flow. '
-        'Не стоит использовать для новой интеграции фронтенда.\n\n'
-        'Работает только после успешной аутентификации через allauth '
-        'и установки session cookie: endpoint обменивает текущую '
-        'серверную сессию на access и refresh JWT токены.\n\n'
-        'Точки входа в старый social auth flow:\n'
-        '- /accounts/vk/login/\n'
-        '- /accounts/yandex/login/\n\n'
-        'VK OAuth может требовать альтернативный host из-за ограничений '
-        'провайдера по разрешенным доменам. '
-        'Yandex работает на основном dev-домене.\n\n'
-        'Требует активной session cookie и CSRF токена.\n\n'
-        'Для новой интеграции использовать API endpoints '
-        '/api/v1/auth/social/vk/ и /api/v1/auth/social/yandex/.'
-    ),
-    responses={200: TokenPairSerializer},
-)
-
 social_error_codes_schema = extend_schema(
     tags=['Auth'],
     auth=[],
