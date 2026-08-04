@@ -21,3 +21,9 @@ class SessionLoginSerializer(LoginSerializer):
         )
 
         return validated_data
+
+
+class SessionLoginResponseSerializer(serializers.Serializer):
+    """Ответ после успешного входа в cookie-сессию."""
+
+    authenticated = serializers.BooleanField()

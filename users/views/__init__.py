@@ -42,6 +42,7 @@ from .jwt import (
 )
 from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
+from .session import SessionLoginView
 from .social_auth import (
     SocialAuthErrorCodesView,
     SocialSessionExchangeView,
@@ -88,6 +89,7 @@ __all__ = [
     'redirect_social_auth_confirm_email',
     'redirect_social_auth_error',
     'redirect_social_auth_signup',
+    'SessionLoginView',
     'SetPasswordView',
     'SocialAuthErrorCodesView',
     'SocialSessionExchangeView',

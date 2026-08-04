@@ -4,7 +4,7 @@
 """
 
 from dj_rest_auth.jwt_auth import get_refresh_view
-from dj_rest_auth.views import LoginView, LogoutView
+from dj_rest_auth.views import LogoutView
 from django.urls import path
 
 from users.views import (
@@ -12,6 +12,7 @@ from users.views import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
+    SessionLoginView,
     SocialAuthErrorCodesView,
     VKLogin,
     YandexLogin,
@@ -36,7 +37,7 @@ urlpatterns = [
     ),
     path(
         'session/login/',
-        LoginView.as_view(),
+        SessionLoginView.as_view(),
         name='session_login',
     ),
     path(
