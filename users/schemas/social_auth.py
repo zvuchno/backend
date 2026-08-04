@@ -2,10 +2,13 @@
 
 from drf_spectacular.utils import extend_schema
 
-from users.serializers import SocialAuthInputSerializer, TokenPairSerializer
+from users.serializers import (
+    CookieLoginResponseSerializer,
+    SocialAuthInputSerializer,
+)
 
 social_error_codes_schema = extend_schema(
-    tags=['Auth'],
+    tags=['Auth: Social'],
     auth=[],
     summary='Справочник кодов ошибок social auth',
     description=(
@@ -17,7 +20,7 @@ social_error_codes_schema = extend_schema(
 )
 
 social_auth_schema = extend_schema(
-    tags=['Auth'],
+    tags=['Auth: Social'],
     auth=[],
     summary=('Основной API endpoint для social auth через провайдера'),
     description=(
@@ -32,5 +35,5 @@ social_auth_schema = extend_schema(
         'Требует совместной проверки с фронтом и реальным OAuth flow.'
     ),
     request=SocialAuthInputSerializer,
-    responses={200: TokenPairSerializer},
+    responses={200: CookieLoginResponseSerializer},
 )

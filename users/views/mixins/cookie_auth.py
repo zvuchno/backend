@@ -1,7 +1,7 @@
 from rest_framework.response import Response
 
 
-class SessionResponseMixin:
+class CookieResponseMixin:
     """Возвращает единый ответ после создания cookie-сессии."""
 
     def get_response(self) -> Response:

@@ -509,8 +509,8 @@ REST_AUTH = {
     'JWT_AUTH_REFRESH_COOKIE': JWT_REFRESH_COOKIE_NAME,
     'JWT_AUTH_SECURE': JWT_COOKIE_SECURE,
     'JWT_AUTH_SAMESITE': JWT_COOKIE_SAMESITE,
-    'LOGIN_SERIALIZER': 'users.serializers.SessionLoginSerializer',
-    # 'JWT_SERIALIZER': 'users.serializers.TokenPairSerializer',
+    'LOGIN_SERIALIZER': 'users.serializers.CookieLoginSerializer',
+    'JWT_AUTH_COOKIE_USE_CSRF': True,
 }
 ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 

@@ -3,22 +3,22 @@ from dj_rest_auth.views import LoginView, LogoutView
 from drf_spectacular.utils import extend_schema
 
 from users.serializers import (
-    SessionLoginResponseSerializer,
-    SessionLoginSerializer,
+    CookieLoginResponseSerializer,
+    CookieLoginSerializer,
 )
-from users.views.mixins import SessionResponseMixin
+from users.views.mixins import CookieResponseMixin
 
 BaseCookieRefreshView = get_refresh_view()
 
 
 @extend_schema(
     tags=['Auth: JWT Cookie'],
-    request=SessionLoginSerializer,
+    request=CookieLoginSerializer,
     responses={
-        200: SessionLoginResponseSerializer,
+        200: CookieLoginResponseSerializer,
     },
 )
-class CookieLoginView(SessionResponseMixin, LoginView):
+class CookieLoginView(CookieResponseMixin, LoginView):
     """Создаёт JWT-сессию с токенами в HttpOnly cookie."""
 
 

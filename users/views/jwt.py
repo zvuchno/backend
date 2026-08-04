@@ -32,7 +32,7 @@ from users.serializers import (
     CustomTokenObtainPairSerializer,
     SocialAuthInputSerializer,
 )
-from users.views.mixins import SessionResponseMixin, SocialAuthMixin
+from users.views.mixins import CookieResponseMixin, SocialAuthMixin
 
 
 @token_obtain_schema
@@ -116,7 +116,7 @@ class CustomLogoutView(APIView):
 
 
 @social_auth_schema
-class VKLogin(SessionResponseMixin, SocialAuthMixin, SocialLoginView):
+class VKLogin(CookieResponseMixin, SocialAuthMixin, SocialLoginView):
     """Аутентификация через ВК."""
 
     adapter_class = VKOAuth2Adapter
@@ -127,7 +127,7 @@ class VKLogin(SessionResponseMixin, SocialAuthMixin, SocialLoginView):
 
 
 @social_auth_schema
-class YandexLogin(SessionResponseMixin, SocialAuthMixin, SocialLoginView):
+class YandexLogin(CookieResponseMixin, SocialAuthMixin, SocialLoginView):
     """Аутентификация через Яндекс."""
 
     adapter_class = YandexOAuth2Adapter

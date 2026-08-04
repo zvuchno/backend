@@ -4,15 +4,13 @@ from rest_framework import serializers
 from users.helpers import run_actions_after_authentication
 
 
-class SessionLoginSerializer(LoginSerializer):
+class CookieLoginSerializer(LoginSerializer):
     """Сериализатор входа в cookie-сессию."""
 
     username = None
     email = serializers.EmailField(required=True)
 
     def validate(self, attrs):
-        attrs['username'] = attrs.get('email')
-
         validated_data = super().validate(attrs)
 
         run_actions_after_authentication(
@@ -23,7 +21,13 @@ class SessionLoginSerializer(LoginSerializer):
         return validated_data
 
 
-class SessionLoginResponseSerializer(serializers.Serializer):
+class CookieLoginResponseSerializer(serializers.Serializer):
     """Ответ после успешного входа в cookie-сессию."""
 
     authenticated = serializers.BooleanField()
+
+
+class CookieRefreshResponseSerializer(serializers.Serializer):
+    """Ответ после обновления cookie-сессии."""
+
+    refreshed = serializers.BooleanField()
