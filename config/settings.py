@@ -433,7 +433,7 @@ TELEGRAM_PROXY_URL = os.getenv('TELEGRAM_PROXY_URL')
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
     ),
     'DEFAULT_THROTTLE_RATES': {
 
@@ -487,12 +487,41 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 )
+
+JWT_ACCESS_COOKIE_NAME = os.getenv(
+    'JWT_ACCESS_COOKIE_NAME',
+    'zvuchno_access',
+)
+JWT_REFRESH_COOKIE_NAME = os.getenv(
+    'JWT_REFRESH_COOKIE_NAME',
+    'zvuchno_refresh',
+)
+JWT_COOKIE_SECURE = (
+    os.getenv('JWT_COOKIE_SECURE', str(not DEBUG)).strip().lower() == 'true'
+)
+JWT_COOKIE_SAMESITE = os.getenv('JWT_COOKIE_SAMESITE', 'Lax')
 REST_AUTH = {
     'USE_JWT': True,
     'TOKEN_MODEL': None,
-    'JWT_AUTH_HTTPONLY': False,
-    'JWT_SERIALIZER': 'users.serializers.TokenPairSerializer',
+    'JWT_AUTH_HTTPONLY': True,
+    'SESSION_LOGIN': False,
+    'JWT_AUTH_COOKIE': JWT_ACCESS_COOKIE_NAME,
+    'JWT_AUTH_REFRESH_COOKIE': JWT_REFRESH_COOKIE_NAME,
+    'JWT_AUTH_SECURE': JWT_COOKIE_SECURE,
+    'JWT_AUTH_SAMESITE': JWT_COOKIE_SAMESITE,
+    'LOGIN_SERIALIZER': 'users.serializers.CookieLoginSerializer',
+    'JWT_AUTH_COOKIE_USE_CSRF': True,
 }
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+
+ACCOUNT_LOGIN_METHODS = {'email'}
+
+ACCOUNT_SIGNUP_FIELDS = [
+    'email*',
+    'password1*',
+    'password2*',
+]
+
 SITE_ID = int(os.getenv('SITE_ID', default=1))  # id записи таблицы sites, где указан домен бэкенда для allauth.
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {

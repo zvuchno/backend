@@ -1,59 +1,23 @@
 """Представления для входа через сторонние сервисы."""
 
-from django.contrib.auth import logout
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
-from rest_framework.authentication import SessionAuthentication
-from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import (
     AllowAny,
-    IsAuthenticated,
 )
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from common.utils.urls import build_frontend_url
 
 from config import settings
 from users.constants import SOCIAL_AUTH_ERRORS
-from users.helpers import (
-    issue_tokens_for_user,
-    run_actions_after_authentication,
-)
 from users.schemas import (
     social_error_codes_schema,
-    social_token_exchange_schema,
 )
 from users.serializers import (
     EmptySerializer,
-    TokenPairSerializer,
 )
-
-
-@social_token_exchange_schema
-class SocialSessionExchangeView(GenericAPIView):
-    """Вход или регистрация через соцсеть. Старый web flow."""
-
-    authentication_classes = [SessionAuthentication]
-    permission_classes = [IsAuthenticated]
-    serializer_class = TokenPairSerializer
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'social_auth'
-
-    def post(self, request):
-        user = request.user
-
-        run_actions_after_authentication(user, request)
-
-        tokens = issue_tokens_for_user(user)
-        logout(request)
-        response = Response(tokens)
-        response['Cache-Control'] = (
-            'no-store, no-cache, must-revalidate, private'
-        )
-        response['Pragma'] = 'no-cache'
-        return response
 
 
 def _redirect_social_auth_to_frontend(status, **extra) -> HttpResponseRedirect:
