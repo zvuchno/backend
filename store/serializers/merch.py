@@ -115,7 +115,9 @@ class MerchDetailSerializer(MerchReadSerializer):
 
     allow_overpay = serializers.SerializerMethodField()
     images_merch = ImageSerializer(many=True, read_only=True)
+    kind_id = serializers.ReadOnlyField()
     kind = serializers.StringRelatedField()
+    album_id = serializers.ReadOnlyField()
     album = serializers.StringRelatedField()
     variants = serializers.SerializerMethodField()
     property_name = serializers.CharField(
@@ -127,7 +129,9 @@ class MerchDetailSerializer(MerchReadSerializer):
         fields = MerchReadSerializer.Meta.fields + (
             'allow_overpay',
             'images_merch',
+            'kind_id',
             'kind',
+            'album_id',
             'album',
             'property_name',
             'variants',

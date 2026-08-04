@@ -45,7 +45,6 @@ from .registration import (
 from .social_auth import (
     social_auth_schema,
     social_error_codes_schema,
-    social_token_exchange_schema,
 )
 from .telegram_connect import telegram_connect_schema
 
@@ -80,7 +79,6 @@ __all__ = [
     'token_refresh_schema',
     'token_verify_schema',
     'social_error_codes_schema',
-    'social_token_exchange_schema',
     'social_auth_schema',
     'recipient_type_list_schema',
     'set_password_schema',

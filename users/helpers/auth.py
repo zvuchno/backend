@@ -2,23 +2,11 @@
 
 import logging
 
-from rest_framework_simplejwt.tokens import RefreshToken
-
 from common.utils.normalization import normalize_email
 
 from store.services.cart_service import CartService
 
 logger = logging.getLogger(__name__)
-
-
-def issue_tokens_for_user(user) -> dict:
-    """Выдать токены пользователю."""
-    refresh_token = RefreshToken.for_user(user)
-    access_token = refresh_token.access_token
-    return {
-        'access': str(access_token),
-        'refresh': str(refresh_token),
-    }
 
 
 def generate_username(email: str, attempt: int) -> str:

@@ -34,6 +34,11 @@ from .consent_documents import (
     ConsentDocumentDetailSerializer,
     ConsentDocumentSerializer,
 )
+from .cookie_auth import (
+    CookieLoginResponseSerializer,
+    CookieLoginSerializer,
+    CookieRefreshResponseSerializer,
+)
 from .jwt import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
@@ -59,6 +64,9 @@ __all__ = [
     'ChangePasswordSerializer',
     'ConsentDocumentDetailSerializer',
     'ConsentDocumentSerializer',
+    'CookieLoginResponseSerializer',
+    'CookieLoginSerializer',
+    'CookieRefreshResponseSerializer',
     'CustomTokenObtainPairSerializer',
     'EmailVerificationSerializer',
     'EmptySerializer',

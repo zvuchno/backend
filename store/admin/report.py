@@ -127,3 +127,11 @@ class ReportAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    def has_add_permission(self, request):
+        """Запрещает ручное создание через кнопку 'Добавить'."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает ручное сохранение через кнопки 'Сохранить'."""
+        return False

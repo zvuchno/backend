@@ -60,10 +60,12 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Album."""
 
     allow_overpay = serializers.SerializerMethodField()
+    genre_id = serializers.ReadOnlyField()
     genre = serializers.StringRelatedField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
+            'genre_id',
             'genre',
             'description',
             'release_date',
