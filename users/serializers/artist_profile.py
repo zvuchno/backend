@@ -52,7 +52,6 @@ class ArtistPublicShortSerializer(serializers.ModelSerializer):
             'description',
             'cover',
             'city',
-            'url',
             'slug',
         )
 
@@ -155,7 +154,7 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'city',
-            'url',
+            'slug',
             'socials',
             'contacts',
         )
@@ -270,7 +269,7 @@ class ManagedArtistProfileCreateSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'city',
-            'url',
+            'slug',
         )
         read_only_fields = ('id',)
 
