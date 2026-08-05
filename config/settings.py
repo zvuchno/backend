@@ -15,7 +15,6 @@ from datetime import timedelta
 from pathlib import Path
 
 import sentry_sdk
-from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -448,7 +447,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
 }
 
-# TODO: настроить периодический запуск flushexpiredtokens
 ROTATE_REFRESH_TOKENS = (
     os.getenv('ROTATE_REFRESH_TOKENS', 'False').strip().lower() == 'true'
 )
