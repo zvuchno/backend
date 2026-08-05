@@ -20,6 +20,7 @@ PROMOCODE_FORMAT_HELP_TEXT = (
     'латинские буквы, цифры, дефис и подчеркивание.'
 )
 ZERO_MONEY = Decimal('0.0000')
+MONEY_ROUNDING = Decimal('0.01')
 MONEY_INTERNAL_PRECISION = 4
 MONEY_DISPLAY_PRECISION = 2
 DISCOUNT_VALUE_PRECISION = 2

@@ -2,6 +2,7 @@
 
 from django.db import migrations, models
 
+from store.migrations.utils import create_view, drop_view
 
 class Migration(migrations.Migration):
 
@@ -11,6 +12,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        drop_view('listener_album_access'),
+        drop_view('listener_track_access'),
         migrations.AlterModelOptions(
             name='report',
             options={'ordering': ('-created_at',), 'verbose_name': 'отчет', 'verbose_name_plural': 'отчеты'},
@@ -43,4 +46,6 @@ class Migration(migrations.Migration):
             model_name='report',
             constraint=models.UniqueConstraint(fields=('artist', 'period_start', 'period_end'), name='unique_artist_report'),
         ),
+        create_view('listener_track_access', version=1),
+        create_view('listener_album_access', version=1),
     ]

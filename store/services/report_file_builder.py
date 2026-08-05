@@ -2,7 +2,6 @@
 
 import io
 from pathlib import Path
-from typing import Optional
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -18,7 +17,8 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from store.constants import ZERO_MONEY
+from common.utils import format_money
+
 from store.models import Report
 from store.services.report import ReportService
 from users.models import ConsentDocument
@@ -186,7 +186,7 @@ class ReportFileBuilder:
                 f'Агентское вознаграждение Маркетплейса по '
                 'данному отчету за отчетный период: '
                 f'{report.period_start:%m.%Y} составляет '
-                f'{cls._fmt(report.commission_amount)} рублей.',
+                f'{format_money(report.commission_amount)} рублей.',
                 justify_body_style,
             ),
         )
@@ -232,7 +232,7 @@ class ReportFileBuilder:
 
         elements.append(
             Paragraph(
-                (f'Итого: {cls._fmt(report.sales_amount)} руб.'),
+                (f'Итого: {format_money(report.sales_amount)} руб.'),
                 body_style,
             ),
         )
@@ -261,12 +261,7 @@ class ReportFileBuilder:
     def _build_payment_table(cls, report: Report) -> Table:
         """Таблица расчетов."""
         left_style = cls.TABLE_CELL_STYLE
-
-        right_style = ParagraphStyle(
-            'TableRightStyle',
-            parent=cls.TABLE_CELL_STYLE,
-            alignment=2,
-        )
+        right_style = cls.TABLE_CELL_RIGHT_STYLE
 
         rows = [
             [
@@ -275,43 +270,43 @@ class ReportFileBuilder:
                     'в счет заключенных договоров',
                     left_style,
                 ),
-                Paragraph(cls._fmt(report.sales_amount), right_style),
+                Paragraph(format_money(report.sales_amount), right_style),
             ],
             [
                 Paragraph('Возвращено платежей покупателям', left_style),
-                Paragraph('0,00', right_style),
+                Paragraph('0.00', right_style),
             ],
             [
                 Paragraph('Подлежит удержанию Маркетплейсом', left_style),
-                Paragraph(cls._fmt(report.commission_amount), right_style),
+                Paragraph(format_money(report.commission_amount), right_style),
             ],
             [
                 Paragraph(
                     '&nbsp;&nbsp;- агентское вознаграждение',
                     left_style,
                 ),
-                Paragraph(cls._fmt(report.commission_amount), right_style),
+                Paragraph(format_money(report.commission_amount), right_style),
             ],
             [
                 Paragraph(
                     '&nbsp;&nbsp;- расходы, связанные с исполнением поручения',
                     left_style,
                 ),
-                Paragraph('0,00', right_style),
+                Paragraph('0.00', right_style),
             ],
             [
                 Paragraph(
                     '&nbsp;&nbsp;- возвраты платежей покупателям',
                     left_style,
                 ),
-                Paragraph('0,00', right_style),
+                Paragraph('0.00', right_style),
             ],
             [
                 Paragraph(
                     'Подлежит перечислению Маркетплейсом на счет Продавца',
                     left_style,
                 ),
-                Paragraph(cls._fmt(report.payout_amount), right_style),
+                Paragraph(format_money(report.payout_amount), right_style),
             ],
         ]
 
@@ -333,7 +328,7 @@ class ReportFileBuilder:
     def _build_details_table(
         cls,
         report: Report,
-    ) -> Optional[Table]:
+    ) -> Table | None:
         """Детализация проданных товаров."""
         items = (
             ReportService
@@ -395,7 +390,7 @@ class ReportFileBuilder:
 
         for idx, item in enumerate(items, start=1):
             product_info = item.product_info or {}
-            price = (item.line_total / item.quantity).quantize(ZERO_MONEY)
+            price = item.line_total / item.quantity
 
             rows.append([
                 Paragraph(str(idx), cell_center),
@@ -407,8 +402,8 @@ class ReportFileBuilder:
                     cell_left,
                 ),
                 Paragraph(str(item.quantity), cell_center),
-                Paragraph(cls._fmt(price), cell_right),
-                Paragraph(cls._fmt(item.line_total), cell_right),
+                Paragraph(format_money(price), cell_right),
+                Paragraph(format_money(item.line_total), cell_right),
             ])
 
         # в сумме 170 мм
@@ -473,12 +468,7 @@ class ReportFileBuilder:
         )
 
     @staticmethod
-    def _fmt(value) -> str:
-        return f'{value:,.2f}'.replace(',', ' ').replace('.', ',')
-
-    @classmethod
     def _get_principal(
-        cls,
         report,
     ) -> tuple[str, str]:
         """Возвращает статус и наименование принципала."""
