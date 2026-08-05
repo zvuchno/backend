@@ -331,6 +331,92 @@ class TestArtistMeApi:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['profile_type'] == ArtistProfileType.LABEL
 
+    def test_artist_updates_own_slug(
+        self,
+        artist_client,
+        artist_user,
+        artist_me_url,
+    ):
+        profile = artist_user.artist_profile
+        old_slug = profile.slug
+
+        response = artist_client.patch(
+            artist_me_url,
+            data={'slug': 'new-artist-address'},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.OK
+
+        profile.refresh_from_db()
+
+        assert profile.slug == 'new-artist-address'
+        assert profile.slug != old_slug
+        assert response.data['slug'] == 'new-artist-address'
+
+    def test_artist_cannot_update_to_existing_slug(
+        self,
+        artist_client,
+        artist_user,
+        other_artist_user,
+        artist_me_url,
+    ):
+        original_slug = artist_user.artist_profile.slug
+
+        response = artist_client.patch(
+            artist_me_url,
+            data={
+                'slug': other_artist_user.artist_profile.slug,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert 'slug' in response.data
+
+        artist_user.artist_profile.refresh_from_db()
+        assert artist_user.artist_profile.slug == original_slug
+
+    def test_artist_cannot_set_empty_slug(
+        self,
+        artist_client,
+        artist_user,
+        artist_me_url,
+    ):
+        original_slug = artist_user.artist_profile.slug
+
+        response = artist_client.patch(
+            artist_me_url,
+            data={'slug': ''},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert 'slug' in response.data
+
+        artist_user.artist_profile.refresh_from_db()
+        assert artist_user.artist_profile.slug == original_slug
+
+    def test_updating_name_does_not_change_slug(
+        self,
+        artist_client,
+        artist_user,
+        artist_me_url,
+    ):
+        original_slug = artist_user.artist_profile.slug
+
+        response = artist_client.patch(
+            artist_me_url,
+            data={'name': 'Совершенно новое имя'},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_user.artist_profile.refresh_from_db()
+        assert artist_user.artist_profile.name == 'Совершенно новое имя'
+        assert artist_user.artist_profile.slug == original_slug
+
 
 class TestArtistPublicApi:
     """Тесты публичного профиля артиста или лейбла."""

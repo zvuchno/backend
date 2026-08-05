@@ -156,7 +156,6 @@ class TestLabelManagedProfileList:
         self,
         label_user,
         label_client,
-        artist_user_factory,
         artist_profile_factory,
         label_managed_profiles_url,
     ):
@@ -236,3 +235,46 @@ class TestLabelManagedProfileList:
 
         assert artist.name == 'Новый артист'
         assert artist.label == label_user.artist_profile
+
+    def test_label_updates_managed_artist_slug(
+        self,
+        label_client,
+        label_user,
+        label_created_artist,
+        managed_profile_detail_url,
+    ):
+        label_slug = label_user.artist_profile.slug
+
+        response = label_client.patch(
+            managed_profile_detail_url(label_created_artist),
+            data={'slug': 'managed-artist-address'},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.OK
+
+        label_created_artist.refresh_from_db()
+        label_user.artist_profile.refresh_from_db()
+
+        assert label_created_artist.slug == 'managed-artist-address'
+        assert response.data['slug'] == 'managed-artist-address'
+        assert label_user.artist_profile.slug == label_slug
+
+    def test_label_cannot_update_foreign_artist(
+        self,
+        label_client,
+        other_artist_user,
+        managed_profile_detail_url,
+    ):
+        original_slug = other_artist_user.artist_profile.slug
+
+        response = label_client.patch(
+            managed_profile_detail_url(other_artist_user.artist_profile),
+            data={'slug': 'stolen-address'},
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+
+        other_artist_user.artist_profile.refresh_from_db()
+        assert other_artist_user.artist_profile.slug == original_slug
