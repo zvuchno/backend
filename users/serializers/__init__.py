@@ -22,7 +22,7 @@ from .artist_legal_profile import (
 )
 from .artist_profile import (
     ArtistMeSerializer,
-    ArtistMeUpdateSerializer,
+    ArtistProfileUpdateSerializer,
     ArtistPublicSerializer,
     BecomeArtistOrLabelSerializer,
     ManagedArtistProfileCreateSerializer,
@@ -54,7 +54,7 @@ __all__ = [
     'ArtistLegalProfileSerializer',
     'ArtistLegalSerializer',
     'ArtistMeSerializer',
-    'ArtistMeUpdateSerializer',
+    'ArtistProfileUpdateSerializer',
     'ArtistPickupPointManageSerializer',
     'ArtistPublicSerializer',
     'ArtistRegistrationSerializer',

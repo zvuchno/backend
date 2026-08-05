@@ -124,7 +124,6 @@ class TestLabelManagedProfileList:
             'name': 'Новый артист',
             'description': 'Описание нового артиста.',
             'city': 'Курган',
-            'url': 'https://example.com/artist',
         }
 
         response = label_client.post(
@@ -140,7 +139,6 @@ class TestLabelManagedProfileList:
         assert artist.name == payload['name']
         assert artist.description == payload['description']
         assert artist.city == payload['city']
-        assert artist.url == payload['url']
         assert artist.profile_type == ArtistProfileType.ARTIST
         assert artist.label == label_user.artist_profile
         assert artist.user is None
@@ -151,8 +149,34 @@ class TestLabelManagedProfileList:
             'name': payload['name'],
             'description': payload['description'],
             'city': payload['city'],
-            'url': payload['url'],
+            'slug': artist.slug,
         }
+
+    def test_label_cannot_create_managed_artist_with_existing_slug(
+        self,
+        label_user,
+        label_client,
+        artist_user_factory,
+        artist_profile_factory,
+        label_managed_profiles_url,
+    ):
+        artist_profile_factory(
+            label=label_user.artist_profile,
+            user=None,
+            slug='existing-slug',
+        )
+
+        response = label_client.post(
+            label_managed_profiles_url,
+            data={
+                'name': 'Новый артист',
+                'slug': 'existing-slug',
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert 'slug' in response.data
 
     def test_label_cannot_override_managed_artist_system_fields(
         self,
