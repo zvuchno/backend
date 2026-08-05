@@ -368,25 +368,6 @@ CELERY_TASK_TIME_LIMIT = 300
 CELERY_WORKER_SEND_TASK_EVENTS = True
 CELERY_TASK_SEND_SENT_EVENT = True
 
-CELERY_BEAT_SCHEDULE = {
-    'cleanup-expired-track-uploads': {
-        'task': 'store.tasks.track_upload.cleanup_expired_track_uploads',
-        'schedule': crontab(hour=4, minute=10),
-    },
-    'release-expired-reservations': {
-        'task': 'store.tasks.reservations.release_expired_reservations',
-        'schedule': crontab(minute='*/10'),
-    },
-    'dispatch-daily-reports': {
-        'task': 'store.tasks.report.dispatch_daily_reports',
-        'schedule': crontab(hour=4, minute=0),
-    },
-    'dispatch-monthly-reports': {
-        'task': 'store.tasks.report.dispatch_monthly_reports',
-        'schedule': crontab(day_of_month=1, hour=5, minute=0),
-    },
-}
-
 if DEBUG:
     # Локальная разработка: кэш в оперативной памяти
     CACHES = {
