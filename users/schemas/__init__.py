@@ -30,6 +30,10 @@ from .artist_profile import (
     managed_artist_cover_update_schema,
     managed_artist_schema,
 )
+from .artist_store_settings import (
+    artist_store_settings_schema,
+    managed_artist_store_settings_schema,
+)
 from .auth import (
     logout_schema,
     token_obtain_schema,
@@ -57,6 +61,7 @@ __all__ = [
     'artist_public_schema',
     'artist_registration_schema',
     'artist_shipping_point_schema',
+    'artist_store_settings_schema',
     'become_artist_schema',
     'change_password_schema',
     'change_phone_schema',
@@ -69,6 +74,7 @@ __all__ = [
     'logout_schema',
     'managed_artist_cover_update_schema',
     'managed_artist_schema',
+    'managed_artist_store_settings_schema',
     'me_schema',
     'password_reset_confirm_schema',
     'password_reset_request_schema',
