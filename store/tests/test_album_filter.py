@@ -97,7 +97,7 @@ class TestAlbumFilters:
         """Несуществующий slug возвращает пустой список."""
         response = artist_client.get(
             album_list_url,
-            {'artist': 'non-existent-artist'},
+            {'artist_slug': 'non-existent-artist'},
         )
         assert response.status_code == status.HTTP_200_OK
         assert response.data['results'] == []
