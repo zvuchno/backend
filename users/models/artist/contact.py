@@ -3,7 +3,7 @@
 from django.core.validators import MinLengthValidator
 from django.db import models
 
-from .abstract import ActivatableModel, TimestampModel
+from ..abstract import ActivatableModel, TimestampModel
 from users.constants import (
     ARTIST_LINK_LABEL_MAX_LENGTH,
     ARTIST_LINK_LABEL_MIN_LENGTH,

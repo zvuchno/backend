@@ -2,7 +2,7 @@
 
 from django.db import models
 
-from .abstract import TimestampModel
+from ..abstract import TimestampModel
 from users.constants import (
     ACCOUNT_NUMBER_MAX_LENGTH,
     BANK_NAME_MAX_LENGTH,
