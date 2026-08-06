@@ -2,13 +2,14 @@
 
 from django.db import models
 
+from common.models.abstract import TimestampModel
+
 from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_INTERNAL_PRECISION,
     ZERO_MONEY,
 )
 from users.models import ArtistProfile
-from users.models.abstract import TimestampModel
 
 
 def report_upload_path(instance, filename):

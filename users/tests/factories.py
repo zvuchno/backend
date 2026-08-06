@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 
 from users.models import ArtistProfile, ListenerProfile
-from users.models.artist_profile import ArtistProfileType
+from users.models.artist import ArtistProfileType
 
 User = get_user_model()
 

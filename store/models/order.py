@@ -7,6 +7,8 @@ from django.db.models import F
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
+from common.models.abstract import TimestampModel
+
 from store.constants import (
     MAX_CDEK_CODE_LENGTH,
     MAX_CHAR_LENGTH,
@@ -15,7 +17,6 @@ from store.constants import (
     MONEY_INTERNAL_PRECISION,
     ZERO_MONEY,
 )
-from users.models.abstract import TimestampModel
 
 
 class OrderNumberCounter(models.Model):

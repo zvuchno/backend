@@ -1,6 +1,7 @@
 from django.db import models
 
-from .abstract import TimestampModel
+from common.models.abstract import TimestampModel
+
 from users.constants import (
     ADDRESS_FIELD_MAX_LENGTH,
     INN_COMPANY_MAX_LENGTH,

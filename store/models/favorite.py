@@ -6,8 +6,9 @@
 from django.conf import settings
 from django.db import models
 
+from common.models.abstract.timestamp_model import TimestampModel
+
 from store.querysets import FavoriteQuerySet
-from users.models.abstract.timestamp_model import TimestampModel
 
 
 class Favorite(TimestampModel):

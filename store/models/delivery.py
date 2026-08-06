@@ -2,8 +2,9 @@
 
 from django.db import models
 
+from common.models.abstract import ActivatableModel, TimestampModel
+
 from store.constants import MAX_CHAR_LENGTH
-from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class Delivery(ActivatableModel, TimestampModel):

@@ -3,6 +3,7 @@
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
+from common.models.abstract import TimestampModel
 from common.storages import get_private_media_storage, get_public_media_storage
 
 from store.constants import (
@@ -19,7 +20,6 @@ from store.upload_paths import (
     track_stream_upload_to,
 )
 from store.validators import validate_audiofile_size
-from users.models.abstract import TimestampModel
 
 
 class Track(BaseContent):
