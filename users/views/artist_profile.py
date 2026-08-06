@@ -37,7 +37,7 @@ from users.schemas import (
 from users.serializers.artist_profile import (
     ArtistCoverUpdateSerializer,
     ArtistMeSerializer,
-    ArtistMeUpdateSerializer,
+    ArtistProfileUpdateSerializer,
     ArtistPublicSerializer,
     ArtistPublicShortSerializer,
     BecomeArtistOrLabelSerializer,
@@ -89,7 +89,7 @@ class ArtistProfileBaseView(ManagedArtistProfileMixin, RetrieveUpdateAPIView):
     def get_serializer_class(self):
         """Возвращает сериализатор в зависимости от метода запроса."""
         if self.request.method == 'PATCH':
-            return ArtistMeUpdateSerializer
+            return ArtistProfileUpdateSerializer
         return ArtistMeSerializer
 
 

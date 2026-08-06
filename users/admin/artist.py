@@ -209,14 +209,6 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                     },
                 ),
             )
-            fieldsets.append(
-                (
-                    'Ссылки',
-                    {
-                        'fields': ('url',),
-                    },
-                ),
-            )
         else:
             management_fields = [
                 'profile_type',
@@ -236,15 +228,6 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                     'Тип и управление',
                     {
                         'fields': tuple(management_fields),
-                    },
-                ),
-            )
-
-            fieldsets.append(
-                (
-                    'Ссылки',
-                    {
-                        'fields': ('url',),
                     },
                 ),
             )

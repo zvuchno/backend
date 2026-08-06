@@ -81,7 +81,6 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         blank=True,
         validators=[MinLengthValidator(CITY_FIELD_MIN_LENGTH)],
     )
-    url = models.URLField('URL', blank=True)
     description = models.TextField(
         'Об исполнителе',
         blank=True,
