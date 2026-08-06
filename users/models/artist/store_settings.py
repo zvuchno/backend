@@ -1,6 +1,6 @@
 from django.db import models
 
-from ..abstract import TimestampModel
+from common.models.abstract import TimestampModel
 
 
 class ArtistStoreSettings(TimestampModel):

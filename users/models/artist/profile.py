@@ -6,9 +6,9 @@ from django.core.validators import MaxLengthValidator, MinLengthValidator
 from django.db import models
 from slugify import slugify
 
+from common.models.abstract import ActivatableModel, TimestampModel
 from common.storages import get_public_media_storage
 
-from ..abstract import ActivatableModel, TimestampModel
 from store.validators import validate_file_size
 from users.constants import (
     ARTIST_DESC_FIELD_MAX_LENGTH,

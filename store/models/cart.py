@@ -8,9 +8,10 @@ from django.db import models
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 
+from common.models.abstract import TimestampModel
+
 from store.constants import MAX_CHAR_LENGTH
 from store.querysets import CartQuerySet
-from users.models.abstract import TimestampModel
 
 
 class Cart(TimestampModel):

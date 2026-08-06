@@ -1,6 +1,7 @@
 from django.db import models
 
-from ..abstract import ActivatableModel, TimestampModel
+from common.models.abstract import ActivatableModel, TimestampModel
+
 from .profile import ArtistProfile
 from users.constants import ADDRESS_FIELD_MAX_LENGTH
 

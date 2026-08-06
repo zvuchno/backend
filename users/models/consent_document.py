@@ -5,7 +5,7 @@ import hashlib
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from users.models.abstract import ActivatableModel, TimestampModel
+from common.models.abstract import ActivatableModel, TimestampModel
 
 
 class ConsentDocument(ActivatableModel, TimestampModel):

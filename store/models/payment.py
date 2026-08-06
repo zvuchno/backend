@@ -8,13 +8,14 @@ import uuid
 
 from django.db import models
 
+from common.models.abstract import TimestampModel
+
 from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Order
-from users.models.abstract import TimestampModel
 
 
 class Payment(TimestampModel):
