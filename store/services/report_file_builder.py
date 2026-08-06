@@ -3,6 +3,7 @@
 import io
 from pathlib import Path
 
+from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -55,8 +56,8 @@ class ReportFileBuilder:
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            leftMargin=20 * mm,
-            rightMargin=20 * mm,
+            leftMargin=15 * mm,
+            rightMargin=15 * mm,
             topMargin=15 * mm,
             bottomMargin=15 * mm,
         )
@@ -100,7 +101,7 @@ class ReportFileBuilder:
             is_active=True,
         ).first()
         agreement_date = (
-            offer.created_at.strftime('%d.%m.%Y')
+            timezone.localtime(offer.created_at).strftime('%d.%m.%Y')
             if offer and offer.created_at
             else ''
         )
@@ -112,23 +113,46 @@ class ReportFileBuilder:
                     f'Отчет агента от {report_date} '
                     'об исполнении агентского поручения'
                 ),
-                ParagraphStyle('T1', parent=title_style, spaceAfter=0),
+                ParagraphStyle(
+                    'T1',
+                    parent=title_style,
+                    spaceBefore=0,
+                    spaceAfter=0,
+                ),
             ),
         )
 
         elements.append(
             Paragraph(
-                f'по Агентскому договору-оферте от {agreement_date}',
+                'по Договору оферты для Продавцов на Платформе ЗВУЧНО от '
+                f'{agreement_date}',
                 ParagraphStyle(
                     'T2',
                     parent=body_style,
                     alignment=1,
                     spaceBefore=0,
+                    spaceAfter=0,
+                ),
+            ),
+        )
+        elements.append(
+            Paragraph(
+                (
+                    'Реализация товаров за период '
+                    f'с {report.period_start.strftime("%d.%m.%y")} '
+                    f'по {report.period_end.strftime("%d.%m.%y")}'
+                ),
+                ParagraphStyle(
+                    'T2',
+                    parent=body_style,
+                    alignment=1,
+                    spaceBefore=0,
+                    spaceAfter=0,
                 ),
             ),
         )
 
-        elements.append(Spacer(1, 8))
+        elements.append(Spacer(1, 12))
 
         elements.append(
             Paragraph(
@@ -213,7 +237,7 @@ class ReportFileBuilder:
 
         elements.append(cls._build_payment_table(report))
 
-        elements.append(Spacer(1, 18))
+        elements.append(Spacer(1, 20))
 
         elements.append(
             Paragraph(
@@ -313,7 +337,7 @@ class ReportFileBuilder:
         table = Table(
             rows,
             colWidths=[
-                135 * mm,
+                145 * mm,
                 35 * mm,
             ],
         )
@@ -338,10 +362,12 @@ class ReportFileBuilder:
                 period_end=report.period_end,
             )
             .select_related(
-                'order',
                 'product_variant__product',
             )
-            .order_by('order__payments__paid_at')
+            .order_by(
+                'product_variant_id',
+                'price_at_purchase',
+            )
         )
         if not items.exists():
             return None
@@ -359,6 +385,7 @@ class ReportFileBuilder:
             'DetailsCellCenter',
             parent=cls.TABLE_CELL_STYLE,
             alignment=1,
+            wordWrap='CJK',
         )
         cell_left = ParagraphStyle(
             'DetailsCellLeft',
@@ -370,51 +397,100 @@ class ReportFileBuilder:
             'DetailsCellRight',
             parent=cls.TABLE_CELL_STYLE,
             alignment=2,
+            wordWrap='CJK',
         )
 
         rows = [
             [
                 Paragraph('№', header_style),
-                Paragraph(
-                    'Наименование<br/>проданного<br/>товара',
-                    header_style,
-                ),
-                Paragraph(
-                    'Количество<br/>проданного<br/>товара',
-                    header_style,
-                ),
-                Paragraph('Цена товара', header_style),
-                Paragraph('Стоимость', header_style),
+                Paragraph('Наименование', header_style),
+                Paragraph('Цена', header_style),
+                Paragraph('Количество', header_style),
+                Paragraph('Общая скидка', header_style),
+                Paragraph('Сумма', header_style),
             ],
         ]
 
-        for idx, item in enumerate(items, start=1):
+        grouped_items = {}
+
+        for item in items:
             product_info = item.product_info or {}
-            price = item.line_total / item.quantity
 
-            rows.append([
-                Paragraph(str(idx), cell_center),
-                Paragraph(
-                    (
-                        f'{product_info.get("kind", "")} '
-                        f'{product_info.get("name", "")}'
-                    ).strip(),
-                    cell_left,
-                ),
-                Paragraph(str(item.quantity), cell_center),
-                Paragraph(format_money(price), cell_right),
-                Paragraph(format_money(item.line_total), cell_right),
-            ])
+            product_name = (
+                f'{product_info.get("kind", "")} '
+                f'{product_info.get("name", "")}'
+            ).strip()
 
-        # в сумме 170 мм
+            group_key = (
+                item.product_variant_id,
+                item.price_at_purchase,
+            )
+
+            if group_key not in grouped_items:
+                grouped_items[group_key] = {
+                    'name': product_name,
+                    'price': item.price_at_purchase,
+                    'quantity': 0,
+                    'discount_amount': 0,
+                    'total_amount': 0,
+                }
+
+            grouped_item = grouped_items[group_key]
+
+            grouped_item['quantity'] += item.quantity
+            grouped_item['discount_amount'] += item.promocode_discount
+            grouped_item['total_amount'] += item.product_total
+
+        for idx, grouped_item in enumerate(
+            grouped_items.values(),
+            start=1,
+        ):
+            rows.append(
+                [
+                    Paragraph(
+                        str(idx),
+                        cell_center,
+                    ),
+                    Paragraph(
+                        grouped_item['name'],
+                        cell_left,
+                    ),
+                    Paragraph(
+                        format_money(
+                            grouped_item['price'],
+                        ),
+                        cell_right,
+                    ),
+                    Paragraph(
+                        str(
+                            grouped_item['quantity'],
+                        ),
+                        cell_center,
+                    ),
+                    Paragraph(
+                        format_money(
+                            grouped_item['discount_amount'],
+                        ),
+                        cell_right,
+                    ),
+                    Paragraph(
+                        format_money(
+                            grouped_item['total_amount'],
+                        ),
+                        cell_right,
+                    ),
+                ],
+            )
+        # в сумме 180 мм
         table = Table(
             rows,
             colWidths=[
-                10 * mm,
+                8 * mm,
                 75 * mm,
                 25 * mm,
-                30 * mm,
-                30 * mm,
+                22 * mm,
+                25 * mm,
+                25 * mm,
             ],
             hAlign='CENTER',
             repeatRows=1,
