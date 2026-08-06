@@ -45,7 +45,7 @@ class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
         'cover',
         'image_preview',
         'city',
-        'url',
+        'slug',
         'is_active',
     )
 
