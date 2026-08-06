@@ -4,11 +4,12 @@ import uuid
 
 from django.db import models, transaction
 
+from common.models.abstract import ActivatableModel, TimestampModel
+
 from store.constants import (
     MAX_CHAR_LENGTH,
 )
 from store.models import Product
-from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class ProductVariant(ActivatableModel, TimestampModel):

@@ -8,6 +8,8 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from common.models.abstract import ActivatableModel, TimestampModel
+
 from store.constants import (
     DISCOUNT_VALUE_PRECISION,
     MAX_PRICE_DIGITS,
@@ -18,7 +20,6 @@ from store.validators import (
     validate_promocode_format,
     validate_promocode_min_length,
 )
-from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class Promocode(ActivatableModel, TimestampModel):

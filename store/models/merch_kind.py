@@ -1,8 +1,9 @@
 from django.db import models
 from django.utils.text import slugify
 
+from common.models.abstract import ActivatableModel, TimestampModel
+
 from store.constants import MAX_CHAR_LENGTH, MAX_SLUG_LENGTH
-from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class MerchKind(ActivatableModel, TimestampModel):
