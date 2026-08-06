@@ -351,3 +351,22 @@ def managed_profile_detail_url():
         )
 
     return build
+
+
+@pytest.fixture
+def artist_me_store_settings_url() -> str:
+    """Возвращает URL настроек магазина собственного профиля."""
+    return reverse('api:users:artist_store_settings')
+
+
+@pytest.fixture
+def managed_store_settings_url():
+    """Возвращает URL настроек магазина управляемого профиля."""
+
+    def build(profile) -> str:
+        return reverse(
+            'api:users:managed_artist_store_settings',
+            kwargs={'profile_id': profile.id},
+        )
+
+    return build

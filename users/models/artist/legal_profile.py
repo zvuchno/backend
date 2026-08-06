@@ -9,7 +9,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from common.utils import normalize_email
 
-from .abstract import TimestampModel
+from ..abstract import TimestampModel
 from users.constants import (
     RECIPIENT_TYPE_MAX_LENGTH,
 )

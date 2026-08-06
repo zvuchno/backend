@@ -3,7 +3,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from .abstract import TimestampModel
+from ..abstract import TimestampModel
 from users.constants import (
     ADDRESS_FIELD_MAX_LENGTH,
     INN_PERSON_MAX_LENGTH,

@@ -29,6 +29,7 @@ from .artist_profile import (
     ManagedArtistProfileSerializer,
 )
 from .artist_registration import ArtistRegistrationSerializer
+from .artist_store_settings import ArtistStoreSettingsSerializer
 from .base_registration import BaseRegistrationSerializer
 from .consent_documents import (
     ConsentDocumentDetailSerializer,
@@ -59,6 +60,7 @@ __all__ = [
     'ArtistPublicSerializer',
     'ArtistRegistrationSerializer',
     'ArtistShippingPointSerializer',
+    'ArtistStoreSettingsSerializer',
     'BaseRegistrationSerializer',
     'BecomeArtistOrLabelSerializer',
     'ChangePasswordSerializer',

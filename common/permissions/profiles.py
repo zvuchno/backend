@@ -1,7 +1,7 @@
 from rest_framework.permissions import BasePermission
 
 from .base import _ActiveProfilePermission
-from users.models.artist_profile import ArtistProfileType
+from users.models.artist import ArtistProfileType
 
 
 class IsListener(_ActiveProfilePermission):

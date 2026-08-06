@@ -11,11 +11,13 @@ from users.views import (
     ArtistPickupPointViewSet,
     ArtistPublicView,
     ArtistShippingPointView,
+    ArtistStoreSettingsView,
     LabelManagedProfileListView,
     ManagedArtistCoverUpdateView,
     ManagedArtistPickupPointViewSet,
     ManagedArtistProfileView,
     ManagedArtistShippingPointView,
+    ManagedArtistStoreSettingsView,
     RecipientTypeListView,
     TelegramConnectView,
 )
@@ -87,6 +89,16 @@ urlpatterns = [
         'me/managed-profiles/<int:profile_id>/shipping-point/',
         ManagedArtistShippingPointView.as_view(),
         name='managed_profile_shipping_point',
+    ),
+    path(
+        'me/store-settings/',
+        ArtistStoreSettingsView.as_view(),
+        name='artist_store_settings',
+    ),
+    path(
+        'me/managed-profiles/<int:profile_id>/store-settings/',
+        ManagedArtistStoreSettingsView.as_view(),
+        name='managed_artist_store_settings',
     ),
     path(
         'me/legal/',
