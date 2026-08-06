@@ -7,6 +7,7 @@ from .artist_pickup_point import ArtistPickupPoint
 from .artist_profile import ArtistProfile, ArtistProfileType
 from .artist_shipping_point import ArtistShippingPoint
 from .artist_social import ArtistSocial
+from .artist_store_settings import ArtistStoreSettings
 from .consent_document import ConsentDocument
 from .core_user import CoreUser
 from .listener_profile import ListenerProfile
@@ -23,6 +24,7 @@ __all__ = [
     'ArtistProfileType',
     'ArtistShippingPoint',
     'ArtistSocial',
+    'ArtistStoreSettings',
     'ConsentDocument',
     'CoreUser',
     'ListenerProfile',

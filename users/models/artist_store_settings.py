@@ -1,6 +1,5 @@
 from django.db import models
 
-from users.models import ArtistProfile
 from users.models.abstract import TimestampModel
 
 
@@ -8,7 +7,7 @@ class ArtistStoreSettings(TimestampModel):
     """Настройки магазина артиста или лейбла."""
 
     artist = models.OneToOneField(
-        ArtistProfile,
+        'users.ArtistProfile',
         on_delete=models.CASCADE,
         related_name='store_settings',
         verbose_name='Профиль',
