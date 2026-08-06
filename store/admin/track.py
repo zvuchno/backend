@@ -7,7 +7,6 @@ TODO: позже перевести замену audio_file в админке н
 from django.contrib import admin
 from django.utils.html import format_html
 
-from ..services.audio.schedule import TrackGeneratedAudioScheduler
 from .forms import MoneyForm
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -15,6 +14,7 @@ from .mixins import (
     CommerceDisplayMixin,
 )
 from store.models import Product, Track, TrackGeneratedAudio
+from store.services.audio.schedule import TrackGeneratedAudioScheduler
 
 
 class ProductInline(admin.StackedInline):

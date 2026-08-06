@@ -338,3 +338,35 @@ def artist_me_pickup_point_detail_url():
 def artist_me_shipping_point_url() -> str:
     """Возвращает URL ПВЗ отправления собственного профиля."""
     return reverse('api:users:artist_me_shipping_point')
+
+
+@pytest.fixture
+def managed_profile_detail_url():
+    """Возвращает URL управляемого профиля."""
+
+    def build(profile) -> str:
+        return reverse(
+            'api:users:managed_profile_detail',
+            kwargs={'profile_id': profile.id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def artist_me_store_settings_url() -> str:
+    """Возвращает URL настроек магазина собственного профиля."""
+    return reverse('api:users:artist_store_settings')
+
+
+@pytest.fixture
+def managed_store_settings_url():
+    """Возвращает URL настроек магазина управляемого профиля."""
+
+    def build(profile) -> str:
+        return reverse(
+            'api:users:managed_artist_store_settings',
+            kwargs={'profile_id': profile.id},
+        )
+
+    return build

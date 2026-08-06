@@ -52,7 +52,6 @@ class ArtistPublicShortSerializer(serializers.ModelSerializer):
             'description',
             'cover',
             'city',
-            'url',
             'slug',
         )
 
@@ -77,7 +76,7 @@ class ArtistMeSerializer(ArtistPublicSerializer):
         fields = ArtistPublicSerializer.Meta.fields
 
 
-class ArtistMeUpdateSerializer(serializers.ModelSerializer):
+class ArtistProfileUpdateSerializer(serializers.ModelSerializer):
     """Сериализатор обновления профиля артиста."""
 
     contacts = ArtistContactSerializer(many=True, required=False)
@@ -155,10 +154,16 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'city',
-            'url',
+            'slug',
             'socials',
             'contacts',
         )
+        extra_kwargs = {
+            'slug': {
+                'required': False,
+                'allow_blank': False,
+            },
+        }
 
 
 class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
@@ -270,9 +275,15 @@ class ManagedArtistProfileCreateSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'city',
-            'url',
+            'slug',
         )
         read_only_fields = ('id',)
+        extra_kwargs = {
+            'slug': {
+                'required': False,
+                'allow_blank': False,
+            },
+        }
 
     def create(self, validated_data):
         """Создает профиль артиста, управляемый текущим лейблом."""

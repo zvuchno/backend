@@ -15,7 +15,6 @@ from datetime import timedelta
 from pathlib import Path
 
 import sentry_sdk
-from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -368,25 +367,6 @@ CELERY_TASK_TIME_LIMIT = 300
 CELERY_WORKER_SEND_TASK_EVENTS = True
 CELERY_TASK_SEND_SENT_EVENT = True
 
-CELERY_BEAT_SCHEDULE = {
-    'cleanup-expired-track-uploads': {
-        'task': 'store.tasks.track_upload.cleanup_expired_track_uploads',
-        'schedule': crontab(hour=4, minute=10),
-    },
-    'release-expired-reservations': {
-        'task': 'store.tasks.reservations.release_expired_reservations',
-        'schedule': crontab(minute='*/10'),
-    },
-    'dispatch-daily-reports': {
-        'task': 'store.tasks.report.dispatch_daily_reports',
-        'schedule': crontab(hour=4, minute=0),
-    },
-    'dispatch-monthly-reports': {
-        'task': 'store.tasks.report.dispatch_monthly_reports',
-        'schedule': crontab(day_of_month=1, hour=5, minute=0),
-    },
-}
-
 if DEBUG:
     # Локальная разработка: кэш в оперативной памяти
     CACHES = {
@@ -433,7 +413,7 @@ TELEGRAM_PROXY_URL = os.getenv('TELEGRAM_PROXY_URL')
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
     ),
     'DEFAULT_THROTTLE_RATES': {
 
@@ -467,7 +447,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
 }
 
-# TODO: настроить периодический запуск flushexpiredtokens
 ROTATE_REFRESH_TOKENS = (
     os.getenv('ROTATE_REFRESH_TOKENS', 'False').strip().lower() == 'true'
 )
@@ -487,12 +466,41 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 )
+
+JWT_ACCESS_COOKIE_NAME = os.getenv(
+    'JWT_ACCESS_COOKIE_NAME',
+    'zvuchno_access',
+)
+JWT_REFRESH_COOKIE_NAME = os.getenv(
+    'JWT_REFRESH_COOKIE_NAME',
+    'zvuchno_refresh',
+)
+JWT_COOKIE_SECURE = (
+    os.getenv('JWT_COOKIE_SECURE', str(not DEBUG)).strip().lower() == 'true'
+)
+JWT_COOKIE_SAMESITE = os.getenv('JWT_COOKIE_SAMESITE', 'Lax')
 REST_AUTH = {
     'USE_JWT': True,
     'TOKEN_MODEL': None,
-    'JWT_AUTH_HTTPONLY': False,
-    'JWT_SERIALIZER': 'users.serializers.TokenPairSerializer',
+    'JWT_AUTH_HTTPONLY': True,
+    'SESSION_LOGIN': False,
+    'JWT_AUTH_COOKIE': JWT_ACCESS_COOKIE_NAME,
+    'JWT_AUTH_REFRESH_COOKIE': JWT_REFRESH_COOKIE_NAME,
+    'JWT_AUTH_SECURE': JWT_COOKIE_SECURE,
+    'JWT_AUTH_SAMESITE': JWT_COOKIE_SAMESITE,
+    'LOGIN_SERIALIZER': 'users.serializers.CookieLoginSerializer',
+    'JWT_AUTH_COOKIE_USE_CSRF': True,
 }
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+
+ACCOUNT_LOGIN_METHODS = {'email'}
+
+ACCOUNT_SIGNUP_FIELDS = [
+    'email*',
+    'password1*',
+    'password2*',
+]
+
 SITE_ID = int(os.getenv('SITE_ID', default=1))  # id записи таблицы sites, где указан домен бэкенда для allauth.
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {

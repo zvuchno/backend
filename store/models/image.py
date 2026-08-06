@@ -1,12 +1,12 @@
 from django.db import models
 from django.db.models import Q
 
+from common.models.abstract import ActivatableModel, TimestampModel
 from common.storages import get_public_media_storage
 
 from store.models.merch import Merch
 from store.upload_paths import merch_image_upload_to
 from store.validators import validate_file_size
-from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class Image(ActivatableModel, TimestampModel):

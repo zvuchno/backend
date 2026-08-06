@@ -1,5 +1,6 @@
 """ViewSet для работы с моделью Promocode."""
 
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.response import Response
@@ -44,7 +45,7 @@ class PromocodeViewSet(
 
     def get_queryset(self):
         return Promocode.objects.filter(
-            managed_artist_q(self.request.user),
+            Q(is_active=True) & managed_artist_q(self.request.user),
         ).select_related('artist', 'created_by')
 
     def get_serializer_class(self):

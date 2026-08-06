@@ -30,6 +30,10 @@ from .artist_profile import (
     managed_artist_cover_update_schema,
     managed_artist_schema,
 )
+from .artist_store_settings import (
+    artist_store_settings_schema,
+    managed_artist_store_settings_schema,
+)
 from .auth import (
     logout_schema,
     token_obtain_schema,
@@ -45,7 +49,6 @@ from .registration import (
 from .social_auth import (
     social_auth_schema,
     social_error_codes_schema,
-    social_token_exchange_schema,
 )
 from .telegram_connect import telegram_connect_schema
 
@@ -58,6 +61,7 @@ __all__ = [
     'artist_public_schema',
     'artist_registration_schema',
     'artist_shipping_point_schema',
+    'artist_store_settings_schema',
     'become_artist_schema',
     'change_password_schema',
     'change_phone_schema',
@@ -70,6 +74,7 @@ __all__ = [
     'logout_schema',
     'managed_artist_cover_update_schema',
     'managed_artist_schema',
+    'managed_artist_store_settings_schema',
     'me_schema',
     'password_reset_confirm_schema',
     'password_reset_request_schema',
@@ -80,7 +85,6 @@ __all__ = [
     'token_refresh_schema',
     'token_verify_schema',
     'social_error_codes_schema',
-    'social_token_exchange_schema',
     'social_auth_schema',
     'recipient_type_list_schema',
     'set_password_schema',

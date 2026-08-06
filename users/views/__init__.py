@@ -30,8 +30,17 @@ from .artist_profile import (
     ManagedArtistProfileView,
 )
 from .artist_registration import ArtistRegistrationView
+from .artist_store_settings import (
+    ArtistStoreSettingsView,
+    ManagedArtistStoreSettingsView,
+)
 from .base_registration import BaseRegistrationView
 from .consent_documents import ConsentDocumentViewSet
+from .cookie_auth import (
+    CookieLoginView,
+    CookieLogoutView,
+    CookieRefreshView,
+)
 from .jwt import (
     CustomLogoutView,
     CustomTokenObtainPairView,
@@ -44,7 +53,6 @@ from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
 from .social_auth import (
     SocialAuthErrorCodesView,
-    SocialSessionExchangeView,
     redirect_social_auth_cancelled,
     redirect_social_auth_confirm_email,
     redirect_social_auth_error,
@@ -61,11 +69,15 @@ __all__ = [
     'ArtistPublicView',
     'ArtistRegistrationView',
     'ArtistShippingPointView',
+    'ArtistStoreSettingsView',
     'BaseRegistrationView',
     'BecomeArtistOrLabelView',
     'ConsentDocumentViewSet',
     'ChangePasswordView',
     'ChangePhoneView',
+    'CookieLoginView',
+    'CookieLogoutView',
+    'CookieRefreshView',
     'CustomLogoutView',
     'CustomTokenObtainPairView',
     'CustomTokenRefreshView',
@@ -78,6 +90,7 @@ __all__ = [
     'ManagedArtistPickupPointViewSet',
     'ManagedArtistProfileView',
     'ManagedArtistShippingPointView',
+    'ManagedArtistStoreSettingsView',
     'MeView',
     'PasswordResetConfirmView',
     'PasswordResetRequestView',
@@ -90,7 +103,6 @@ __all__ = [
     'redirect_social_auth_signup',
     'SetPasswordView',
     'SocialAuthErrorCodesView',
-    'SocialSessionExchangeView',
     'TelegramConnectView',
     'VKLogin',
     'YandexLogin',

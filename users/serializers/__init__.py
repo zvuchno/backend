@@ -22,17 +22,23 @@ from .artist_legal_profile import (
 )
 from .artist_profile import (
     ArtistMeSerializer,
-    ArtistMeUpdateSerializer,
+    ArtistProfileUpdateSerializer,
     ArtistPublicSerializer,
     BecomeArtistOrLabelSerializer,
     ManagedArtistProfileCreateSerializer,
     ManagedArtistProfileSerializer,
 )
 from .artist_registration import ArtistRegistrationSerializer
+from .artist_store_settings import ArtistStoreSettingsSerializer
 from .base_registration import BaseRegistrationSerializer
 from .consent_documents import (
     ConsentDocumentDetailSerializer,
     ConsentDocumentSerializer,
+)
+from .cookie_auth import (
+    CookieLoginResponseSerializer,
+    CookieLoginSerializer,
+    CookieRefreshResponseSerializer,
 )
 from .jwt import (
     CustomTokenObtainPairSerializer,
@@ -49,16 +55,20 @@ __all__ = [
     'ArtistLegalProfileSerializer',
     'ArtistLegalSerializer',
     'ArtistMeSerializer',
-    'ArtistMeUpdateSerializer',
+    'ArtistProfileUpdateSerializer',
     'ArtistPickupPointManageSerializer',
     'ArtistPublicSerializer',
     'ArtistRegistrationSerializer',
     'ArtistShippingPointSerializer',
+    'ArtistStoreSettingsSerializer',
     'BaseRegistrationSerializer',
     'BecomeArtistOrLabelSerializer',
     'ChangePasswordSerializer',
     'ConsentDocumentDetailSerializer',
     'ConsentDocumentSerializer',
+    'CookieLoginResponseSerializer',
+    'CookieLoginSerializer',
+    'CookieRefreshResponseSerializer',
     'CustomTokenObtainPairSerializer',
     'EmailVerificationSerializer',
     'EmptySerializer',

@@ -108,7 +108,7 @@ class PromocodeWriteSerializer(
         if (
             self.instance is None
             and value is not None
-            and value < timezone.now()
+            and value.date() < timezone.localdate()
         ):
             raise serializers.ValidationError(
                 'Дата начала не может быть в прошлом.',

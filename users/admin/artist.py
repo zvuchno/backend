@@ -12,6 +12,7 @@ from users.models import (
     ArtistProfileType,
     ArtistShippingPoint,
     ArtistSocial,
+    ArtistStoreSettings,
 )
 
 
@@ -51,6 +52,15 @@ class ArtistShippingPointInline(admin.TabularInline):
     extra = 0
 
 
+class ArtistStoreSettingsInline(admin.TabularInline):
+    """Настройки возвратов."""
+
+    model = ArtistStoreSettings
+    can_delete = True
+    fk_name = 'artist'
+    extra = 0
+
+
 @admin.register(ArtistProfile)
 class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     """Админка профиля артиста."""
@@ -60,6 +70,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         ArtistPickupPointInline,
         ArtistShippingPointInline,
         ArtistSocialInline,
+        ArtistStoreSettingsInline,
     )
     list_display = (
         'id',
@@ -209,14 +220,6 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                     },
                 ),
             )
-            fieldsets.append(
-                (
-                    'Ссылки',
-                    {
-                        'fields': ('url',),
-                    },
-                ),
-            )
         else:
             management_fields = [
                 'profile_type',
@@ -236,15 +239,6 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                     'Тип и управление',
                     {
                         'fields': tuple(management_fields),
-                    },
-                ),
-            )
-
-            fieldsets.append(
-                (
-                    'Ссылки',
-                    {
-                        'fields': ('url',),
                     },
                 ),
             )
