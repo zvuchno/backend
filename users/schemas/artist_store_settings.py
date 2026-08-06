@@ -36,7 +36,7 @@ artist_store_settings_schema = extend_schema_view(
 
 managed_artist_store_settings_schema = extend_schema_view(
     get=extend_schema(
-        tags=['Label: managed profiles'],
+        tags=['Artist: store settings'],
         summary='Получить настройки магазина управляемого профиля',
         description=(
             'Возвращает собственные настройки магазина выбранного профиля, '
@@ -48,7 +48,7 @@ managed_artist_store_settings_schema = extend_schema_view(
         },
     ),
     put=extend_schema(
-        tags=['Label: managed profiles'],
+        tags=['Artist: store settings'],
         summary='Сохранить настройки магазина управляемого профиля',
         description=(
             'Создаёт или полностью обновляет собственные настройки магазина '
