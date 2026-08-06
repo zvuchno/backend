@@ -122,6 +122,52 @@ class ArtistProfile(ActivatableModel, TimestampModel):
 
         return payout_recipient
 
+    def _get_effective_store_setting(self, field_name: str) -> str:
+        """Возвращает настройку магазина с учётом fallback на лейбл."""
+        own_settings = getattr(self, 'store_settings', None)
+        own_value = getattr(own_settings, field_name, None)
+
+        if own_value:
+            return own_value
+
+        if self.label_id is None:
+            return ''
+
+        label_settings = getattr(self.label, 'store_settings', None)
+        return getattr(label_settings, field_name, '') or ''
+
+    @property
+    def effective_support_email(self) -> str:
+        """Возвращает существующий email поддержки."""
+        return self._get_effective_store_setting('support_email')
+
+    @property
+    def effective_returns_email(self) -> str:
+        """Возвращает существующий email для возвратов."""
+        return self._get_effective_store_setting('returns_email')
+
+    @property
+    def effective_shipping_point(self):
+        """Возвращает ПВЗ отправки с учётом fallback на лейбл."""
+        shipping_point = getattr(self, 'shipping_point', None)
+
+        if shipping_point is not None:
+            return shipping_point
+
+        if self.label_id is not None:
+            return getattr(self.label, 'shipping_point', None)
+
+        return None
+
+    def get_effective_pickup_points(self):
+        """Возвращает queryset точек самовывоза с учётом fallback на лейбл."""
+        pickup_points = self.pickup_points.filter(is_active=True)
+
+        if pickup_points.exists() or self.label_id is None:
+            return pickup_points
+
+        return self.label.pickup_points.filter(is_active=True)
+
     def save(self, *args, **kwargs):
         """Сохраняет профиль артиста и при необходимости создает slug.
 
