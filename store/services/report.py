@@ -13,8 +13,7 @@ from django.db.models import (
     Sum,
     Value,
 )
-from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast, Coalesce, Greatest
+from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
 
 from store.constants import (
@@ -22,7 +21,7 @@ from store.constants import (
     MONEY_INTERNAL_PRECISION,
     ZERO_MONEY,
 )
-from store.models import Order, OrderItem, Payment, Report
+from store.models import OrderItem, Payment, Report
 from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
@@ -57,6 +56,14 @@ class ReportService:
                         decimal_places=MONEY_INTERNAL_PRECISION,
                     ),
                 )
+                donation_expression = Greatest(
+                    (F('unit_price') - F('price_at_purchase')) * F('quantity'),
+                    Value(ZERO_MONEY),
+                    output_field=DecimalField(
+                        max_digits=MAX_PRICE_DIGITS,
+                        decimal_places=MONEY_INTERNAL_PRECISION,
+                    ),
+                )
 
                 data = items.aggregate(
                     sales_amount=Coalesce(
@@ -67,32 +74,14 @@ class ReportService:
                         Sum('platform_commission'),
                         ZERO_MONEY,
                     ),
-                )
-
-                delivery_amount = (
-                    Order.objects
-                    .filter(
-                        id__in=items.values('order_id'),
-                    )
-                    .distinct()
-                    .annotate(
-                        artist_delivery=Cast(
-                            KeyTextTransform(
-                                'cost',
-                                KeyTextTransform(
-                                    str(artist.id),
-                                    'delivery_calculation',
-                                ),
-                            ),
-                            DecimalField(
-                                max_digits=MAX_PRICE_DIGITS,
-                                decimal_places=MONEY_INTERNAL_PRECISION,
-                            ),
-                        ),
-                    )
-                    .aggregate(
-                        total=Coalesce(Sum('artist_delivery'), ZERO_MONEY),
-                    )['total']
+                    discount_amount=Coalesce(
+                        Sum('promocode_discount'),
+                        ZERO_MONEY,
+                    ),
+                    donation_amount=Coalesce(
+                        Sum(donation_expression),
+                        ZERO_MONEY,
+                    ),
                 )
 
                 payout_amount = max(
@@ -115,7 +104,6 @@ class ReportService:
                     period_end=period_end,
                     defaults={
                         **data,
-                        'delivery_amount': delivery_amount,
                         'payout_amount': payout_amount,
                         'status': Report.Status.PENDING,
                         'report_file': None,

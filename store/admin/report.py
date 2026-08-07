@@ -38,7 +38,8 @@ class ReportAdmin(admin.ModelAdmin):
         'period_start',
         'period_end',
         'get_sales_amount',
-        'get_delivery_amount',
+        'get_donation_amount',
+        'get_discount_amount',
         'get_commission_amount',
         'get_payout_amount',
         'report_file_link',
@@ -73,10 +74,18 @@ class ReportAdmin(admin.ModelAdmin):
         """Сумма к выплате."""
         return format_money(obj.payout_amount)
 
-    @admin.display(description='Стоимость доставок (руб.)')
-    def get_delivery_amount(self, obj):
-        """Стоимость доставки."""
-        return format_money(obj.delivery_amount)
+    @admin.display(
+        description='Добровольные доплаты (руб.)',
+        ordering='donation_amount',
+    )
+    def get_donation_amount(self, obj):
+        """Добровольные доплаты."""
+        return format_money(obj.donation_amount)
+
+    @admin.display(description='Скидки по промокоду (руб.)')
+    def get_discount_amount(self, obj):
+        """Скидки по промокоду."""
+        return format_money(obj.discount_amount)
 
     @admin.display(description='Файл отчета')
     def report_file_link(self, obj):
@@ -105,8 +114,9 @@ class ReportAdmin(admin.ModelAdmin):
                     'period_start',
                     'period_end',
                     'get_sales_amount',
+                    'get_donation_amount',
+                    'get_discount_amount',
                     'get_commission_amount',
-                    'get_delivery_amount',
                     'get_payout_amount',
                 ),
             },

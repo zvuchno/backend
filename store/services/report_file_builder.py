@@ -20,6 +20,7 @@ from reportlab.platypus import (
 
 from common.utils import format_money
 
+from store.constants import ZERO_MONEY
 from store.models import Report
 from store.services.report import ReportService
 from users.models import ConsentDocument
@@ -208,8 +209,7 @@ class ReportFileBuilder:
             make_list_item(
                 '2.',
                 f'Агентское вознаграждение Маркетплейса по '
-                'данному отчету за отчетный период: '
-                f'{report.period_start:%m.%Y} составляет '
+                'данному отчету за отчетный период составляет '
                 f'{format_money(report.commission_amount)} рублей.',
                 justify_body_style,
             ),
@@ -405,8 +405,9 @@ class ReportFileBuilder:
                 Paragraph('№', header_style),
                 Paragraph('Наименование', header_style),
                 Paragraph('Цена', header_style),
-                Paragraph('Количество', header_style),
-                Paragraph('Общая скидка', header_style),
+                Paragraph('Кол-во', header_style),
+                Paragraph('Скидка', header_style),
+                Paragraph('Доплата ', header_style),
                 Paragraph('Сумма', header_style),
             ],
         ]
@@ -431,15 +432,17 @@ class ReportFileBuilder:
                     'name': product_name,
                     'price': item.price_at_purchase,
                     'quantity': 0,
-                    'discount_amount': 0,
-                    'total_amount': 0,
+                    'discount_amount': ZERO_MONEY,
+                    'donation_amount': ZERO_MONEY,
+                    'total_amount': ZERO_MONEY,
                 }
 
             grouped_item = grouped_items[group_key]
 
             grouped_item['quantity'] += item.quantity
             grouped_item['discount_amount'] += item.promocode_discount
-            grouped_item['total_amount'] += item.product_total
+            grouped_item['donation_amount'] += item.donation
+            grouped_item['total_amount'] += item.line_total
 
         for idx, grouped_item in enumerate(
             grouped_items.values(),
@@ -475,6 +478,12 @@ class ReportFileBuilder:
                     ),
                     Paragraph(
                         format_money(
+                            grouped_item['donation_amount'],
+                        ),
+                        cell_right,
+                    ),
+                    Paragraph(
+                        format_money(
                             grouped_item['total_amount'],
                         ),
                         cell_right,
@@ -486,11 +495,12 @@ class ReportFileBuilder:
             rows,
             colWidths=[
                 8 * mm,
-                75 * mm,
-                25 * mm,
-                22 * mm,
-                25 * mm,
-                25 * mm,
+                77 * mm,
+                20 * mm,
+                15 * mm,
+                20 * mm,
+                20 * mm,
+                20 * mm,
             ],
             hAlign='CENTER',
             repeatRows=1,

@@ -52,8 +52,14 @@ class Report(TimestampModel):
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,
     )
-    delivery_amount = models.DecimalField(
-        'Стоимость доставки, руб.',
+    donation_amount = models.DecimalField(
+        'Сумма доплат, руб.',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+    )
+    discount_amount = models.DecimalField(
+        'Сумма скидок, руб.',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,
