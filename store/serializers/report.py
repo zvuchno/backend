@@ -29,7 +29,7 @@ class ArtistReportSerializer(serializers.ModelSerializer):
             'created_at',
         )
 
-    def get_file_url(self, obj):
+    def get_file_url(self, obj) -> str:
         request = self.context.get('request')
 
         if not obj.report_file:

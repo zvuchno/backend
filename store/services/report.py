@@ -9,8 +9,10 @@ from django.db.models import (
     Count,
     DecimalField,
     F,
+    OuterRef,
     Q,
     QuerySet,
+    Subquery,
     Sum,
     Value,
 )
@@ -178,17 +180,26 @@ class ReportService:
             datetime.datetime.combine(period_end, datetime.time.max),
             tz,
         )
+        successful_payment = Payment.objects.filter(
+            order_id=OuterRef('order_id'),
+            status=Payment.PaymentStatus.SUCCEEDED,
+        ).order_by(
+            'paid_at',
+        )
 
         return (
             OrderItem.objects
+            .annotate(
+                paid_at=Subquery(
+                    successful_payment.values('paid_at')[:1],
+                ),
+            )
             .filter(
-                order__payments__status=Payment.PaymentStatus.SUCCEEDED,
-                order__payments__paid_at__range=(start_dt, end_dt),
+                paid_at__range=(start_dt, end_dt),
             )
             .filter(
                 Q(product_variant__product__album__artist=artist)
                 | Q(product_variant__product__track__album__artist=artist)
                 | Q(product_variant__product__merch__artist=artist),
             )
-            .distinct()
         )

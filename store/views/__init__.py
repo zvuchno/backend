@@ -7,6 +7,7 @@ from .catalog import (
 )
 from .cdek import CDEKWidgetView, CdekCalculateView, CdekCitiesView
 from .delivery import DeliveryViewSet
+from .export import SalesExportView
 from .favorites import FavoritesViewSet
 from .genre import GenreViewSet
 from .merch import MerchViewSet
@@ -60,6 +61,7 @@ __all__ = [
     'PurchasedMusicDLDetailView',
     'PurchasedMusicTrackDownloadLinkView',
     'PurchasedMusicView',
+    'SalesExportView',
     'TrackFileUploadInitiateView',
     'TrackUploadCompleteView',
     'TrackUploadReceiveFileView',

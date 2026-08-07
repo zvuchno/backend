@@ -21,6 +21,7 @@ from .cdek import cdek_cities_suggest_schema, cdek_widget_schema
 from .cdek_calculate import cdek_calculate_schema
 from .checkout import checkout_schema
 from .delivery import delivery_schema
+from .export import sales_export_schema
 from .favorites import favorites_schema
 from .genre import genre_schema
 from .merch import merch_schema
@@ -64,6 +65,7 @@ __all__ = [
     'cdek_widget_schema',
     'checkout_schema',
     'delivery_schema',
+    'sales_export_schema',
     'favorites_schema',
     'genre_schema',
     'merch_kinds_schema',

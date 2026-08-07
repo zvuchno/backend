@@ -160,7 +160,7 @@ class ReportFileBuilder:
                 'order',
                 'product_variant__product',
             )
-            .order_by('order__payments__created_at')
+            .order_by('paid_at', 'order_id', 'id')
         )
 
         header_style = ParagraphStyle(
