@@ -44,7 +44,11 @@ class ArtistReportSerializer(serializers.ModelSerializer):
 class ArtistDetailReportSerializer(ArtistReportSerializer):
     """Детальный финансовый отчет артиста."""
 
-    delivery_amount = serializers.DecimalField(
+    donation_amount = serializers.DecimalField(
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=DISCOUNT_VALUE_PRECISION,
+    )
+    discount_amount = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=DISCOUNT_VALUE_PRECISION,
     )
@@ -60,7 +64,8 @@ class ArtistDetailReportSerializer(ArtistReportSerializer):
     class Meta(ArtistReportSerializer.Meta):
         fields = ArtistReportSerializer.Meta.fields + (
             'status',
-            'delivery_amount',
+            'donation_amount',
+            'discount_amount',
             'commission_amount',
             'payout_amount',
         )

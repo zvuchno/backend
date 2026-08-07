@@ -44,6 +44,9 @@ class CommerceBaseMixin:
                     val = data.get('property_value')
                     is_simple = val and str(val).strip() == CHAR_PRESET_SIMPLE
 
+                    if is_simple and not is_deleted:
+                        validated_data['stock'] = data.get('stock') or 0
+
                     if is_deleted or not is_active or is_simple:
                         continue
 

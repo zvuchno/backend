@@ -495,9 +495,9 @@ class ReportFileBuilder:
             rows,
             colWidths=[
                 8 * mm,
-                77 * mm,
+                78 * mm,
                 20 * mm,
-                15 * mm,
+                14 * mm,
                 20 * mm,
                 20 * mm,
                 20 * mm,

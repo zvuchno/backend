@@ -27,6 +27,10 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     sku = serializers.SerializerMethodField()
+    artist_name = serializers.CharField(
+        source='artist.name',
+        read_only=True,
+    )
 
     class Meta:
         model = Album
@@ -34,6 +38,7 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'id',
             'sku',
             'name',
+            'artist_name',
             'is_single',
             'price',
             'cover_image',
