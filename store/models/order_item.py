@@ -91,15 +91,23 @@ class OrderItem(models.Model):
 
     @property
     def donation(self) -> Decimal:
-        """Разница между уплаченным и номиналом."""
+        """Сумма доната сверх номинальной стоимости."""
         return max(
             (self.unit_price - self.price_at_purchase) * self.quantity,
             ZERO_MONEY,
         )
 
     @property
+    def product_total(self) -> Decimal:
+        """Стоимость товаров без учета доната."""
+        return max(
+            (self.price_at_purchase * self.quantity - self.promocode_discount),
+            ZERO_MONEY,
+        )
+
+    @property
     def line_total(self) -> Decimal:
-        """Сумма за всю позицию."""
+        """Итоговая сумма позиции с учетом скидки и доната."""
         return max(
             (self.unit_price * self.quantity - self.promocode_discount),
             ZERO_MONEY,

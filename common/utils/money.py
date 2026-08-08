@@ -2,11 +2,17 @@
 
 from decimal import ROUND_HALF_UP, Decimal
 
+from store.constants import MONEY_DISPLAY_PRECISION, MONEY_ROUNDING
 
-def format_money(value: Decimal, places: str = '0.01') -> str:
-    """Округление и форматирование денег для UI."""
+
+def format_money(value: Decimal | None) -> str:
+    """Округляет и форматирует денежное значение для отображения."""
     if value is None:
         return '-'
 
-    value = value.quantize(Decimal(places), rounding=ROUND_HALF_UP)
-    return f'{value:,.2f}'.replace(',', ' ')
+    value = value.quantize(
+        MONEY_ROUNDING,
+        rounding=ROUND_HALF_UP,
+    )
+
+    return f'{value:,.{MONEY_DISPLAY_PRECISION}f}'.replace(',', ' ')

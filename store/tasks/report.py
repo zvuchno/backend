@@ -64,35 +64,22 @@ def _artists_with_sales(period_start, period_end) -> set[int]:
 def generate_report_task(
     self,
     artist_id,
-    period_type,
     period_start,
     period_end,
     send_email=False,
 ):
-    """Формирует отчет артиста за период и опционально отправляет его на почту.
-
-    Args:
-        self: Экземпляр задачи Celery
-        artist_id: ID артиста, для которого формируется отчет
-        period_type: Тип периода отчета (Report.PeriodType)
-        period_start: Дата начала периода
-        period_end: Дата окончания периода
-        send_email: Если True, после успешной генерации отчет отправляется
-        артисту на почту
-
-    """
+    """Формирует отчет артиста и опционально отправляет его на почту."""
     try:
         report = ReportService.generate(
             artist=ArtistProfile.objects.get(id=artist_id),
-            period_type=period_type,
             period_start=period_start,
             period_end=period_end,
         )
 
         buffer = ReportFileBuilder.build(report)
         filename = (
-            f'report_{report.period_type}_{report.period_start}'
-            f'_{report.period_end}.pdf'
+            f'report_{report.period_start:%Y_%m_%d}_'
+            f'{report.period_end:%Y_%m_%d}.pdf'
         )
         report.report_file.save(
             filename,
@@ -114,7 +101,6 @@ def generate_report_task(
         if self.request.retries >= self.max_retries:
             Report.objects.filter(
                 artist_id=artist_id,
-                period_type=period_type,
                 period_start=period_start,
                 period_end=period_end,
             ).update(
@@ -123,7 +109,7 @@ def generate_report_task(
 
             logger.exception(
                 'Не удалось сформировать отчет после всех попыток '
-                'artist=%s period=%s—%s',
+                'artist_id=%s period=%s—%s',
                 artist_id,
                 period_start,
                 period_end,
@@ -131,7 +117,7 @@ def generate_report_task(
             raise
 
         logger.warning(
-            'Повтор генерации отчета artist=%s period=%s—%s, попытка %s/%s',
+            'Повтор генерации отчета artist_id=%s period=%s—%s, попытка %s/%s',
             artist_id,
             period_start,
             period_end,
@@ -141,10 +127,9 @@ def generate_report_task(
         raise self.retry(exc=exc)
 
     logger.info(
-        'Отчет id=%s сформирован: artist=%s type=%s period=%s—%s',
+        'Отчет id=%s сформирован: artist_id=%s period=%s—%s',
         report.id,
         artist_id,
-        period_type,
         period_start,
         period_end,
     )
@@ -154,41 +139,15 @@ def generate_report_task(
 
 
 @shared_task
-def dispatch_daily_reports():
-    """Запуск генерации дневных отчетов.
-
-    Запускает генерацию дневных отчетов за
-    вчерашний день для артистов с продажами.
-    """
-    target_date = timezone.localdate() - datetime.timedelta(days=1)
-
-    artist_ids = _artists_with_sales(target_date, target_date)
-    logger.info(
-        'Запуск дневных отчетов за %s, артистов с продажами: %s',
-        target_date,
-        len(artist_ids),
-    )
-    for artist_id in artist_ids:
-        generate_report_task.delay(
-            artist_id=artist_id,
-            period_type=Report.PeriodType.DAILY,
-            period_start=target_date,
-            period_end=target_date,
-            send_email=False,
-        )
-
-
-@shared_task
 def dispatch_monthly_reports():
     """Запуск генерации месячных отчетов.
 
-    Формирует месячные отчеты за предыдущий календарный месяц
+    Формирует отчеты за предыдущий календарный месяц
     для артистов, у которых были продажи за этот период.
     """
     today = timezone.localdate()
 
-    first_day_current_month = today.replace(day=1)
-    period_end = first_day_current_month - datetime.timedelta(days=1)
+    period_end = today.replace(day=1) - datetime.timedelta(days=1)
     period_start = period_end.replace(day=1)
 
     artist_ids = _artists_with_sales(period_start, period_end)
@@ -203,7 +162,6 @@ def dispatch_monthly_reports():
     for artist_id in artist_ids:
         generate_report_task.delay(
             artist_id=artist_id,
-            period_type=Report.PeriodType.MONTHLY,
             period_start=period_start,
             period_end=period_end,
             send_email=True,
