@@ -18,7 +18,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from common.utils import format_money
+from common.utils import format_document_money
 
 from store.constants import ZERO_MONEY
 from store.models import Report
@@ -210,7 +210,7 @@ class ReportFileBuilder:
                 '2.',
                 f'Агентское вознаграждение Маркетплейса по '
                 'данному отчету за отчетный период составляет '
-                f'{format_money(report.commission_amount)} рублей.',
+                f'{format_document_money(report.commission_amount)} рублей.',
                 justify_body_style,
             ),
         )
@@ -256,7 +256,7 @@ class ReportFileBuilder:
 
         elements.append(
             Paragraph(
-                (f'Итого: {format_money(report.sales_amount)} руб.'),
+                (f'Итого: {format_document_money(report.sales_amount)} руб.'),
                 body_style,
             ),
         )
@@ -294,7 +294,10 @@ class ReportFileBuilder:
                     'в счет заключенных договоров',
                     left_style,
                 ),
-                Paragraph(format_money(report.sales_amount), right_style),
+                Paragraph(
+                    format_document_money(report.sales_amount),
+                    right_style,
+                ),
             ],
             [
                 Paragraph('Возвращено платежей покупателям', left_style),
@@ -302,35 +305,44 @@ class ReportFileBuilder:
             ],
             [
                 Paragraph('Подлежит удержанию Маркетплейсом', left_style),
-                Paragraph(format_money(report.commission_amount), right_style),
+                Paragraph(
+                    format_document_money(report.commission_amount),
+                    right_style,
+                ),
             ],
             [
                 Paragraph(
                     '&nbsp;&nbsp;- агентское вознаграждение',
                     left_style,
                 ),
-                Paragraph(format_money(report.commission_amount), right_style),
+                Paragraph(
+                    format_document_money(report.commission_amount),
+                    right_style,
+                ),
             ],
             [
                 Paragraph(
                     '&nbsp;&nbsp;- расходы, связанные с исполнением поручения',
                     left_style,
                 ),
-                Paragraph('0.00', right_style),
+                Paragraph('0,00', right_style),
             ],
             [
                 Paragraph(
                     '&nbsp;&nbsp;- возвраты платежей покупателям',
                     left_style,
                 ),
-                Paragraph('0.00', right_style),
+                Paragraph('0,00', right_style),
             ],
             [
                 Paragraph(
                     'Подлежит перечислению Маркетплейсом на счет Продавца',
                     left_style,
                 ),
-                Paragraph(format_money(report.payout_amount), right_style),
+                Paragraph(
+                    format_document_money(report.payout_amount),
+                    right_style,
+                ),
             ],
         ]
 
@@ -364,10 +376,7 @@ class ReportFileBuilder:
             .select_related(
                 'product_variant__product',
             )
-            .order_by(
-                'product_variant_id',
-                'price_at_purchase',
-            )
+            .order_by('paid_at', 'order_id', 'id')
         )
         if not items.exists():
             return None
@@ -459,7 +468,7 @@ class ReportFileBuilder:
                         cell_left,
                     ),
                     Paragraph(
-                        format_money(
+                        format_document_money(
                             grouped_item['price'],
                         ),
                         cell_right,
@@ -471,19 +480,19 @@ class ReportFileBuilder:
                         cell_center,
                     ),
                     Paragraph(
-                        format_money(
+                        format_document_money(
                             grouped_item['discount_amount'],
                         ),
                         cell_right,
                     ),
                     Paragraph(
-                        format_money(
+                        format_document_money(
                             grouped_item['donation_amount'],
                         ),
                         cell_right,
                     ),
                     Paragraph(
-                        format_money(
+                        format_document_money(
                             grouped_item['total_amount'],
                         ),
                         cell_right,

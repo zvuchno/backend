@@ -16,3 +16,19 @@ def format_money(value: Decimal | None) -> str:
     )
 
     return f'{value:,.{MONEY_DISPLAY_PRECISION}f}'.replace(',', ' ')
+
+
+def format_document_money(value: Decimal) -> str:
+    """Форматирование денег для отчетов."""
+    if value is None:
+        return '0,00'
+
+    value = value.quantize(
+        MONEY_ROUNDING,
+        rounding=ROUND_HALF_UP,
+    )
+
+    return f'{value:,.{MONEY_DISPLAY_PRECISION}f}'.replace(',', ' ').replace(
+        '.',
+        ',',
+    )

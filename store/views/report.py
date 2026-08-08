@@ -16,6 +16,7 @@ from store.serializers import (
 class ArtistReportViewSet(ReadOnlyModelViewSet):
     """Финансовые отчеты текущего артиста."""
 
+    queryset = Report.objects.all()
     serializer_class = ArtistReportSerializer
     permission_classes = (IsArtistOrLabel,)
     filter_backends = (DjangoFilterBackend,)
