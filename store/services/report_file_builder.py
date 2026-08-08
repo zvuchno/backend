@@ -1,11 +1,11 @@
-"""Генерация PDF-файла отчета о продажах артиста."""
+"""Генерация PDF-файла агентского отчета."""
 
 import io
 from pathlib import Path
-from typing import Optional
 
+from django.utils import timezone
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
@@ -18,9 +18,12 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from common.utils import format_money
+
 from store.constants import ZERO_MONEY
 from store.models import Report
 from store.services.report import ReportService
+from users.models import ConsentDocument
 
 FONT_DIR = Path(__file__).resolve().parent / 'fonts'
 FONT_REGULAR = 'DejaVuSans'
@@ -33,13 +36,13 @@ pdfmetrics.registerFont(
 
 
 class ReportFileBuilder:
-    """Строит PDF-файл отчета на основе агрегированных данных Report."""
+    """Строит PDF агентского отчета."""
 
     TABLE_CELL_STYLE = ParagraphStyle(
         'TableCell',
         fontName=FONT_REGULAR,
-        fontSize=7,
-        wordWrap='CJK',
+        fontSize=8,
+        leading=10,
     )
     TABLE_CELL_RIGHT_STYLE = ParagraphStyle(
         'TableCellRight',
@@ -49,106 +52,308 @@ class ReportFileBuilder:
 
     @classmethod
     def build(cls, report: Report) -> io.BytesIO:
-        """Формирует PDF-файл отчета и возвращает буфер с содержимым."""
+        """Формирует PDF-файл отчета."""
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
-            pagesize=landscape(A4),
-            leftMargin=5 * mm,
-            rightMargin=5 * mm,
-            topMargin=10 * mm,
-            bottomMargin=10 * mm,
+            pagesize=A4,
+            leftMargin=15 * mm,
+            rightMargin=15 * mm,
+            topMargin=15 * mm,
+            bottomMargin=15 * mm,
         )
 
-        base_styles = getSampleStyleSheet()
+        styles = getSampleStyleSheet()
+
         title_style = ParagraphStyle(
-            'ReportTitle',
-            parent=base_styles['Title'],
+            'Title',
+            parent=styles['Title'],
             fontName=FONT_BOLD,
-            fontSize=16,
-            spaceAfter=4,
-        )
-        subtitle_style = ParagraphStyle(
-            'ReportSubtitle',
-            parent=base_styles['Normal'],
-            fontName=FONT_REGULAR,
             fontSize=10,
-            textColor=colors.grey,
-        )
-        section_style = ParagraphStyle(
-            'SectionHeader',
-            parent=base_styles['Heading2'],
-            fontName=FONT_BOLD,
-            fontSize=12,
-            spaceBefore=14,
-            spaceAfter=4,
+            leading=13,
+            alignment=1,
+            spaceAfter=0,
         )
         body_style = ParagraphStyle(
-            'ReportBody',
+            'Body',
             fontName=FONT_REGULAR,
             fontSize=10,
+            leading=14,
         )
+        section_style = ParagraphStyle(
+            'Section',
+            parent=body_style,
+            fontName=FONT_BOLD,
+            spaceAfter=3,
+        )
+        justify_body_style = ParagraphStyle(
+            'JustifyBody',
+            parent=body_style,
+            alignment=4,
+            leftIndent=0,
+            rightIndent=0,
+        )
+
         elements = []
-        elements.append(Paragraph('ZVUCHNO - Отчет о продажах', title_style))
+
+        report_date = report.updated_at.strftime('%d.%m.%Y')
+        offer = ConsentDocument.objects.filter(
+            document_type=ConsentDocument.DocumentType.ARTIST_OFFER,
+            is_active=True,
+        ).first()
+        agreement_date = (
+            timezone.localtime(offer.created_at).strftime('%d.%m.%Y')
+            if offer and offer.created_at
+            else ''
+        )
+        artist_status, principal = cls._get_principal(report)
+
         elements.append(
             Paragraph(
-                f'Артист: {report.artist.name} (ID: {report.artist.id})',
-                subtitle_style,
+                (
+                    f'Отчет агента от {report_date} '
+                    'об исполнении агентского поручения'
+                ),
+                ParagraphStyle(
+                    'T1',
+                    parent=title_style,
+                    spaceBefore=0,
+                    spaceAfter=0,
+                ),
+            ),
+        )
+
+        elements.append(
+            Paragraph(
+                'по Договору оферты для Продавцов на Платформе ЗВУЧНО от '
+                f'{agreement_date}',
+                ParagraphStyle(
+                    'T2',
+                    parent=body_style,
+                    alignment=1,
+                    spaceBefore=0,
+                    spaceAfter=0,
+                ),
             ),
         )
         elements.append(
             Paragraph(
-                f'Период: {report.period_start:%d.%m.%Y} '
-                f'— {report.period_end:%d.%m.%Y}',
-                subtitle_style,
+                (
+                    'Реализация товаров за период '
+                    f'с {report.period_start.strftime("%d.%m.%y")} '
+                    f'по {report.period_end.strftime("%d.%m.%y")}'
+                ),
+                ParagraphStyle(
+                    'T2',
+                    parent=body_style,
+                    alignment=1,
+                    spaceBefore=0,
+                    spaceAfter=0,
+                ),
             ),
         )
-        elements.append(Spacer(1, 4))
 
-        elements.append(Paragraph('Сводка', section_style))
-        elements.append(cls._build_summary_table(report))
+        elements.append(Spacer(1, 12))
 
-        elements.append(Paragraph('Детализация продаж', section_style))
-        details_table = cls._build_details_table(report)
-        if details_table is not None:
-            elements.append(details_table)
-        else:
-            elements.append(Paragraph('За период продаж не было.', body_style))
+        elements.append(
+            Paragraph(
+                ('Маркетплейс (агент): ИП Переведенцев Антон Андреевич'),
+                section_style,
+            ),
+        )
+
+        elements.append(
+            Paragraph(
+                (f'Продавец (принципал): {artist_status} {principal}'),
+                section_style,
+            ),
+        )
+
+        elements.append(Spacer(1, 10))
+
+        def make_list_item(
+            num: str,
+            text: str,
+            style,
+            col_width_num=8 * mm,
+        ) -> Table:
+            """Создает строку списка с фиксированным отступом."""
+            return Table(
+                [
+                    [
+                        Paragraph(num, style),
+                        Paragraph(text, style),
+                    ],
+                ],
+                colWidths=[col_width_num, None],
+                style=[
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2 * mm),
+                ],
+            )
+
+        elements.append(
+            make_list_item(
+                '1.',
+                'Маркетплейсом совершены действия по приему платежей от '
+                'покупателей, являющихся оплатой цены Товаров (Мерча или '
+                'Цифрового контента) в соответствии с Договором-офертой.',
+                justify_body_style,
+            ),
+        )
+
+        elements.append(
+            make_list_item(
+                '2.',
+                f'Агентское вознаграждение Маркетплейса по '
+                'данному отчету за отчетный период составляет '
+                f'{format_money(report.commission_amount)} рублей.',
+                justify_body_style,
+            ),
+        )
+
+        elements.append(
+            make_list_item(
+                '3.',
+                'Расшифровка платежей за Отчетный период:',
+                justify_body_style,
+            ),
+        )
+
+        elements.append(
+            Paragraph(
+                'руб.',
+                ParagraphStyle(
+                    'CurrencyLabel',
+                    parent=cls.TABLE_CELL_STYLE,
+                    alignment=2,
+                    spaceAfter=2,
+                ),
+            ),
+        )
+
+        elements.append(cls._build_payment_table(report))
+
+        elements.append(Spacer(1, 20))
+
+        elements.append(
+            Paragraph(
+                'Детализация информации о проданных Товарах:',
+                body_style,
+            ),
+        )
+
+        elements.append(Spacer(1, 6))
+        details = cls._build_details_table(report)
+
+        if details:
+            elements.append(details)
+
+        elements.append(Spacer(1, 10))
+
+        elements.append(
+            Paragraph(
+                (f'Итого: {format_money(report.sales_amount)} руб.'),
+                body_style,
+            ),
+        )
+
+        elements.append(Spacer(1, 10))
+
+        elements.append(
+            Paragraph(
+                (
+                    'Поручение считается исполненным Маркетплейсом '
+                    'надлежащим образом и принятым Продавцом '
+                    'в указанном Отчете объеме, если в течение '
+                    '3 календарных дней от Продавца не поступило '
+                    'мотивированных письменных возражений '
+                    'на адрес электронной почты Маркетплейса.'
+                ),
+                justify_body_style,
+            ),
+        )
 
         doc.build(elements)
         buffer.seek(0)
         return buffer
 
     @classmethod
-    def _build_summary_table(cls, report: Report) -> Table:
+    def _build_payment_table(cls, report: Report) -> Table:
+        """Таблица расчетов."""
+        left_style = cls.TABLE_CELL_STYLE
+        right_style = cls.TABLE_CELL_RIGHT_STYLE
+
         rows = [
-            ['Показатель', 'Значение'],
-            ['Количество заказов', str(report.orders_count)],
-            ['Количество товаров', str(report.items_count)],
-            ['Сумма доната, руб.', cls._fmt(report.donation_amount)],
-            ['Сумма скидки, руб.', cls._fmt(report.discount_amount)],
-            ['Продано товаров на сумму, руб.', cls._fmt(report.sales_amount)],
-            ['Комиссия платформы, руб.', cls._fmt(report.commission_amount)],
-            ['Стоимость доставки, руб.', cls._fmt(report.delivery_amount)],
-            ['К выплате, руб.', cls._fmt(report.payout_amount)],
+            [
+                Paragraph(
+                    'Получено от покупателей в адрес Продавца '
+                    'в счет заключенных договоров',
+                    left_style,
+                ),
+                Paragraph(format_money(report.sales_amount), right_style),
+            ],
+            [
+                Paragraph('Возвращено платежей покупателям', left_style),
+                Paragraph('0.00', right_style),
+            ],
+            [
+                Paragraph('Подлежит удержанию Маркетплейсом', left_style),
+                Paragraph(format_money(report.commission_amount), right_style),
+            ],
+            [
+                Paragraph(
+                    '&nbsp;&nbsp;- агентское вознаграждение',
+                    left_style,
+                ),
+                Paragraph(format_money(report.commission_amount), right_style),
+            ],
+            [
+                Paragraph(
+                    '&nbsp;&nbsp;- расходы, связанные с исполнением поручения',
+                    left_style,
+                ),
+                Paragraph('0.00', right_style),
+            ],
+            [
+                Paragraph(
+                    '&nbsp;&nbsp;- возвраты платежей покупателям',
+                    left_style,
+                ),
+                Paragraph('0.00', right_style),
+            ],
+            [
+                Paragraph(
+                    'Подлежит перечислению Маркетплейсом на счет Продавца',
+                    left_style,
+                ),
+                Paragraph(format_money(report.payout_amount), right_style),
+            ],
         ]
-        table = Table(rows, colWidths=[100 * mm, 35 * mm], hAlign='LEFT')
-        table.setStyle(cls._base_table_style(header_rows=1))
-        table.setStyle(
-            TableStyle([
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
-                ('FONTNAME', (0, -1), (-1, -1), FONT_BOLD),
-                ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),
-            ]),
+
+        table = Table(
+            rows,
+            colWidths=[
+                145 * mm,
+                35 * mm,
+            ],
         )
+
+        table.setStyle(
+            cls._base_table_style(),
+        )
+
         return table
 
     @classmethod
     def _build_details_table(
         cls,
         report: Report,
-    ) -> Optional[Table]:
+    ) -> Table | None:
+        """Детализация проданных товаров."""
         items = (
             ReportService
             .get_report_items_queryset(
@@ -157,119 +362,243 @@ class ReportFileBuilder:
                 period_end=report.period_end,
             )
             .select_related(
-                'order',
                 'product_variant__product',
             )
             .order_by('paid_at', 'order_id', 'id')
         )
-
-        header_style = ParagraphStyle(
-            'TableHeaderCell',
-            parent=cls.TABLE_CELL_STYLE,
-            fontName=FONT_BOLD,
-            textColor=colors.white,
-            alignment=1,
-        )
-        headers = [
-            'Дата',
-            '№ заказа',
-            'SKU',
-            'Товар',
-            'Кол-во',
-            'Цена',
-            'Донат',
-            'Скидка',
-            'Сумма',
-            'Промокод',
-        ]
-        rows = [[Paragraph(h, header_style) for h in headers]]
-        has_rows = False
-
-        for item in items.iterator(chunk_size=100):
-            product_info = item.product_info or {}
-            has_rows = True
-            line_total = max(
-                item.unit_price * item.quantity - item.promocode_discount,
-                ZERO_MONEY,
-            )
-            rows.append([
-                Paragraph(
-                    item.order.created_at.strftime('%d.%m.%y'),
-                    cls.TABLE_CELL_STYLE,
-                ),
-                Paragraph(str(item.order.order_number), cls.TABLE_CELL_STYLE),
-                Paragraph(product_info.get('sku', ''), cls.TABLE_CELL_STYLE),
-                Paragraph(
-                    f'{product_info.get("kind", "")} '
-                    f'{product_info.get("name", "")}',
-                    cls.TABLE_CELL_STYLE,
-                ),
-                Paragraph(str(item.quantity), cls.TABLE_CELL_RIGHT_STYLE),
-                Paragraph(
-                    cls._fmt(item.price_at_purchase),
-                    cls.TABLE_CELL_RIGHT_STYLE,
-                ),
-                Paragraph(cls._fmt(item.donation), cls.TABLE_CELL_RIGHT_STYLE),
-                Paragraph(
-                    cls._fmt(item.promocode_discount),
-                    cls.TABLE_CELL_RIGHT_STYLE,
-                ),
-                Paragraph(cls._fmt(line_total), cls.TABLE_CELL_RIGHT_STYLE),
-                Paragraph(
-                    product_info.get('promocode', ''),
-                    cls.TABLE_CELL_STYLE,
-                ),
-            ])
-
-        if not has_rows:
+        if not items.exists():
             return None
 
+        header_style = ParagraphStyle(
+            'DetailsHeaderStyle',
+            parent=cls.TABLE_CELL_STYLE,
+            fontName=FONT_REGULAR,
+            fontSize=8,
+            leading=10,
+            alignment=1,
+        )
+
+        cell_center = ParagraphStyle(
+            'DetailsCellCenter',
+            parent=cls.TABLE_CELL_STYLE,
+            alignment=1,
+            wordWrap='CJK',
+        )
+        cell_left = ParagraphStyle(
+            'DetailsCellLeft',
+            parent=cls.TABLE_CELL_STYLE,
+            alignment=0,
+            wordWrap='CJK',
+        )
+        cell_right = ParagraphStyle(
+            'DetailsCellRight',
+            parent=cls.TABLE_CELL_STYLE,
+            alignment=2,
+            wordWrap='CJK',
+        )
+
+        rows = [
+            [
+                Paragraph('№', header_style),
+                Paragraph('Наименование', header_style),
+                Paragraph('Цена', header_style),
+                Paragraph('Кол-во', header_style),
+                Paragraph('Скидка', header_style),
+                Paragraph('Доплата ', header_style),
+                Paragraph('Сумма', header_style),
+            ],
+        ]
+
+        grouped_items = {}
+
+        for item in items:
+            product_info = item.product_info or {}
+
+            product_name = (
+                f'{product_info.get("kind", "")} '
+                f'{product_info.get("name", "")}'
+            ).strip()
+
+            group_key = (
+                item.product_variant_id,
+                item.price_at_purchase,
+            )
+
+            if group_key not in grouped_items:
+                grouped_items[group_key] = {
+                    'name': product_name,
+                    'price': item.price_at_purchase,
+                    'quantity': 0,
+                    'discount_amount': ZERO_MONEY,
+                    'donation_amount': ZERO_MONEY,
+                    'total_amount': ZERO_MONEY,
+                }
+
+            grouped_item = grouped_items[group_key]
+
+            grouped_item['quantity'] += item.quantity
+            grouped_item['discount_amount'] += item.promocode_discount
+            grouped_item['donation_amount'] += item.donation
+            grouped_item['total_amount'] += item.line_total
+
+        for idx, grouped_item in enumerate(
+            grouped_items.values(),
+            start=1,
+        ):
+            rows.append(
+                [
+                    Paragraph(
+                        str(idx),
+                        cell_center,
+                    ),
+                    Paragraph(
+                        grouped_item['name'],
+                        cell_left,
+                    ),
+                    Paragraph(
+                        format_money(
+                            grouped_item['price'],
+                        ),
+                        cell_right,
+                    ),
+                    Paragraph(
+                        str(
+                            grouped_item['quantity'],
+                        ),
+                        cell_center,
+                    ),
+                    Paragraph(
+                        format_money(
+                            grouped_item['discount_amount'],
+                        ),
+                        cell_right,
+                    ),
+                    Paragraph(
+                        format_money(
+                            grouped_item['donation_amount'],
+                        ),
+                        cell_right,
+                    ),
+                    Paragraph(
+                        format_money(
+                            grouped_item['total_amount'],
+                        ),
+                        cell_right,
+                    ),
+                ],
+            )
+        # в сумме 180 мм
         table = Table(
             rows,
             colWidths=[
-                17 * mm,  # Дата
-                24 * mm,  # № заказа
-                26 * mm,  # sku
-                84 * mm,  # Товар
-                15 * mm,  # Кол-во
-                20 * mm,  # Цена
-                20 * mm,  # Донат
-                20 * mm,  # Скидка
-                20 * mm,  # Сумма
-                38 * mm,  # Промокод
+                8 * mm,
+                78 * mm,
+                20 * mm,
+                14 * mm,
+                20 * mm,
+                20 * mm,
+                20 * mm,
             ],
-            hAlign='LEFT',
+            hAlign='CENTER',
             repeatRows=1,
         )
-        table.setStyle(cls._base_table_style(header_rows=1))
+
+        table.setStyle(
+            TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), FONT_REGULAR),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ]),
+        )
+
         return table
 
-    @classmethod
-    def _base_table_style(cls, header_rows: int) -> TableStyle:
-        return TableStyle([
-            (
-                'BACKGROUND',
-                (0, 0),
-                (-1, header_rows - 1),
-                colors.HexColor('#2E2E2E'),
-            ),
-            ('TEXTCOLOR', (0, 0), (-1, header_rows - 1), colors.white),
-            ('FONTNAME', (0, 0), (-1, header_rows - 1), FONT_BOLD),
-            ('FONTNAME', (0, header_rows), (-1, -1), FONT_REGULAR),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
-            (
-                'ROWBACKGROUNDS',
-                (0, header_rows),
-                (-1, -1),
-                [colors.white, colors.HexColor('#F7F7F7')],
-            ),
-            ('TOPPADDING', (0, 0), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ])
+    @staticmethod
+    def _base_table_style() -> TableStyle:
+        return TableStyle(
+            [
+                (
+                    'VALIGN',
+                    (0, 0),
+                    (-1, -1),
+                    'MIDDLE',
+                ),
+                (
+                    'GRID',
+                    (0, 0),
+                    (-1, -1),
+                    0.5,
+                    colors.black,
+                ),
+                (
+                    'TOPPADDING',
+                    (0, 0),
+                    (-1, -1),
+                    4,
+                ),
+                (
+                    'BOTTOMPADDING',
+                    (0, 0),
+                    (-1, -1),
+                    4,
+                ),
+            ],
+        )
 
     @staticmethod
-    def _fmt(value) -> str:
-        return f'{value:,.2f}'.replace(',', ' ').replace('.', ',')
+    def _get_principal(
+        report,
+    ) -> tuple[str, str]:
+        """Возвращает статус и наименование принципала."""
+        legal_profile = getattr(
+            report.artist.user,
+            'legal_profile',
+            None,
+        )
+
+        if legal_profile is None:
+            return '', report.artist.name
+
+        recipient_type = legal_profile.recipient_type
+        artist_status = legal_profile.get_recipient_type_display()
+
+        if recipient_type == legal_profile.RecipientType.LEGAL_ENTITY:
+            company_data = getattr(
+                legal_profile,
+                'company_data',
+                None,
+            )
+
+            principal = (
+                company_data.company_name
+                if company_data and company_data.company_name
+                else report.artist.name
+            )
+
+            return artist_status, principal
+
+        identity_data = getattr(
+            legal_profile,
+            'identity_data',
+            None,
+        )
+
+        if identity_data is None:
+            return artist_status, report.artist.name
+
+        principal = ' '.join(
+            part
+            for part in (
+                identity_data.last_name,
+                identity_data.first_name,
+                identity_data.middle_name,
+            )
+            if part
+        )
+
+        return artist_status, principal or report.artist.name

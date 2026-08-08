@@ -1,7 +1,5 @@
 import django_filters
 
-from store.models import Report
-
 
 class ArtistReportFilter(django_filters.FilterSet):
     """Фильтр отчетов артиста по периоду и типу."""
@@ -31,7 +29,3 @@ class ArtistReportFilter(django_filters.FilterSet):
             )
 
         return queryset
-
-    class Meta:
-        model = Report
-        fields = ('period_type',)

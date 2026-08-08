@@ -48,12 +48,6 @@ artist_reports_schema = extend_schema_view(
                 ],
             ),
             OpenApiParameter(
-                name='period_type',
-                type=OpenApiTypes.STR,
-                enum=['day', 'month'],
-                description='Тип отчета: day — дневной, month — месячный.',
-            ),
-            OpenApiParameter(
                 name='limit',
                 type=OpenApiTypes.INT,
                 description='Количество элементов в ответе',

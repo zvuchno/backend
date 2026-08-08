@@ -18,17 +18,15 @@ class ReportAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'artist',
-        'period_type',
         'period_start',
         'period_end',
         'status',
         'get_sales_amount',
-        'created_at',
+        'updated_at',
     )
     list_filter = (
         'status',
-        'period_type',
-        'created_at',
+        'updated_at',
     )
     search_fields = (
         'artist__name',
@@ -37,15 +35,11 @@ class ReportAdmin(admin.ModelAdmin):
     readonly_fields = (
         'status',
         'artist',
-        'period_type',
         'period_start',
         'period_end',
-        'orders_count',
-        'items_count',
         'get_sales_amount',
         'get_donation_amount',
         'get_discount_amount',
-        'get_delivery_amount',
         'get_commission_amount',
         'get_payout_amount',
         'report_file_link',
@@ -81,22 +75,17 @@ class ReportAdmin(admin.ModelAdmin):
         return format_money(obj.payout_amount)
 
     @admin.display(
-        description='Донаты (руб.)',
+        description='Добровольные доплаты (руб.)',
         ordering='donation_amount',
     )
     def get_donation_amount(self, obj):
-        """Сумма донатов."""
+        """Добровольные доплаты."""
         return format_money(obj.donation_amount)
 
     @admin.display(description='Скидки по промокоду (руб.)')
     def get_discount_amount(self, obj):
-        """Скидка по промокоду."""
+        """Скидки по промокоду."""
         return format_money(obj.discount_amount)
-
-    @admin.display(description='Стоимость доставок (руб.)')
-    def get_delivery_amount(self, obj):
-        """Стоимость доставки."""
-        return format_money(obj.delivery_amount)
 
     @admin.display(description='Файл отчета')
     def report_file_link(self, obj):
@@ -122,16 +111,12 @@ class ReportAdmin(admin.ModelAdmin):
                 'fields': (
                     'status',
                     'artist',
-                    'period_type',
                     'period_start',
                     'period_end',
-                    'orders_count',
-                    'items_count',
+                    'get_sales_amount',
                     'get_donation_amount',
                     'get_discount_amount',
-                    'get_sales_amount',
                     'get_commission_amount',
-                    'get_delivery_amount',
                     'get_payout_amount',
                 ),
             },
@@ -152,3 +137,11 @@ class ReportAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    def has_add_permission(self, request):
+        """Запрещает ручное создание через кнопку 'Добавить'."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает ручное сохранение через кнопки 'Сохранить'."""
+        return False
