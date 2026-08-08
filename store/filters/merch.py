@@ -1,5 +1,6 @@
 """Фильтры для мерча."""
 
+import django_filters
 from django.db import models
 from django_filters import rest_framework as filters
 
@@ -13,7 +14,8 @@ class MerchFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     kind = filters.BaseInFilter(field_name='kind__slug', lookup_expr='in')
     album = filters.BaseInFilter(field_name='album_id', lookup_expr='in')
-    artist = filters.BaseInFilter(
+    artist_id = django_filters.NumberFilter()
+    artist_slug = filters.BaseInFilter(
         field_name='artist__slug',
         lookup_expr='in',
     )
@@ -21,7 +23,7 @@ class MerchFilter(filters.FilterSet):
 
     class Meta:
         model = Merch
-        fields = ('name', 'kind', 'album', 'artist')
+        fields = ('name', 'kind', 'album', 'artist_id', 'artist_slug')
 
     def filter_in_stock(self, queryset, name, value):
         has_prop_stock = (

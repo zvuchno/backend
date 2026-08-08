@@ -36,6 +36,10 @@ class MerchReadSerializer(serializers.ModelSerializer):
     sku = serializers.SerializerMethodField()
     stock = serializers.SerializerMethodField()
     main_image = serializers.SerializerMethodField()
+    artist_name = serializers.CharField(
+        source='artist.name',
+        read_only=True,
+    )
 
     class Meta:
         model = Merch
@@ -43,6 +47,7 @@ class MerchReadSerializer(serializers.ModelSerializer):
             'id',
             'sku',
             'name',
+            'artist_name',
             'description',
             'price',
             'stock',

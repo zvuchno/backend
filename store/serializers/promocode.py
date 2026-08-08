@@ -29,11 +29,17 @@ from users.models import ArtistProfile
 class PromocodeReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Promocode."""
 
+    artist_name = serializers.CharField(
+        source='artist.name',
+        read_only=True,
+    )
+
     class Meta:
         model = Promocode
         fields = (
             'id',
             'artist',
+            'artist_name',
             'code',
             'discount_value',
             'discount_type',
