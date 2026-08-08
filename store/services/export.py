@@ -46,15 +46,14 @@ class SalesExportService:
             )
             .select_related(
                 'order',
-                'product_variant__product',
             )
-            .prefetch_related('order__payments')
             .order_by('paid_at', 'order_id', 'id')
         )
 
         response = HttpResponse(
-            content_type='text/csv; charset=utf-8-sig',
+            content_type='text/csv; charset=utf-8',
         )
+        response.write('\ufeff')
         response['Content-Disposition'] = (
             f'attachment; filename="sales_{period_start}_{period_end}.csv"'
         )
