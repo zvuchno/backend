@@ -28,4 +28,7 @@ def format_document_money(value: Decimal) -> str:
         rounding=ROUND_HALF_UP,
     )
 
-    return f'{value:,.2f}'.replace(',', ' ').replace('.', ',')
+    return f'{value:,.{MONEY_DISPLAY_PRECISION}f}'.replace(',', ' ').replace(
+        '.',
+        ',',
+    )
