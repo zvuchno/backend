@@ -14,9 +14,10 @@ class SalesExportService:
     """Формирует CSV с детализацией продаж."""
 
     HEADERS = [
-        'Дата',
+        'Дата/время',
         '№ заказа',
         'Артист',
+        'Тип',
         'Наименование',
         'SKU',
         'Количество',
@@ -46,6 +47,7 @@ class SalesExportService:
             )
             .select_related(
                 'order',
+                'product_variant',
             )
             .order_by('paid_at', 'order_id', 'id')
         )
@@ -67,6 +69,11 @@ class SalesExportService:
             paid_at = (
                 item.paid_at.strftime('%d.%m.%Y %H:%M') if item.paid_at else ''
             )
+            product_type = (
+                'цифровой'
+                if item.product_variant.stock is None
+                else 'физический'
+            )
 
             payout = max(
                 item.line_total - item.platform_commission,
@@ -77,6 +84,7 @@ class SalesExportService:
                 paid_at,
                 item.order.order_number,
                 info.get('artist_name', ''),
+                product_type,
                 f'{info.get("kind", "")} {info.get("name", "")}',
                 info.get('sku', ''),
                 item.quantity,

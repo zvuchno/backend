@@ -6,6 +6,7 @@ CSV-экспорта продаж в Swagger/ReDoc.
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
+    OpenApiExample,
     OpenApiParameter,
     extend_schema,
 )
@@ -26,20 +27,26 @@ sales_export_schema = extend_schema(
             type=OpenApiTypes.DATE,
             location=OpenApiParameter.QUERY,
             required=True,
-            description=(
-                'Дата начала периода в формате YYYY-MM-DD. '
-                'Например: 2026-07-01.'
-            ),
+            description=('Дата начала периода в формате YYYY-MM-DD. '),
+            examples=[
+                OpenApiExample(
+                    'Пример',
+                    value='2026-06-01',
+                ),
+            ],
         ),
         OpenApiParameter(
             name='period_end',
             type=OpenApiTypes.DATE,
             location=OpenApiParameter.QUERY,
             required=True,
-            description=(
-                'Дата окончания периода в формате YYYY-MM-DD. '
-                'Например: 2026-07-31.'
-            ),
+            description=('Дата окончания периода в формате YYYY-MM-DD. '),
+            examples=[
+                OpenApiExample(
+                    'Пример',
+                    value='2026-06-30',
+                ),
+            ],
         ),
     ],
     responses={
