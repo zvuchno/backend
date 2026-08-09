@@ -1,6 +1,7 @@
 """Сериализаторы профиля артиста."""
 
 from django.db import IntegrityError, transaction
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from users.helpers import ensure_listener_profile
@@ -291,6 +292,11 @@ class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
         request = self.context.get('request')
         return bool(request and obj.user_id == request.user.id)
 
+    @extend_schema_field(
+        ArtistProfileClaimInvitationShortSerializer(
+            allow_null=True,
+        ),
+    )
     def get_claim_invitation(self, obj: ArtistProfile):
         """Возвращает последнее приглашение на управление профилем."""
         claims = getattr(obj, 'prefetched_claim_invitations', ())

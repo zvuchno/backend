@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 
-from common.permissions import IsArtistOrLabel, IsLabel
+from common.permissions import IsLabel
 
 from users.schemas import (
     artist_profile_claim_invitation_create_schema,
@@ -24,7 +24,7 @@ class ArtistProfileClaimInvitationCreateView(
 ):
     """Представление для создания инвайта к управлению артистом."""
 
-    permission_classes = (IsArtistOrLabel,)
+    permission_classes = (IsLabel,)
     serializer_class = ArtistProfileClaimInvitationCreateSerializer
 
     def post(self, request, *args, **kwargs):
@@ -52,7 +52,8 @@ class ArtistProfileClaimInvitationResendView(
 ):
     """Представление для повторной отправки приглашения."""
 
-    permission_classes = (IsArtistOrLabel,)
+    permission_classes = (IsLabel,)
+    serializer_class = ArtistProfileClaimInvitationSerializer
 
     def post(self, request, *args, **kwargs):
         artist = self.get_artist_profile()
@@ -75,6 +76,7 @@ class ArtistProfileClaimInvitationRevokeView(
     """Представление для отзыва инвайта."""
 
     permission_classes = (IsLabel,)
+    serializer_class = ArtistProfileClaimInvitationSerializer
 
     def post(self, request, *args, **kwargs):
         artist = self.get_artist_profile()
