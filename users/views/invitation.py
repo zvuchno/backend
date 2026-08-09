@@ -4,6 +4,11 @@ from rest_framework.response import Response
 
 from common.permissions import IsArtistOrLabel, IsLabel
 
+from users.schemas import (
+    artist_profile_claim_invitation_create_schema,
+    artist_profile_claim_invitation_resend_schema,
+    artist_profile_claim_invitation_revoke_schema,
+)
 from users.serializers import (
     ArtistProfileClaimInvitationCreateSerializer,
     ArtistProfileClaimInvitationSerializer,
@@ -12,6 +17,7 @@ from users.services.invitation import ArtistProfileClaimInvitationService
 from users.views.mixins import ManagedArtistProfileMixin
 
 
+@artist_profile_claim_invitation_create_schema
 class ArtistProfileClaimInvitationCreateView(
     ManagedArtistProfileMixin,
     GenericAPIView,
@@ -39,6 +45,7 @@ class ArtistProfileClaimInvitationCreateView(
         )
 
 
+@artist_profile_claim_invitation_resend_schema
 class ArtistProfileClaimInvitationResendView(
     ManagedArtistProfileMixin,
     GenericAPIView,
@@ -60,6 +67,7 @@ class ArtistProfileClaimInvitationResendView(
         )
 
 
+@artist_profile_claim_invitation_revoke_schema
 class ArtistProfileClaimInvitationRevokeView(
     ManagedArtistProfileMixin,
     GenericAPIView,
@@ -68,7 +76,7 @@ class ArtistProfileClaimInvitationRevokeView(
 
     permission_classes = (IsLabel,)
 
-    def delete(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         artist = self.get_artist_profile()
 
         claim = ArtistProfileClaimInvitationService.revoke(

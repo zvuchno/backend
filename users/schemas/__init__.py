@@ -41,6 +41,11 @@ from .auth import (
     token_verify_schema,
 )
 from .consent_documents import consent_doc_schema
+from .invitation import (
+    artist_profile_claim_invitation_create_schema,
+    artist_profile_claim_invitation_resend_schema,
+    artist_profile_claim_invitation_revoke_schema,
+)
 from .listener_profile import listener_me_schema
 from .registration import (
     artist_registration_schema,
@@ -58,6 +63,9 @@ __all__ = [
     'artist_list_schema',
     'artist_me_schema',
     'artist_pickup_point_schema',
+    'artist_profile_claim_invitation_create_schema',
+    'artist_profile_claim_invitation_resend_schema',
+    'artist_profile_claim_invitation_revoke_schema',
     'artist_public_schema',
     'artist_registration_schema',
     'artist_shipping_point_schema',
