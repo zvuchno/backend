@@ -41,6 +41,11 @@ from .cookie_auth import (
     CookieLogoutView,
     CookieRefreshView,
 )
+from .invitation import (
+    ArtistProfileClaimInvitationCreateView,
+    ArtistProfileClaimInvitationResendView,
+    ArtistProfileClaimInvitationRevokeView,
+)
 from .jwt import (
     CustomLogoutView,
     CustomTokenObtainPairView,
@@ -66,6 +71,9 @@ __all__ = [
     'ArtistListView',
     'ArtistMeView',
     'ArtistPickupPointViewSet',
+    'ArtistProfileClaimInvitationCreateView',
+    'ArtistProfileClaimInvitationResendView',
+    'ArtistProfileClaimInvitationRevokeView',
     'ArtistPublicView',
     'ArtistRegistrationView',
     'ArtistShippingPointView',

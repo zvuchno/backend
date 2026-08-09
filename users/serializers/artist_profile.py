@@ -7,6 +7,7 @@ from users.helpers import ensure_listener_profile
 from users.models import (
     ArtistContact,
     ArtistProfile,
+    ArtistProfileClaimInvitation,
     ArtistProfileType,
     ArtistSocial,
 )
@@ -243,16 +244,42 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
             raise
 
 
+class ArtistProfileClaimInvitationShortSerializer(
+    serializers.ModelSerializer,
+):
+    """Краткое состояние приглашения на управление профилем."""
+
+    email = serializers.EmailField(
+        source='invitation.recipient_email',
+    )
+    status = serializers.CharField(
+        source='invitation.status',
+    )
+    expires_at = serializers.DateTimeField(
+        source='invitation.expires_at',
+    )
+
+    class Meta:
+        model = ArtistProfileClaimInvitation
+        fields = (
+            'email',
+            'status',
+            'expires_at',
+        )
+
+
 class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
     """Профиль, доступный для управления текущему аккаунту."""
 
     has_account = serializers.SerializerMethodField()
     is_self = serializers.SerializerMethodField()
+    claim_invitation = serializers.SerializerMethodField()
 
     class Meta(ArtistPublicShortSerializer.Meta):
         fields = ArtistPublicShortSerializer.Meta.fields + (
             'has_account',
             'is_self',
+            'claim_invitation',
         )
 
     def get_has_account(self, obj: ArtistProfile) -> bool:
@@ -263,6 +290,17 @@ class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
         """Определяет, принадлежит ли профиль текущему аккаунту."""
         request = self.context.get('request')
         return bool(request and obj.user_id == request.user.id)
+
+    def get_claim_invitation(self, obj: ArtistProfile):
+        """Возвращает последнее приглашение на управление профилем."""
+        claims = getattr(obj, 'prefetched_claim_invitations', ())
+
+        if not claims:
+            return None
+
+        return ArtistProfileClaimInvitationShortSerializer(
+            claims[0],
+        ).data
 
 
 class ManagedArtistProfileCreateSerializer(serializers.ModelSerializer):

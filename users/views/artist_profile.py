@@ -1,6 +1,6 @@
 """Представления профиля артиста."""
 
-from django.db.models import Case, Q, When
+from django.db.models import Case, Prefetch, Q, When
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status
 from rest_framework.generics import (
@@ -23,7 +23,7 @@ from common.permissions import (
 )
 
 from users.filters import ArtistFilter
-from users.models import ArtistProfile
+from users.models import ArtistProfile, ArtistProfileClaimInvitation
 from users.schemas import (
     artist_cover_update_schema,
     artist_list_schema,
@@ -173,6 +173,10 @@ class LabelManagedProfileListView(ListCreateAPIView):
         """Возвращает профили, доступные текущему лейблу для управления."""
         label = self.request.user.artist_profile
 
+        claim_queryset = ArtistProfileClaimInvitation.objects.select_related(
+            'invitation',
+        ).order_by('-invitation__created_at')
+
         return (
             ArtistProfile.objects
             .filter(
@@ -180,6 +184,13 @@ class LabelManagedProfileListView(ListCreateAPIView):
                 is_active=True,
             )
             .select_related('user')
+            .prefetch_related(
+                Prefetch(
+                    'claim_invitations',
+                    queryset=claim_queryset,
+                    to_attr='prefetched_claim_invitations',
+                ),
+            )
             .order_by(
                 Case(
                     When(pk=label.pk, then=0),

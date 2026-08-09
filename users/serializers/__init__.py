@@ -40,6 +40,10 @@ from .cookie_auth import (
     CookieLoginSerializer,
     CookieRefreshResponseSerializer,
 )
+from .invitation import (
+    ArtistProfileClaimInvitationCreateSerializer,
+    ArtistProfileClaimInvitationSerializer,
+)
 from .jwt import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
@@ -55,6 +59,8 @@ __all__ = [
     'ArtistLegalProfileSerializer',
     'ArtistLegalSerializer',
     'ArtistMeSerializer',
+    'ArtistProfileClaimInvitationCreateSerializer',
+    'ArtistProfileClaimInvitationSerializer',
     'ArtistProfileUpdateSerializer',
     'ArtistPickupPointManageSerializer',
     'ArtistPublicSerializer',

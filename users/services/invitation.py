@@ -28,7 +28,6 @@ from users.models import (
 User = get_user_model()
 
 INVITATION_TOKEN_BYTES = 32
-INVITATION_TTL_DAYS = 7
 
 
 def build_artist_profile_claim_url(token: str) -> str:
@@ -65,6 +64,12 @@ class ArtistProfileClaimInvitationService:
     ) -> ArtistProfileClaimInvitation:
         """Создаёт приглашение на управление профилем артиста."""
         email = normalize_email(email)
+        artist = (
+            ArtistProfile.objects
+            .select_for_update()
+            .select_related('label')
+            .get(pk=artist.pk)
+        )
 
         cls._validate_artist(
             artist=artist,
@@ -81,7 +86,7 @@ class ArtistProfileClaimInvitationService:
             created_by=created_by,
             expires_at=timezone.now()
             + timedelta(
-                days=INVITATION_TTL_DAYS,
+                days=settings.INVITATION_TTL_DAYS,
             ),
         )
 
@@ -193,7 +198,7 @@ class ArtistProfileClaimInvitationService:
         actor,
     ) -> ArtistProfileClaimInvitation:
         """Повторно отправляет приглашение на управление профилем артиста."""
-        cls._validate_actor(
+        cls._validate_label(
             artist=artist,
             actor=actor,
         )
@@ -230,7 +235,7 @@ class ArtistProfileClaimInvitationService:
         actor,
     ) -> ArtistProfileClaimInvitation:
         """Отзывает приглашение на управление профилем артиста."""
-        cls._validate_actor(
+        cls._validate_label(
             artist=artist,
             actor=actor,
         )
@@ -243,19 +248,15 @@ class ArtistProfileClaimInvitationService:
                 'detail': 'Принятое приглашение нельзя отозвать.',
             })
 
-        if invitation.status == TokenInvitationStatus.REVOKED:
+        if invitation.status != TokenInvitationStatus.PENDING:
             raise ValidationError({
-                'detail': 'Приглашение уже отозвано.',
+                'detail': 'Можно отозвать только активное приглашение.',
             })
 
         invitation.status = TokenInvitationStatus.REVOKED
-        invitation.responded_by = None
-        invitation.responded_at = None
         invitation.save(
             update_fields=(
                 'status',
-                'responded_by',
-                'responded_at',
                 'updated_at',
             ),
         )
@@ -290,7 +291,7 @@ class ArtistProfileClaimInvitationService:
             )
 
     @staticmethod
-    def _validate_actor(
+    def _validate_label(
         *,
         artist: ArtistProfile,
         actor,
@@ -305,6 +306,10 @@ class ArtistProfileClaimInvitationService:
             raise PermissionDenied(
                 'Вы не управляете лейблом этого артиста.',
             )
+        if artist.profile_type != ArtistProfileType.ARTIST:
+            raise ValidationError({
+                'artist': 'Операция доступна только для профиля артиста.',
+            })
 
     @staticmethod
     def _validate_email(email: str) -> None:
@@ -419,7 +424,7 @@ class ArtistProfileClaimInvitationService:
         invitation.token_hash = hash_invitation_token(raw_token)
         invitation.status = TokenInvitationStatus.PENDING
         invitation.expires_at = timezone.now() + timedelta(
-            days=INVITATION_TTL_DAYS,
+            days=settings.INVITATION_TTL_DAYS,
         )
         invitation.responded_by = None
         invitation.responded_at = None

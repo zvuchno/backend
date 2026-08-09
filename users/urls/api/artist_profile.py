@@ -9,6 +9,9 @@ from users.views import (
     ArtistListView,
     ArtistMeView,
     ArtistPickupPointViewSet,
+    ArtistProfileClaimInvitationCreateView,
+    ArtistProfileClaimInvitationResendView,
+    ArtistProfileClaimInvitationRevokeView,
     ArtistPublicView,
     ArtistShippingPointView,
     ArtistStoreSettingsView,
@@ -74,6 +77,21 @@ urlpatterns = [
         'me/managed-profiles/<int:profile_id>/',
         ManagedArtistProfileView.as_view(),
         name='managed_profile_detail',
+    ),
+    path(
+        'me/managed-profiles/<int:profile_id>/claim-invitation/',
+        ArtistProfileClaimInvitationCreateView.as_view(),
+        name='managed_profile_claim_invitation_create',
+    ),
+    path(
+        'me/managed-profiles/<int:profile_id>/claim-invitation/resend/',
+        ArtistProfileClaimInvitationResendView.as_view(),
+        name='managed_profile_claim_invitation_resend',
+    ),
+    path(
+        'me/managed-profiles/<int:profile_id>/claim-invitation/revoke/',
+        ArtistProfileClaimInvitationRevokeView.as_view(),
+        name='managed_profile_claim_invitation_revoke',
     ),
     path(
         'me/managed-profiles/<int:profile_id>/pickup-points/',
