@@ -1,4 +1,7 @@
 from .email import (
+    send_artist_profile_claim_accepted_mail,
+    send_artist_profile_claim_invitation_mail,
+    send_artist_profile_claim_rejected_mail,
     send_email_verification_mail,
     send_password_reset_email,
 )
@@ -28,6 +31,9 @@ __all__ = [
     'get_user_from_uid',
     'set_user_password',
     'verify_email_token',
+    'send_artist_profile_claim_accepted_mail',
+    'send_artist_profile_claim_invitation_mail',
+    'send_artist_profile_claim_rejected_mail',
     'SocialAuthService',
     'send_email_verification_mail',
     'send_password_reset_email',
