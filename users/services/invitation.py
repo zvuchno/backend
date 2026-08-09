@@ -2,6 +2,7 @@ import hashlib
 import secrets
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
@@ -11,18 +12,17 @@ from rest_framework.serializers import ValidationError
 from common.utils import normalize_email
 from common.utils.urls import build_frontend_url
 
-from config import settings
+from .email import (
+    send_artist_profile_claim_accepted_mail,
+    send_artist_profile_claim_invitation_mail,
+    send_artist_profile_claim_rejected_mail,
+)
 from users.models import (
     ArtistProfile,
     ArtistProfileClaimInvitation,
     ArtistProfileType,
     TokenInvitation,
     TokenInvitationStatus,
-)
-from users.services import (
-    send_artist_profile_claim_accepted_mail,
-    send_artist_profile_claim_invitation_mail,
-    send_artist_profile_claim_rejected_mail,
 )
 
 User = get_user_model()
@@ -238,6 +238,126 @@ class ArtistProfileClaimInvitationService:
                 to_email=invitation.created_by.email,
                 artist_name=claim.artist.name,
                 recipient_email=invitation.recipient_email,
+            ),
+        )
+
+        return claim
+
+    @classmethod
+    @transaction.atomic
+    def resend(
+        cls,
+        *,
+        artist: ArtistProfile,
+        actor,
+    ) -> ArtistProfileClaimInvitation:
+        """Повторно отправляет приглашение на управление профилем артиста."""
+        cls._validate_artist(
+            artist=artist,
+            created_by=actor,
+        )
+
+        claim = (
+            ArtistProfileClaimInvitation.objects
+            .select_for_update()
+            .select_related('invitation', 'artist__label')
+            .filter(artist=artist)
+            .order_by('-invitation__created_at')
+            .first()
+        )
+
+        if claim is None:
+            raise ValidationError({
+                'detail': 'Для профиля ещё не создавалось приглашение.',
+            })
+
+        invitation = claim.invitation
+
+        if invitation.status == TokenInvitationStatus.ACCEPTED:
+            raise ValidationError({
+                'detail': 'Приглашение уже принято.',
+            })
+
+        raw_token = generate_invitation_token()
+
+        invitation.token_hash = hash_invitation_token(raw_token)
+        invitation.status = TokenInvitationStatus.PENDING
+        invitation.expires_at = timezone.now() + timedelta(
+            days=INVITATION_TTL_DAYS,
+        )
+        invitation.responded_by = None
+        invitation.responded_at = None
+        invitation.save(
+            update_fields=(
+                'token_hash',
+                'status',
+                'expires_at',
+                'responded_by',
+                'responded_at',
+                'updated_at',
+            ),
+        )
+
+        transaction.on_commit(
+            lambda: send_artist_profile_claim_invitation_mail(
+                to_email=invitation.recipient_email,
+                artist_name=artist.name,
+                label_name=artist.label.name,
+                invitation_url=build_artist_profile_claim_url(raw_token),
+            ),
+        )
+
+        return claim
+
+    @classmethod
+    @transaction.atomic
+    def revoke(
+        cls,
+        *,
+        artist: ArtistProfile,
+        actor,
+    ) -> ArtistProfileClaimInvitation:
+        """Отзывает приглашение на управление профилем артиста."""
+        cls._validate_artist(
+            artist=artist,
+            created_by=actor,
+        )
+
+        claim = (
+            ArtistProfileClaimInvitation.objects
+            .select_for_update()
+            .select_related('invitation')
+            .filter(artist=artist)
+            .order_by('-invitation__created_at')
+            .first()
+        )
+
+        if claim is None:
+            raise ValidationError({
+                'detail': 'Для профиля ещё не создавалось приглашение.',
+            })
+
+        invitation = claim.invitation
+
+        if invitation.status == TokenInvitationStatus.ACCEPTED:
+            raise ValidationError({
+                'detail': 'Принятое приглашение нельзя отозвать.',
+            })
+
+        if invitation.status == TokenInvitationStatus.REVOKED:
+            raise ValidationError({
+                'detail': 'Приглашение уже отозвано.',
+            })
+
+        invitation.status = TokenInvitationStatus.REVOKED
+        invitation.responded_by = None
+        invitation.responded_at = None
+        invitation.save(
+            update_fields=(
+                'status',
+                'responded_by',
+                'responded_at',
+                'updated_at',
             ),
         )
 
