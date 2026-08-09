@@ -3,7 +3,7 @@ from django.db import models
 
 from common.models.abstract import TimestampModel
 
-from users.models import ArtistProfile
+from .artist import ArtistProfile
 
 
 class TokenInvitationStatus(models.TextChoices):
