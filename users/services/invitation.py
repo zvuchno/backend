@@ -71,7 +71,7 @@ class ArtistProfileClaimInvitationService:
             created_by=created_by,
         )
         cls._validate_email(email)
-        cls._validate_pending_claim(artist)
+        cls._validate_claim_not_exists(artist)
 
         raw_token = generate_invitation_token()
 
@@ -79,7 +79,10 @@ class ArtistProfileClaimInvitationService:
             recipient_email=email,
             token_hash=hash_invitation_token(raw_token),
             created_by=created_by,
-            expires_at=timezone.now() + timedelta(days=INVITATION_TTL_DAYS),
+            expires_at=timezone.now()
+            + timedelta(
+                days=INVITATION_TTL_DAYS,
+            ),
         )
 
         claim = ArtistProfileClaimInvitation.objects.create(
@@ -87,13 +90,10 @@ class ArtistProfileClaimInvitationService:
             artist=artist,
         )
 
-        transaction.on_commit(
-            lambda: send_artist_profile_claim_invitation_mail(
-                to_email=email,
-                artist_name=artist.name,
-                label_name=artist.label.name,
-                invitation_url=build_artist_profile_claim_url(raw_token),
-            ),
+        cls._send_invitation_after_commit(
+            invitation=invitation,
+            artist=artist,
+            raw_token=raw_token,
         )
 
         return claim
@@ -107,36 +107,10 @@ class ArtistProfileClaimInvitationService:
         user,
     ) -> ArtistProfileClaimInvitation:
         """Принимает приглашение на управление профилем артиста."""
-        invitation = (
-            TokenInvitation.objects
-            .select_for_update()
-            .select_related('artist_profile_claim')
-            .get(
-                token_hash=hash_invitation_token(token),
-            )
+        invitation = cls._get_pending_invitation(
+            token=token,
+            user=user,
         )
-
-        now = timezone.now()
-
-        if invitation.expires_at <= now:
-            raise ValidationError({
-                'detail': 'Срок действия приглашения истёк.',
-            })
-
-        if invitation.status != TokenInvitationStatus.PENDING:
-            raise ValidationError({
-                'status': (
-                    f'Приглашение уже имеет статус '
-                    f'«{invitation.get_status_display()}».'
-                ),
-            })
-
-        if normalize_email(invitation.recipient_email) != normalize_email(
-            user.email,
-        ):
-            raise ValidationError({
-                'email': 'Нельзя принять приглашение этим аккаунтом.',
-            })
 
         artist = ArtistProfile.objects.select_for_update().get(
             pk=invitation.artist_profile_claim.artist_id,
@@ -155,23 +129,20 @@ class ArtistProfileClaimInvitationService:
         artist.user = user
         artist.save(update_fields=('user',))
 
-        invitation.status = TokenInvitationStatus.ACCEPTED
-        invitation.responded_by = user
-        invitation.responded_at = now
-        invitation.save(
-            update_fields=(
-                'status',
-                'responded_by',
-                'responded_at',
-                'updated_at',
-            ),
+        cls._set_response(
+            invitation=invitation,
+            status=TokenInvitationStatus.ACCEPTED,
+            user=user,
         )
 
+        to_email = invitation.created_by.email
+        artist_name = artist.name
+        recipient_email = user.email
         transaction.on_commit(
             lambda: send_artist_profile_claim_accepted_mail(
-                to_email=invitation.created_by.email,
-                artist_name=artist.name,
-                recipient_email=user.email,
+                to_email=to_email,
+                artist_name=artist_name,
+                recipient_email=recipient_email,
             ),
         )
 
@@ -186,58 +157,28 @@ class ArtistProfileClaimInvitationService:
         user,
     ) -> ArtistProfileClaimInvitation:
         """Отклоняет приглашение на управление профилем артиста."""
-        invitation = (
-            TokenInvitation.objects
-            .select_for_update()
-            .select_related(
-                'artist_profile_claim__artist__label',
-            )
-            .get(
-                token_hash=hash_invitation_token(token),
-            )
+        invitation = cls._get_pending_invitation(
+            token=token,
+            user=user,
         )
 
-        now = timezone.now()
-
-        if invitation.expires_at <= now:
-            raise ValidationError({
-                'detail': 'Срок действия приглашения истёк.',
-            })
-
-        if invitation.status != TokenInvitationStatus.PENDING:
-            raise ValidationError({
-                'status': (
-                    f'Приглашение уже имеет статус '
-                    f'«{invitation.get_status_display()}».'
-                ),
-            })
-
-        if normalize_email(invitation.recipient_email) != normalize_email(
-            user.email,
-        ):
-            raise ValidationError({
-                'email': 'Нельзя отклонить приглашение этим аккаунтом.',
-            })
-
-        invitation.status = TokenInvitationStatus.REJECTED
-        invitation.responded_by = user
-        invitation.responded_at = now
-        invitation.save(
-            update_fields=(
-                'status',
-                'responded_by',
-                'responded_at',
-                'updated_at',
-            ),
+        cls._set_response(
+            invitation=invitation,
+            status=TokenInvitationStatus.REJECTED,
+            user=user,
         )
 
         claim = invitation.artist_profile_claim
 
+        to_email = invitation.created_by.email
+        artist_name = claim.artist.name
+        recipient_email = invitation.recipient_email
+
         transaction.on_commit(
             lambda: send_artist_profile_claim_rejected_mail(
-                to_email=invitation.created_by.email,
-                artist_name=claim.artist.name,
-                recipient_email=invitation.recipient_email,
+                to_email=to_email,
+                artist_name=artist_name,
+                recipient_email=recipient_email,
             ),
         )
 
@@ -252,59 +193,30 @@ class ArtistProfileClaimInvitationService:
         actor,
     ) -> ArtistProfileClaimInvitation:
         """Повторно отправляет приглашение на управление профилем артиста."""
-        cls._validate_artist(
+        cls._validate_actor(
             artist=artist,
-            created_by=actor,
+            actor=actor,
         )
 
-        claim = (
-            ArtistProfileClaimInvitation.objects
-            .select_for_update()
-            .select_related('invitation', 'artist__label')
-            .filter(artist=artist)
-            .order_by('-invitation__created_at')
-            .first()
-        )
-
-        if claim is None:
-            raise ValidationError({
-                'detail': 'Для профиля ещё не создавалось приглашение.',
-            })
-
+        claim = cls._get_latest_claim(artist)
         invitation = claim.invitation
+
+        if artist.user_id is not None:
+            raise ValidationError({
+                'detail': 'У профиля уже есть собственный аккаунт.',
+            })
 
         if invitation.status == TokenInvitationStatus.ACCEPTED:
             raise ValidationError({
                 'detail': 'Приглашение уже принято.',
             })
 
-        raw_token = generate_invitation_token()
+        raw_token = cls._renew_invitation(invitation)
 
-        invitation.token_hash = hash_invitation_token(raw_token)
-        invitation.status = TokenInvitationStatus.PENDING
-        invitation.expires_at = timezone.now() + timedelta(
-            days=INVITATION_TTL_DAYS,
-        )
-        invitation.responded_by = None
-        invitation.responded_at = None
-        invitation.save(
-            update_fields=(
-                'token_hash',
-                'status',
-                'expires_at',
-                'responded_by',
-                'responded_at',
-                'updated_at',
-            ),
-        )
-
-        transaction.on_commit(
-            lambda: send_artist_profile_claim_invitation_mail(
-                to_email=invitation.recipient_email,
-                artist_name=artist.name,
-                label_name=artist.label.name,
-                invitation_url=build_artist_profile_claim_url(raw_token),
-            ),
+        cls._send_invitation_after_commit(
+            invitation=invitation,
+            artist=artist,
+            raw_token=raw_token,
         )
 
         return claim
@@ -318,25 +230,12 @@ class ArtistProfileClaimInvitationService:
         actor,
     ) -> ArtistProfileClaimInvitation:
         """Отзывает приглашение на управление профилем артиста."""
-        cls._validate_artist(
+        cls._validate_actor(
             artist=artist,
-            created_by=actor,
+            actor=actor,
         )
 
-        claim = (
-            ArtistProfileClaimInvitation.objects
-            .select_for_update()
-            .select_related('invitation')
-            .filter(artist=artist)
-            .order_by('-invitation__created_at')
-            .first()
-        )
-
-        if claim is None:
-            raise ValidationError({
-                'detail': 'Для профиля ещё не создавалось приглашение.',
-            })
-
+        claim = cls._get_latest_claim(artist)
         invitation = claim.invitation
 
         if invitation.status == TokenInvitationStatus.ACCEPTED:
@@ -391,6 +290,23 @@ class ArtistProfileClaimInvitationService:
             )
 
     @staticmethod
+    def _validate_actor(
+        *,
+        artist: ArtistProfile,
+        actor,
+    ) -> None:
+        """Проверяет право пользователя управлять приглашением."""
+        if artist.label_id is None:
+            raise ValidationError({
+                'artist': 'Профиль артиста не связан с лейблом.',
+            })
+
+        if artist.label.user_id != actor.id:
+            raise PermissionDenied(
+                'Вы не управляете лейблом этого артиста.',
+            )
+
+    @staticmethod
     def _validate_email(email: str) -> None:
         """Проверяет возможность отправить приглашение на email."""
         if User.objects.filter(email=email).exists():
@@ -399,25 +315,146 @@ class ArtistProfileClaimInvitationService:
             })
 
     @staticmethod
-    def _validate_pending_claim(
+    def _validate_claim_not_exists(
         artist: ArtistProfile,
     ) -> None:
-        """Проверяет отсутствие активного приглашения на профиль."""
-        now = timezone.now()
-
-        TokenInvitation.objects.filter(
-            artist_profile_claim__artist=artist,
-            status=TokenInvitationStatus.PENDING,
-            expires_at__lte=now,
-        ).update(
-            status=TokenInvitationStatus.EXPIRED,
-        )
-
+        """Проверяет отсутствие ранее созданного приглашения."""
         if ArtistProfileClaimInvitation.objects.filter(
             artist=artist,
-            invitation__status=TokenInvitationStatus.PENDING,
-            invitation__expires_at__gt=now,
         ).exists():
             raise ValidationError({
-                'artist': ('Для профиля уже существует активное приглашение.'),
+                'artist': (
+                    'Для профиля уже создавалось приглашение. '
+                    'Используйте повторную отправку.'
+                ),
             })
+
+    @classmethod
+    def _get_pending_invitation(
+        cls,
+        *,
+        token: str,
+        user,
+    ) -> TokenInvitation:
+        """Возвращает доступное пользователю активное приглашение."""
+        invitation = (
+            TokenInvitation.objects
+            .select_for_update()
+            .select_related('artist_profile_claim', 'created_by')
+            .get(
+                token_hash=hash_invitation_token(token),
+            )
+        )
+
+        if invitation.expires_at <= timezone.now():
+            raise ValidationError({
+                'detail': 'Срок действия приглашения истёк.',
+            })
+
+        if invitation.status != TokenInvitationStatus.PENDING:
+            raise ValidationError({
+                'status': (
+                    f'Приглашение уже имеет статус '
+                    f'«{invitation.get_status_display()}».'
+                ),
+            })
+
+        if normalize_email(invitation.recipient_email) != normalize_email(
+            user.email,
+        ):
+            raise ValidationError({
+                'email': 'Нельзя использовать приглашение этим аккаунтом.',
+            })
+
+        return invitation
+
+    @staticmethod
+    def _set_response(
+        *,
+        invitation: TokenInvitation,
+        status: TokenInvitationStatus,
+        user,
+    ) -> None:
+        """Фиксирует ответ пользователя на приглашение."""
+        invitation.status = status
+        invitation.responded_by = user
+        invitation.responded_at = timezone.now()
+        invitation.save(
+            update_fields=(
+                'status',
+                'responded_by',
+                'responded_at',
+                'updated_at',
+            ),
+        )
+
+    @staticmethod
+    def _get_latest_claim(
+        artist: ArtistProfile,
+    ) -> ArtistProfileClaimInvitation:
+        """Возвращает последнее приглашение профиля артиста."""
+        claim = (
+            ArtistProfileClaimInvitation.objects
+            .select_for_update(of=('self', 'invitation'))
+            .select_related('invitation')
+            .filter(artist=artist)
+            .order_by('-invitation__created_at')
+            .first()
+        )
+
+        if claim is None:
+            raise ValidationError({
+                'detail': 'Для профиля ещё не создавалось приглашение.',
+            })
+
+        return claim
+
+    @staticmethod
+    def _renew_invitation(
+        invitation: TokenInvitation,
+    ) -> str:
+        """Перевыпускает токен приглашения и продлевает срок действия."""
+        raw_token = generate_invitation_token()
+
+        invitation.token_hash = hash_invitation_token(raw_token)
+        invitation.status = TokenInvitationStatus.PENDING
+        invitation.expires_at = timezone.now() + timedelta(
+            days=INVITATION_TTL_DAYS,
+        )
+        invitation.responded_by = None
+        invitation.responded_at = None
+
+        invitation.save(
+            update_fields=(
+                'token_hash',
+                'status',
+                'expires_at',
+                'responded_by',
+                'responded_at',
+                'updated_at',
+            ),
+        )
+
+        return raw_token
+
+    @staticmethod
+    def _send_invitation_after_commit(
+        *,
+        invitation: TokenInvitation,
+        artist: ArtistProfile,
+        raw_token: str,
+    ) -> None:
+        """Планирует отправку письма с приглашением после коммита."""
+        to_email = invitation.recipient_email
+        artist_name = artist.name
+        label_name = artist.label.name
+        invitation_url = build_artist_profile_claim_url(raw_token)
+
+        transaction.on_commit(
+            lambda: send_artist_profile_claim_invitation_mail(
+                to_email=to_email,
+                artist_name=artist_name,
+                label_name=label_name,
+                invitation_url=invitation_url,
+            ),
+        )
