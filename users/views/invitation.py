@@ -1,17 +1,24 @@
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from common.permissions import IsLabel
 
 from users.schemas import (
+    artist_profile_claim_invitation_accept_schema,
     artist_profile_claim_invitation_create_schema,
+    artist_profile_claim_invitation_read_schema,
+    artist_profile_claim_invitation_reject_schema,
     artist_profile_claim_invitation_resend_schema,
     artist_profile_claim_invitation_revoke_schema,
 )
 from users.serializers import (
     ArtistProfileClaimInvitationCreateSerializer,
+    ArtistProfileClaimInvitationReadSerializer,
     ArtistProfileClaimInvitationSerializer,
+    ArtistProfileClaimInvitationTokenSerializer,
 )
 from users.services.invitation import ArtistProfileClaimInvitationService
 from users.views.mixins import ManagedArtistProfileMixin
@@ -42,6 +49,69 @@ class ArtistProfileClaimInvitationCreateView(
         return Response(
             ArtistProfileClaimInvitationSerializer(claim).data,
             status=status.HTTP_201_CREATED,
+        )
+
+
+@artist_profile_claim_invitation_read_schema
+class ArtistProfileClaimInvitationView(GenericAPIView):
+    """Представление для просмотра приглашения получателем."""
+
+    permission_classes = (AllowAny,)
+    serializer_class = ArtistProfileClaimInvitationReadSerializer
+
+    def get(self, request, *args, **kwargs):
+        token = request.query_params.get('token')
+
+        if not token:
+            raise ValidationError({
+                'token': 'Укажите токен приглашения.',
+            })
+
+        claim = ArtistProfileClaimInvitationService.get_by_token(token)
+
+        return Response(
+            self.get_serializer(claim).data,
+        )
+
+
+@artist_profile_claim_invitation_accept_schema
+class ArtistProfileClaimInvitationAcceptView(GenericAPIView):
+    """Представление для принятия приглашения."""
+
+    permission_classes = (IsAuthenticated,)
+    serializer_class = ArtistProfileClaimInvitationTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        claim = ArtistProfileClaimInvitationService.accept(
+            token=serializer.validated_data['token'],
+            user=request.user,
+        )
+
+        return Response(
+            ArtistProfileClaimInvitationSerializer(claim).data,
+        )
+
+
+@artist_profile_claim_invitation_reject_schema
+class ArtistProfileClaimInvitationRejectView(GenericAPIView):
+    """Представление для отклонения приглашения."""
+
+    permission_classes = (AllowAny,)
+    serializer_class = ArtistProfileClaimInvitationTokenSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        claim = ArtistProfileClaimInvitationService.reject(
+            token=serializer.validated_data['token'],
+        )
+
+        return Response(
+            ArtistProfileClaimInvitationSerializer(claim).data,
         )
 
 

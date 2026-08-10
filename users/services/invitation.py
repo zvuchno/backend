@@ -134,6 +134,11 @@ class ArtistProfileClaimInvitationService:
         artist.user = user
         artist.save(update_fields=('user',))
 
+        # по токену также подтверждаем email.
+        if not user.is_email_verified:
+            user.is_email_verified = True
+            user.save(update_fields=('is_email_verified',))
+
         cls._set_response(
             invitation=invitation,
             status=TokenInvitationStatus.ACCEPTED,
@@ -159,18 +164,18 @@ class ArtistProfileClaimInvitationService:
         cls,
         *,
         token: str,
-        user,
     ) -> ArtistProfileClaimInvitation:
         """Отклоняет приглашение на управление профилем артиста."""
-        invitation = cls._get_pending_invitation(
-            token=token,
-            user=user,
-        )
+        invitation = cls._get_pending_invitation(token=token)
 
-        cls._set_response(
-            invitation=invitation,
-            status=TokenInvitationStatus.REJECTED,
-            user=user,
+        invitation.status = TokenInvitationStatus.REJECTED
+        invitation.responded_at = timezone.now()
+        invitation.save(
+            update_fields=(
+                'status',
+                'responded_at',
+                'updated_at',
+            ),
         )
 
         claim = invitation.artist_profile_claim
@@ -264,6 +269,19 @@ class ArtistProfileClaimInvitationService:
         return claim
 
     @staticmethod
+    def get_by_token(token: str) -> ArtistProfileClaimInvitation:
+        """Возвращает приглашение на управление профилем по токену."""
+        try:
+            return ArtistProfileClaimInvitation.objects.select_related(
+                'invitation',
+                'artist__label',
+            ).get(invitation__token_hash=hash_invitation_token(token))
+        except ArtistProfileClaimInvitation.DoesNotExist:
+            raise ValidationError({
+                'token': 'Приглашение не найдено.',
+            })
+
+    @staticmethod
     def _validate_artist(
         *,
         artist: ArtistProfile,
@@ -339,17 +357,22 @@ class ArtistProfileClaimInvitationService:
         cls,
         *,
         token: str,
-        user,
+        user=None,
     ) -> TokenInvitation:
         """Возвращает доступное пользователю активное приглашение."""
-        invitation = (
-            TokenInvitation.objects
-            .select_for_update()
-            .select_related('artist_profile_claim', 'created_by')
-            .get(
-                token_hash=hash_invitation_token(token),
+        try:
+            invitation = (
+                TokenInvitation.objects
+                .select_for_update()
+                .select_related('artist_profile_claim', 'created_by')
+                .get(
+                    token_hash=hash_invitation_token(token),
+                )
             )
-        )
+        except TokenInvitation.DoesNotExist:
+            raise ValidationError({
+                'token': 'Приглашение не найдено.',
+            })
 
         if invitation.expires_at <= timezone.now():
             raise ValidationError({
@@ -364,8 +387,9 @@ class ArtistProfileClaimInvitationService:
                 ),
             })
 
-        if normalize_email(invitation.recipient_email) != normalize_email(
-            user.email,
+        if user is not None and (
+            normalize_email(invitation.recipient_email)
+            != normalize_email(user.email)
         ):
             raise ValidationError({
                 'email': 'Нельзя использовать приглашение этим аккаунтом.',

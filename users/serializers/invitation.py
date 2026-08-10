@@ -11,6 +11,14 @@ class ArtistProfileClaimInvitationCreateSerializer(
     email = serializers.EmailField()
 
 
+class ArtistProfileClaimInvitationTokenSerializer(
+    serializers.Serializer,
+):
+    """Сериализатор токена приглашения."""
+
+    token = serializers.CharField()
+
+
 class ArtistProfileClaimInvitationSerializer(serializers.ModelSerializer):
     """Сериализатор инвайтов."""
 
@@ -33,5 +41,41 @@ class ArtistProfileClaimInvitationSerializer(serializers.ModelSerializer):
             'email',
             'status',
             'created_at',
+            'expires_at',
+        )
+
+
+class ArtistProfileClaimInvitationReadSerializer(
+    serializers.ModelSerializer,
+):
+    """Сериализатор просмотра приглашения получателем."""
+
+    artist_id = serializers.IntegerField(
+        source='artist.id',
+    )
+    artist_name = serializers.CharField(
+        source='artist.name',
+    )
+    label_id = serializers.IntegerField(
+        source='artist.label.id',
+    )
+    label_name = serializers.CharField(
+        source='artist.label.name',
+    )
+    status = serializers.CharField(
+        source='invitation.status',
+    )
+    expires_at = serializers.DateTimeField(
+        source='invitation.expires_at',
+    )
+
+    class Meta:
+        model = ArtistProfileClaimInvitation
+        fields = (
+            'artist_id',
+            'artist_name',
+            'label_id',
+            'label_name',
+            'status',
             'expires_at',
         )

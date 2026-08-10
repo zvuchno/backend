@@ -1,10 +1,12 @@
 """Схемы OpenAPI для приглашений на управление профилем артиста."""
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 
 from users.serializers import (
     ArtistProfileClaimInvitationCreateSerializer,
+    ArtistProfileClaimInvitationReadSerializer,
     ArtistProfileClaimInvitationSerializer,
+    ArtistProfileClaimInvitationTokenSerializer,
 )
 
 artist_profile_claim_invitation_create_schema = extend_schema(
@@ -41,6 +43,44 @@ artist_profile_claim_invitation_revoke_schema = extend_schema(
         'Отзывает активное приглашение на управление выбранным '
         'профилем артиста.'
     ),
+    responses={
+        200: ArtistProfileClaimInvitationSerializer,
+    },
+)
+
+
+artist_profile_claim_invitation_read_schema = extend_schema(
+    tags=['Invitations'],
+    summary='Получить информацию о приглашении',
+    parameters=[
+        OpenApiParameter(
+            name='token',
+            type=str,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description='Токен приглашения.',
+        ),
+    ],
+    responses={
+        200: ArtistProfileClaimInvitationReadSerializer,
+    },
+)
+
+
+artist_profile_claim_invitation_accept_schema = extend_schema(
+    tags=['Invitations'],
+    summary='Принять приглашение',
+    request=ArtistProfileClaimInvitationTokenSerializer,
+    responses={
+        200: ArtistProfileClaimInvitationSerializer,
+    },
+)
+
+
+artist_profile_claim_invitation_reject_schema = extend_schema(
+    tags=['Invitations'],
+    summary='Отклонить приглашение',
+    request=ArtistProfileClaimInvitationTokenSerializer,
     responses={
         200: ArtistProfileClaimInvitationSerializer,
     },

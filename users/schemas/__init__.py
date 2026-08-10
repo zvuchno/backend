@@ -42,7 +42,10 @@ from .auth import (
 )
 from .consent_documents import consent_doc_schema
 from .invitation import (
+    artist_profile_claim_invitation_accept_schema,
     artist_profile_claim_invitation_create_schema,
+    artist_profile_claim_invitation_read_schema,
+    artist_profile_claim_invitation_reject_schema,
     artist_profile_claim_invitation_resend_schema,
     artist_profile_claim_invitation_revoke_schema,
 )
@@ -63,7 +66,10 @@ __all__ = [
     'artist_list_schema',
     'artist_me_schema',
     'artist_pickup_point_schema',
+    'artist_profile_claim_invitation_accept_schema',
     'artist_profile_claim_invitation_create_schema',
+    'artist_profile_claim_invitation_read_schema',
+    'artist_profile_claim_invitation_reject_schema',
     'artist_profile_claim_invitation_resend_schema',
     'artist_profile_claim_invitation_revoke_schema',
     'artist_public_schema',
