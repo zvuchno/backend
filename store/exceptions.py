@@ -31,3 +31,7 @@ class NotEnoughStock(Exception):
 
 class PromocodeNotAvailable(Exception):
     """Промокод недоступен для применения."""
+
+
+class ReceiptValidationError(ValueError):
+    """Ошибка формирования или проверки фискального чека."""
