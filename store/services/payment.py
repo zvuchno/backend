@@ -5,6 +5,7 @@
 """
 
 import logging
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.db import transaction
@@ -12,6 +13,8 @@ from django.utils import timezone
 from yookassa import Configuration
 from yookassa import Payment as YookassaPayment
 
+from store.constants import MONEY_ROUNDING
+from store.exceptions import ReceiptValidationError
 from store.models import Order, Payment
 from store.notifications import send_order_paid_notifications_to_artists
 from store.tasks import register_cdek_orders_task
@@ -21,6 +24,11 @@ logger = logging.getLogger(__name__)
 # Инициализация SDK
 Configuration.account_id = settings.YOOKASSA_SHOP_ID
 Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
+
+RECEIPT_VAT_CODE = 1
+RECEIPT_PAYMENT_MODE = 'full_prepayment'
+RECEIPT_PRODUCT_SUBJECT = 'commodity'
+RECEIPT_DELIVERY_SUBJECT = 'service'
 
 
 def create_yookassa_payment(order, retry=True):
@@ -83,11 +91,11 @@ def create_yookassa_payment(order, retry=True):
         )
 
     try:
-        # Формируем запрос к API
+        receipt_items = build_receipt_items(order)
         yookassa_payment = YookassaPayment.create(
             {
                 'amount': {
-                    'value': str(order.total),
+                    'value': f'{order.total:.2f}',
                     'currency': 'RUB',
                 },
                 'confirmation': {
@@ -100,13 +108,23 @@ def create_yookassa_payment(order, retry=True):
                     'customer': {
                         'full_name': order.full_name,
                         'email': order.email,
-                        'phone': order.phone,
+                        'phone': str(order.phone),
                     },
-                    # TODO: items для формирования фискального чека (54-ФЗ)
+                    'items': receipt_items,
                 },
             },
             idempotency_key=str(payment.idempotency_key),
         )
+    except ReceiptValidationError:
+        logger.exception(
+            'Некорректные данные фискального чека для заказа id=%s.',
+            order.id,
+        )
+
+        return {
+            'payment_status': 'error',
+            'confirmation_token': None,
+        }
     except Exception:
         logger.exception(
             'Ошибка создания платежа ЮKassa для заказа id=%s.',
@@ -121,6 +139,22 @@ def create_yookassa_payment(order, retry=True):
     payment.provider_payment_id = yookassa_payment.id
     payment.save(update_fields=['provider_payment_id', 'updated_at'])
 
+    return _handle_yookassa_payment_response(
+        order=order,
+        payment=payment,
+        yookassa_payment=yookassa_payment,
+        retry=retry,
+    )
+
+
+def _handle_yookassa_payment_response(
+    *,
+    order,
+    payment,
+    yookassa_payment,
+    retry: bool,
+) -> dict:
+    """Обрабатывает ответ ЮKassa после создания платежа."""
     if yookassa_payment.status == 'succeeded':
         logger.info(
             'Платеж для order_id=%s уже имеет статус succeeded '
@@ -175,6 +209,133 @@ def create_yookassa_payment(order, retry=True):
         'payment_status': 'pending',
         'confirmation_token': confirmation_token,
     }
+
+
+def build_receipt_items(order) -> list[dict]:
+    """Формирует позиции фискального чека для ЮKassa."""
+    receipt_items = []
+
+    for item in order.items.all():
+        line_total = item.line_total.quantize(
+            MONEY_ROUNDING,
+            rounding=ROUND_HALF_UP,
+        )
+        quantity = item.quantity
+
+        price_per_item = (line_total / quantity).quantize(
+            MONEY_ROUNDING,
+            rounding=ROUND_HALF_UP,
+        )
+
+        calculated_total = price_per_item * quantity
+
+        if calculated_total == line_total:
+            receipt_items.append(
+                _build_receipt_item(
+                    description=_get_item_description(item),
+                    quantity=quantity,
+                    price=price_per_item,
+                    payment_subject=RECEIPT_PRODUCT_SUBJECT,
+                ),
+            )
+            continue
+
+        first_quantity = quantity - 1
+        first_price = price_per_item
+        second_price = line_total - first_price * first_quantity
+
+        if first_quantity:
+            receipt_items.append(
+                _build_receipt_item(
+                    description=_get_item_description(item),
+                    quantity=first_quantity,
+                    price=first_price,
+                    payment_subject=RECEIPT_PRODUCT_SUBJECT,
+                ),
+            )
+
+        receipt_items.append(
+            _build_receipt_item(
+                description=_get_item_description(item),
+                quantity=1,
+                price=second_price,
+                payment_subject=RECEIPT_PRODUCT_SUBJECT,
+            ),
+        )
+
+    if order.delivery_price > 0:
+        delivery_name = (
+            order.delivery.get_delivery_type_display()
+            if order.delivery
+            else 'Доставка'
+        )
+
+        receipt_items.append(
+            _build_receipt_item(
+                description=delivery_name,
+                quantity=1,
+                price=order.delivery_price,
+                payment_subject=RECEIPT_DELIVERY_SUBJECT,
+            ),
+        )
+
+    receipt_total = sum(
+        Decimal(receipt_item['amount']['value']) * receipt_item['quantity']
+        for receipt_item in receipt_items
+    ).quantize(
+        MONEY_ROUNDING,
+        rounding=ROUND_HALF_UP,
+    )
+
+    order_total = order.total.quantize(
+        MONEY_ROUNDING,
+        rounding=ROUND_HALF_UP,
+    )
+
+    if receipt_total != order_total:
+        raise ReceiptValidationError(
+            'Сумма позиций чека не совпадает с суммой заказа: '
+            f'{receipt_total} != {order_total}.',
+        )
+
+    return receipt_items
+
+
+def _build_receipt_item(
+    *,
+    description,
+    quantity,
+    price,
+    payment_subject,
+) -> dict:
+    """Формирует одну позицию фискального чека."""
+    return {
+        'description': description[:128],
+        'quantity': quantity,
+        'amount': {
+            'value': f'{price:.2f}',
+            'currency': 'RUB',
+        },
+        'vat_code': RECEIPT_VAT_CODE,
+        'payment_subject': payment_subject,
+        'payment_mode': RECEIPT_PAYMENT_MODE,
+    }
+
+
+def _get_item_description(order_item) -> str:
+    """Возвращает название товара для фискального чека."""
+    product_info = order_item.product_info
+
+    description = ' '.join(
+        filter(
+            None,
+            (
+                product_info.get('kind'),
+                product_info.get('name'),
+            ),
+        ),
+    )
+    return description or f'Товар #{order_item.product_variant_id}'
 
 
 def mark_payment_succeeded(payment):

@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from decimal import ROUND_HALF_UP, Decimal
 from typing import NoReturn
 
@@ -22,6 +23,8 @@ from store.services.cart_service import CartCalculationService
 from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
+
+CDEK_CALCULATION_MAX_WORKERS = 5
 
 
 class CDEKService:
@@ -352,7 +355,7 @@ class CDEKService:
             })
 
         # Создаем словарь {artist_id: city_code} - в один запрос
-        artist_city_code = dict(
+        artist_city_codes = dict(
             ArtistProfile.objects.filter(id__in=cart_artist_ids).values_list(
                 'id',
                 'shipping_point__city_code',
@@ -367,8 +370,15 @@ class CDEKService:
         for item in cart_items:
             artist_id = item.product_variant.product.merch.artist_id
 
-            if artist_id in artist_city_code:
+            if artist_id in artist_city_codes:
                 artist_quantities[artist_id] += item.quantity
+
+        for artist_id in artist_quantities:
+            if not artist_city_codes.get(artist_id):
+                raise ValidationError({
+                    'detail': f'У артиста id={artist_id} не указан код '
+                    'населенного пункта для отгрузки товара.',
+                })
 
         total_delivery_sum = ZERO_MONEY
 
@@ -379,41 +389,48 @@ class CDEKService:
         all_min_periods = []
         all_max_periods = []
 
-        # Проходим по сгруппированным артистам и суммируем доставки
-        for artist_id, items_count in artist_quantities.items():
-            from_location_code = artist_city_code.get(artist_id)
+        with ThreadPoolExecutor(
+            max_workers=min(
+                len(artist_quantities),
+                CDEK_CALCULATION_MAX_WORKERS,
+            ),
+        ) as executor:
+            future_to_artist = {
+                executor.submit(
+                    self._calculate_for_artist,
+                    from_location=artist_city_codes[artist_id],
+                    to_location=city_code,
+                    items_count=items_count,
+                    tariffs=tariffs,
+                ): (artist_id, items_count)
+                for artist_id, items_count in artist_quantities.items()
+            }
+            for future in as_completed(future_to_artist):
+                artist_id, items_count = future_to_artist[future]
+                from_location_code = artist_city_codes[artist_id]
+                delivery_data = future.result()
 
-            if not from_location_code:
-                raise ValidationError({
-                    'detail': f'У артиста id={artist_id} не указан код '
-                    'населенного пункта для отгрузки товара.',
-                })
+                artist_cost = round(
+                    delivery_data['total_sum'],
+                    MONEY_DISPLAY_PRECISION,
+                )
+                delivery_calculation[str(artist_id)] = {
+                    'cost': str(artist_cost),
+                }
+                total_delivery_sum += delivery_data['total_sum']
 
-            delivery_data = self._calculate_for_artist(
-                from_location=from_location_code,
-                to_location=city_code,
-                items_count=items_count,
-                tariffs=tariffs,
-            )
+                if delivery_data['period_min'] is not None:
+                    all_min_periods.append(delivery_data['period_min'])
+                if delivery_data['period_max'] is not None:
+                    all_max_periods.append(delivery_data['period_max'])
 
-            artist_cost = round(
-                delivery_data['total_sum'],
-                MONEY_DISPLAY_PRECISION,
-            )
-            delivery_calculation[str(artist_id)] = {'cost': str(artist_cost)}
-            total_delivery_sum += delivery_data['total_sum']
-
-            if delivery_data['period_min'] is not None:
-                all_min_periods.append(delivery_data['period_min'])
-            if delivery_data['period_max'] is not None:
-                all_max_periods.append(delivery_data['period_max'])
-
-            logger.info(
-                f'Корзина {cart.user}: рассчитана сумма доставки '
-                f'от артиста ID: {artist_id}, from_location: '
-                f'{from_location_code}, to_location: {city_code}, items_count '
-                f'= {items_count} -> {delivery_data["total_sum"]} руб.',
-            )
+                logger.info(
+                    f'Корзина {cart.user}: рассчитана сумма доставки '
+                    f'от артиста ID: {artist_id}, from_location: '
+                    f'{from_location_code}, to_location: '
+                    f'{city_code}, items_count '
+                    f'= {items_count} -> {delivery_data["total_sum"]} руб.',
+                )
 
         delivery_sum = round(total_delivery_sum, MONEY_DISPLAY_PRECISION)
 
