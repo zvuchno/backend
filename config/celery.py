@@ -19,10 +19,6 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'store.tasks.reservations.release_expired_reservations',
         'schedule': crontab(minute='*/10'),
     },
-    'dispatch-daily-reports': {
-        'task': 'store.tasks.report.dispatch_daily_reports',
-        'schedule': crontab(hour=4, minute=0),
-    },
     'dispatch-monthly-reports': {
         'task': 'store.tasks.report.dispatch_monthly_reports',
         'schedule': crontab(day_of_month=1, hour=5, minute=0),
