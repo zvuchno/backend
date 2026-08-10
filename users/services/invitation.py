@@ -272,14 +272,32 @@ class ArtistProfileClaimInvitationService:
     def get_by_token(token: str) -> ArtistProfileClaimInvitation:
         """Возвращает приглашение на управление профилем по токену."""
         try:
-            return ArtistProfileClaimInvitation.objects.select_related(
+            claim = ArtistProfileClaimInvitation.objects.select_related(
                 'invitation',
                 'artist__label',
-            ).get(invitation__token_hash=hash_invitation_token(token))
+            ).get(
+                invitation__token_hash=hash_invitation_token(token),
+            )
         except ArtistProfileClaimInvitation.DoesNotExist:
             raise ValidationError({
                 'token': 'Приглашение не найдено.',
             })
+
+        invitation = claim.invitation
+
+        if (
+            invitation.status == TokenInvitationStatus.PENDING
+            and invitation.expires_at <= timezone.now()
+        ):
+            invitation.status = TokenInvitationStatus.EXPIRED
+            invitation.save(
+                update_fields=(
+                    'status',
+                    'updated_at',
+                ),
+            )
+
+        return claim
 
     @staticmethod
     def _validate_artist(

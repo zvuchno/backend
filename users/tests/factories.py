@@ -1,10 +1,11 @@
 """Фабрики тестовых пользователей и профилей."""
 
-from datetime import timedelta, timezone
+from datetime import timedelta
 
 import factory
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
+from django.utils import timezone
 from factory import LazyFunction, SubFactory
 from factory.django import DjangoModelFactory
 

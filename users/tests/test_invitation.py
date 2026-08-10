@@ -4,6 +4,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework import status
 
@@ -199,6 +200,53 @@ class TestArtistProfileClaimInvitationCreate:
             == 1
         )
 
+    @pytest.mark.parametrize(
+        ('template_name', 'context'),
+        [
+            (
+                'artist_profile_claim_invitation',
+                {
+                    'artist_name': 'Артист',
+                    'label_name': 'Лейбл',
+                    'invitation_url': 'https://example.com/invite',
+                },
+            ),
+            (
+                'artist_profile_claim_accepted',
+                {
+                    'artist_name': 'Артист',
+                    'recipient_email': 'artist@example.com',
+                },
+            ),
+            (
+                'artist_profile_claim_rejected',
+                {
+                    'artist_name': 'Артист',
+                    'recipient_email': 'artist@example.com',
+                },
+            ),
+        ],
+    )
+    def test_artist_claim_email_templates_render(
+        self,
+        template_name,
+        context,
+    ):
+        """Проверяет рендер шаблонов писем приглашения."""
+        html = render_to_string(
+            f'emails/{template_name}.html',
+            context,
+        )
+        text = render_to_string(
+            f'emails/{template_name}.txt',
+            context,
+        )
+
+        assert html
+        assert text
+        assert 'Артист' in html
+        assert 'Артист' in text
+
 
 class TestArtistProfileClaimInvitationRead:
     """Тесты просмотра приглашения получателем."""
@@ -281,6 +329,29 @@ class TestArtistProfileClaimInvitationRead:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == invitation_status
         assert response.data['artist_id'] == claim.artist_id
+
+    def test_read_marks_expired_invitation_as_expired(
+        self,
+        api_client,
+        artist_claim_factory,
+        artist_claim_read_url,
+    ):
+        claim, token = artist_claim_factory(
+            expires_at=timezone.now() - timedelta(seconds=1),
+        )
+
+        response = api_client.get(
+            artist_claim_read_url,
+            {
+                'token': token,
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['status'] == TokenInvitationStatus.EXPIRED
+
+        claim.invitation.refresh_from_db()
+        assert claim.invitation.status == TokenInvitationStatus.EXPIRED
 
 
 class TestArtistProfileClaimInvitationAccept:
