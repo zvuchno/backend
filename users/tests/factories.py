@@ -1,11 +1,22 @@
 """Фабрики тестовых пользователей и профилей."""
 
+from datetime import timedelta, timezone
+
 import factory
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
+from factory import LazyFunction, SubFactory
+from factory.django import DjangoModelFactory
 
-from users.models import ArtistProfile, ListenerProfile
+from users.models import (
+    ArtistProfile,
+    ArtistProfileClaimInvitation,
+    ListenerProfile,
+    TokenInvitation,
+    TokenInvitationStatus,
+)
 from users.models.artist import ArtistProfileType
+from users.services.invitation import hash_invitation_token
 
 User = get_user_model()
 
@@ -99,4 +110,36 @@ class LabelUserFactory(UserFactory):
     artist_profile = factory.RelatedFactory(
         LabelProfileFactory,
         factory_related_name='user',
+    )
+
+
+class TokenInvitationFactory(DjangoModelFactory):
+    """Фабрика токен-инвайта."""
+
+    class Meta:
+        model = TokenInvitation
+
+    recipient_email = factory.Sequence(
+        lambda n: f'invited{n}@test.local',
+    )
+    token_hash = factory.Sequence(
+        lambda n: hash_invitation_token(f'test-token-{n}'),
+    )
+    status = TokenInvitationStatus.PENDING
+    created_by = SubFactory(LabelUserFactory)
+    expires_at = LazyFunction(
+        lambda: timezone.now() + timedelta(days=7),
+    )
+
+
+class ArtistProfileClaimInvitationFactory(DjangoModelFactory):
+    """Фабрика приглашения к управлению профилем артиста."""
+
+    class Meta:
+        model = ArtistProfileClaimInvitation
+
+    invitation = SubFactory(TokenInvitationFactory)
+    artist = SubFactory(
+        ArtistProfileFactory,
+        user=None,
     )

@@ -12,17 +12,30 @@
 Файл не требует явного импорта — pytest находит его автоматически.
 """
 
+from collections.abc import Callable
+from datetime import timedelta
+
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
+from config import settings
 from users.models import (
     ArtistBankData,
     ArtistCompanyData,
     ArtistIdentityData,
     ArtistLegalProfile,
     ArtistProfile,
+    ArtistProfileClaimInvitation,
+    TokenInvitation,
+    TokenInvitationStatus,
 )
-from users.tests.factories import UserFactory
+from users.services.invitation import hash_invitation_token
+from users.tests.factories import (
+    ArtistProfileFactory,
+    LabelUserFactory,
+    UserFactory,
+)
 
 
 @pytest.fixture
@@ -169,6 +182,49 @@ def listener_register_payload():
         'phone': '+79991234567',
         'password': 'qwertyhgfdsa123',
     }
+
+
+@pytest.fixture
+def artist_claim_factory() -> Callable[..., tuple]:
+    """Создаёт приглашение и возвращает его вместе с исходным токеном."""
+
+    def create(
+        *,
+        artist=None,
+        label_user=None,
+        email='invited@test.local',
+        token='test-invitation-token',
+        status=TokenInvitationStatus.PENDING,
+        expires_at=None,
+    ) -> tuple[ArtistProfileClaimInvitation, str]:
+        label_user = label_user or LabelUserFactory()
+
+        if artist is None:
+            artist = ArtistProfileFactory(
+                user=None,
+                label=label_user.artist_profile,
+            )
+
+        invitation = TokenInvitation.objects.create(
+            recipient_email=email,
+            token_hash=hash_invitation_token(token),
+            status=status,
+            created_by=label_user,
+            expires_at=(
+                expires_at
+                or timezone.now()
+                + timedelta(days=settings.INVITATION_TTL_DAYS)
+            ),
+        )
+
+        claim = ArtistProfileClaimInvitation.objects.create(
+            invitation=invitation,
+            artist=artist,
+        )
+
+        return claim, token
+
+    return create
 
 
 # =================================
@@ -366,6 +422,66 @@ def managed_store_settings_url():
     def build(profile) -> str:
         return reverse(
             'api:users:managed_artist_store_settings',
+            kwargs={'profile_id': profile.id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def artist_claim_read_url() -> str:
+    """Возвращает URL просмотра приглашения."""
+    return reverse('api:users:artist_profile_claim_view')
+
+
+@pytest.fixture
+def artist_claim_accept_url() -> str:
+    """Возвращает URL принятия приглашения."""
+    return reverse('api:users:artist_profile_claim_accept')
+
+
+@pytest.fixture
+def artist_claim_reject_url() -> str:
+    """Возвращает URL отклонения приглашения."""
+    return reverse('api:users:artist_profile_claim_reject')
+
+
+@pytest.fixture
+def managed_artist_claim_create_url() -> Callable[[ArtistProfile], str]:
+    """Возвращает builder URL создания приглашения."""
+
+    def build(profile) -> str:
+        """Строит URL создания приглашения."""
+        return reverse(
+            'api:users:managed_profile_claim_invitation_create',
+            kwargs={'profile_id': profile.id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def managed_artist_claim_resend_url() -> Callable[[ArtistProfile], str]:
+    """Возвращает builder URL повторной отправки приглашения."""
+
+    def build(profile) -> str:
+        """Строит URL повторной отправки приглашения."""
+        return reverse(
+            'api:users:managed_profile_claim_invitation_resend',
+            kwargs={'profile_id': profile.id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def managed_artist_claim_revoke_url() -> Callable[[ArtistProfile], str]:
+    """Возвращает builder URL отзыва приглашения."""
+
+    def build(profile) -> str:
+        """Строит URL отзыва приглашения."""
+        return reverse(
+            'api:users:managed_profile_claim_invitation_revoke',
             kwargs={'profile_id': profile.id},
         )
 

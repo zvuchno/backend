@@ -10,7 +10,7 @@ urlpatterns = [
     path(
         'artist-profile-claim/',
         ArtistProfileClaimInvitationView.as_view(),
-        name='artist_profile_claim_inspect',
+        name='artist_profile_claim_view',
     ),
     path(
         'artist-profile-claim/accept/',
