@@ -209,7 +209,7 @@ class ArtistProfileClaimInvitationService:
             actor=actor,
         )
 
-        claim = cls._get_latest_claim(artist)
+        claim = cls._get_claim(artist)
         invitation = claim.invitation
 
         if artist.user_id is not None:
@@ -263,7 +263,7 @@ class ArtistProfileClaimInvitationService:
             actor=actor,
         )
 
-        claim = cls._get_latest_claim(artist)
+        claim = cls._get_claim(artist)
         invitation = claim.invitation
 
         if invitation.status == TokenInvitationStatus.ACCEPTED:
@@ -454,25 +454,21 @@ class ArtistProfileClaimInvitationService:
         )
 
     @staticmethod
-    def _get_latest_claim(
+    def _get_claim(
         artist: ArtistProfile,
     ) -> ArtistProfileClaimInvitation:
-        """Возвращает последнее приглашение профиля артиста."""
-        claim = (
-            ArtistProfileClaimInvitation.objects
-            .select_for_update(of=('self', 'invitation'))
-            .select_related('invitation')
-            .filter(artist=artist)
-            .order_by('-invitation__created_at')
-            .first()
-        )
-
-        if claim is None:
+        """Возвращает приглашение профиля артиста."""
+        try:
+            return (
+                ArtistProfileClaimInvitation.objects
+                .select_for_update(of=('self', 'invitation'))
+                .select_related('invitation')
+                .get(artist=artist)
+            )
+        except ArtistProfileClaimInvitation.DoesNotExist:
             raise ValidationError({
                 'detail': 'Для профиля ещё не создавалось приглашение.',
             })
-
-        return claim
 
     @staticmethod
     def _renew_invitation(

@@ -310,14 +310,14 @@ class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
         ),
     )
     def get_claim_invitation(self, obj: ArtistProfile):
-        """Возвращает последнее приглашение на управление профилем."""
-        claims = getattr(obj, 'prefetched_claim_invitations', ())
-
-        if not claims:
+        """Возвращает приглашение на управление профилем."""
+        try:
+            claim = obj.claim_invitation
+        except ArtistProfileClaimInvitation.DoesNotExist:
             return None
 
         return ArtistProfileClaimInvitationShortSerializer(
-            claims[0],
+            claim,
         ).data
 
 

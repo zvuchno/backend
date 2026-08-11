@@ -118,10 +118,10 @@ class ArtistProfileClaimInvitation(models.Model):
         related_name='artist_profile_claim',
         verbose_name='Приглашение',
     )
-    artist = models.ForeignKey(
+    artist = models.OneToOneField(
         ArtistProfile,
         on_delete=models.PROTECT,
-        related_name='claim_invitations',
+        related_name='claim_invitation',
         verbose_name='Профиль артиста',
     )
 

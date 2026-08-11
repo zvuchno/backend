@@ -4,6 +4,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.db import IntegrityError, transaction
 from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework import status
@@ -11,6 +12,7 @@ from rest_framework import status
 from config import settings
 from users.models import (
     ArtistProfileClaimInvitation,
+    TokenInvitation,
     TokenInvitationStatus,
 )
 from users.tasks.invitation import expire_token_invitations
@@ -204,6 +206,27 @@ class TestArtistProfileClaimInvitationCreate:
             ).count()
             == 1
         )
+
+    def test_database_prevents_second_claim_for_artist(
+        self,
+        artist_claim_factory,
+    ):
+        """База запрещает второе приглашение для одного профиля."""
+        claim, _ = artist_claim_factory()
+
+        another_invitation = TokenInvitation.objects.create(
+            recipient_email='another@test.local',
+            token_hash='another-token-hash',
+            created_by=claim.invitation.created_by,
+            expires_at=timezone.now() + timedelta(days=1),
+        )
+
+        with pytest.raises(IntegrityError):
+            with transaction.atomic():
+                ArtistProfileClaimInvitation.objects.create(
+                    artist=claim.artist,
+                    invitation=another_invitation,
+                )
 
     @pytest.mark.parametrize(
         ('template_name', 'context'),
