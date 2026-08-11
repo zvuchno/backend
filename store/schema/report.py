@@ -59,13 +59,4 @@ artist_reports_schema = extend_schema_view(
             ),
         ],
     ),
-    retrieve=extend_schema(
-        summary='Получить финансовый отчет артиста',
-        description=(
-            'Возвращает подробную информацию о финансовом отчете '
-            'текущего артиста, включая агрегированные показатели '
-            'продаж и ссылку на PDF-файл.'
-        ),
-        tags=ARTIST_REPORTS_TAGS,
-    ),
 )

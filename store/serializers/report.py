@@ -20,12 +20,10 @@ class ArtistReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
         fields = (
-            'id',
             'period_start',
             'period_end',
             'sales_amount',
             'file_url',
-            'created_at',
         )
 
     def get_file_url(self, obj) -> str:
@@ -39,33 +37,3 @@ class ArtistReportSerializer(serializers.ModelSerializer):
         if request:
             return request.build_absolute_uri(url)
         return url
-
-
-class ArtistDetailReportSerializer(ArtistReportSerializer):
-    """Детальный финансовый отчет артиста."""
-
-    donation_amount = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=DISCOUNT_VALUE_PRECISION,
-    )
-    discount_amount = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=DISCOUNT_VALUE_PRECISION,
-    )
-    commission_amount = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=DISCOUNT_VALUE_PRECISION,
-    )
-    payout_amount = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=DISCOUNT_VALUE_PRECISION,
-    )
-
-    class Meta(ArtistReportSerializer.Meta):
-        fields = ArtistReportSerializer.Meta.fields + (
-            'status',
-            'donation_amount',
-            'discount_amount',
-            'commission_amount',
-            'payout_amount',
-        )

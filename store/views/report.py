@@ -1,19 +1,20 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework import mixins
+from rest_framework.viewsets import GenericViewSet
 
 from common.permissions import IsArtistOrLabel
 
 from store.filters import ArtistReportFilter
 from store.models import Report
 from store.schema import artist_reports_schema
-from store.serializers import (
-    ArtistDetailReportSerializer,
-    ArtistReportSerializer,
-)
+from store.serializers import ArtistReportSerializer
 
 
 @artist_reports_schema
-class ArtistReportViewSet(ReadOnlyModelViewSet):
+class ArtistReportViewSet(
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
     """Финансовые отчеты текущего артиста."""
 
     queryset = Report.objects.all()
@@ -32,8 +33,3 @@ class ArtistReportViewSet(ReadOnlyModelViewSet):
             .select_related('artist')
             .order_by('-period_end')
         )
-
-    def get_serializer_class(self):
-        if self.action == 'retrieve':
-            return ArtistDetailReportSerializer
-        return self.serializer_class
