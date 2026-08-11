@@ -231,6 +231,11 @@ class ArtistProfileClaimInvitationService:
                 cls._validate_email(email)
                 new_email = email
 
+        if not invitation.can_resend:
+            raise ValidationError({
+                'detail': 'Повторная отправка приглашения пока недоступна.',
+            })
+
         raw_token = cls._renew_invitation(
             invitation,
             email=new_email,
@@ -517,6 +522,8 @@ class ArtistProfileClaimInvitationService:
         artist_name = artist.name
         label_name = artist.label.name
         invitation_url = build_artist_profile_claim_url(raw_token)
+
+        invitation.register_send()
 
         transaction.on_commit(
             lambda: send_artist_profile_claim_invitation_mail(

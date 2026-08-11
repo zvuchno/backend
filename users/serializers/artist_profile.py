@@ -260,6 +260,15 @@ class ArtistProfileClaimInvitationShortSerializer(
     expires_at = serializers.DateTimeField(
         source='invitation.expires_at',
     )
+    can_resend = serializers.BooleanField(
+        source='invitation.can_resend',
+        read_only=True,
+    )
+    resend_available_at = serializers.DateTimeField(
+        source='invitation.resend_available_at',
+        read_only=True,
+        allow_null=True,
+    )
 
     class Meta:
         model = ArtistProfileClaimInvitation
@@ -267,6 +276,8 @@ class ArtistProfileClaimInvitationShortSerializer(
             'email',
             'status',
             'expires_at',
+            'can_resend',
+            'resend_available_at',
         )
 
 

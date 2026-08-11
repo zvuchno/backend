@@ -5,6 +5,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from users.serializers import (
     ArtistProfileClaimInvitationCreateSerializer,
     ArtistProfileClaimInvitationReadSerializer,
+    ArtistProfileClaimInvitationResendSerializer,
     ArtistProfileClaimInvitationSerializer,
     ArtistProfileClaimInvitationTokenSerializer,
 )
@@ -28,8 +29,10 @@ artist_profile_claim_invitation_resend_schema = extend_schema(
     summary='Повторно отправить приглашение',
     description=(
         'Перевыпускает токен существующего приглашения, продлевает срок '
-        'его действия и повторно отправляет письмо получателю.'
+        'его действия и повторно отправляет письмо получателю. '
+        'При передаче email адрес получателя изменяется.'
     ),
+    request=ArtistProfileClaimInvitationResendSerializer,
     responses={
         200: ArtistProfileClaimInvitationSerializer,
     },

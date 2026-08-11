@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from common.models.abstract import TimestampModel
 
@@ -33,6 +36,15 @@ class TokenInvitation(TimestampModel):
         choices=TokenInvitationStatus.choices,
         default=TokenInvitationStatus.PENDING,
     )
+    send_count = models.PositiveIntegerField(
+        'Количество отправок',
+        default=0,
+    )
+    last_sent_at = models.DateTimeField(
+        'Дата последней отправки',
+        null=True,
+        blank=True,
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -56,10 +68,42 @@ class TokenInvitation(TimestampModel):
         'Действует до',
     )
 
+    @property
+    def resend_available_at(self):
+        """Возвращает время доступности повторной отправки."""
+        if self.status == TokenInvitationStatus.ACCEPTED:
+            return None
+
+        if self.last_sent_at is None:
+            return timezone.now()
+
+        return self.last_sent_at + timedelta(
+            seconds=settings.INVITATION_RESEND_COOLDOWN_SECONDS,
+        )
+
+    @property
+    def can_resend(self) -> bool:
+        """Возвращает возможность повторной отправки."""
+        available_at = self.resend_available_at
+
+        return available_at is not None and available_at <= timezone.now()
+
     class Meta:
         verbose_name = 'инвайт'
         verbose_name_plural = 'инвайты'
         ordering = ('-created_at',)
+
+    def register_send(self) -> None:
+        """Фиксирует отправку приглашения."""
+        self.send_count += 1
+        self.last_sent_at = timezone.now()
+        self.save(
+            update_fields=(
+                'send_count',
+                'last_sent_at',
+                'updated_at',
+            ),
+        )
 
     def __str__(self):
         return f'{self.recipient_email} — {self.get_status_display()}'

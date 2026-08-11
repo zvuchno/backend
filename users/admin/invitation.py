@@ -13,6 +13,8 @@ class ArtistProfileClaimInvitationAdmin(admin.ModelAdmin):
         'label',
         'recipient_email',
         'status',
+        'send_count',
+        'last_sent_at',
         'expires_at',
         'created_by',
         'responded_by',
@@ -52,6 +54,8 @@ class ArtistProfileClaimInvitationAdmin(admin.ModelAdmin):
         'artist',
         'recipient_email',
         'status',
+        'send_count',
+        'last_sent_at',
         'expires_at',
         'created_by',
         'responded_by',
@@ -122,6 +126,20 @@ class ArtistProfileClaimInvitationAdmin(admin.ModelAdmin):
     )
     def updated_at(self, obj):
         return obj.invitation.updated_at
+
+    @admin.display(
+        description='Количество отправок',
+        ordering='invitation__send_count',
+    )
+    def send_count(self, obj):
+        return obj.invitation.send_count
+
+    @admin.display(
+        description='Последняя отправка',
+        ordering='invitation__last_sent_at',
+    )
+    def last_sent_at(self, obj):
+        return obj.invitation.last_sent_at
 
     def has_add_permission(self, request):
         return False
