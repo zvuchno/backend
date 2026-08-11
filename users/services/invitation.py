@@ -66,7 +66,7 @@ class ArtistProfileClaimInvitationService:
         email = normalize_email(email)
         artist = (
             ArtistProfile.objects
-            .select_for_update()
+            .select_for_update(of=('self',))
             .select_related('label')
             .get(pk=artist.pk)
         )
