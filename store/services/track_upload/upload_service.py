@@ -96,7 +96,7 @@ class TrackUploadService:
             name=track_name,
             description=description or '',
             position=None,
-            is_active=False,
+            is_active=True,
         )
 
         ProductService.ensure_commerce(

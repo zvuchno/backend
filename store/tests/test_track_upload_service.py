@@ -36,7 +36,7 @@ class TestTrackUploadService:
         assert track.album == album
         assert track.name == '01. Intro'
         assert track.position is None
-        assert track.is_active is False
+        assert track.is_active is True
         assert not track.audio_file
 
         assert track.product.price == Decimal('0.00')
@@ -142,7 +142,7 @@ class TestTrackUploadService:
         assert track.name == 'Новое название'
         assert track.description == 'Описание трека.'
         assert track.position is None
-        assert track.is_active is False
+        assert track.is_active is True
         assert not track.audio_file
 
         assert track.product.price == Decimal('150.00')
