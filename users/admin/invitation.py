@@ -60,39 +60,66 @@ class ArtistProfileClaimInvitationAdmin(admin.ModelAdmin):
         'updated_at',
     )
 
-    @admin.display(description='Лейбл')
+    @admin.display(
+        description='Лейбл',
+        ordering='artist__label__name',
+    )
     def label(self, obj):
         return obj.artist.label
 
-    @admin.display(description='Email')
+    @admin.display(
+        description='Email',
+        ordering='invitation__recipient_email',
+    )
     def recipient_email(self, obj):
         return obj.invitation.recipient_email
 
-    @admin.display(description='Статус')
+    @admin.display(
+        description='Статус',
+        ordering='invitation__status',
+    )
     def status(self, obj):
         return obj.invitation.get_status_display()
 
-    @admin.display(description='Действует до')
+    @admin.display(
+        description='Действует до',
+        ordering='invitation__expires_at',
+    )
     def expires_at(self, obj):
         return obj.invitation.expires_at
 
-    @admin.display(description='Создано пользователем')
+    @admin.display(
+        description='Создано пользователем',
+        ordering='invitation__created_by__email',
+    )
     def created_by(self, obj):
         return obj.invitation.created_by
 
-    @admin.display(description='Ответивший пользователь')
+    @admin.display(
+        description='Ответивший пользователь',
+        ordering='invitation__responded_by__email',
+    )
     def responded_by(self, obj):
         return obj.invitation.responded_by
 
-    @admin.display(description='Дата ответа')
+    @admin.display(
+        description='Дата ответа',
+        ordering='invitation__responded_at',
+    )
     def responded_at(self, obj):
         return obj.invitation.responded_at
 
-    @admin.display(description='Создано')
+    @admin.display(
+        description='Создано',
+        ordering='invitation__created_at',
+    )
     def created_at(self, obj):
         return obj.invitation.created_at
 
-    @admin.display(description='Обновлено')
+    @admin.display(
+        description='Обновлено',
+        ordering='invitation__updated_at',
+    )
     def updated_at(self, obj):
         return obj.invitation.updated_at
 

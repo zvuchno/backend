@@ -228,10 +228,11 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
 
         ensure_listener_profile(user)
         try:
-            return ArtistProfile.objects.create(
-                user=user,
-                **validated_data,
-            )
+            with transaction.atomic():
+                return ArtistProfile.objects.create(
+                    user=user,
+                    **validated_data,
+                )
         except IntegrityError:
             if ArtistProfile.objects.filter(user=user).exists():
                 raise serializers.ValidationError(

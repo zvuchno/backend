@@ -10,4 +10,7 @@ def expire_token_invitations() -> int:
     return TokenInvitation.objects.filter(
         status=TokenInvitationStatus.PENDING,
         expires_at__lte=timezone.now(),
-    ).update(status=TokenInvitationStatus.EXPIRED)
+    ).update(
+        status=TokenInvitationStatus.EXPIRED,
+        updated_at=timezone.now(),
+    )

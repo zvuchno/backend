@@ -30,6 +30,7 @@ artist_profile_claim_invitation_resend_schema = extend_schema(
         'Перевыпускает токен существующего приглашения, продлевает срок '
         'его действия и повторно отправляет письмо получателю.'
     ),
+    request=None,
     responses={
         200: ArtistProfileClaimInvitationSerializer,
     },
@@ -43,6 +44,7 @@ artist_profile_claim_invitation_revoke_schema = extend_schema(
         'Отзывает активное приглашение на управление выбранным '
         'профилем артиста.'
     ),
+    request=None,
     responses={
         200: ArtistProfileClaimInvitationSerializer,
     },
