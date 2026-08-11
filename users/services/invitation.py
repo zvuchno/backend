@@ -201,6 +201,7 @@ class ArtistProfileClaimInvitationService:
         *,
         artist: ArtistProfile,
         actor,
+        email: str | None = None,
     ) -> ArtistProfileClaimInvitation:
         """Повторно отправляет приглашение на управление профилем артиста."""
         cls._validate_label(
@@ -221,7 +222,19 @@ class ArtistProfileClaimInvitationService:
                 'detail': 'Приглашение уже принято.',
             })
 
-        raw_token = cls._renew_invitation(invitation)
+        new_email = None
+
+        if email is not None:
+            email = normalize_email(email)
+
+            if email != invitation.recipient_email:
+                cls._validate_email(email)
+                new_email = email
+
+        raw_token = cls._renew_invitation(
+            invitation,
+            email=new_email,
+        )
 
         cls._send_invitation_after_commit(
             invitation=invitation,
@@ -459,9 +472,14 @@ class ArtistProfileClaimInvitationService:
     @staticmethod
     def _renew_invitation(
         invitation: TokenInvitation,
+        *,
+        email: str | None = None,
     ) -> str:
         """Перевыпускает токен приглашения и продлевает срок действия."""
         raw_token = generate_invitation_token()
+
+        if email is not None:
+            invitation.recipient_email = email
 
         invitation.token_hash = hash_invitation_token(raw_token)
         invitation.status = TokenInvitationStatus.PENDING
@@ -471,16 +489,19 @@ class ArtistProfileClaimInvitationService:
         invitation.responded_by = None
         invitation.responded_at = None
 
-        invitation.save(
-            update_fields=(
-                'token_hash',
-                'status',
-                'expires_at',
-                'responded_by',
-                'responded_at',
-                'updated_at',
-            ),
-        )
+        update_fields = [
+            'token_hash',
+            'status',
+            'expires_at',
+            'responded_by',
+            'responded_at',
+            'updated_at',
+        ]
+
+        if email is not None:
+            update_fields.append('recipient_email')
+
+        invitation.save(update_fields=update_fields)
 
         return raw_token
 

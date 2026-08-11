@@ -17,6 +17,7 @@ from users.schemas import (
 from users.serializers import (
     ArtistProfileClaimInvitationCreateSerializer,
     ArtistProfileClaimInvitationReadSerializer,
+    ArtistProfileClaimInvitationResendSerializer,
     ArtistProfileClaimInvitationSerializer,
     ArtistProfileClaimInvitationTokenSerializer,
 )
@@ -123,14 +124,18 @@ class ArtistProfileClaimInvitationResendView(
     """Представление для повторной отправки приглашения."""
 
     permission_classes = (IsLabel,)
-    serializer_class = ArtistProfileClaimInvitationSerializer
+    serializer_class = ArtistProfileClaimInvitationResendSerializer
 
     def post(self, request, *args, **kwargs):
         artist = self.get_artist_profile()
 
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         claim = ArtistProfileClaimInvitationService.resend(
             artist=artist,
             actor=request.user,
+            email=serializer.validated_data.get('email'),
         )
 
         return Response(

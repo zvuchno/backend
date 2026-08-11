@@ -11,6 +11,14 @@ class ArtistProfileClaimInvitationCreateSerializer(
     email = serializers.EmailField()
 
 
+class ArtistProfileClaimInvitationResendSerializer(
+    serializers.Serializer,
+):
+    """Сериализатор повторной отправки приглашения."""
+
+    email = serializers.EmailField(required=False)
+
+
 class ArtistProfileClaimInvitationTokenSerializer(
     serializers.Serializer,
 ):

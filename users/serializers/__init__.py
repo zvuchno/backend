@@ -43,6 +43,7 @@ from .cookie_auth import (
 from .invitation import (
     ArtistProfileClaimInvitationCreateSerializer,
     ArtistProfileClaimInvitationReadSerializer,
+    ArtistProfileClaimInvitationResendSerializer,
     ArtistProfileClaimInvitationSerializer,
     ArtistProfileClaimInvitationTokenSerializer,
 )
@@ -63,6 +64,7 @@ __all__ = [
     'ArtistMeSerializer',
     'ArtistProfileClaimInvitationCreateSerializer',
     'ArtistProfileClaimInvitationReadSerializer',
+    'ArtistProfileClaimInvitationResendSerializer',
     'ArtistProfileClaimInvitationSerializer',
     'ArtistProfileClaimInvitationTokenSerializer',
     'ArtistProfileUpdateSerializer',
