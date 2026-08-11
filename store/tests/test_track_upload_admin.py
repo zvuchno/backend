@@ -69,7 +69,7 @@ class TestAlbumAdminTrackUpload:
         assert track.created_by == staff_user
         assert track.name == '01 Intro'
         assert track.position is None
-        assert track.is_active is False
+        assert track.is_active is True
 
         assert upload.track == track
         assert upload.status == TrackUpload.Status.INITIATED
@@ -221,7 +221,7 @@ class TestAlbumAdminTrackUpload:
             'id': track_id,
             'name': '01 Intro',
             'position': 1,
-            'is_active': False,
+            'is_active': True,
         }
 
         assert complete_data['upload']['id'] == upload_id
