@@ -8,6 +8,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework import status
 
+from config import settings
 from users.models import (
     ArtistProfileClaimInvitation,
     TokenInvitationStatus,
@@ -65,6 +66,10 @@ class TestArtistProfileClaimInvitationCreate:
         assert invitation.created_by == label_user
         assert invitation.token_hash
         assert invitation.expires_at > timezone.now()
+        assert invitation.send_count == 1
+        assert invitation.last_sent_at is not None
+        assert invitation.can_resend is False
+        assert invitation.resend_available_at > timezone.now()
 
         mock_send_mail.assert_called_once()
 
@@ -765,6 +770,160 @@ class TestArtistProfileClaimInvitationResend:
         assert claim.invitation.responded_at is None
 
         mock_send_mail.assert_called_once()
+
+    def test_cannot_resend_during_cooldown(
+        self,
+        auth_client,
+        artist_claim_factory,
+        managed_artist_claim_resend_url,
+    ):
+        """Нельзя повторно отправить приглашение во время кулдауна."""
+        label_user = LabelUserFactory()
+        artist = ArtistProfileFactory(
+            user=None,
+            label=label_user.artist_profile,
+        )
+        claim, _ = artist_claim_factory(
+            artist=artist,
+            label_user=label_user,
+        )
+        claim.invitation.register_send()
+
+        auth_client.force_authenticate(user=label_user)
+
+        response = auth_client.post(
+            managed_artist_claim_resend_url(artist),
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        claim.invitation.refresh_from_db()
+
+        assert claim.invitation.send_count == 1
+        assert claim.invitation.status == TokenInvitationStatus.PENDING
+
+    def test_can_resend_after_cooldown(
+        self,
+        auth_client,
+        artist_claim_factory,
+        managed_artist_claim_resend_url,
+    ):
+        """После окончания кулдауна приглашение можно отправить повторно."""
+        label_user = LabelUserFactory()
+        artist = ArtistProfileFactory(
+            user=None,
+            label=label_user.artist_profile,
+        )
+        claim, _ = artist_claim_factory(
+            artist=artist,
+            label_user=label_user,
+        )
+
+        claim.invitation.send_count = 1
+        claim.invitation.last_sent_at = timezone.now() - timedelta(
+            seconds=settings.INVITATION_RESEND_COOLDOWN_SECONDS + 1,
+        )
+        claim.invitation.save(
+            update_fields=(
+                'send_count',
+                'last_sent_at',
+                'updated_at',
+            ),
+        )
+
+        auth_client.force_authenticate(user=label_user)
+
+        response = auth_client.post(
+            managed_artist_claim_resend_url(artist),
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        claim.invitation.refresh_from_db()
+
+        assert claim.invitation.send_count == 2
+        assert claim.invitation.last_sent_at > (
+            timezone.now() - timedelta(seconds=5)
+        )
+        assert claim.invitation.can_resend is False
+
+    def test_resend_changes_recipient_email(
+        self,
+        auth_client,
+        artist_claim_factory,
+        managed_artist_claim_resend_url,
+    ):
+        """При повторной отправке можно изменить email получателя."""
+        label_user = LabelUserFactory()
+        artist = ArtistProfileFactory(
+            user=None,
+            label=label_user.artist_profile,
+        )
+        claim, _ = artist_claim_factory(
+            artist=artist,
+            label_user=label_user,
+            email='wrong@test.local',
+        )
+
+        old_hash = claim.invitation.token_hash
+
+        auth_client.force_authenticate(user=label_user)
+
+        response = auth_client.post(
+            managed_artist_claim_resend_url(artist),
+            {
+                'email': 'correct@test.local',
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        claim.invitation.refresh_from_db()
+
+        assert claim.invitation.recipient_email == 'correct@test.local'
+        assert claim.invitation.token_hash != old_hash
+        assert response.data['email'] == 'correct@test.local'
+
+    def test_cannot_change_recipient_to_registered_email(
+        self,
+        auth_client,
+        artist_claim_factory,
+        managed_artist_claim_resend_url,
+    ):
+        """Нельзя сменить на email существующего пользователя."""
+        label_user = LabelUserFactory()
+        artist = ArtistProfileFactory(
+            user=None,
+            label=label_user.artist_profile,
+        )
+        claim, _ = artist_claim_factory(
+            artist=artist,
+            label_user=label_user,
+            email='old@test.local',
+        )
+        existing_user = UserFactory()
+
+        old_hash = claim.invitation.token_hash
+
+        auth_client.force_authenticate(user=label_user)
+
+        response = auth_client.post(
+            managed_artist_claim_resend_url(artist),
+            {
+                'email': existing_user.email,
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        claim.invitation.refresh_from_db()
+
+        assert claim.invitation.recipient_email == 'old@test.local'
+        assert claim.invitation.token_hash == old_hash
 
     def test_resend_invalidates_old_token(
         self,
