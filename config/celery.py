@@ -24,8 +24,12 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(day_of_month=1, hour=5, minute=0),
     },
     'flush-expired-jwt-tokens': {
-        'task': 'common.tasks.token_blacklist.flush_expired_tokens',
+        'task': 'users.tasks.token_blacklist.flush_expired_tokens',
         'schedule': crontab(hour=2, minute=0),
+    },
+    'expire-token-invitations': {
+        'task': 'users.tasks.invitation.expire_token_invitations',
+        'schedule': crontab(hour=1, minute=0),
     },
 }
 

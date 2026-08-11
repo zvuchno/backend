@@ -179,7 +179,10 @@ class LabelManagedProfileListView(ListCreateAPIView):
                 Q(pk=label.pk) | Q(label=label),
                 is_active=True,
             )
-            .select_related('user')
+            .select_related(
+                'user',
+                'claim_invitation__invitation',
+            )
             .order_by(
                 Case(
                     When(pk=label.pk, then=0),

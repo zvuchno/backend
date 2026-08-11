@@ -2,7 +2,11 @@ from http import HTTPStatus
 
 import pytest
 
-from users.models import ArtistProfile, ArtistProfileType
+from users.models import (
+    ArtistProfile,
+    ArtistProfileType,
+    TokenInvitationStatus,
+)
 
 
 @pytest.mark.django_db
@@ -42,6 +46,37 @@ class TestLabelManagedProfileList:
 
         assert signed_artist_data['is_self'] is False
         assert signed_artist_data['has_account'] is True
+
+    def test_returns_claim_invitation_resend_state(
+        self,
+        label_client,
+        label_user,
+        label_created_artist,
+        artist_claim_factory,
+        label_managed_profiles_url,
+    ):
+        """Возвращает состояние повторной отправки приглашения."""
+        claim, _ = artist_claim_factory(
+            artist=label_created_artist,
+            label_user=label_user,
+        )
+        claim.invitation.register_send()
+
+        response = label_client.get(label_managed_profiles_url)
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_data = next(
+            item
+            for item in response.data
+            if item['id'] == label_created_artist.id
+        )
+        invitation_data = artist_data['claim_invitation']
+
+        assert invitation_data['email'] == claim.invitation.recipient_email
+        assert invitation_data['status'] == TokenInvitationStatus.PENDING
+        assert invitation_data['can_resend'] is False
+        assert invitation_data['resend_available_at'] is not None
 
     def test_excludes_foreign_and_inactive_profiles(
         self,

@@ -13,6 +13,11 @@ from .artist import (
 )
 from .consent_document import ConsentDocument
 from .core_user import CoreUser
+from .invitation import (
+    ArtistProfileClaimInvitation,
+    TokenInvitation,
+    TokenInvitationStatus,
+)
 from .listener_profile import ListenerProfile
 from .user_consent import UserConsent
 
@@ -28,8 +33,11 @@ __all__ = [
     'ArtistShippingPoint',
     'ArtistSocial',
     'ArtistStoreSettings',
+    'ArtistProfileClaimInvitation',
     'ConsentDocument',
     'CoreUser',
     'ListenerProfile',
+    'TokenInvitation',
+    'TokenInvitationStatus',
     'UserConsent',
 ]

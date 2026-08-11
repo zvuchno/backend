@@ -1,12 +1,14 @@
 """Сериализаторы профиля артиста."""
 
 from django.db import IntegrityError, transaction
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from users.helpers import ensure_listener_profile
 from users.models import (
     ArtistContact,
     ArtistProfile,
+    ArtistProfileClaimInvitation,
     ArtistProfileType,
     ArtistSocial,
 )
@@ -226,10 +228,11 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
 
         ensure_listener_profile(user)
         try:
-            return ArtistProfile.objects.create(
-                user=user,
-                **validated_data,
-            )
+            with transaction.atomic():
+                return ArtistProfile.objects.create(
+                    user=user,
+                    **validated_data,
+                )
         except IntegrityError:
             if ArtistProfile.objects.filter(user=user).exists():
                 raise serializers.ValidationError(
@@ -243,16 +246,53 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
             raise
 
 
+class ArtistProfileClaimInvitationShortSerializer(
+    serializers.ModelSerializer,
+):
+    """Краткое состояние приглашения на управление профилем."""
+
+    email = serializers.EmailField(
+        source='invitation.recipient_email',
+    )
+    status = serializers.CharField(
+        source='invitation.status',
+    )
+    expires_at = serializers.DateTimeField(
+        source='invitation.expires_at',
+    )
+    can_resend = serializers.BooleanField(
+        source='invitation.can_resend',
+        read_only=True,
+    )
+    resend_available_at = serializers.DateTimeField(
+        source='invitation.resend_available_at',
+        read_only=True,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = ArtistProfileClaimInvitation
+        fields = (
+            'email',
+            'status',
+            'expires_at',
+            'can_resend',
+            'resend_available_at',
+        )
+
+
 class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
     """Профиль, доступный для управления текущему аккаунту."""
 
     has_account = serializers.SerializerMethodField()
     is_self = serializers.SerializerMethodField()
+    claim_invitation = serializers.SerializerMethodField()
 
     class Meta(ArtistPublicShortSerializer.Meta):
         fields = ArtistPublicShortSerializer.Meta.fields + (
             'has_account',
             'is_self',
+            'claim_invitation',
         )
 
     def get_has_account(self, obj: ArtistProfile) -> bool:
@@ -263,6 +303,22 @@ class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
         """Определяет, принадлежит ли профиль текущему аккаунту."""
         request = self.context.get('request')
         return bool(request and obj.user_id == request.user.id)
+
+    @extend_schema_field(
+        ArtistProfileClaimInvitationShortSerializer(
+            allow_null=True,
+        ),
+    )
+    def get_claim_invitation(self, obj: ArtistProfile):
+        """Возвращает приглашение на управление профилем."""
+        try:
+            claim = obj.claim_invitation
+        except ArtistProfileClaimInvitation.DoesNotExist:
+            return None
+
+        return ArtistProfileClaimInvitationShortSerializer(
+            claim,
+        ).data
 
 
 class ManagedArtistProfileCreateSerializer(serializers.ModelSerializer):
