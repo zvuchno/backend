@@ -66,7 +66,7 @@ class ArtistProfileClaimInvitationService:
         email = normalize_email(email)
         artist = (
             ArtistProfile.objects
-            .select_for_update()
+            .select_for_update(of=('self',))
             .select_related('label')
             .get(pk=artist.pk)
         )
@@ -399,7 +399,7 @@ class ArtistProfileClaimInvitationService:
         try:
             invitation = (
                 TokenInvitation.objects
-                .select_for_update()
+                .select_for_update(of=('self',))
                 .select_related('artist_profile_claim', 'created_by')
                 .get(
                     token_hash=hash_invitation_token(token),
