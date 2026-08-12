@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.reverse import reverse
 
 from store.constants import (
     DISCOUNT_VALUE_PRECISION,
@@ -8,14 +9,14 @@ from store.models import Report
 
 
 class ArtistReportSerializer(serializers.ModelSerializer):
-    """Финансовый отчет артиста."""
+    """Агентский отчет артиста."""
 
     sales_amount = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=DISCOUNT_VALUE_PRECISION,
     )
 
-    file_url = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Report
@@ -23,17 +24,15 @@ class ArtistReportSerializer(serializers.ModelSerializer):
             'period_start',
             'period_end',
             'sales_amount',
-            'file_url',
+            'download_url',
         )
 
-    def get_file_url(self, obj) -> str:
-        request = self.context.get('request')
-
+    def get_download_url(self, obj) -> str | None:
         if not obj.report_file:
             return None
 
-        url = obj.report_file.url
-
-        if request:
-            return request.build_absolute_uri(url)
-        return url
+        return reverse(
+            'api:store:me-reports-download',
+            kwargs={'pk': obj.pk},
+            request=self.context.get('request'),
+        )
