@@ -1,3 +1,8 @@
+x-backend-build: &backend-build
+  build:
+    context: .
+    dockerfile: Dockerfile
+
 volumes:
   pg_data:
   static:
@@ -34,9 +39,7 @@ services:
       timeout: 5s
       retries: 5
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    <<: *backend-build
     image: zvuchno_backend:dev
     env_file: .env
     command: python manage.py runserver 0.0.0.0:8000
@@ -55,7 +58,7 @@ services:
       redis:
         condition: service_healthy
   celery_worker:
-    image: zvuchno_backend:dev
+    <<: *backend-build
     env_file: .env
     command: >
       celery -A config worker
@@ -71,7 +74,7 @@ services:
         condition: service_healthy
 
   celery_archives:
-    image: zvuchno_backend:dev
+    <<: *backend-build
     env_file: .env
     command: >
       celery -A config worker
@@ -88,7 +91,7 @@ services:
       redis:
         condition: service_healthy
   celery_media:
-    image: zvuchno_backend:dev
+    <<: *backend-build
     env_file: .env
     command: >
       celery -A config worker
@@ -105,7 +108,7 @@ services:
       redis:
         condition: service_healthy
   celery_beat:
-    image: zvuchno_backend:dev
+    <<: *backend-build
     env_file: .env
     command: celery -A config beat -l warning --schedule=/var/run/celery/celerybeat-schedule
     volumes:
@@ -121,7 +124,7 @@ services:
       redis:
         condition: service_healthy
   flower:
-    image: zvuchno_backend:dev
+    <<: *backend-build
     env_file:
       - .env
     command: >
@@ -142,7 +145,7 @@ services:
     ports:
       - '127.0.0.1:5555:5555'
   bot:
-    image: zvuchno_backend:dev
+    <<: *backend-build
     env_file: .env
     command: python manage.py runbot
     volumes:
