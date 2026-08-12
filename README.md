@@ -245,6 +245,7 @@ docker compose exec backend python manage.py collectstatic
 | `make up-d` | Собрать Docker image и запустить проект в фоне  |
 | `make start` | Запустить проект без пересборки                 |
 | `make start-d` | Запустить проект без пересборки в фоне          |
+| `make stop` | Остановить контейнеры без удаления |
 | `make build` | Собрать Docker image                            |
 | `make rebuild` | Пересобрать images без cache и запустить в фоне |
 | `make down` | Остановить и удалить контейнеры                 |

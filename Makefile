@@ -1,4 +1,4 @@
-.PHONY: help up up-d start start-d build down restart logs rebuild clean \
+.PHONY: help up up-d start start-d stop build down restart logs rebuild clean \
 	shell migrations migrate test collectstatic
 
 help:
@@ -7,6 +7,7 @@ help:
 	@echo "  make up-d          Собрать Docker image и запустить в фоне"
 	@echo "  make start         Запустить без пересборки"
 	@echo "  make start-d       Запустить без пересборки в фоне"
+	@echo "  make stop          Остановить контейнеры без удаления"
 	@echo "  make build         Собрать Docker images"
 	@echo "  make rebuild       Пересобрать images без кэша и запустить в фоне"
 	@echo "  make down          Остановить и удалить контейнеры"
@@ -26,10 +27,13 @@ up: build
 	docker compose up
 
 start:
-	docker compose up
+	docker compose start
 
 start-d:
-	docker compose up -d
+	docker compose start -d
+
+stop:
+	docker compose stop
 
 build:
 	docker compose build
