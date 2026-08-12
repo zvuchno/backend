@@ -1,6 +1,7 @@
 import hashlib
 import secrets
 from datetime import timedelta
+from enum import StrEnum
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -28,6 +29,14 @@ from users.models import (
 User = get_user_model()
 
 INVITATION_TOKEN_BYTES = 32
+
+
+class ArtistProfileClaimAcceptanceState(StrEnum):
+    """Состояния возможности принятия приглашения."""
+
+    REGISTRATION_REQUIRED = 'registration_required'
+    LOGIN_REQUIRED = 'login_required'
+    UNAVAILABLE = 'unavailable'
 
 
 def build_artist_profile_claim_url(token: str) -> str:
@@ -316,6 +325,31 @@ class ArtistProfileClaimInvitationService:
             )
 
         return claim
+
+    @staticmethod
+    def get_acceptance_state(
+        claim: ArtistProfileClaimInvitation,
+    ) -> ArtistProfileClaimAcceptanceState:
+        """Возвращает сценарий принятия приглашения."""
+        invitation = claim.invitation
+
+        if invitation.status != TokenInvitationStatus.PENDING:
+            return ArtistProfileClaimAcceptanceState.UNAVAILABLE
+
+        if invitation.expires_at <= timezone.now():
+            return ArtistProfileClaimAcceptanceState.UNAVAILABLE
+
+        user = User.objects.filter(
+            email=normalize_email(invitation.recipient_email),
+        ).first()
+
+        if user is None:
+            return ArtistProfileClaimAcceptanceState.REGISTRATION_REQUIRED
+
+        if ArtistProfile.objects.filter(user=user).exists():
+            return ArtistProfileClaimAcceptanceState.UNAVAILABLE
+
+        return ArtistProfileClaimAcceptanceState.LOGIN_REQUIRED
 
     @staticmethod
     def _validate_artist(

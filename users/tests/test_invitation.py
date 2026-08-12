@@ -15,6 +15,7 @@ from users.models import (
     TokenInvitation,
     TokenInvitationStatus,
 )
+from users.services.invitation import ArtistProfileClaimAcceptanceState
 from users.tasks.invitation import expire_token_invitations
 from users.tests.factories import (
     ArtistProfileFactory,
@@ -301,6 +302,67 @@ class TestArtistProfileClaimInvitationRead:
         assert response.data['label_name'] == claim.artist.label.name
         assert response.data['status'] == TokenInvitationStatus.PENDING
         assert response.data['expires_at'] is not None
+        assert response.data['acceptance_state'] == (
+            ArtistProfileClaimAcceptanceState.REGISTRATION_REQUIRED
+        )
+
+    def test_listener_can_login_and_accept_invitation(
+        self,
+        api_client,
+        artist_claim_factory,
+        artist_claim_read_url,
+    ):
+        user = ListenerUserFactory(
+            email='invited@test.local',
+        )
+        _, token = artist_claim_factory(
+            email=user.email,
+        )
+
+        response = api_client.get(
+            artist_claim_read_url,
+            {
+                'token': token,
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['acceptance_state'] == (
+            ArtistProfileClaimAcceptanceState.LOGIN_REQUIRED
+        )
+
+    @pytest.mark.parametrize(
+        'user_factory',
+        (
+            ArtistUserFactory,
+            LabelUserFactory,
+        ),
+    )
+    def test_user_with_artist_profile_cannot_accept_invitation(
+        self,
+        user_factory,
+        api_client,
+        artist_claim_factory,
+        artist_claim_read_url,
+    ):
+        user = user_factory(
+            email='invited@test.local',
+        )
+        _, token = artist_claim_factory(
+            email=user.email,
+        )
+
+        response = api_client.get(
+            artist_claim_read_url,
+            {
+                'token': token,
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['acceptance_state'] == (
+            ArtistProfileClaimAcceptanceState.UNAVAILABLE
+        )
 
     def test_requires_token(
         self,
@@ -357,6 +419,9 @@ class TestArtistProfileClaimInvitationRead:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['status'] == invitation_status
         assert response.data['artist_id'] == claim.artist_id
+        assert response.data['acceptance_state'] == (
+            ArtistProfileClaimAcceptanceState.UNAVAILABLE
+        )
 
     def test_read_marks_expired_invitation_as_expired(
         self,
