@@ -1,7 +1,11 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from users.models import ArtistProfileClaimInvitation
-from users.services.invitation import ArtistProfileClaimInvitationService
+from users.services.invitation import (
+    ArtistProfileClaimAcceptanceState,
+    ArtistProfileClaimInvitationService,
+)
 
 
 class ArtistProfileClaimInvitationCreateSerializer(
@@ -91,6 +95,14 @@ class ArtistProfileClaimInvitationReadSerializer(
             'acceptance_state',
         )
 
+    @extend_schema_field(
+        {
+            'type': 'string',
+            'enum': [
+                state.value for state in ArtistProfileClaimAcceptanceState
+            ],
+        },
+    )
     def get_acceptance_state(self, obj: ArtistProfileClaimInvitation) -> str:
         """Возвращает сценарий принятия приглашения."""
         return ArtistProfileClaimInvitationService.get_acceptance_state(
