@@ -37,6 +37,7 @@ nplusone==1.0.0
 oauthlib==3.3.1
 phonenumbers==9.0.25
 pillow==12.1.1
+psycopg2-binary==2.9.11
 pre-commit==4.5.1
 pycparser==3.0
 pytest==9.0.2
