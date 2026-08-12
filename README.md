@@ -15,8 +15,10 @@ Backend API проекта **Звучно**.
 * Swagger UI / Redoc
 * django-allauth
 * SimpleJWT
-* SQLite (для локальной разработки)
-* PostgreSQL
+* SQLite (для локального запуска без Docker)
+* PostgreSQL 17 (Docker / production)
+* Redis 7
+* Celery
 * Docker / Docker Compose
 * Nginx
 * Gunicorn
@@ -25,16 +27,10 @@ Backend API проекта **Звучно**.
 
 
 
-Основные зависимости:
+Полный список зависимостей находится в:
 
-```
-Django==5.2.12
-djangorestframework==3.16.1
-django-allauth==65.14.3
-djangorestframework_simplejwt==5.5.1
-django-filter==25.2
-ruff==0.15.5
-```
+* `requirements.txt` — локальная разработка и тестирование;
+* `requirements.prod.txt` — production runtime.
 
 ---
 
@@ -86,9 +82,12 @@ pre-commit run --all-files
 
 ---
 
-## 4. .env файл
-Пример - env.example
+## 4. Настроить окружение
+Создайте `.env` в корне проекта на основе `.env.example`.
+Проект поддерживает два локальных сценария:
 
+- запуск без Docker — Django запускается напрямую из виртуального окружения, по умолчанию можно использовать SQLite;
+- запуск через Docker Compose — используется полное окружение с PostgreSQL, Redis, Celery и Nginx.
 ---
 
 ## 5. Применить миграции
@@ -124,28 +123,142 @@ http://127.0.0.1:8000
 ```
 http://127.0.0.1:8000/admin
 ```
-### Запуск через Docker
+## Запуск через Docker
 
-Этот метод запускает полную связку: Django + PostgreSQL + Gunicorn + Nginx.
+Docker Compose запускает полное локальное окружение:
 
-**Подготовьте окружение:**
+* Django;
+* PostgreSQL;
+* Redis;
+* Celery workers;
+* Celery Beat;
+* Flower;
+* Nginx;
+* bot.
 
-Создайте файл .env в корневой папке проекта на основе примера: env.example
+Локальный backend запускается через Django `runserver`.
 
-Соберите и запустите контейнеры:
+Для production используется отдельный `Dockerfile.prod`, в котором backend запускается через Gunicorn.
+
+### Подготовка окружения
+
+Создайте `.env` в корневой папке проекта на основе `.env.example`.
+
+### Через Makefile
+
+Для основных Docker-команд в проекте используется `Makefile`.
+
+Посмотреть доступные команды:
+
+```bash
+make help
 ```
-docker compose up --build
+
+Собрать Docker image и запустить проект:
+
+```bash
+make up
 ```
-Подготовьте базу данных и статику при первом запуске:
+
+Запустить проект в фоне:
+
+```bash
+make up-d
 ```
+
+Если backend image уже собран и пересборка не требуется:
+
+```bash
+make start
+```
+
+или в фоне:
+
+```bash
+make start-d
+```
+
+После изменения `Dockerfile` или `requirements.txt`:
+
+```bash
+make build
+```
+
+Полностью пересобрать backend без Docker build cache и запустить в фоне:
+
+```bash
+make rebuild
+```
+
+Остановить контейнеры:
+
+```bash
+make down
+```
+
+Посмотреть логи:
+
+```bash
+make logs
+```
+
+### Напрямую через Docker Compose
+
+`Makefile` является удобной обёрткой над Docker Compose. Команды можно выполнять и напрямую.
+
+Собрать image:
+
+```bash
+docker compose build
+```
+
+Запустить проект:
+
+```bash
+docker compose up
+```
+
+или в фоне:
+
+```bash
+docker compose up -d
+```
+
+Подготовить базу данных и статику при первом запуске:
+
+```bash
 # Миграции
 docker compose exec backend python manage.py migrate
+
 # Сбор статических файлов
 docker compose exec backend python manage.py collectstatic
 ```
+
 Проект доступен по адресу: [http://localhost:8000](http://localhost:8000)
 
+### Полезные команды Makefile
 
+| Команда | Назначение                                      |
+|---|-------------------------------------------------|
+| `make help` | Показать доступные команды                      |
+| `make up` | Собрать Docker image и запустить проект         |
+| `make up-d` | Собрать Docker image и запустить проект в фоне  |
+| `make start` | Запустить проект без пересборки                 |
+| `make start-d` | Запустить проект без пересборки в фоне          |
+| `make build` | Собрать Docker image                            |
+| `make rebuild` | Пересобрать images без cache и запустить в фоне |
+| `make down` | Остановить и удалить контейнеры                 |
+| `make restart` | Перезапустить контейнеры                        |
+| `make logs` | Следить за логами контейнеров                   |
+| `make clean` | Удалить контейнеры и неиспользуемый build cache |
+| `make shell` | Открыть Django shell                            |
+| `make migrations` | Создать миграции                                |
+| `make migrate` | Применить миграции                              |
+| `make test` | Запустить тесты                                 |
+| `make collectstatic` | Собрать статические файлы |
+
+> [!NOTE]
+> `make clean` не удаляет Docker volumes, поэтому локальная PostgreSQL база сохраняется.
 
 ### Мониторинг Celery через Flower
 
@@ -200,27 +313,19 @@ users.CoreUser
 AUTH_USER_MODEL = "users.CoreUser"
 ```
 
-При работе с пользователем используйте:
-
-```python
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-```
-
 ---
 
 # База данных
 
-Для локальной разработки используется **SQLite**.
-
+При локальном запуске без Docker может использоваться **SQLite**.
 Файл базы (`db.sqlite3`) не хранится в репозитории.
 
-После клонирования проекта выполните:
+При запуске через Docker Compose используется **PostgreSQL 17**.
 
-```
-python manage.py migrate
-```
+Данные PostgreSQL хранятся в Docker volume `pg_data` и сохраняются между обычными остановками и пересозданием контейнеров.
+
+> [!WARNING]
+> Команда `docker compose down -v` удаляет volumes, включая локальную PostgreSQL базу.
 
 ---
 
@@ -228,25 +333,43 @@ python manage.py migrate
 
 Создать миграции:
 
-```
+```bash
 python manage.py makemigrations
+```
+
+или в Docker:
+
+```bash
+make migrations
 ```
 
 Применить миграции:
 
-```
+```bash
 python manage.py migrate
+```
+
+или в Docker:
+
+```bash
+make migrate
 ```
 
 Запустить shell:
 
-```
+```bash
 python manage.py shell
 ```
 
-Запустить проверку:
+или в Docker:
 
+```bash
+make shell
 ```
+
+Запустить проверку Django:
+
+```bash
 python manage.py check
 ```
 
@@ -283,6 +406,11 @@ pytest
 или многопоточно (указать auto или подобрать количество потоков вручную):
 ```
 pytest -n auto
+```
+Запуск внутри Docker:
+
+```bash
+make test
 ```
 
 # Профилирование и оптимизация (Silk)
