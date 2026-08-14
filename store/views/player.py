@@ -32,7 +32,16 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
 
     def get_queryset(self):
         """Возвращает альбом с доступными треками для плеера."""
-        purchase_variant_queryset = (
+        favorite_variant_id_subquery = Subquery(
+            ProductVariant.objects
+            .filter(
+                product__track_id=OuterRef('pk'),
+                is_active=True,
+            )
+            .order_by('id')
+            .values('pk')[:1],
+        )
+        purchase_variant_id_subquery = Subquery(
             ProductVariant.objects
             .filter(
                 product__track_id=OuterRef('pk'),
@@ -40,7 +49,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
                 is_active=True,
             )
             .order_by('id')
-            .values('pk')[:1]
+            .values('pk')[:1],
         )
 
         tracks_queryset = (
@@ -50,9 +59,8 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
             )
             .select_related('generated')
             .annotate(
-                variant_id=Subquery(
-                    purchase_variant_queryset,
-                ),
+                favorite_variant_id=favorite_variant_id_subquery,
+                purchase_variant_id=purchase_variant_id_subquery,
             )
             .order_by('position', 'id')
         )
