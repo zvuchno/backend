@@ -8,7 +8,8 @@ from users.models import ArtistProfile
 class ArtistMembershipService:
     """Сервис управления связью артиста с лейблом.
 
-    TODO: требуется верификация артиста.
+    TODO: добавить к валидации is_verified артиста вместо email_is_verified,
+    но не убирать legal_profile.is_verified.
     """
 
     @classmethod
@@ -18,7 +19,7 @@ class ArtistMembershipService:
         artist = (
             ArtistProfile.objects
             .select_for_update(of=('self',))
-            .select_related('user', 'label', 'user__legal_profile')
+            .select_related('user', 'user__legal_profile')
             .get(pk=artist.pk)
         )
 
