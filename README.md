@@ -469,3 +469,84 @@ SSH_PASSPHRASE  # Пароль от ключа (если он есть)
 - соберёт Docker-образы
 - отправит образы в Docker Hub
 - выполнит деплой на сервер через SSH
+
+## Резервное копирование
+
+Резервные копии PostgreSQL выполняются ежедневно на production VM и загружаются в приватный bucket Yandex Object Storage `zvuchno-backups`
+
+Скрипт `scripts/backup_postgres.sh` создаёт дамп PostgreSQL в custom-формате (`pg_dump -Fc`), проверяет его целостность через `pg_restore --list`, загружает в Yandex Object Storage и удаляет старые копии, оставляя последние 30
+
+Скрипт хранится в репозитории и доставляется на VM автоматически при деплое
+
+### Первоначальная настройка
+
+Выполняется один раз на production VM (в том числе при пересоздании VM)
+
+#### 1. Установка AWS CLI
+
+```bash
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -q /tmp/awscliv2.zip -d /tmp
+sudo /tmp/aws/install
+```
+
+#### 2. Настройка credentials
+
+Создать файл `/etc/zvuchno-backup.env`:
+
+```bash
+sudo nano /etc/zvuchno-backup.env
+```
+
+Содержимое:
+
+```env
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_S3_ENDPOINT_URL=https://storage.yandexcloud.net
+AWS_DEFAULT_REGION=ru-central1
+```
+
+Установить права:
+
+```bash
+sudo chmod 600 /etc/zvuchno-backup.env
+```
+
+#### 3. Настройка cron
+
+Открыть crontab:
+
+```bash
+crontab -e
+```
+
+Добавить:
+
+```cron
+0 3 * * * cd /home/zdocker/zvuchno && set -a && . /etc/zvuchno-backup.env && set +a && ./scripts/backup_postgres.sh >> /home/zdocker/backups/backup.log 2>&1
+```
+
+Backup выполняется ежедневно в 03:00
+
+#### 4. Проверка
+
+Запустить backup вручную:
+
+```bash
+cd /home/zdocker/zvuchno
+set -a && . /etc/zvuchno-backup.env && set +a
+./scripts/backup_postgres.sh
+```
+
+После успешного выполнения в bucket `zvuchno-backups/postgres/` должен появиться новый `.dump`-файл
+
+### Восстановление из бэкапа
+
+```bash
+aws --endpoint-url=https://storage.yandexcloud.net \
+    s3 cp s3://zvuchno-backups/postgres/<имя_файла>.dump ./restore.dump
+
+docker compose -f docker-compose.production.yml exec -T db \
+    pg_restore -U <POSTGRES_USER> -d <POSTGRES_DB> --clean --if-exists < ./restore.dump
+```
