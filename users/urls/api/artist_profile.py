@@ -5,6 +5,7 @@ from django.urls import path
 from store.views import ArtistSaleViewSet
 from users.views import (
     ArtistCoverUpdateView,
+    ArtistLeaveLabelView,
     ArtistLegalProfileView,
     ArtistListView,
     ArtistMeView,
@@ -52,6 +53,11 @@ urlpatterns = [
         'me/',
         ArtistMeView.as_view(),
         name='artist_me',
+    ),
+    path(
+        'me/leave-label/',
+        ArtistLeaveLabelView.as_view(),
+        name='artist_leave_label',
     ),
     path(
         'me/pickup-points/',

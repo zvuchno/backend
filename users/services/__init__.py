@@ -1,3 +1,4 @@
+from .artist_membership import ArtistMembershipService
 from .email import (
     send_artist_profile_claim_accepted_mail,
     send_artist_profile_claim_invitation_mail,
@@ -23,6 +24,7 @@ from .utils import (
 )
 
 __all__ = [
+    'ArtistMembershipService',
     'build_email_verification_url',
     'generate_password_reset_data',
     'build_password_reset_url',

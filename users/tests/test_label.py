@@ -2,6 +2,7 @@ from http import HTTPStatus
 
 import pytest
 
+from store.tests.factories import AlbumFactory, MerchFactory
 from users.models import (
     ArtistProfile,
     ArtistProfileType,
@@ -313,3 +314,235 @@ class TestLabelManagedProfileList:
 
         other_artist_user.artist_profile.refresh_from_db()
         assert other_artist_user.artist_profile.slug == original_slug
+
+
+@pytest.mark.django_db
+class TestArtistLeaveLabel:
+    """Тесты самостоятельного выхода артиста из лейбла."""
+
+    def test_artist_leaves_label(
+        self,
+        signed_artist_user,
+        client_factory,
+        artist_legal_profile_factory,
+        artist_leave_label_url,
+    ):
+        signed_artist_user.is_email_verified = True
+        signed_artist_user.save(update_fields=('is_email_verified',))
+
+        artist_legal_profile_factory(
+            user=signed_artist_user,
+            is_verified=True,
+        )
+
+        artist = signed_artist_user.artist_profile
+        client = client_factory(signed_artist_user)
+
+        response = client.post(artist_leave_label_url)
+
+        assert response.status_code == HTTPStatus.NO_CONTENT
+
+        artist.refresh_from_db()
+
+        assert artist.label is None
+
+    def test_artist_becomes_payout_recipient_after_leaving_label(
+        self,
+        signed_artist_user,
+        client_factory,
+        artist_legal_profile_factory,
+        artist_leave_label_url,
+    ):
+        signed_artist_user.is_email_verified = True
+        signed_artist_user.save(update_fields=('is_email_verified',))
+
+        artist_legal_profile_factory(
+            user=signed_artist_user,
+            is_verified=True,
+        )
+
+        artist = signed_artist_user.artist_profile
+        label = artist.label
+
+        album = AlbumFactory(
+            artist=artist,
+            payout_recipient=label.user,
+        )
+        merch = MerchFactory(
+            artist=artist,
+            payout_recipient=label.user,
+        )
+
+        client = client_factory(signed_artist_user)
+
+        response = client.post(artist_leave_label_url)
+
+        assert response.status_code == HTTPStatus.NO_CONTENT
+
+        artist.refresh_from_db()
+        album.refresh_from_db()
+        merch.refresh_from_db()
+
+        assert artist.label is None
+        assert album.payout_recipient == signed_artist_user
+        assert merch.payout_recipient == signed_artist_user
+
+    def test_leave_label_does_not_change_other_artist_content(
+        self,
+        signed_artist_user,
+        client_factory,
+        artist_profile_factory,
+        artist_legal_profile_factory,
+        artist_leave_label_url,
+    ):
+        signed_artist_user.is_email_verified = True
+        signed_artist_user.save(update_fields=('is_email_verified',))
+
+        artist_legal_profile_factory(
+            user=signed_artist_user,
+            is_verified=True,
+        )
+
+        artist = signed_artist_user.artist_profile
+        label = artist.label
+
+        another_artist = artist_profile_factory(
+            label=label,
+        )
+
+        album = AlbumFactory(
+            artist=another_artist,
+            payout_recipient=label.user,
+        )
+        merch = MerchFactory(
+            artist=another_artist,
+            payout_recipient=label.user,
+        )
+
+        client = client_factory(signed_artist_user)
+
+        response = client.post(artist_leave_label_url)
+
+        assert response.status_code == HTTPStatus.NO_CONTENT
+
+        album.refresh_from_db()
+        merch.refresh_from_db()
+
+        assert album.payout_recipient == label.user
+        assert merch.payout_recipient == label.user
+
+    def test_unverified_artist_email_cannot_leave_label(
+        self,
+        signed_artist_user,
+        client_factory,
+        artist_legal_profile_factory,
+        artist_leave_label_url,
+    ):
+        signed_artist_user.is_email_verified = False
+        signed_artist_user.save(update_fields=('is_email_verified',))
+
+        artist_legal_profile_factory(
+            user=signed_artist_user,
+            is_verified=True,
+        )
+
+        artist = signed_artist_user.artist_profile
+        label = artist.label
+
+        client = client_factory(signed_artist_user)
+
+        response = client.post(artist_leave_label_url)
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+        artist.refresh_from_db()
+
+        assert artist.label == label
+
+    def test_artist_without_legal_profile_cannot_leave_label(
+        self,
+        signed_artist_user,
+        client_factory,
+        artist_leave_label_url,
+    ):
+        signed_artist_user.is_email_verified = True
+        signed_artist_user.save(update_fields=('is_email_verified',))
+
+        artist = signed_artist_user.artist_profile
+        label = artist.label
+
+        client = client_factory(signed_artist_user)
+
+        response = client.post(artist_leave_label_url)
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+        artist.refresh_from_db()
+
+        assert artist.label == label
+
+    def test_artist_with_unverified_legal_profile_cannot_leave_label(
+        self,
+        signed_artist_user,
+        client_factory,
+        artist_legal_profile_factory,
+        artist_leave_label_url,
+    ):
+        signed_artist_user.is_email_verified = True
+        signed_artist_user.save(update_fields=('is_email_verified',))
+
+        artist_legal_profile_factory(
+            user=signed_artist_user,
+            is_verified=False,
+        )
+
+        artist = signed_artist_user.artist_profile
+        label = artist.label
+
+        client = client_factory(signed_artist_user)
+
+        response = client.post(artist_leave_label_url)
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+        artist.refresh_from_db()
+
+        assert artist.label == label
+
+    def test_artist_without_label_cannot_leave(
+        self,
+        artist_user,
+        client_factory,
+        artist_legal_profile_factory,
+        artist_leave_label_url,
+    ):
+        artist_user.is_email_verified = True
+        artist_user.save(update_fields=('is_email_verified',))
+
+        artist_legal_profile_factory(
+            user=artist_user,
+            is_verified=True,
+        )
+
+        artist = artist_user.artist_profile
+        client = client_factory(artist_user)
+
+        response = client.post(artist_leave_label_url)
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+
+        artist.refresh_from_db()
+
+        assert artist.label is None
+
+    def test_label_cannot_leave_label(
+        self,
+        label_user,
+        client_factory,
+        artist_leave_label_url,
+    ):
+        client = client_factory(label_user)
+
+        response = client.post(artist_leave_label_url)
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
