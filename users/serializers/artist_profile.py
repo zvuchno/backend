@@ -57,10 +57,7 @@ class ArtistLabelShortSerializer(serializers.ModelSerializer):
 class ArtistPublicShortSerializer(serializers.ModelSerializer):
     """Сериализатор публичного профиля артиста."""
 
-    label = ArtistLabelShortSerializer(
-        read_only=True,
-        allow_null=True,
-    )
+    label = ArtistLabelShortSerializer(read_only=True)
 
     class Meta:
         model = ArtistProfile
