@@ -112,9 +112,14 @@ class ManagedArtistProfileView(ArtistProfileBaseView):
 class ArtistPublicView(RetrieveAPIView):
     """Публичный просмотр профиля артиста."""
 
-    queryset = ArtistProfile.objects.filter(is_active=True).prefetch_related(
-        'contacts',
-        'socials',
+    queryset = (
+        ArtistProfile.objects
+        .filter(is_active=True)
+        .select_related('label')
+        .prefetch_related(
+            'contacts',
+            'socials',
+        )
     )
     permission_classes = [AllowAny]
     serializer_class = ArtistPublicSerializer
@@ -127,7 +132,7 @@ class ArtistListView(ListAPIView):
 
     queryset = ArtistProfile.objects.filter(
         is_active=True,
-    ).select_related('user')
+    ).select_related('user', 'label')
     permission_classes = [AllowAny]
     serializer_class = ArtistPublicShortSerializer
     filter_backends = [
@@ -186,6 +191,7 @@ class LabelManagedProfileListView(ListCreateAPIView):
             )
             .select_related(
                 'user',
+                'label',
                 'claim_invitation__invitation',
             )
             .order_by(
