@@ -84,6 +84,7 @@ class ArtistProfileBaseView(ManagedArtistProfileMixin, RetrieveUpdateAPIView):
 
     permission_classes = [IsArtistOrLabel]
     http_method_names = ['get', 'patch']
+    select_related = ('label',)
     prefetch_related = ('contacts', 'socials')
 
     def get_object(self):

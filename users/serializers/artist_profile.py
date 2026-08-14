@@ -42,8 +42,25 @@ class ArtistSocialSerializer(serializers.ModelSerializer):
         fields = ('id', 'label', 'value')
 
 
+class ArtistLabelShortSerializer(serializers.ModelSerializer):
+    """Сериализатор лейбла артиста."""
+
+    class Meta:
+        model = ArtistProfile
+        fields = (
+            'id',
+            'name',
+            'slug',
+        )
+
+
 class ArtistPublicShortSerializer(serializers.ModelSerializer):
     """Сериализатор публичного профиля артиста."""
+
+    label = ArtistLabelShortSerializer(
+        read_only=True,
+        allow_null=True,
+    )
 
     class Meta:
         model = ArtistProfile
@@ -55,6 +72,7 @@ class ArtistPublicShortSerializer(serializers.ModelSerializer):
             'cover',
             'city',
             'slug',
+            'label',
         )
 
 
