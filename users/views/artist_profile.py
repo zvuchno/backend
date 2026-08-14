@@ -15,8 +15,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 
 from common.permissions import (
+    IsArtist,
     IsArtistOrLabel,
     IsLabel,
     IsNotLabel,
@@ -26,6 +28,7 @@ from users.filters import ArtistFilter
 from users.models import ArtistProfile
 from users.schemas import (
     artist_cover_update_schema,
+    artist_leave_label_schema,
     artist_list_schema,
     artist_me_schema,
     artist_public_schema,
@@ -44,6 +47,7 @@ from users.serializers.artist_profile import (
     ManagedArtistProfileCreateSerializer,
     ManagedArtistProfileSerializer,
 )
+from users.services import ArtistMembershipService
 from users.views.mixins import (
     ManagedArtistProfileMixin,
 )
@@ -191,3 +195,17 @@ class LabelManagedProfileListView(ListCreateAPIView):
                 'name',
             )
         )
+
+
+@artist_leave_label_schema
+class ArtistLeaveLabelView(APIView):
+    """Самостоятельный выход текущего артиста из лейбла."""
+
+    permission_classes = [IsArtist]
+
+    def post(self, request):
+        ArtistMembershipService.leave_label(
+            artist=request.user.artist_profile,
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

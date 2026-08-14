@@ -21,6 +21,7 @@ from .artist_legal_profile import (
 )
 from .artist_profile import (
     ArtistCoverUpdateView,
+    ArtistLeaveLabelView,
     ArtistListView,
     ArtistMeView,
     ArtistPublicView,
@@ -70,6 +71,7 @@ from .telegram_connect import TelegramConnectView
 
 __all__ = [
     'ArtistCoverUpdateView',
+    'ArtistLeaveLabelView',
     'ArtistLegalProfileView',
     'ArtistListView',
     'ArtistMeView',
