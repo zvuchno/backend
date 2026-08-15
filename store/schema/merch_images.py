@@ -1,3 +1,4 @@
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 
 from store.serializers import ImageSerializer
@@ -18,7 +19,7 @@ def image_detail_schema(view_func):
             summary='Удалить изображение',
             tags=['Merch'],
             description='Удаляет изображение мерча.',
-            responses={204: None},
+            responses={204: OpenApiTypes.NONE},
         )(view_func),
     )
 
