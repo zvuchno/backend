@@ -19,3 +19,9 @@ class CookieRefreshResponseSerializer(serializers.Serializer):
     """Ответ после обновления cookie-сессии."""
 
     refreshed = serializers.BooleanField()
+
+
+class CookieLogoutResponseSerializer(serializers.Serializer):
+    """Сериализатор ответа при выходе из JWT-сессии."""
+
+    detail = serializers.CharField()

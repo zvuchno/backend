@@ -1,7 +1,6 @@
 from dj_rest_auth.jwt_auth import get_refresh_view
 from dj_rest_auth.views import LoginView, LogoutView
 from drf_spectacular.utils import (
-    OpenApiResponse,
     extend_schema,
     extend_schema_view,
 )
@@ -9,6 +8,7 @@ from drf_spectacular.utils import (
 from users.serializers import (
     CookieLoginResponseSerializer,
     CookieLoginSerializer,
+    CookieLogoutResponseSerializer,
     CookieRefreshResponseSerializer,
 )
 from users.views.mixins import CookieRefreshResponseMixin, CookieResponseMixin
@@ -34,9 +34,7 @@ class CookieLoginView(CookieResponseMixin, LoginView):
         tags=['Auth: JWT cookie'],
         request=None,
         responses={
-            200: OpenApiResponse(
-                description='JWT-cookie успешно удалены.',
-            ),
+            200: CookieLogoutResponseSerializer,
         },
     ),
 )

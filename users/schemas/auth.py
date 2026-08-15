@@ -1,5 +1,6 @@
 """Схемы OpenAPI для эндпоинтов аутентификации."""
 
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 
 from users.serializers import (
@@ -35,7 +36,10 @@ logout_schema = extend_schema(
     tags=['Auth'],
     auth=[],
     request=LogoutSerializer,
-    responses={204: None, 400: None},
+    responses={
+        204: OpenApiTypes.NONE,
+        400: OpenApiTypes.OBJECT,
+    },
     summary='Выход из системы',
     description=(
         'Инвалидирует refresh-токен пользователя, добавляя его в blacklist.'
