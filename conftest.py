@@ -371,3 +371,9 @@ def listener_client(client_factory, listener_user):
 def login_url():
     """Возвращает URL-адрес эндпоинта для создания токена авторизации."""
     return reverse('api:users:token_create')
+
+
+@pytest.fixture
+def artist_leave_label_url() -> str:
+    """Возвращает URL самостоятельного выхода артиста из лейбла."""
+    return reverse('api:users:artist_leave_label')

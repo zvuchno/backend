@@ -166,3 +166,20 @@ label_managed_profile_list_schema = extend_schema_view(
         },
     ),
 )
+
+
+artist_leave_label_schema = extend_schema(
+    tags=['Artists'],
+    summary='Выйти из лейбла',
+    description=(
+        'Открепляет текущего артиста от управляющего лейбла. '
+        'Получателем выплат по всем товарам артиста становится '
+        'учётная запись самого артиста. '
+        'Операция доступна только артисту с подтверждённым email '
+        'и подтвержденным юридическим профилем.'
+    ),
+    request=None,
+    responses={
+        204: None,
+    },
+)

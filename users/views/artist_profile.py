@@ -15,8 +15,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 
 from common.permissions import (
+    IsArtist,
     IsArtistOrLabel,
     IsLabel,
     IsNotLabel,
@@ -26,6 +28,7 @@ from users.filters import ArtistFilter
 from users.models import ArtistProfile
 from users.schemas import (
     artist_cover_update_schema,
+    artist_leave_label_schema,
     artist_list_schema,
     artist_me_schema,
     artist_public_schema,
@@ -44,6 +47,7 @@ from users.serializers.artist_profile import (
     ManagedArtistProfileCreateSerializer,
     ManagedArtistProfileSerializer,
 )
+from users.services import ArtistMembershipService
 from users.views.mixins import (
     ManagedArtistProfileMixin,
 )
@@ -80,6 +84,7 @@ class ArtistProfileBaseView(ManagedArtistProfileMixin, RetrieveUpdateAPIView):
 
     permission_classes = [IsArtistOrLabel]
     http_method_names = ['get', 'patch']
+    select_related = ('label',)
     prefetch_related = ('contacts', 'socials')
 
     def get_object(self):
@@ -107,9 +112,14 @@ class ManagedArtistProfileView(ArtistProfileBaseView):
 class ArtistPublicView(RetrieveAPIView):
     """Публичный просмотр профиля артиста."""
 
-    queryset = ArtistProfile.objects.filter(is_active=True).prefetch_related(
-        'contacts',
-        'socials',
+    queryset = (
+        ArtistProfile.objects
+        .filter(is_active=True)
+        .select_related('label')
+        .prefetch_related(
+            'contacts',
+            'socials',
+        )
     )
     permission_classes = [AllowAny]
     serializer_class = ArtistPublicSerializer
@@ -122,7 +132,7 @@ class ArtistListView(ListAPIView):
 
     queryset = ArtistProfile.objects.filter(
         is_active=True,
-    ).select_related('user')
+    ).select_related('user', 'label')
     permission_classes = [AllowAny]
     serializer_class = ArtistPublicShortSerializer
     filter_backends = [
@@ -181,6 +191,7 @@ class LabelManagedProfileListView(ListCreateAPIView):
             )
             .select_related(
                 'user',
+                'label',
                 'claim_invitation__invitation',
             )
             .order_by(
@@ -191,3 +202,17 @@ class LabelManagedProfileListView(ListCreateAPIView):
                 'name',
             )
         )
+
+
+@artist_leave_label_schema
+class ArtistLeaveLabelView(APIView):
+    """Самостоятельный выход текущего артиста из лейбла."""
+
+    permission_classes = [IsArtist]
+
+    def post(self, request):
+        ArtistMembershipService.leave_label(
+            artist=request.user.artist_profile,
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

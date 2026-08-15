@@ -23,6 +23,7 @@ from .artist_legal_profile import (
 )
 from .artist_profile import (
     artist_cover_update_schema,
+    artist_leave_label_schema,
     artist_list_schema,
     artist_me_schema,
     artist_public_schema,
@@ -62,6 +63,7 @@ from .telegram_connect import telegram_connect_schema
 
 __all__ = [
     'artist_cover_update_schema',
+    'artist_leave_label_schema',
     'artist_legal_data_schema',
     'artist_list_schema',
     'artist_me_schema',
