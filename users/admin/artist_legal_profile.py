@@ -11,6 +11,12 @@ from users.models import (
     ArtistLegalProfile,
 )
 
+VERIFICATION_MODELS = {
+    'identity_data': ArtistIdentityData,
+    'bank_data': ArtistBankData,
+    'company_data': ArtistCompanyData,
+}
+
 
 class ArtistIdentityDataInline(admin.StackedInline):
     """Инлайн паспортных данных артиста."""
@@ -91,12 +97,6 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         ArtistCompanyDataInline,
     )
 
-    readonly_fields = (
-        'artist_link',
-        'created_at',
-        'updated_at',
-    )
-
     list_display = (
         'id',
         'user',
@@ -148,6 +148,8 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'recipient_type',
+                    'verification_readiness',
+                    'verification_missing_fields',
                     'is_verified',
                     'comment',
                 ),
@@ -184,6 +186,31 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         url = reverse('admin:users_artistprofile_change', args=[artist.pk])
         return format_html('<a href="{}">{}</a>', url, artist.name)
 
+    @admin.display(
+        description='Готов к проверке',
+        boolean=True,
+    )
+    def verification_readiness(self, obj):
+        if not obj:
+            return False
+        return obj.is_ready_for_verification
+
+    @admin.display(description='Не заполнено для проверки')
+    def verification_missing_fields(self, obj):
+        """Возвращает незаполненные обязательные данные."""
+        if not obj:
+            return '—'
+
+        missing_fields = obj.get_verification_missing_fields()
+
+        if not missing_fields:
+            return '—'
+
+        return ', '.join(
+            str(self._get_verification_field_label(field))
+            for field in missing_fields
+        )
+
     def get_queryset(self, request):
         """Оптимизирует запросы списка юридических профилей."""
         return (
@@ -214,9 +241,21 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
             'artist_link',
             'created_at',
             'updated_at',
+            'verification_readiness',
+            'verification_missing_fields',
         ]
 
         if obj:
             readonly_fields.append('user')
 
         return readonly_fields
+
+    def _get_verification_field_label(self, field_name) -> str:
+        """Возвращает название обязательного поля для отображения."""
+        if '.' not in field_name:
+            return ArtistLegalProfile._meta.get_field(field_name).verbose_name
+
+        prefix, related_field = field_name.split('.', 1)
+        model = VERIFICATION_MODELS[prefix]
+
+        return model._meta.get_field(related_field).verbose_name

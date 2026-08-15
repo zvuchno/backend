@@ -580,3 +580,123 @@ class TestArtistLegalProfilePatchRules:
         assert legal_profile.is_verified is old_is_verified
         assert response.data['legal_profile']['comment'] == old_comment
         assert legal_profile.comment == old_comment
+
+
+class TestArtistLegalProfileVerificationReadiness:
+    """Тесты готовности юридического профиля к проверке."""
+
+    def test_empty_profile_returns_all_required_common_fields(
+        self,
+        artist_user,
+    ):
+        legal_profile = ArtistLegalProfile.objects.create(
+            user=artist_user,
+        )
+
+        missing_fields = legal_profile.get_verification_missing_fields()
+
+        assert 'recipient_type' in missing_fields
+        assert 'bank_data.bik' in missing_fields
+        assert 'bank_data.checking_account' in missing_fields
+
+    def test_self_employed_requires_identity_and_bank_data(
+        self,
+        artist_user,
+    ):
+        legal_profile = ArtistLegalProfile.objects.create(
+            user=artist_user,
+            recipient_type=ArtistLegalProfile.RecipientType.SELF_EMPLOYED,
+        )
+
+        missing_fields = legal_profile.get_verification_missing_fields()
+
+        assert 'identity_data.first_name' in missing_fields
+        assert 'identity_data.last_name' in missing_fields
+        assert 'identity_data.passport_number' in missing_fields
+        assert 'bank_data.bik' in missing_fields
+        assert 'company_data.inn' not in missing_fields
+
+    def test_individual_entrepreneur_requires_identity_data(
+        self,
+        artist_user,
+    ):
+        legal_profile = ArtistLegalProfile.objects.create(
+            user=artist_user,
+            recipient_type=(
+                ArtistLegalProfile.RecipientType.INDIVIDUAL_ENTREPRENEUR
+            ),
+        )
+
+        missing_fields = legal_profile.get_verification_missing_fields()
+
+        assert 'identity_data.inn' in missing_fields
+        assert 'company_data.inn' not in missing_fields
+
+    def test_legal_entity_requires_company_data(
+        self,
+        artist_user,
+    ):
+        legal_profile = ArtistLegalProfile.objects.create(
+            user=artist_user,
+            recipient_type=ArtistLegalProfile.RecipientType.LEGAL_ENTITY,
+        )
+
+        missing_fields = legal_profile.get_verification_missing_fields()
+
+        assert 'company_data.company_name' in missing_fields
+        assert 'company_data.inn' in missing_fields
+        assert 'company_data.ogrn' in missing_fields
+        assert 'identity_data.passport_number' not in missing_fields
+
+    def test_middle_name_is_not_required(
+        self,
+        artist_user,
+        artist_legal_profile_factory,
+    ):
+        legal_profile = artist_legal_profile_factory(user=artist_user)
+        legal_profile.identity_data.middle_name = ''
+        legal_profile.identity_data.save()
+
+        assert 'identity_data.middle_name' not in (
+            legal_profile.get_verification_missing_fields()
+        )
+
+    def test_bank_name_and_correspondent_account_are_not_required(
+        self,
+        artist_user,
+        artist_legal_profile_factory,
+    ):
+        legal_profile = artist_legal_profile_factory(user=artist_user)
+        legal_profile.bank_data.bank_name = ''
+        legal_profile.bank_data.correspondent_account = ''
+        legal_profile.bank_data.save()
+
+        missing_fields = legal_profile.get_verification_missing_fields()
+
+        assert 'bank_data.bank_name' not in missing_fields
+        assert 'bank_data.correspondent_account' not in missing_fields
+        assert legal_profile.is_ready_for_verification is True
+
+    def test_complete_self_employed_profile_is_ready(
+        self,
+        artist_user,
+        artist_legal_profile_factory,
+    ):
+        legal_profile = artist_legal_profile_factory(user=artist_user)
+
+        assert legal_profile.get_verification_missing_fields() == []
+        assert legal_profile.is_ready_for_verification is True
+
+    def test_complete_legal_entity_profile_is_ready(
+        self,
+        artist_user,
+        artist_legal_profile_factory,
+    ):
+        legal_profile = artist_legal_profile_factory(
+            user=artist_user,
+            recipient_type=ArtistLegalProfile.RecipientType.LEGAL_ENTITY,
+            with_company_data=True,
+        )
+
+        assert legal_profile.get_verification_missing_fields() == []
+        assert legal_profile.is_ready_for_verification is True
