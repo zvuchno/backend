@@ -75,6 +75,8 @@ class ArtistBankData(TimestampModel):
             )
         if self.checking_account:
             self.checking_account = normalize_digits(self.checking_account)
+        if self.bank_name:
+            self.bank_name = self.bank_name.strip()
 
     class Meta:
         verbose_name = 'банковские данные'

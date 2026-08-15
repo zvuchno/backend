@@ -1,6 +1,7 @@
 """Модуль админки юридических данных артиста."""
 
 from django.contrib import admin
+from django.db import models
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -10,6 +11,12 @@ from users.models import (
     ArtistIdentityData,
     ArtistLegalProfile,
 )
+
+VERIFICATION_MODELS = {
+    'identity_data': ArtistIdentityData,
+    'bank_data': ArtistBankData,
+    'company_data': ArtistCompanyData,
+}
 
 
 class ArtistIdentityDataInline(admin.StackedInline):
@@ -81,6 +88,63 @@ class ArtistCompanyDataInline(admin.StackedInline):
     )
 
 
+class VerificationReadinessFilter(admin.SimpleListFilter):
+    """Фильтр по готовности юридического профиля к проверке."""
+
+    title = 'готов к проверке'
+    parameter_name = 'verification_readiness'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Да'),
+            ('no', 'Нет'),
+        )
+
+    def queryset(self, request, queryset):
+        """Фильтрует профили по готовности к ручной проверке.
+
+        Важно: условие повторяет бизнес-правило
+        ArtistLegalProfile.is_ready_for_verification на уровне SQL.
+        При изменении обязательных полей проверки необходимо обновить
+        и этот фильтр.
+        """
+        ready_queryset = queryset.filter(
+            bank_data__bik__gt='',
+            bank_data__checking_account__gt='',
+        ).filter(
+            models.Q(
+                recipient_type__in=(
+                    ArtistLegalProfile.RecipientType.SELF_EMPLOYED,
+                    ArtistLegalProfile.RecipientType.INDIVIDUAL_ENTREPRENEUR,
+                ),
+                identity_data__last_name__gt='',
+                identity_data__first_name__gt='',
+                identity_data__birth_date__isnull=False,
+                identity_data__registration_address__gt='',
+                identity_data__passport_series__gt='',
+                identity_data__passport_number__gt='',
+                identity_data__passport_issued_by__gt='',
+                identity_data__passport_issue_date__isnull=False,
+                identity_data__inn__gt='',
+            )
+            | models.Q(
+                recipient_type=ArtistLegalProfile.RecipientType.LEGAL_ENTITY,
+                company_data__company_name__gt='',
+                company_data__company_address__gt='',
+                company_data__inn__gt='',
+                company_data__ogrn__gt='',
+            ),
+        )
+
+        if self.value() == 'yes':
+            return ready_queryset
+
+        if self.value() == 'no':
+            return queryset.exclude(pk__in=ready_queryset.values('pk'))
+
+        return queryset
+
+
 @admin.register(ArtistLegalProfile)
 class ArtistLegalProfileAdmin(admin.ModelAdmin):
     """Админка юридического профиля артиста."""
@@ -91,25 +155,20 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         ArtistCompanyDataInline,
     )
 
-    readonly_fields = (
-        'user',
-        'artist_link',
-        'created_at',
-        'updated_at',
-    )
-
     list_display = (
         'id',
         'user',
         'artist_name',
         'email',
         'recipient_type',
+        'verification_readiness',
         'is_verified',
         'updated_at',
     )
     list_display_links = ('id', 'user')
     list_filter = (
         'recipient_type',
+        VerificationReadinessFilter,
         'is_verified',
         'updated_at',
         'created_at',
@@ -149,6 +208,8 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'recipient_type',
+                    'verification_readiness',
+                    'verification_missing_fields',
                     'is_verified',
                     'comment',
                 ),
@@ -165,9 +226,7 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         ),
     )
 
-    def has_add_permission(self, request):
-        """Запрещает ручное создание юридических профилей через админку."""
-        return False
+    autocomplete_fields = ('user',)
 
     @admin.display(description='Артист')
     def artist_name(self, obj):
@@ -186,6 +245,31 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
 
         url = reverse('admin:users_artistprofile_change', args=[artist.pk])
         return format_html('<a href="{}">{}</a>', url, artist.name)
+
+    @admin.display(
+        description='Готов к проверке',
+        boolean=True,
+    )
+    def verification_readiness(self, obj):
+        if not obj:
+            return False
+        return obj.is_ready_for_verification
+
+    @admin.display(description='Не заполнено для проверки')
+    def verification_missing_fields(self, obj):
+        """Возвращает незаполненные обязательные данные."""
+        if not obj:
+            return '—'
+
+        missing_fields = obj.get_verification_missing_fields()
+
+        if not missing_fields:
+            return '—'
+
+        return ', '.join(
+            str(self._get_verification_field_label(field))
+            for field in missing_fields
+        )
 
     def get_queryset(self, request):
         """Оптимизирует запросы списка юридических профилей."""
@@ -210,3 +294,28 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         actions = super().get_actions(request)
         actions.pop('delete_selected', None)
         return actions
+
+    def get_readonly_fields(self, request, obj=None):
+        """Возвращает поля только для чтения."""
+        readonly_fields = [
+            'artist_link',
+            'created_at',
+            'updated_at',
+            'verification_readiness',
+            'verification_missing_fields',
+        ]
+
+        if obj:
+            readonly_fields.append('user')
+
+        return readonly_fields
+
+    def _get_verification_field_label(self, field_name) -> str:
+        """Возвращает название обязательного поля для отображения."""
+        if '.' not in field_name:
+            return ArtistLegalProfile._meta.get_field(field_name).verbose_name
+
+        prefix, related_field = field_name.split('.', 1)
+        model = VERIFICATION_MODELS[prefix]
+
+        return model._meta.get_field(related_field).verbose_name

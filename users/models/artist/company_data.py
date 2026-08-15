@@ -63,6 +63,12 @@ class ArtistCompanyData(TimestampModel):
         if self.ogrn:
             self.ogrn = normalize_digits(self.ogrn)
 
+        if self.company_name:
+            self.company_name = self.company_name.strip()
+
+        if self.company_address:
+            self.company_address = self.company_address.strip()
+
     def save(self, *args, **kwargs):
         """Сохраняет объект после полной валидации модели."""
         self.full_clean()

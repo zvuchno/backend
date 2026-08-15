@@ -1,3 +1,5 @@
+n ?= 1
+
 .PHONY: help up up-d start start-d stop build down restart logs rebuild clean \
 	shell migrations migrate test collectstatic
 
@@ -13,6 +15,7 @@ help:
 	@echo "  make down          Остановить и удалить контейнеры"
 	@echo "  make restart       Перезапустить контейнеры"
 	@echo "  make logs          Показать логи"
+	@echo "  make logs-backend          Показать логи backend"
 	@echo "  make clean         Удалить контейнеры и неиспользуемый build-кэш"
 	@echo "  make shell         Открыть Django shell"
 	@echo "  make migrations    Создать миграции"
@@ -47,6 +50,9 @@ restart:
 logs:
 	docker compose logs -f
 
+logs-backend:
+	docker compose logs -f backend
+
 rebuild:
 	docker compose build --no-cache
 	docker compose up -d
@@ -65,7 +71,7 @@ migrate:
 	docker compose exec backend python manage.py migrate
 
 test:
-	docker compose exec backend pytest
+	docker compose exec backend pytest -n $(n)
 
 collectstatic:
 	docker compose exec backend python manage.py collectstatic --noinput
