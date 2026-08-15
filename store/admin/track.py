@@ -178,6 +178,8 @@ class TrackAdmin(
     )
     inlines = (ProductInline, TrackGeneratedAudioInline)
 
+    autocomplete_fields = ('album',)
+
     @admin.display(
         description='Артист',
         ordering='album__artist__name',

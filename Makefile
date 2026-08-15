@@ -13,6 +13,7 @@ help:
 	@echo "  make down          Остановить и удалить контейнеры"
 	@echo "  make restart       Перезапустить контейнеры"
 	@echo "  make logs          Показать логи"
+	@echo "  make logs-backend          Показать логи backend"
 	@echo "  make clean         Удалить контейнеры и неиспользуемый build-кэш"
 	@echo "  make shell         Открыть Django shell"
 	@echo "  make migrations    Создать миграции"
@@ -46,6 +47,9 @@ restart:
 
 logs:
 	docker compose logs -f
+
+logs-backend:
+	docker compose logs -f backend
 
 rebuild:
 	docker compose build --no-cache

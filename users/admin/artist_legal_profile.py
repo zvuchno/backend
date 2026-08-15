@@ -92,7 +92,6 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = (
-        'user',
         'artist_link',
         'created_at',
         'updated_at',
@@ -165,9 +164,7 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         ),
     )
 
-    def has_add_permission(self, request):
-        """Запрещает ручное создание юридических профилей через админку."""
-        return False
+    autocomplete_fields = ('user',)
 
     @admin.display(description='Артист')
     def artist_name(self, obj):
@@ -210,3 +207,16 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         actions = super().get_actions(request)
         actions.pop('delete_selected', None)
         return actions
+
+    def get_readonly_fields(self, request, obj=None):
+        """Возвращает поля только для чтения."""
+        readonly_fields = [
+            'artist_link',
+            'created_at',
+            'updated_at',
+        ]
+
+        if obj:
+            readonly_fields.append('user')
+
+        return readonly_fields

@@ -316,6 +316,11 @@ class AlbumAdmin(
 
         js = ('store/admin/album_track_upload.js',)
 
+    autocomplete_fields = (
+        'artist',
+        'genre',
+    )
+
     def get_readonly_fields(self, request, obj=None):
         """Возвращает поля, недоступные для ручного изменения."""
         readonly_fields = tuple(
