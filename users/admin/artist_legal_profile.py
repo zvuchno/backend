@@ -1,6 +1,7 @@
 """Модуль админки юридических данных артиста."""
 
 from django.contrib import admin
+from django.db import models
 from django.urls import reverse
 from django.utils.html import format_html
 
@@ -87,6 +88,63 @@ class ArtistCompanyDataInline(admin.StackedInline):
     )
 
 
+class VerificationReadinessFilter(admin.SimpleListFilter):
+    """Фильтр по готовности юридического профиля к проверке."""
+
+    title = 'готов к проверке'
+    parameter_name = 'verification_readiness'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Да'),
+            ('no', 'Нет'),
+        )
+
+    def queryset(self, request, queryset):
+        """Фильтрует профили по готовности к ручной проверке.
+
+        Важно: условие повторяет бизнес-правило
+        ArtistLegalProfile.is_ready_for_verification на уровне SQL.
+        При изменении обязательных полей проверки необходимо обновить
+        и этот фильтр.
+        """
+        ready_queryset = queryset.filter(
+            bank_data__bik__gt='',
+            bank_data__checking_account__gt='',
+        ).filter(
+            models.Q(
+                recipient_type__in=(
+                    ArtistLegalProfile.RecipientType.SELF_EMPLOYED,
+                    ArtistLegalProfile.RecipientType.INDIVIDUAL_ENTREPRENEUR,
+                ),
+                identity_data__last_name__gt='',
+                identity_data__first_name__gt='',
+                identity_data__birth_date__isnull=False,
+                identity_data__registration_address__gt='',
+                identity_data__passport_series__gt='',
+                identity_data__passport_number__gt='',
+                identity_data__passport_issued_by__gt='',
+                identity_data__passport_issue_date__isnull=False,
+                identity_data__inn__gt='',
+            )
+            | models.Q(
+                recipient_type=ArtistLegalProfile.RecipientType.LEGAL_ENTITY,
+                company_data__company_name__gt='',
+                company_data__company_address__gt='',
+                company_data__inn__gt='',
+                company_data__ogrn__gt='',
+            ),
+        )
+
+        if self.value() == 'yes':
+            return ready_queryset
+
+        if self.value() == 'no':
+            return queryset.exclude(pk__in=ready_queryset.values('pk'))
+
+        return queryset
+
+
 @admin.register(ArtistLegalProfile)
 class ArtistLegalProfileAdmin(admin.ModelAdmin):
     """Админка юридического профиля артиста."""
@@ -103,12 +161,14 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         'artist_name',
         'email',
         'recipient_type',
+        'verification_readiness',
         'is_verified',
         'updated_at',
     )
     list_display_links = ('id', 'user')
     list_filter = (
         'recipient_type',
+        VerificationReadinessFilter,
         'is_verified',
         'updated_at',
         'created_at',

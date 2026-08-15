@@ -1,3 +1,5 @@
+n ?= 1
+
 .PHONY: help up up-d start start-d stop build down restart logs rebuild clean \
 	shell migrations migrate test collectstatic
 
@@ -69,7 +71,7 @@ migrate:
 	docker compose exec backend python manage.py migrate
 
 test:
-	docker compose exec backend pytest
+	docker compose exec backend pytest -n $(n)
 
 collectstatic:
 	docker compose exec backend python manage.py collectstatic --noinput

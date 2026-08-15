@@ -1,6 +1,7 @@
 """Сериализаторы юр профиля."""
 
 from django.db import transaction
+from drf_spectacular.utils import extend_schema_field
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
@@ -79,6 +80,11 @@ class ArtistLegalProfileSerializer(serializers.ModelSerializer):
             'comment',
         )
 
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.CharField(),
+        ),
+    )
     def get_verification_missing_fields(self, obj):
         """Возвращает незаполненные поля, необходимые для проверки."""
         return obj.get_verification_missing_fields()
