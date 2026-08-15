@@ -38,6 +38,7 @@ from .consent_documents import (
 from .cookie_auth import (
     CookieLoginResponseSerializer,
     CookieLoginSerializer,
+    CookieLogoutResponseSerializer,
     CookieRefreshResponseSerializer,
 )
 from .invitation import (
@@ -80,6 +81,7 @@ __all__ = [
     'ConsentDocumentSerializer',
     'CookieLoginResponseSerializer',
     'CookieLoginSerializer',
+    'CookieLogoutResponseSerializer',
     'CookieRefreshResponseSerializer',
     'CustomTokenObtainPairSerializer',
     'EmailVerificationSerializer',

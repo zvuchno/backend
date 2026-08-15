@@ -1,5 +1,6 @@
 """Схемы автодокументации OpenAPI для модели корзины."""
 
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
     extend_schema,
@@ -68,6 +69,6 @@ cart_schema = extend_schema_view(
                 required=True,
             ),
         ],
-        responses={204: None},
+        responses={204: OpenApiTypes.NONE},
     ),
 )

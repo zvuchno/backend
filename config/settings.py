@@ -189,6 +189,9 @@ SPECTACULAR_SETTINGS = {
             'store.models.order.Order.Status'
         ),
     },
+    'POSTPROCESSING_HOOKS': [
+        'common.schema.hooks.remove_content_from_no_content_responses',
+    ],
 }
 
 # Internationalization

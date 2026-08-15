@@ -4,6 +4,7 @@
 CRUD-операций в Swagger/ReDoc.
 """
 
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from store.serializers import (
@@ -58,7 +59,7 @@ promocode_schema = extend_schema_view(
     destroy=extend_schema(
         summary='Удалить промокод',
         description='Удаляет промокод.',
-        responses={204: None},
+        responses={204: OpenApiTypes.NONE},
         tags=PROMOCODES_TAGS,
     ),
 )
