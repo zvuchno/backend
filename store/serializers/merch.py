@@ -161,29 +161,16 @@ class MerchDetailSerializer(MerchReadSerializer):
             return []
 
         if not product.property_name:
-            simple = product.variants.filter(
-                property_value=CHAR_PRESET_SIMPLE,
-                is_active=True,
-            ).first()
-            if simple:
-                data = VariantReadSerializer(simple).data
-                data['value'] = ''
-                return [data]
-
             return []
 
-        qs = (
+        variants = (
             product.variants
-            .filter(
-                is_active=True,
-            )
-            .exclude(
-                property_value=CHAR_PRESET_SIMPLE,
-            )
+            .filter(is_active=True)
+            .exclude(property_value=CHAR_PRESET_SIMPLE)
             .order_by('id')
         )
 
-        return VariantReadSerializer(qs, many=True).data
+        return VariantReadSerializer(variants, many=True).data
 
 
 class VariantWriteSerializer(serializers.Serializer):
