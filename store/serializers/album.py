@@ -67,9 +67,11 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
     allow_overpay = serializers.SerializerMethodField()
     genre_id = serializers.ReadOnlyField()
     genre = serializers.StringRelatedField()
+    artist_id = serializers.ReadOnlyField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
+            'artist_id',
             'genre_id',
             'genre',
             'description',
@@ -122,10 +124,14 @@ class AlbumWriteSerializer(
         }
 
     def validate_release_date(self, value):
+        if value is None:
+            return value
+
         if value > timezone.now().date():
             raise serializers.ValidationError(
                 'Дата релиза не может быть в будущем.',
             )
+
         return value
 
     def create(self, validated_data):

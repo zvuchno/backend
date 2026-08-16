@@ -1,6 +1,7 @@
 """Сериализаторы юр профиля."""
 
 from django.db import transaction
+from drf_spectacular.utils import extend_schema_field
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
@@ -64,6 +65,9 @@ class ArtistLegalProfileSerializer(serializers.ModelSerializer):
     is_verified = serializers.BooleanField(read_only=True)
     comment = serializers.CharField(read_only=True)
 
+    is_ready_for_verification = serializers.BooleanField(read_only=True)
+    verification_missing_fields = serializers.SerializerMethodField()
+
     class Meta:
         model = ArtistLegalProfile
         fields = (
@@ -71,8 +75,19 @@ class ArtistLegalProfileSerializer(serializers.ModelSerializer):
             'phone',
             'recipient_type',
             'is_verified',
+            'is_ready_for_verification',
+            'verification_missing_fields',
             'comment',
         )
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.CharField(),
+        ),
+    )
+    def get_verification_missing_fields(self, obj):
+        """Возвращает незаполненные поля, необходимые для проверки."""
+        return obj.get_verification_missing_fields()
 
 
 class ArtistLegalSerializer(serializers.Serializer):
@@ -152,21 +167,3 @@ class ArtistLegalSerializer(serializers.Serializer):
             instance.save(update_fields=('is_verified',))
 
         return instance
-
-    def validate(self, attrs) -> dict:
-        recipient_type = attrs.get(
-            'recipient_type',
-            getattr(self.instance, 'recipient_type', None),
-        )
-        company_data = attrs.get('company_data')
-        if (
-            recipient_type != ArtistLegalProfile.RecipientType.LEGAL_ENTITY
-            and company_data is not None
-        ):
-            raise serializers.ValidationError({
-                'company_data': (
-                    'Данные юридического лица допустимы только '
-                    'для получателя типа "Юридическое лицо".'
-                ),
-            })
-        return attrs

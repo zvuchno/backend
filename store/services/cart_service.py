@@ -207,10 +207,11 @@ class CartService:
             cart.save(update_fields=['promocode'])
 
     @staticmethod
-    def remove_inactive_items(cart: Cart) -> bool:
+    def remove_unavailable_items(cart: Cart) -> bool:
         """Удаляет из корзины товары, ставшие недоступными для покупки.
 
-        Возвращает True, если хотя бы один товар был удалён.
+        Товар недоступен, если его вариант деактивирован,
+        товар деактивирован или снят с публикации.
         """
         inactive_ids = [
             item.id
@@ -219,7 +220,15 @@ class CartService:
                 'product_variant__product__album',
                 'product_variant__product__merch',
             )
-            if not item.product_variant.product.content.is_active
+            if not (
+                item.product_variant.is_active
+                and item.product_variant.product.content.is_active
+                and getattr(
+                    item.product_variant.product.content,
+                    'is_published',
+                    True,
+                )
+            )
         ]
         if not inactive_ids:
             return False

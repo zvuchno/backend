@@ -1,7 +1,4 @@
-"""Модель юридического профиля артиста.
-
-TODO: валидация комбинаций всех данных.
-"""
+"""Модель юридического профиля артиста."""
 
 from django.conf import settings
 from django.db import models
@@ -14,6 +11,30 @@ from users.constants import (
     RECIPIENT_TYPE_MAX_LENGTH,
 )
 from users.querysets import ArtistLegalProfileQuerySet
+
+IDENTITY_VERIFICATION_REQUIRED_FIELDS = (
+    'last_name',
+    'first_name',
+    'birth_date',
+    'registration_address',
+    'passport_series',
+    'passport_number',
+    'passport_issued_by',
+    'passport_issue_date',
+    'inn',
+)
+
+COMPANY_VERIFICATION_REQUIRED_FIELDS = (
+    'company_name',
+    'company_address',
+    'inn',
+    'ogrn',
+)
+
+BANK_VERIFICATION_REQUIRED_FIELDS = (
+    'bik',
+    'checking_account',
+)
 
 
 class ArtistLegalProfile(TimestampModel):
@@ -70,6 +91,11 @@ class ArtistLegalProfile(TimestampModel):
         blank=True,
     )
 
+    @property
+    def is_ready_for_verification(self):
+        """Показывает, достаточно ли данных для ручной проверки."""
+        return not self.get_verification_missing_fields()
+
     class Meta:
         verbose_name = 'юридический профиль артиста'
         verbose_name_plural = 'юридические профили артистов'
@@ -83,6 +109,74 @@ class ArtistLegalProfile(TimestampModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+    def get_verification_missing_fields(self):
+        """Возвращает незаполненные поля, необходимые для проверки."""
+        missing_fields = []
+
+        if not self.recipient_type:
+            missing_fields.append('recipient_type')
+
+        bank_data = getattr(self, 'bank_data', None)
+        missing_fields.extend(
+            self._get_missing_related_fields(
+                bank_data,
+                BANK_VERIFICATION_REQUIRED_FIELDS,
+                'bank_data',
+            ),
+        )
+
+        if self.recipient_type in (
+            self.RecipientType.SELF_EMPLOYED,
+            self.RecipientType.INDIVIDUAL_ENTREPRENEUR,
+        ):
+            identity_data = getattr(self, 'identity_data', None)
+            missing_fields.extend(
+                self._get_missing_related_fields(
+                    identity_data,
+                    IDENTITY_VERIFICATION_REQUIRED_FIELDS,
+                    'identity_data',
+                ),
+            )
+
+        elif self.recipient_type == self.RecipientType.LEGAL_ENTITY:
+            company_data = getattr(self, 'company_data', None)
+            missing_fields.extend(
+                self._get_missing_related_fields(
+                    company_data,
+                    COMPANY_VERIFICATION_REQUIRED_FIELDS,
+                    'company_data',
+                ),
+            )
+
+        return missing_fields
+
+    @staticmethod
+    def _get_missing_related_fields(instance, fields, prefix) -> list:
+        """Возвращает незаполненные обязательные поля связанного объекта."""
+        if instance is None:
+            return [f'{prefix}.{field}' for field in fields]
+
+        missing_fields = []
+
+        for field in fields:
+            value = getattr(instance, field)
+
+            if ArtistLegalProfile._is_empty_value(value):
+                missing_fields.append(f'{prefix}.{field}')
+
+        return missing_fields
+
+    @staticmethod
+    def _is_empty_value(value) -> bool:
+        """Проверяет, считается ли значение незаполненным."""
+        if value is None:
+            return True
+
+        if isinstance(value, str):
+            return not value.strip()
+
+        return False
 
     def __str__(self):
         return f'Юридический профиль: {self.user.username}'

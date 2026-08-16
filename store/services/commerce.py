@@ -47,7 +47,7 @@ class ProductService:
                     value_stock=validated_data.get('stock', 0),
                     variants_data=validated_data.get('variants'),
                 )
-            elif created:
+            elif 'stock' in validated_data or created:
                 # POST без variants → создаём simple
                 cls.sync_merch_variants(
                     product=product,

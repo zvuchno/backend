@@ -113,7 +113,7 @@ class CartViewSet(viewsets.GenericViewSet):
             cart = self.get_queryset().first()
             if cart is None:
                 return Response(EMPTY_CART_RESPONSE)
-            if CartService.remove_inactive_items(cart):
+            if CartService.remove_unavailable_items(cart):
                 cart = self.get_queryset().get(pk=cart.pk)
             CartService.validate_cart_promocode(cart)
         else:  # PATCH

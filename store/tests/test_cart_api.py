@@ -363,7 +363,7 @@ class TestCartAPI:
         variant_factory,
         user,
     ):
-        """Проверяет, что товар, ставший неактивным, исчезает при GET."""
+        """Товар, ставший неактивным → исчезает при GET."""
         variant = variant_factory(product_type='merch')
         active_variant = variant_factory(product_type='merch')
 
@@ -378,6 +378,43 @@ class TestCartAPI:
         # Артист снимает товар с продажи уже после добавления в корзину
         variant.product.merch.is_active = False
         variant.product.merch.save(update_fields=['is_active'])
+
+        response = auth_client.get(cart_url)
+        assert response.status_code == status.HTTP_200_OK
+
+        remaining_ids = [
+            item['product_variant'] for item in response.data['items']
+        ]
+        assert variant.id not in remaining_ids
+        assert active_variant.id in remaining_ids
+
+        assert not CartItem.objects.filter(
+            cart__user=user,
+            product_variant=variant,
+        ).exists()
+
+    def test_get_cart_removes_unpublished_items(
+        self,
+        auth_client,
+        cart_add_url,
+        cart_url,
+        variant_factory,
+        user,
+    ):
+        """Снятый с публикации товар → исчезает из корзины при GET."""
+        variant = variant_factory(product_type='merch')
+        active_variant = variant_factory(product_type='merch')
+
+        for v in (variant, active_variant):
+            response = auth_client.post(
+                cart_add_url,
+                data={'product_variant': v.id, 'quantity': 1},
+                format='json',
+            )
+            assert response.status_code == status.HTTP_201_CREATED
+
+        variant.product.merch.is_published = False
+        variant.product.merch.save(update_fields=['is_published'])
 
         response = auth_client.get(cart_url)
         assert response.status_code == status.HTTP_200_OK

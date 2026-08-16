@@ -103,6 +103,9 @@ class CoreUserAdmin(UserAdmin):
     search_fields = (
         'email',
         'username',
+        'phone',
+        'artist_profile__name',
+        'artist_profile__slug',
     )
     ordering = ('-date_joined',)
     fieldsets = (
