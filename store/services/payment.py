@@ -346,7 +346,10 @@ def mark_payment_succeeded(payment):
         payment.save(update_fields=['status', 'paid_at', 'updated_at'])
 
         payment.order.status = Order.Status.PAID
-        payment.order.save(update_fields=['status', 'updated_at'])
+        payment.order.reserved_until = None
+        payment.order.save(
+            update_fields=['status', 'reserved_until', 'updated_at'],
+        )
 
         transaction.on_commit(
             lambda: (
