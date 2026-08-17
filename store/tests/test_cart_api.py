@@ -393,6 +393,44 @@ class TestCartAPI:
             product_variant=variant,
         ).exists()
 
+    def test_get_cart_removes_inactive_variant(
+        self,
+        auth_client,
+        cart_add_url,
+        cart_url,
+        variant_factory,
+        user,
+    ):
+        """Неактивный вариант товара → исчезает при GET."""
+        variant = variant_factory(product_type='merch')
+        active_variant = variant_factory(product_type='merch')
+
+        for v in (variant, active_variant):
+            response = auth_client.post(
+                cart_add_url,
+                data={'product_variant': v.id, 'quantity': 1},
+                format='json',
+            )
+            assert response.status_code == status.HTTP_201_CREATED
+
+        # Сам вариант товара деактивирован после добавления в корзину
+        variant.is_active = False
+        variant.save(update_fields=['is_active'])
+
+        response = auth_client.get(cart_url)
+        assert response.status_code == status.HTTP_200_OK
+
+        remaining_ids = [
+            item['product_variant'] for item in response.data['items']
+        ]
+        assert variant.id not in remaining_ids
+        assert active_variant.id in remaining_ids
+
+        assert not CartItem.objects.filter(
+            cart__user=user,
+            product_variant=variant,
+        ).exists()
+
     def test_get_cart_removes_unpublished_items(
         self,
         auth_client,
