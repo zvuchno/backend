@@ -1,12 +1,12 @@
 """Сервис подтверждения email."""
 
-import hashlib
 import secrets
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.utils import timezone
+from django.utils.crypto import salted_hmac
 from django.utils.encoding import force_bytes
 from django.utils.http import (
     urlsafe_base64_encode,
@@ -90,5 +90,8 @@ def generate_email_verification_code() -> str:
 
 
 def hash_email_verification_code(code: str) -> str:
-    """Возвращает хэш кода подтверждения email."""
-    return hashlib.sha256(code.encode()).hexdigest()
+    """Возвращает защищенный хэш кода подтверждения email."""
+    return salted_hmac(
+        key_salt='users.email_verification_code',
+        value=code,
+    ).hexdigest()

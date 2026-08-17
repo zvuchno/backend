@@ -6,10 +6,14 @@ import pytest
 from django.utils import timezone
 from rest_framework import status
 
-from users.constants import EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS
+from users.constants import (
+    EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+    EMAIL_VERIFICATION_CODE_TTL_MINUTES,
+)
 from users.models import EmailVerificationCode
 from users.services.email_verification import (
     create_email_verification_code,
+    generate_email_verification_data,
     hash_email_verification_code,
 )
 
@@ -70,6 +74,31 @@ class TestEmailVerificationCode:
         assert user.is_email_verified is False
         assert verification.attempts == 1
 
+    def test_link_verification_removes_verification_code(
+        self,
+        api_client,
+        user,
+        verify_email_url,
+    ):
+        """Подтверждение по ссылке удаляет активный код."""
+        user.is_email_verified = False
+        user.save(update_fields=('is_email_verified',))
+
+        create_email_verification_code(user)
+
+        assert EmailVerificationCode.objects.filter(user=user).exists()
+
+        verification_data = generate_email_verification_data(user)
+
+        response = api_client.post(
+            verify_email_url,
+            verification_data,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert not EmailVerificationCode.objects.filter(user=user).exists()
+
     def test_expired_code_is_rejected(
         self,
         auth_client,
@@ -112,7 +141,10 @@ class TestEmailVerificationCode:
         EmailVerificationCode.objects.create(
             user=user,
             code_hash=hash_email_verification_code(code),
-            expires_at=timezone.now() + timedelta(minutes=15),
+            expires_at=(
+                timezone.now()
+                + timedelta(minutes=EMAIL_VERIFICATION_CODE_TTL_MINUTES)
+            ),
             attempts=EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
         )
 
