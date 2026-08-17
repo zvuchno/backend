@@ -4,6 +4,8 @@ from django.db import IntegrityError, transaction
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from common.services import get_artist_publication_readiness
+
 from users.helpers import ensure_listener_profile
 from users.models import (
     ArtistContact,
@@ -86,11 +88,53 @@ class ArtistPublicSerializer(ArtistPublicShortSerializer):
         ) + ArtistPublicShortSerializer.Meta.fields
 
 
+class PublicationReadinessItemSerializer(serializers.Serializer):
+    """Готовность к публикации типа товара."""
+
+    can_publish = serializers.BooleanField()
+    missing_requirements = serializers.ListField(
+        child=serializers.CharField(),
+    )
+
+
+class ArtistPublicationReadinessSerializer(serializers.Serializer):
+    """Готовность артиста к публикации товаров."""
+
+    digital = PublicationReadinessItemSerializer()
+    physical = PublicationReadinessItemSerializer()
+
+
 class ArtistMeSerializer(ArtistPublicSerializer):
     """Сериализатор профиля текущего артиста."""
 
+    publication_readiness = serializers.SerializerMethodField()
+
     class Meta(ArtistPublicSerializer.Meta):
-        fields = ArtistPublicSerializer.Meta.fields
+        fields = ArtistPublicSerializer.Meta.fields + (
+            'publication_readiness',
+        )
+
+    @extend_schema_field(ArtistPublicationReadinessSerializer)
+    def get_publication_readiness(self, obj):
+        """Возвращает готовность артиста к публикации товаров."""
+        readiness = get_artist_publication_readiness(obj)
+
+        return {
+            'digital': {
+                'can_publish': readiness.can_publish_digital,
+                'missing_requirements': [
+                    requirement.value
+                    for requirement in readiness.digital_missing
+                ],
+            },
+            'physical': {
+                'can_publish': readiness.can_publish_physical,
+                'missing_requirements': [
+                    requirement.value
+                    for requirement in readiness.physical_missing
+                ],
+            },
+        }
 
 
 class ArtistProfileUpdateSerializer(serializers.ModelSerializer):
