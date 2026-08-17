@@ -66,16 +66,23 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             Q(is_active=True) & managed_artist_q(user),
         )
 
-        if self.action in ('list', 'retrieve'):
+        if self.action == 'list':
+            queryset = queryset.select_related(
+                'product',
+                'artist',
+            ).prefetch_related(
+                'product__variants',
+            )
+        if self.action == 'retrieve':
             queryset = queryset.select_related(
                 'product',
                 'genre',
                 'artist',
-                'artist__user',
                 'artist__label',
-                'artist__label__user',
-                'payout_recipient',
+            ).prefetch_related(
+                'product__variants',
             )
+
         return queryset
 
     def create(self, request, *args, **kwargs):
