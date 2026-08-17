@@ -12,7 +12,7 @@ from django.db import transaction
 from .cart_calculation_service import CartCalculationService
 from store.constants import PLATFORM_COMMISSION_RATE, ZERO_MONEY
 from store.models import CartItem, Delivery, Order, OrderItem
-from store.services import CDEKService
+from store.services import CDEKService, CartService
 from users.models import ConsentDocument, UserConsent
 
 logger = logging.getLogger(__name__)
@@ -105,8 +105,7 @@ class OrderService:
         inactive_items = [
             item
             for item in cart_items
-            if not item.product_variant.product.content.is_active
-            or not item.product_variant.is_active
+            if not CartService.is_variant_available(item.product_variant)
         ]
         if inactive_items:
             unavailable_names = ', '.join(

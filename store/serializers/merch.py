@@ -129,9 +129,11 @@ class MerchDetailSerializer(MerchReadSerializer):
         source='product.property_name',
         read_only=True,
     )
+    artist_id = serializers.ReadOnlyField()
 
     class Meta(MerchReadSerializer.Meta):
         fields = MerchReadSerializer.Meta.fields + (
+            'artist_id',
             'allow_overpay',
             'images_merch',
             'kind_id',

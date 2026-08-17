@@ -67,9 +67,11 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
     allow_overpay = serializers.SerializerMethodField()
     genre_id = serializers.ReadOnlyField()
     genre = serializers.StringRelatedField()
+    artist_id = serializers.ReadOnlyField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
+            'artist_id',
             'genre_id',
             'genre',
             'description',

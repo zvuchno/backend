@@ -31,6 +31,11 @@ class CartService:
         Если товар данного варианта уже есть в корзине,
         увеличивает его количество (инкрементальное обновление).
         """
+        if not CartService.is_variant_available(variant):
+            raise ValidationError(
+                {'product_variant': 'Товар недоступен для покупки.'},
+            )
+
         item, created = CartItem.objects.get_or_create(
             cart=cart,
             product_variant=variant,
@@ -140,6 +145,8 @@ class CartService:
 
         for guest_item in guest_cart.items.all():
             variant = guest_item.product_variant
+            if not CartService.is_variant_available(variant):
+                continue
             product = variant.product
 
             user_item, created = CartItem.objects.get_or_create(
@@ -205,3 +212,33 @@ class CartService:
         if not has_applicable_items:
             cart.promocode = None
             cart.save(update_fields=['promocode'])
+
+    @staticmethod
+    def is_variant_available(variant: ProductVariant) -> bool:
+        """Проверяет, доступен ли вариант товара для покупки."""
+        content = variant.product.content
+
+        return (
+            variant.is_active
+            and content.is_active
+            and getattr(content, 'is_published', True)
+        )
+
+    @staticmethod
+    def remove_unavailable_items(cart: Cart) -> bool:
+        """Удаляет из корзины товары, ставшие недоступными для покупки."""
+        unavailable_ids = [
+            item.id
+            for item in cart.items.select_related(
+                'product_variant__product__track',
+                'product_variant__product__album',
+                'product_variant__product__merch',
+            )
+            if not CartService.is_variant_available(item.product_variant)
+        ]
+
+        if not unavailable_ids:
+            return False
+
+        CartItem.objects.filter(id__in=unavailable_ids).delete()
+        return True
