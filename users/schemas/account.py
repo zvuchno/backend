@@ -74,7 +74,7 @@ email_verification_code_schema = extend_schema(
         'Подтверждает email текущего авторизованного пользователя '
         'по коду из письма.'
     ),
-    tags=['Auth'],
+    tags=['Account'],
     request=EmailVerificationCodeSerializer,
     responses={
         200: {
