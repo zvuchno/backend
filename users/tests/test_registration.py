@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.settings import api_settings
 
@@ -180,6 +181,33 @@ class TestListenerRegistration:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['email'] == listener_register_payload['email']
+
+    @override_settings(
+        PASSWORD_HASHERS=[
+            'django.contrib.auth.hashers.ScryptPasswordHasher',
+            'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+        ],
+    )
+    def test_registration_uses_scrypt_password_hasher(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+    ):
+        """Пароль нового пользователя хэшируется с помощью scrypt."""
+        response = api_client.post(
+            listener_register_url,
+            data=listener_register_payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        user = User.objects.get(
+            email=listener_register_payload['email'],
+        )
+
+        assert user.password.startswith('scrypt$')
 
 
 @pytest.mark.usefixtures('disable_registration_throttling')
