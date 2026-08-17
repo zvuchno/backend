@@ -18,6 +18,7 @@ from users.schemas import (
     change_password_schema,
     change_phone_schema,
     change_username_schema,
+    email_verification_code_schema,
     email_verification_schema,
     me_schema,
     password_reset_confirm_schema,
@@ -134,6 +135,7 @@ class EmailVerificationView(GenericAPIView):
         )
 
 
+@email_verification_code_schema
 class EmailVerificationCodeView(GenericAPIView):
     """Подтверждает email текущего пользователя по коду."""
 

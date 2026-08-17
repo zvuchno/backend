@@ -2,6 +2,8 @@
 
 from drf_spectacular.utils import extend_schema
 
+from users.serializers import EmailVerificationCodeSerializer
+
 me_schema = extend_schema(
     tags=['Account'],
     summary='Текущая учетная запись',
@@ -64,6 +66,27 @@ email_verification_schema = extend_schema(
     auth=[],
     summary='Подтвердить email',
     description='Подтверждает email пользователя по uid и токену.',
+)
+
+email_verification_code_schema = extend_schema(
+    summary='Подтвердить email по коду',
+    description=(
+        'Подтверждает email текущего авторизованного пользователя '
+        'по коду из письма.'
+    ),
+    tags=['Auth'],
+    request=EmailVerificationCodeSerializer,
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'detail': {
+                    'type': 'string',
+                    'example': 'Email подтвержден.',
+                },
+            },
+        },
+    },
 )
 
 resend_verification_email_schema = extend_schema(
