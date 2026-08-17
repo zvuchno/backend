@@ -2,7 +2,6 @@ from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .mixins import PublicationReadinessValidationMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     CHAR_PRESET_SIMPLE,
@@ -188,7 +187,6 @@ class VariantWriteSerializer(serializers.Serializer):
 
 
 class MerchWriteSerializer(
-    PublicationReadinessValidationMixin,
     ImmutableFieldsSerializerMixin,
     serializers.ModelSerializer,
 ):
@@ -244,7 +242,7 @@ class MerchWriteSerializer(
         variants = attrs.get('variants')
         if variants is not None and not variants:
             attrs['property_name'] = ''
-        return self.validate_publication_readiness(attrs)
+        return attrs
 
     def to_representation(self, instance):
         return MerchDetailSerializer(instance, context=self.context).data
