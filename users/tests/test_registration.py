@@ -7,7 +7,6 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from rest_framework import status
 from rest_framework.settings import api_settings
-from rest_framework.throttling import ScopedRateThrottle
 
 from users.models import ArtistProfile, ArtistProfileType, ListenerProfile
 from users.views import BaseRegistrationView
@@ -332,6 +331,43 @@ class TestArtistRegistration:
 class TestRegistrationThrottle:
     """Тесты ограничения частоты регистрации."""
 
+    def test_registration_throttle_uses_ip_for_authenticated_user(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+        clear_throttle_cache,
+        monkeypatch,
+    ):
+        """Регистрация ограничивается по IP независимо от авторизации."""
+        monkeypatch.setitem(
+            api_settings.DEFAULT_THROTTLE_RATES,
+            'registration',
+            '1/min',
+        )
+
+        first_response = api_client.post(
+            listener_register_url,
+            data=listener_register_payload,
+            format='json',
+            REMOTE_ADDR='192.0.2.10',
+        )
+
+        second_response = api_client.post(
+            listener_register_url,
+            data={
+                **listener_register_payload,
+                'username': 'another_listener',
+                'email': 'another_listener@example.test',
+                'phone': '+79991234568',
+            },
+            format='json',
+            REMOTE_ADDR='192.0.2.10',
+        )
+
+        assert first_response.status_code == status.HTTP_201_CREATED
+        assert second_response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
     def test_registration_is_throttled(
         self,
         api_client,
@@ -342,11 +378,6 @@ class TestRegistrationThrottle:
         monkeypatch,
     ):
         """Повторная регистрация с одного IP ограничивается."""
-        monkeypatch.setattr(
-            BaseRegistrationView,
-            'throttle_classes',
-            [ScopedRateThrottle],
-        )
         monkeypatch.setitem(
             api_settings.DEFAULT_THROTTLE_RATES,
             'registration',
