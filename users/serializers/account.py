@@ -3,10 +3,15 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from users.models import ArtistProfileType
+from users.constants import (
+    EMAIL_VERIFICATION_CODE_LENGTH,
+    EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+)
+from users.models import ArtistProfileType, EmailVerificationCode
 from users.serializers.mixins import PhoneRegistrationMixin
 from users.services import (
     get_user_from_uid,
@@ -14,6 +19,7 @@ from users.services import (
     verify_email_token,
     verify_password_reset_token,
 )
+from users.services.email_verification import hash_email_verification_code
 
 User = get_user_model()
 
@@ -325,3 +331,62 @@ class UsernameChangeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username',)
+
+
+class EmailVerificationCodeSerializer(serializers.Serializer):
+    """Сериализатор подтверждения email по коду."""
+
+    code = serializers.RegexField(
+        regex=rf'^\d{{{EMAIL_VERIFICATION_CODE_LENGTH}}}$',
+        write_only=True,
+        label='Код подтверждения',
+        error_messages={
+            'invalid': (
+                f'Код должен состоять из '
+                f'{EMAIL_VERIFICATION_CODE_LENGTH} цифр.'
+            ),
+        },
+    )
+
+    def validate_code(self, value):
+        """Проверяет код подтверждения email."""
+        user = self.context['request'].user
+
+        try:
+            verification = user.email_verification_code
+        except EmailVerificationCode.DoesNotExist:
+            raise serializers.ValidationError(
+                'Код подтверждения не найден.',
+            )
+
+        if verification.expires_at <= timezone.now():
+            raise serializers.ValidationError(
+                'Срок действия кода истек.',
+            )
+
+        if verification.attempts >= EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS:
+            raise serializers.ValidationError(
+                'Превышено количество попыток. Запросите новый код.',
+            )
+
+        if verification.code_hash != hash_email_verification_code(value):
+            verification.attempts += 1
+            verification.save(update_fields=('attempts',))
+
+            raise serializers.ValidationError(
+                'Неверный код подтверждения.',
+            )
+
+        return value
+
+    def save(self, **kwargs):
+        """Подтверждает email пользователя."""
+        user = self.context['request'].user
+
+        if not user.is_email_verified:
+            user.is_email_verified = True
+            user.save(update_fields=('is_email_verified',))
+
+        EmailVerificationCode.objects.filter(user=user).delete()
+
+        return user

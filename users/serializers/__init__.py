@@ -1,5 +1,6 @@
 from .account import (
     ChangePasswordSerializer,
+    EmailVerificationCodeSerializer,
     EmailVerificationSerializer,
     EmptySerializer,
     MeSerializer,
@@ -84,6 +85,7 @@ __all__ = [
     'CookieLogoutResponseSerializer',
     'CookieRefreshResponseSerializer',
     'CustomTokenObtainPairSerializer',
+    'EmailVerificationCodeSerializer',
     'EmailVerificationSerializer',
     'EmptySerializer',
     'ListenerMeSerializer',
