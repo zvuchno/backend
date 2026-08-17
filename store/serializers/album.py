@@ -8,7 +8,10 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .mixins import ImmutableFieldsSerializerMixin
+from .mixins import (
+    ImmutableFieldsSerializerMixin,
+    PublicationReadinessValidationMixin,
+)
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     MAX_PRICE_DIGITS,
@@ -88,6 +91,7 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
 
 
 class AlbumWriteSerializer(
+    PublicationReadinessValidationMixin,
     ImmutableFieldsSerializerMixin,
     serializers.ModelSerializer,
 ):
@@ -122,6 +126,11 @@ class AlbumWriteSerializer(
                 'required': False,
             },
         }
+
+    def validate(self, attrs):
+        """Проверяет данные альбома."""
+        attrs = super().validate(attrs)
+        return self.validate_publication_readiness(attrs)
 
     def validate_release_date(self, value):
         if value is None:
