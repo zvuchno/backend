@@ -193,6 +193,8 @@ class EmailVerificationSerializer(serializers.Serializer):
         if not user.is_email_verified:
             user.is_email_verified = True
             user.save(update_fields=['is_email_verified'])
+
+        EmailVerificationCode.objects.filter(user=user).delete()
         return user
 
 

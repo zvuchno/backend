@@ -159,6 +159,28 @@ class TestListenerRegistration:
         assert User.objects.count() == 1
         verification_email_mock.assert_not_called()
 
+    def test_registration_authenticates_listener(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+        account_me_url,
+        verification_email_mock,
+    ):
+        """После регистрации слушатель сразу авторизован."""
+        response = api_client.post(
+            listener_register_url,
+            data=listener_register_payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        response = api_client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['email'] == listener_register_payload['email']
+
 
 @pytest.mark.usefixtures('disable_registration_throttling')
 class TestArtistRegistration:

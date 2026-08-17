@@ -448,6 +448,7 @@ REST_FRAMEWORK = {
         'reset_password_confirm': '5/min',
 
         'verify_email': '10/min',
+        'verify_email_code': '10/min',
         'resend_verification_email': '5/min',
 
         'become_artist': '5/min',

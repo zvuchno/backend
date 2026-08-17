@@ -45,7 +45,7 @@ def verify_email_token(user, token: str) -> bool:
     return default_token_generator.check_token(user, token)
 
 
-def request_email_verification(user) -> str:
+def request_email_verification(user) -> dict:
     """Формирует данные подтверждения email и отправляет письмо."""
     verification_url = build_email_verification_url(user)
     verification_code = create_email_verification_code(user)
