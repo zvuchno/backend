@@ -212,7 +212,7 @@ class TestLabelMerchCreate:
         assert response.status_code == HTTPStatus.CREATED
 
         merch = Merch.objects.get(name='Мерч лейбла')
-
+        assert merch.artist == label_created_artist
         assert merch.created_by == ready_physical_label_user
         assert merch.payout_recipient == ready_physical_label_user
 

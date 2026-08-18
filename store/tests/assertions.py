@@ -30,6 +30,7 @@ CATALOG_RELEASE_DETAIL_KEYS = {
 
 CATALOG_RELEASE_VARIANT_KEYS = {
     'variant_id',
+    'is_available_for_purchase',
     'sku',
     'stock',
     'property_value',
@@ -66,6 +67,7 @@ CATALOG_MERCH_VARIANT_KEYS = {
     'sku',
     'stock',
     'variant_id',
+    'is_available_for_purchase',
     'property_value',
 }
 
@@ -119,6 +121,7 @@ def assert_catalog_release_variant_contract(variant):
     assert set(variant) == CATALOG_RELEASE_VARIANT_KEYS
 
     assert isinstance(variant['variant_id'], int)
+    assert isinstance(variant['is_available_for_purchase'], bool)
     assert variant['sku'] is None or isinstance(variant['sku'], str)
     assert variant['stock'] is None or isinstance(variant['stock'], int)
     assert isinstance(variant['property_value'], str)
@@ -164,6 +167,7 @@ def assert_catalog_merch_variant_contract(variant):
     assert set(variant) == CATALOG_MERCH_VARIANT_KEYS
 
     assert isinstance(variant['variant_id'], int)
+    assert isinstance(variant['is_available_for_purchase'], bool)
     assert isinstance(variant['sku'], str)
     assert variant['stock'] is None or isinstance(variant['stock'], int)
     assert isinstance(variant['property_value'], str)

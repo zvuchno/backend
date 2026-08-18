@@ -18,7 +18,10 @@ from store.tests.scenarios import (
     get_product_ids,
 )
 
-pytestmark = pytest.mark.django_db
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.usefixtures('publication_readiness_disabled'),
+]
 
 
 class TestCatalogVisibility:

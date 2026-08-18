@@ -14,7 +14,10 @@ from store.tests.scenarios import (
     create_merch_product,
 )
 
-pytestmark = pytest.mark.django_db
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.usefixtures('publication_readiness_disabled'),
+]
 
 
 class TestCatalogReleaseDetail:
@@ -138,6 +141,7 @@ class TestCatalogMerchDetail:
                 'sku': variant.sku,
                 'stock': variant.stock,
                 'variant_id': variant.id,
+                'is_available_for_purchase': True,
                 'property_value': variant.property_value,
             },
         ]

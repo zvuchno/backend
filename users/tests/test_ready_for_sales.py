@@ -13,6 +13,7 @@ from users.tests.factories import ArtistProfileFactory
 pytestmark = pytest.mark.django_db
 
 
+@pytest.mark.usefixtures('publication_readiness_enabled')
 class TestArtistPublicationReadiness:
     """Тесты готовности артиста к публикации товаров."""
 
@@ -56,17 +57,10 @@ class TestArtistPublicationReadiness:
 
     def test_shipping_point_blocks_only_physical_publication(
         self,
-        artist_legal_profile_factory,
+        ready_artist_factory,
     ):
         """Отсутствие ПВЗ блокирует только физические товары."""
-        artist = ArtistProfileFactory(
-            user__is_email_verified=True,
-        )
-
-        artist_legal_profile_factory(
-            artist.user,
-            is_verified=True,
-        )
+        artist = ready_artist_factory()
 
         readiness = get_artist_publication_readiness(artist)
 
@@ -108,3 +102,19 @@ class TestArtistPublicationReadiness:
                 'missing_requirements': ['shipping_point'],
             },
         }
+
+
+def test_publication_readiness_can_be_disabled(
+    publication_readiness_disabled,
+):
+    """Отключённая проверка разрешает публикацию без верификации."""
+    artist = ArtistProfileFactory(
+        user__is_email_verified=False,
+    )
+
+    readiness = get_artist_publication_readiness(artist)
+
+    assert readiness.can_publish_digital is True
+    assert readiness.can_publish_physical is True
+    assert readiness.digital_missing == ()
+    assert readiness.physical_missing == ()

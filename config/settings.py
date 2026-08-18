@@ -588,3 +588,9 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 # FFMPEG. Если локально пути отличаются.
 FFMPEG_BINARY = os.getenv('FFMPEG_BINARY') or 'ffmpeg'
 FFPROBE_BINARY = os.getenv('FFPROBE_BINARY') or 'ffprobe'
+
+# Проверять готовность артиста к публикации
+PUBLICATION_READINESS_ENABLED = os.getenv(
+    'PUBLICATION_READINESS_ENABLED',
+    'True',
+).lower() == 'true'

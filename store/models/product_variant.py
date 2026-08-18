@@ -5,9 +5,11 @@ import uuid
 from django.db import models, transaction
 
 from common.models.abstract import ActivatableModel, TimestampModel
+from common.services import get_artist_publication_readiness
 
 from store.constants import (
     MAX_CHAR_LENGTH,
+    ZERO_MONEY,
 )
 from store.models import Product
 
@@ -96,6 +98,43 @@ class ProductVariant(ActivatableModel, TimestampModel):
         ]:
             return f'{product_name} ({self.property_value})'
         return product_name
+
+    @property
+    def is_available_for_purchase(self) -> bool:
+        """Доступен ли вариант товара для покупки."""
+        product = self.product
+        content = product.content
+
+        if not self.is_active:
+            return False
+
+        if not content.is_active:
+            return False
+
+        if not content.is_published:
+            return False
+
+        if content.visibility != content.Visibility.PUBLIC:
+            return False
+
+        readiness = get_artist_publication_readiness(product.artist)
+
+        if product.product_type == product.ProductType.MERCH:
+            if not readiness.can_publish_physical:
+                return False
+
+            return self.stock is None or self.stock > 0
+
+        if not readiness.can_publish_digital:
+            return False
+
+        if (
+            product.product_type == product.ProductType.TRACK
+            and product.price == ZERO_MONEY
+        ):
+            return False
+
+        return True
 
     def __str__(self):
         return self.variant_name

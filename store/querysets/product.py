@@ -2,6 +2,11 @@ from django.db import models
 from django.db.models import Exists, OuterRef, Prefetch, Subquery
 from django.db.models.functions import ExtractYear
 
+from common.services import (
+    digital_publication_ready_q,
+    physical_publication_ready_q,
+)
+
 from store.constants import CHAR_PRESET_SIMPLE
 
 
@@ -58,6 +63,7 @@ class ProductQuerySet(models.QuerySet):
     def published_albums(self):
         """Возвращает опубликованные альбомы каталога."""
         return self.filter(
+            digital_publication_ready_q('album__'),
             album__isnull=False,
             album__is_active=True,
             album__is_published=True,
@@ -67,6 +73,7 @@ class ProductQuerySet(models.QuerySet):
     def published_merch(self):
         """Возвращает опубликованный мерч каталога."""
         return self.with_available_variant().filter(
+            physical_publication_ready_q('merch__'),
             merch__isnull=False,
             merch__is_active=True,
             merch__is_published=True,
@@ -80,20 +87,23 @@ class ProductQuerySet(models.QuerySet):
         В основной каталог сейчас входят альбомы и мерч.
         Треки не добавляются, потому что они видимы через альбом.
         """
+        album_q = models.Q(
+            album__isnull=False,
+            album__is_active=True,
+            album__is_published=True,
+            album__visibility='public',
+        ) & digital_publication_ready_q('album__')
+
+        merch_q = models.Q(
+            merch__isnull=False,
+            merch__is_active=True,
+            merch__is_published=True,
+            merch__visibility='public',
+            has_available_variant=True,
+        ) & physical_publication_ready_q('merch__')
+
         return self.with_available_variant().filter(
-            models.Q(
-                album__isnull=False,
-                album__is_active=True,
-                album__is_published=True,
-                album__visibility='public',
-            )
-            | models.Q(
-                merch__isnull=False,
-                merch__is_active=True,
-                merch__is_published=True,
-                merch__visibility='public',
-                has_available_variant=True,
-            ),
+            album_q | merch_q,
         )
 
     def with_selected_variant_id(self):

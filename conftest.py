@@ -448,6 +448,18 @@ def ready_physical_label_user(ready_label_user):
     return ready_label_user
 
 
+@pytest.fixture
+def publication_readiness_disabled(settings):
+    """Отключает проверку готовности артиста к публикации."""
+    settings.PUBLICATION_READINESS_ENABLED = False
+
+
+@pytest.fixture
+def publication_readiness_enabled(settings):
+    """Включает проверку готовности артиста к публикации."""
+    settings.PUBLICATION_READINESS_ENABLED = True
+
+
 # =================================
 # Client fixtures
 # =================================
