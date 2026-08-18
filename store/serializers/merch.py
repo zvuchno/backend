@@ -193,7 +193,6 @@ class MerchWriteSerializer(
     """Сериализатор для создания и обновления Merch."""
 
     immutable_fields = ('artist',)
-    is_physical_product = True
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,

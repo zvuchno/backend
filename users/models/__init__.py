@@ -13,6 +13,7 @@ from .artist import (
 )
 from .consent_document import ConsentDocument
 from .core_user import CoreUser
+from .email_verification_code import EmailVerificationCode
 from .invitation import (
     ArtistProfileClaimInvitation,
     TokenInvitation,
@@ -36,6 +37,7 @@ __all__ = [
     'ArtistProfileClaimInvitation',
     'ConsentDocument',
     'CoreUser',
+    'EmailVerificationCode',
     'ListenerProfile',
     'TokenInvitation',
     'TokenInvitationStatus',

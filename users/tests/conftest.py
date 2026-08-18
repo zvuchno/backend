@@ -486,3 +486,15 @@ def managed_artist_claim_revoke_url() -> Callable[[ArtistProfile], str]:
         )
 
     return build
+
+
+@pytest.fixture
+def verify_email_code_url():
+    """URL подтверждения email по коду."""
+    return reverse('api:users:verify_email_code')
+
+
+@pytest.fixture
+def verify_email_url():
+    """URL подтверждения email по ссылке."""
+    return reverse('api:users:verify_email')

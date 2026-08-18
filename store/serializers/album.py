@@ -8,9 +8,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .mixins import (
-    ImmutableFieldsSerializerMixin,
-)
+from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     MAX_PRICE_DIGITS,

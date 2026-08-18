@@ -18,6 +18,7 @@ from users.schemas import (
     change_password_schema,
     change_phone_schema,
     change_username_schema,
+    email_verification_code_schema,
     email_verification_schema,
     me_schema,
     password_reset_confirm_schema,
@@ -28,6 +29,7 @@ from users.schemas import (
 )
 from users.serializers import (
     ChangePasswordSerializer,
+    EmailVerificationCodeSerializer,
     EmailVerificationSerializer,
     EmptySerializer,
     MeSerializer,
@@ -133,6 +135,27 @@ class EmailVerificationView(GenericAPIView):
         )
 
 
+@email_verification_code_schema
+class EmailVerificationCodeView(GenericAPIView):
+    """Подтверждает email текущего пользователя по коду."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmailVerificationCodeSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'verify_email_code'
+
+    def post(self, request, *args, **kwargs):
+        """Проверяет код и подтверждает email."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {'detail': 'Email подтвержден.'},
+            status=status.HTTP_200_OK,
+        )
+
+
 @resend_verification_email_schema
 class ResendVerificationEmailView(GenericAPIView):
     """Повторно инициирует отправку письма подтверждения email."""
@@ -152,12 +175,17 @@ class ResendVerificationEmailView(GenericAPIView):
                 status=status.HTTP_200_OK,
             )
 
-        verification_url = request_email_verification(user=user)
         response_data = {
             'detail': 'Запрос на подтверждение Email принят.',
         }
+        verification_data = request_email_verification(user=user)
         if settings.DEBUG:
-            response_data['debug_verification_url'] = verification_url
+            response_data['debug_verification_url'] = verification_data[
+                'verification_url'
+            ]
+            response_data['debug_verification_code'] = verification_data[
+                'verification_code'
+            ]
 
         return Response(
             response_data,
