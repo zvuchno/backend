@@ -3,6 +3,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError
+from django.db.models import F
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -366,14 +367,18 @@ class EmailVerificationCodeSerializer(serializers.Serializer):
                 'Срок действия кода истек.',
             )
 
-        if verification.attempts >= EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS:
-            raise serializers.ValidationError(
-                'Превышено количество попыток. Запросите новый код.',
+        if verification.code_hash != hash_email_verification_code(value):
+            updated = EmailVerificationCode.objects.filter(
+                pk=verification.pk,
+                attempts__lt=EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+            ).update(
+                attempts=F('attempts') + 1,
             )
 
-        if verification.code_hash != hash_email_verification_code(value):
-            verification.attempts += 1
-            verification.save(update_fields=('attempts',))
+            if not updated:
+                raise serializers.ValidationError(
+                    'Превышено количество попыток. Запросите новый код.',
+                )
 
             raise serializers.ValidationError(
                 'Неверный код подтверждения.',
