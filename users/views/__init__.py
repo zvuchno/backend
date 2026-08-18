@@ -1,6 +1,7 @@
 from .account import (
     ChangePasswordView,
     ChangePhoneView,
+    EmailVerificationCodeView,
     EmailVerificationView,
     MeView,
     PasswordResetConfirmView,
@@ -98,6 +99,7 @@ __all__ = [
     'CustomTokenObtainPairView',
     'CustomTokenRefreshView',
     'CustomTokenVerifyView',
+    'EmailVerificationCodeView',
     'EmailVerificationView',
     'LabelManagedProfileListView',
     'ListenerMeView',

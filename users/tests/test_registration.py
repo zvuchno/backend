@@ -5,9 +5,9 @@ from unittest.mock import Mock
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.settings import api_settings
-from rest_framework.throttling import ScopedRateThrottle
 
 from users.models import ArtistProfile, ArtistProfileType, ListenerProfile
 from users.views import BaseRegistrationView
@@ -159,6 +159,55 @@ class TestListenerRegistration:
         assert field in response.data
         assert User.objects.count() == 1
         verification_email_mock.assert_not_called()
+
+    def test_registration_authenticates_listener(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+        account_me_url,
+        verification_email_mock,
+    ):
+        """После регистрации слушатель сразу авторизован."""
+        response = api_client.post(
+            listener_register_url,
+            data=listener_register_payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        response = api_client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['email'] == listener_register_payload['email']
+
+    @override_settings(
+        PASSWORD_HASHERS=[
+            'django.contrib.auth.hashers.ScryptPasswordHasher',
+            'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+        ],
+    )
+    def test_registration_uses_scrypt_password_hasher(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+    ):
+        """Пароль нового пользователя хэшируется с помощью scrypt."""
+        response = api_client.post(
+            listener_register_url,
+            data=listener_register_payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        user = User.objects.get(
+            email=listener_register_payload['email'],
+        )
+
+        assert user.password.startswith('scrypt$')
 
 
 @pytest.mark.usefixtures('disable_registration_throttling')
@@ -332,6 +381,43 @@ class TestArtistRegistration:
 class TestRegistrationThrottle:
     """Тесты ограничения частоты регистрации."""
 
+    def test_registration_throttle_uses_ip_for_authenticated_user(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+        clear_throttle_cache,
+        monkeypatch,
+    ):
+        """Регистрация ограничивается по IP независимо от авторизации."""
+        monkeypatch.setitem(
+            api_settings.DEFAULT_THROTTLE_RATES,
+            'registration',
+            '1/min',
+        )
+
+        first_response = api_client.post(
+            listener_register_url,
+            data=listener_register_payload,
+            format='json',
+            REMOTE_ADDR='192.0.2.10',
+        )
+
+        second_response = api_client.post(
+            listener_register_url,
+            data={
+                **listener_register_payload,
+                'username': 'another_listener',
+                'email': 'another_listener@example.test',
+                'phone': '+79991234568',
+            },
+            format='json',
+            REMOTE_ADDR='192.0.2.10',
+        )
+
+        assert first_response.status_code == status.HTTP_201_CREATED
+        assert second_response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+
     def test_registration_is_throttled(
         self,
         api_client,
@@ -342,11 +428,6 @@ class TestRegistrationThrottle:
         monkeypatch,
     ):
         """Повторная регистрация с одного IP ограничивается."""
-        monkeypatch.setattr(
-            BaseRegistrationView,
-            'throttle_classes',
-            [ScopedRateThrottle],
-        )
         monkeypatch.setitem(
             api_settings.DEFAULT_THROTTLE_RATES,
             'registration',
