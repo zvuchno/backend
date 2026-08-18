@@ -332,7 +332,7 @@ def ready_physical_artist_factory(
         ArtistShippingPoint.objects.get_or_create(
             artist=artist,
             defaults={
-                'pvz_code': 'TEST-LABEL-PVZ-001',
+                'pvz_code': 'TEST-PVZ-001',
                 'city_code': '44',
                 'city': 'Москва',
                 'address': 'ул. Тестовая, д. 2',
@@ -348,7 +348,7 @@ def ready_physical_artist_factory(
 def ready_label_factory():
     """Создаёт лейбл, готовый к публикации цифровых товаров."""
 
-    def create(**kwargs) -> ArtistProfile:
+    def create(**kwargs) -> User:
         label_user = LabelUserFactory(
             is_email_verified=True,
             **kwargs,
@@ -370,10 +370,10 @@ def ready_physical_label_factory(
 ):
     """Создаёт лейбл, готовый к публикации физических товаров."""
 
-    def create(**kwargs) -> ArtistProfile:
+    def create(**kwargs) -> User:
         label_user = ready_label_factory(**kwargs)
 
-        ArtistShippingPoint.objects.create(
+        ArtistShippingPoint.objects.get_or_create(
             artist=label_user.artist_profile,
             defaults={
                 'pvz_code': 'TEST-LABEL-PVZ-001',

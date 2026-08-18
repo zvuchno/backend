@@ -367,6 +367,11 @@ class EmailVerificationCodeSerializer(serializers.Serializer):
                 'Срок действия кода истек.',
             )
 
+        if verification.attempts >= EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS:
+            raise serializers.ValidationError(
+                'Превышено количество попыток. Запросите новый код.',
+            )
+
         if verification.code_hash != hash_email_verification_code(value):
             updated = EmailVerificationCode.objects.filter(
                 pk=verification.pk,
