@@ -24,6 +24,8 @@ from users.models import (
     ArtistShippingPoint,
     ListenerProfile,
 )
+from users.tests.factories import ArtistProfileFactory, LabelUserFactory
+from users.tests.helpers import create_artist_legal_profile
 
 User = get_user_model()
 
@@ -296,6 +298,154 @@ def staff_user(user_factory):
         is_staff=True,
         is_superuser=True,
     )
+
+
+@pytest.fixture
+def ready_artist_factory():
+    """Создаёт артиста, готового к публикации цифровых товаров."""
+
+    def create(**kwargs) -> ArtistProfile:
+        artist = ArtistProfileFactory(
+            user__is_email_verified=True,
+            **kwargs,
+        )
+
+        create_artist_legal_profile(
+            artist.default_payout_recipient,
+            is_verified=True,
+        )
+
+        return artist
+
+    return create
+
+
+@pytest.fixture
+def ready_physical_artist_factory(
+    ready_artist_factory,
+):
+    """Создаёт артиста, готового к публикации физических товаров."""
+
+    def create(**kwargs) -> ArtistProfile:
+        artist = ready_artist_factory(**kwargs)
+
+        ArtistShippingPoint.objects.get_or_create(
+            artist=artist,
+            defaults={
+                'pvz_code': 'TEST-LABEL-PVZ-001',
+                'city_code': '44',
+                'city': 'Москва',
+                'address': 'ул. Тестовая, д. 2',
+            },
+        )
+
+        return artist
+
+    return create
+
+
+@pytest.fixture
+def ready_label_factory():
+    """Создаёт лейбл, готовый к публикации цифровых товаров."""
+
+    def create(**kwargs) -> ArtistProfile:
+        label_user = LabelUserFactory(
+            is_email_verified=True,
+            **kwargs,
+        )
+
+        create_artist_legal_profile(
+            label_user,
+            is_verified=True,
+        )
+
+        return label_user
+
+    return create
+
+
+@pytest.fixture
+def ready_physical_label_factory(
+    ready_label_factory,
+):
+    """Создаёт лейбл, готовый к публикации физических товаров."""
+
+    def create(**kwargs) -> ArtistProfile:
+        label_user = ready_label_factory(**kwargs)
+
+        ArtistShippingPoint.objects.create(
+            artist=label_user.artist_profile,
+            defaults={
+                'pvz_code': 'TEST-LABEL-PVZ-001',
+                'city_code': '44',
+                'city': 'Москва',
+                'address': 'ул. Тестовая, д. 2',
+            },
+        )
+
+        return label_user
+
+    return create
+
+
+@pytest.fixture
+def ready_artist_user(artist_user):
+    """Делает существующего артиста готовым к цифровым продажам."""
+    artist_user.is_email_verified = True
+    artist_user.save(update_fields=('is_email_verified',))
+
+    create_artist_legal_profile(
+        artist_user,
+        is_verified=True,
+    )
+
+    return artist_user
+
+
+@pytest.fixture
+def ready_label_user(label_user):
+    """Делает существующий лейбл готовым к цифровым продажам."""
+    label_user.is_email_verified = True
+    label_user.save(update_fields=('is_email_verified',))
+
+    create_artist_legal_profile(
+        label_user,
+        is_verified=True,
+    )
+
+    return label_user
+
+
+@pytest.fixture
+def ready_physical_artist_user(ready_artist_user):
+    """Делает существующего артиста готовым к физическим продажам."""
+    ArtistShippingPoint.objects.get_or_create(
+        artist=ready_artist_user.artist_profile,
+        defaults={
+            'pvz_code': 'TEST-PVZ-001',
+            'city_code': '44',
+            'city': 'Москва',
+            'address': 'ул. Тестовая, д. 1',
+        },
+    )
+
+    return ready_artist_user
+
+
+@pytest.fixture
+def ready_physical_label_user(ready_label_user):
+    """Делает существующий лейбл готовым к физическим продажам."""
+    ArtistShippingPoint.objects.get_or_create(
+        artist=ready_label_user.artist_profile,
+        defaults={
+            'pvz_code': 'TEST-LABEL-PVZ-001',
+            'city_code': '44',
+            'city': 'Москва',
+            'address': 'ул. Тестовая, д. 2',
+        },
+    )
+
+    return ready_label_user
 
 
 # =================================
