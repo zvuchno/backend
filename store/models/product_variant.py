@@ -114,7 +114,10 @@ class ProductVariant(ActivatableModel, TimestampModel):
         if not content.is_published:
             return False
 
-        if content.visibility != content.Visibility.PUBLIC:
+        if content.visibility not in (
+            content.Visibility.PUBLIC,
+            content.Visibility.LINK_ONLY,
+        ):
             return False
 
         readiness = get_artist_publication_readiness(product.artist)
