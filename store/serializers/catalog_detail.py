@@ -51,6 +51,9 @@ class CatalogReleaseVariantSerializer(
         source='id',
         help_text='ID Variant для добавления в корзину.',
     )
+    is_available_for_purchase = serializers.BooleanField(
+        read_only=True,
+    )
     price = serializers.DecimalField(
         source='product.price',
         max_digits=MAX_PRICE_DIGITS,
@@ -74,6 +77,7 @@ class CatalogReleaseVariantSerializer(
         model = ProductVariant
         fields = (
             'variant_id',
+            'is_available_for_purchase',
             'sku',
             'stock',
             'property_value',
@@ -202,12 +206,16 @@ class CatalogMerchVariantSerializer(serializers.ModelSerializer):
         source='id',
         read_only=True,
     )
+    is_available_for_purchase = serializers.BooleanField(
+        read_only=True,
+    )
     property_value = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductVariant
         fields = (
             'variant_id',
+            'is_available_for_purchase',
             'sku',
             'stock',
             'property_value',

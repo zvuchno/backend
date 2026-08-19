@@ -38,6 +38,7 @@ catalog_release_detail_schema = extend_schema(
                 'variants': [
                     {
                         'variant_id': 101,
+                        'is_available_for_purchase': True,
                         'sku': 'ALB-10-V101',
                         'stock': None,
                         'property_value': 'Диджитал',
@@ -56,6 +57,7 @@ catalog_release_detail_schema = extend_schema(
                     },
                     {
                         'variant_id': 202,
+                        'is_available_for_purchase': True,
                         'sku': 'MER-20-V202',
                         'stock': 4,
                         'property_value': 'Винил',
@@ -114,12 +116,14 @@ catalog_merch_detail_schema = extend_schema(
                 'variants': [
                     {
                         'variant_id': 301,
+                        'is_available_for_purchase': True,
                         'sku': 'MER-20-V301',
                         'stock': 3,
                         'property_value': 'M',
                     },
                     {
                         'variant_id': 302,
+                        'is_available_for_purchase': True,
                         'sku': 'MER-20-V302',
                         'stock': 4,
                         'property_value': 'L',

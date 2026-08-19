@@ -52,11 +52,11 @@ class TestLabelAlbumCreate:
     def test_label_creates_album_for_self(
         self,
         label_client,
-        label_user,
+        ready_label_user,
         album_list_url,
         album_payload,
     ):
-        album_payload['artist'] = label_user.artist_profile.id
+        album_payload['artist'] = ready_label_user.artist_profile.id
 
         response = label_client.post(
             album_list_url,
@@ -68,14 +68,14 @@ class TestLabelAlbumCreate:
 
         album = Album.objects.get(name='Альбом лейбла')
 
-        assert album.artist == label_user.artist_profile
-        assert album.created_by == label_user
-        assert album.payout_recipient == label_user
+        assert album.artist == ready_label_user.artist_profile
+        assert album.created_by == ready_label_user
+        assert album.payout_recipient == ready_label_user
 
     def test_label_creates_album_for_managed_artist(
         self,
         label_client,
-        label_user,
+        ready_label_user,
         label_created_artist,
         album_list_url,
         album_payload,
@@ -93,8 +93,8 @@ class TestLabelAlbumCreate:
         album = Album.objects.get(name='Альбом лейбла')
 
         assert album.artist == label_created_artist
-        assert album.created_by == label_user
-        assert album.payout_recipient == label_user
+        assert album.created_by == ready_label_user
+        assert album.payout_recipient == ready_label_user
 
     def test_label_cannot_create_album_for_foreign_artist(
         self,
@@ -117,7 +117,7 @@ class TestLabelAlbumCreate:
     def test_artist_creates_album_without_artist_field(
         self,
         artist_client,
-        artist_user,
+        ready_artist_user,
         album_list_url,
         album_payload,
     ):
@@ -131,9 +131,9 @@ class TestLabelAlbumCreate:
 
         album = Album.objects.get(name='Альбом лейбла')
 
-        assert album.artist == artist_user.artist_profile
-        assert album.created_by == artist_user
-        assert album.payout_recipient == artist_user
+        assert album.artist == ready_artist_user.artist_profile
+        assert album.created_by == ready_artist_user
+        assert album.payout_recipient == ready_artist_user
 
 
 @pytest.mark.django_db
@@ -173,11 +173,11 @@ class TestLabelMerchCreate:
     def test_label_creates_merch_for_self(
         self,
         label_client,
-        label_user,
+        ready_physical_label_user,
         merch_list_url,
         merch_payload,
     ):
-        merch_payload['artist'] = label_user.artist_profile.id
+        merch_payload['artist'] = ready_physical_label_user.artist_profile.id
 
         response = label_client.post(
             merch_list_url,
@@ -189,14 +189,14 @@ class TestLabelMerchCreate:
 
         merch = Merch.objects.get(name='Мерч лейбла')
 
-        assert merch.artist == label_user.artist_profile
-        assert merch.created_by == label_user
-        assert merch.payout_recipient == label_user
+        assert merch.artist == ready_physical_label_user.artist_profile
+        assert merch.created_by == ready_physical_label_user
+        assert merch.payout_recipient == ready_physical_label_user
 
     def test_label_creates_merch_for_managed_artist(
         self,
         label_client,
-        label_user,
+        ready_physical_label_user,
         label_created_artist,
         merch_list_url,
         merch_payload,
@@ -212,10 +212,9 @@ class TestLabelMerchCreate:
         assert response.status_code == HTTPStatus.CREATED
 
         merch = Merch.objects.get(name='Мерч лейбла')
-
         assert merch.artist == label_created_artist
-        assert merch.created_by == label_user
-        assert merch.payout_recipient == label_user
+        assert merch.created_by == ready_physical_label_user
+        assert merch.payout_recipient == ready_physical_label_user
 
     def test_label_cannot_create_merch_for_foreign_artist(
         self,

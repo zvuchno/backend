@@ -14,7 +14,10 @@ from store.tests.scenarios import (
     create_merch_product,
 )
 
-pytestmark = pytest.mark.django_db
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.usefixtures('publication_readiness_disabled'),
+]
 
 
 class TestCatalogReleaseDetail:
@@ -138,6 +141,18 @@ class TestCatalogMerchDetail:
                 'sku': variant.sku,
                 'stock': variant.stock,
                 'variant_id': variant.id,
+                'is_available_for_purchase': True,
                 'property_value': variant.property_value,
             },
         ]
+
+    def test_link_only_merch_variant_is_available_for_purchase(
+        self,
+        merch,
+        variant,
+    ):
+        """Вариант link-only мерча доступен для покупки по прямой ссылке."""
+        merch.visibility = merch.Visibility.LINK_ONLY
+        merch.save(update_fields=('visibility',))
+
+        assert variant.is_available_for_purchase is True

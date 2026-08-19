@@ -41,6 +41,7 @@ class TestMerchCreate:
         merch_payload,
         merch_list_url,
         artist_client,
+        ready_physical_artist_user,
     ):
         """При создании без вариантов создаётся simple вариант."""
         artist_client.post(merch_list_url, merch_payload, format='json')
