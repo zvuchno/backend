@@ -10,7 +10,6 @@ from rest_framework import serializers
 
 from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
-    CHAR_PRESET_DIGITAL,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
@@ -51,11 +50,7 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             return None
 
         variant = next(
-            (
-                v
-                for v in product.variants.all()
-                if v.is_active and v.property_value == CHAR_PRESET_DIGITAL
-            ),
+            iter(getattr(product, 'digital_variants', ())),
             None,
         )
         return variant.sku if variant else None

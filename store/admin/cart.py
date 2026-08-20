@@ -77,12 +77,11 @@ class CartItemInline(admin.TabularInline):
         # кэш сервисов по cart_id
         self._services = {}
 
-        cart_ids = qs.values_list('cart_id', flat=True).distinct()
-
-        carts = Cart.objects.filter(id__in=cart_ids)
-
-        for cart in carts:
-            self._services[cart.id] = CartCalculationService(cart)
+        for item in qs:
+            if item.cart_id not in self._services:
+                self._services[item.cart_id] = CartCalculationService(
+                    item.cart,
+                )
 
         return qs
 

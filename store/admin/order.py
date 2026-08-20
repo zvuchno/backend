@@ -7,7 +7,7 @@ from copy import deepcopy
 
 from django.contrib import admin, messages
 from django.db import transaction
-from django.db.models import Exists, OuterRef
+from django.db.models import Exists, OuterRef, Prefetch
 from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -325,7 +325,7 @@ class OrderAdmin(admin.ModelAdmin):
     @admin.display(description='Оплачен', boolean=True)
     def is_paid(self, obj):
         """Проверяет, есть ли у заказа успешно завершенный платеж."""
-        return obj.payments.filter(status='succeeded').exists()
+        return obj.has_successful_payment
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -358,9 +358,14 @@ class OrderAdmin(admin.ModelAdmin):
                 ),
             )
             .prefetch_related(
-                'items__product_variant__product__album',
-                'items__product_variant__product__track',
-                'items__product_variant__product__merch',
+                Prefetch(
+                    'items',
+                    queryset=OrderItem.objects.select_related(
+                        'product_variant__product__album',
+                        'product_variant__product__track',
+                        'product_variant__product__merch',
+                    ),
+                ),
             )
         )
 

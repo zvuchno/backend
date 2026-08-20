@@ -27,8 +27,8 @@ class CDEKWidgetView(APIView):
 
     def get(self, request):
         logger.info(
-            f'Получен GET запрос Widget-CDEK API. '
-            f'Параметры: {dict(request.query_params)}',
+            'Получен GET запрос Widget-CDEK API. Параметры: %s',
+            dict(request.query_params),
         )
         action = request.query_params.get('action')
 
@@ -37,7 +37,7 @@ class CDEKWidgetView(APIView):
             result = self.service.get_offices(request.query_params)
 
             # Формируем ответ с кастомными заголовками для виджета
-            response = Response(result['points'], status=200)
+            response = Response(result['points'], status=status.HTTP_200_OK)
             response['X-Current-Page'] = str(result['page'])
             response['X-Total-Elements'] = str(result['total_elements'])
             response['X-Total-Pages'] = str(result['total_pages'])
@@ -46,8 +46,11 @@ class CDEKWidgetView(APIView):
             )
             return response
 
-        logging.error(f'unknown get action: {action}')
-        return Response({'error': f'unknown get action: {action}'}, status=400)
+        logger.error('unknown get action: %s', action)
+        return Response(
+            {'error': f'unknown get action: {action}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 
 @cdek_calculate_schema

@@ -186,17 +186,17 @@ class MerchAdmin(
         return obj.is_carrier
 
     def get_queryset(self, request):
-        qs = super(NestedModelAdmin, self).get_queryset(request)
-        return qs.select_related(
-            'product',
-            'kind',
-            'artist',
-            'payout_recipient',
-            'created_by',
-            'album',
-        ).prefetch_related(
-            'images_merch',
-            'product__variants',
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'kind',
+                'artist',
+                'payout_recipient',
+                'created_by',
+                'album',
+            )
+            .prefetch_related('images_merch')
         )
 
     def save_model(self, request, obj, form, change):

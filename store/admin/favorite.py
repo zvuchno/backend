@@ -45,9 +45,6 @@ class FavoriteAdmin(admin.ModelAdmin):
             .select_related(
                 'user',
                 'product_variant__product',
-                'product_variant__product__track',
-                'product_variant__product__album',
-                'product_variant__product__merch',
             )
         )
 

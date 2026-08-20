@@ -36,9 +36,8 @@ class CartViewSet(viewsets.GenericViewSet):
 
     Управление корзиной:
     - GET: Получить состав корзины.
-    - PUT: Полная синхронизация.
     - PATCH: Обновить количество товаров.
-    - DELETE: Удалить товар полностью.
+    - DELETE: удаление товара из корзины.
     """
 
     queryset = Cart.objects.all()
@@ -106,7 +105,7 @@ class CartViewSet(viewsets.GenericViewSet):
 
         return context
 
-    @action(detail=False, methods=('get', 'put', 'patch'), url_path='me')
+    @action(detail=False, methods=('get', 'patch'), url_path='me')
     def me(self, request):
         """Получение или обновление корзины текущего пользователя."""
         if request.method == 'GET':

@@ -29,15 +29,10 @@ class ArtistReportViewSet(
     filterset_class = ArtistReportFilter
 
     def get_queryset(self):
-        return (
-            Report.objects
-            .filter(
-                artist__user=self.request.user,
-                status=Report.Status.READY,
-            )
-            .select_related('artist')
-            .order_by('-period_end')
-        )
+        return Report.objects.filter(
+            artist__user=self.request.user,
+            status=Report.Status.READY,
+        ).order_by('-period_end')
 
     @action(
         detail=True,

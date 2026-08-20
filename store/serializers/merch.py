@@ -1,4 +1,3 @@
-from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -62,9 +61,9 @@ class MerchReadSerializer(serializers.ModelSerializer):
 
         simple = next(
             (
-                v
-                for v in product.variants.all()
-                if v.is_active and v.property_value == CHAR_PRESET_SIMPLE
+                variant
+                for variant in getattr(product, 'active_variants', ())
+                if variant.property_value == CHAR_PRESET_SIMPLE
             ),
             None,
         )
@@ -75,18 +74,24 @@ class MerchReadSerializer(serializers.ModelSerializer):
         if not product:
             return 0
 
-        active_variants = product.variants.filter(is_active=True)
+        variants = getattr(product, 'active_variants', ())
 
         if not product.property_name:
-            simple = active_variants.filter(
-                property_value=CHAR_PRESET_SIMPLE,
-            ).first()
-            return (simple.stock or 0) if simple else 0
-        total_stock = active_variants.exclude(
-            property_value=CHAR_PRESET_SIMPLE,
-        ).aggregate(total=Sum('stock'))['total']
+            simple = next(
+                (
+                    variant
+                    for variant in variants
+                    if variant.property_value == CHAR_PRESET_SIMPLE
+                ),
+                None,
+            )
+            return simple.stock or 0 if simple else 0
 
-        return total_stock or 0
+        return sum(
+            variant.stock or 0
+            for variant in variants
+            if variant.property_value != CHAR_PRESET_SIMPLE
+        )
 
     def get_main_image(self, obj) -> str | None:
         request = self.context.get('request')
@@ -159,18 +164,14 @@ class MerchDetailSerializer(MerchReadSerializer):
     @extend_schema_field(VariantReadSerializer(many=True))
     def get_variants(self, obj):
         product = getattr(obj, 'product', None)
-        if not product:
+        if not product or not product.property_name:
             return []
 
-        if not product.property_name:
-            return []
-
-        variants = (
-            product.variants
-            .filter(is_active=True)
-            .exclude(property_value=CHAR_PRESET_SIMPLE)
-            .order_by('id')
-        )
+        variants = [
+            variant
+            for variant in getattr(product, 'active_variants', ())
+            if variant.property_value != CHAR_PRESET_SIMPLE
+        ]
 
         return VariantReadSerializer(variants, many=True).data
 
