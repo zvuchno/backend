@@ -36,6 +36,11 @@ class TrackPlaybackSerializer(serializers.Serializer):
         """Возвращает данные источника воспроизведения трека."""
         generated = getattr(instance, 'generated', None)
 
+        if generated is None:
+            return self._not_ready(
+                TrackGeneratedAudio.ProcessingStatus.PENDING,
+            )
+
         if getattr(instance, 'has_full_access', False):
             return self._full_representation(instance, generated)
 

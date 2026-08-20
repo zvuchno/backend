@@ -6,9 +6,29 @@ import pytest
 from rest_framework import status
 
 from store.constants import PREVIEW_DURATION
-from store.models import Favorite, Track, TrackGeneratedAudio
+from store.models import Favorite, Order, OrderItem, Track, TrackGeneratedAudio
 
 pytestmark = pytest.mark.django_db
+
+
+def create_paid_order(user, variant) -> Order:
+    """Создаёт оплаченный заказ с указанным вариантом."""
+    order = Order.objects.create(
+        user=user,
+        status=Order.Status.PAID,
+        total=variant.product.price,
+    )
+
+    OrderItem.objects.create(
+        order=order,
+        product_variant=variant,
+        price_at_purchase=variant.product.price,
+        unit_price=variant.product.price,
+        quantity=1,
+        product_info={'name': str(variant.product)},
+    )
+
+    return order
 
 
 class TestPlayerAlbumAPI:
@@ -24,6 +44,18 @@ class TestPlayerAlbumAPI:
         )
         generated.preview_file.name = 'test/previews/preview.mp3'
         generated.save(update_fields=('preview_file',))
+
+        return generated
+
+    @staticmethod
+    def create_ready_stream(track) -> TrackGeneratedAudio:
+        """Создаёт готовую полную версию трека."""
+        generated = TrackGeneratedAudio.objects.create(
+            track=track,
+            stream_status=TrackGeneratedAudio.ProcessingStatus.READY,
+        )
+        generated.stream_file.name = 'test/streams/stream.mp3'
+        generated.save(update_fields=('stream_file',))
 
         return generated
 
@@ -221,6 +253,84 @@ class TestPlayerAlbumAPI:
 
         assert player_track['purchase'] is None
 
+    def test_returns_full_playback_for_purchased_track(
+        self,
+        api_client,
+        listener_user,
+        player_album_url,
+        player_track_play_url,
+        variant_factory,
+    ):
+        """Купленный отдельно трек доступен в полной версии."""
+        variant = variant_factory(
+            'track',
+            name='Купленный трек',
+        )
+        track = variant.product.track
+
+        self.create_ready_stream(track)
+        create_paid_order(listener_user, variant)
+
+        api_client.force_authenticate(user=listener_user)
+
+        response = api_client.get(
+            player_album_url(track.album.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        player_track = response.data['tracks'][0]
+
+        assert player_track['playback'] == {
+            'status': TrackGeneratedAudio.ProcessingStatus.READY,
+            'kind': 'full',
+            'duration': track.duration,
+            'url': player_track_play_url(track.id),
+        }
+
+    def test_returns_full_playback_for_track_from_purchased_album(
+        self,
+        api_client,
+        listener_user,
+        player_album_url,
+        player_track_play_url,
+        variant_factory,
+    ):
+        """Трек купленного альбома доступен в полной версии."""
+        album_variant = variant_factory(
+            'album',
+            name='Купленный альбом',
+        )
+        album = album_variant.product.album
+
+        track_variant = variant_factory(
+            'track',
+            album=album,
+            name='Трек альбома',
+        )
+        track = track_variant.product.track
+
+        self.create_ready_stream(track)
+        create_paid_order(listener_user, album_variant)
+
+        api_client.force_authenticate(user=listener_user)
+
+        response = api_client.get(
+            player_album_url(album.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        player_track = response.data['tracks'][0]
+
+        assert player_track['id'] == track.id
+        assert player_track['playback'] == {
+            'status': TrackGeneratedAudio.ProcessingStatus.READY,
+            'kind': 'full',
+            'duration': track.duration,
+            'url': player_track_play_url(track.id),
+        }
+
 
 class TestPlayerTrackPlayAPI:
     """Тесты запуска воспроизведения трека."""
@@ -241,6 +351,18 @@ class TestPlayerTrackPlayAPI:
         )
         generated.preview_file.name = 'test/previews/preview.mp3'
         generated.save(update_fields=('preview_file',))
+
+        return generated
+
+    @staticmethod
+    def create_ready_stream(track) -> TrackGeneratedAudio:
+        """Создаёт запись о готовой полной версии трека."""
+        generated = TrackGeneratedAudio.objects.create(
+            track=track,
+            stream_status=TrackGeneratedAudio.ProcessingStatus.READY,
+        )
+        generated.stream_file.name = 'test/streams/stream.mp3'
+        generated.save(update_fields=('stream_file',))
 
         return generated
 
@@ -419,3 +541,71 @@ class TestPlayerTrackPlayAPI:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_purchased_track_redirects_to_stream_file(
+        self,
+        api_client,
+        listener_user,
+        monkeypatch,
+        player_track_play_url,
+        variant_factory,
+    ):
+        """Купленный трек перенаправляет на полную версию."""
+        variant = variant_factory('track')
+        track = variant.product.track
+        generated = self.create_ready_stream(track)
+
+        create_paid_order(listener_user, variant)
+
+        storage = TrackGeneratedAudio._meta.get_field(
+            'stream_file',
+        ).storage
+
+        monkeypatch.setattr(
+            storage,
+            'exists',
+            lambda name: True,
+        )
+
+        api_client.force_authenticate(user=listener_user)
+
+        response = api_client.get(
+            player_track_play_url(track.id),
+        )
+
+        assert response.status_code == status.HTTP_302_FOUND
+        assert response['Location'] == generated.stream_file.url
+
+    def test_purchased_track_doesnt_fallback_to_preview_while_stream_building(
+        self,
+        api_client,
+        listener_user,
+        player_track_play_url,
+        variant_factory,
+    ):
+        """Для трека не используется preview вместо не готового stream."""
+        variant = variant_factory('track')
+        track = variant.product.track
+
+        generated = TrackGeneratedAudio.objects.create(
+            track=track,
+            preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
+            preview_duration=PREVIEW_DURATION,
+            stream_status=TrackGeneratedAudio.ProcessingStatus.BUILDING,
+        )
+        generated.preview_file.name = 'test/previews/preview.mp3'
+        generated.save(update_fields=('preview_file',))
+
+        create_paid_order(listener_user, variant)
+
+        api_client.force_authenticate(user=listener_user)
+
+        response = api_client.get(
+            player_track_play_url(track.id),
+        )
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.data == {
+            'detail': 'Трек ещё готовится.',
+            'status': TrackGeneratedAudio.ProcessingStatus.BUILDING,
+        }
