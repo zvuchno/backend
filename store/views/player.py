@@ -155,66 +155,95 @@ class PlayerTrackPlayView(APIView):
 
         return self._redirect_to_preview(track, generated)
 
-    def _redirect_to_stream(self, track: Track, generated) -> Response:
-        """Редиректит на полную версию трека."""
-        if generated.stream_status in (
+    def _redirect_to_audio(
+        self,
+        track: Track,
+        generated: TrackGeneratedAudio,
+        audio_file,
+        audio_status: str,
+        pending_detail: str,
+        failed_detail: str,
+        unavailable_detail: str,
+        code_prefix: str,
+    ) -> Response:
+        """Редиректит на подготовленный аудиофайл."""
+        if audio_status in (
             TrackGeneratedAudio.ProcessingStatus.PENDING,
             TrackGeneratedAudio.ProcessingStatus.BUILDING,
         ):
             return Response(
                 {
-                    'detail': 'Трек ещё готовится.',
-                    'status': generated.stream_status,
+                    'detail': pending_detail,
+                    'status': audio_status,
                 },
                 status=status.HTTP_409_CONFLICT,
             )
 
-        if (
-            generated.stream_status
-            == TrackGeneratedAudio.ProcessingStatus.FAILED
-        ):
+        if audio_status == TrackGeneratedAudio.ProcessingStatus.FAILED:
             return Response(
                 {
-                    'detail': 'Не удалось подготовить трек.',
-                    'status': generated.stream_status,
+                    'detail': failed_detail,
+                    'status': audio_status,
                 },
                 status=status.HTTP_409_CONFLICT,
             )
 
-        if not generated.stream_file:
-            return self._stream_unavailable_response(
-                code='stream_file_missing',
+        if not audio_file:
+            return self._audio_unavailable_response(
+                detail=unavailable_detail,
+                code=f'{code_prefix}_file_missing',
             )
-
-        stream_file = generated.stream_file
 
         try:
-            if not stream_file.storage.exists(stream_file.name):
+            if not audio_file.storage.exists(audio_file.name):
                 logger.warning(
-                    'Stream file is missing in storage: '
-                    'track_id=%s generated_audio_id=%s file_name=%s',
+                    'Audio file is missing in storage: '
+                    'track_id=%s generated_audio_id=%s '
+                    'kind=%s file_name=%s',
                     track.pk,
                     generated.pk,
-                    stream_file.name,
+                    code_prefix,
+                    audio_file.name,
                 )
-                return self._stream_unavailable_response(
-                    code='stream_file_not_found',
+                return self._audio_unavailable_response(
+                    detail=unavailable_detail,
+                    code=f'{code_prefix}_file_not_found',
                 )
 
-            stream_url = stream_file.url
+            audio_url = audio_file.url
         except Exception:
             logger.exception(
-                'Could not access stream file in storage: '
-                'track_id=%s generated_audio_id=%s file_name=%s',
+                'Could not access audio file in storage: '
+                'track_id=%s generated_audio_id=%s '
+                'kind=%s file_name=%s',
                 track.pk,
                 generated.pk,
-                stream_file.name,
+                code_prefix,
+                audio_file.name,
             )
-            return self._stream_unavailable_response(
-                code='stream_storage_unavailable',
+            return self._audio_unavailable_response(
+                detail=unavailable_detail,
+                code=f'{code_prefix}_storage_unavailable',
             )
 
-        return redirect(stream_url)
+        return redirect(audio_url)
+
+    def _redirect_to_stream(
+        self,
+        track: Track,
+        generated: TrackGeneratedAudio,
+    ) -> Response:
+        """Редиректит на полную версию трека."""
+        return self._redirect_to_audio(
+            track=track,
+            generated=generated,
+            audio_file=generated.stream_file,
+            audio_status=generated.stream_status,
+            pending_detail='Трек ещё готовится.',
+            failed_detail='Не удалось подготовить трек.',
+            unavailable_detail='Трек временно недоступен.',
+            code_prefix='stream',
+        )
 
     def _redirect_to_preview(
         self,
@@ -222,87 +251,32 @@ class PlayerTrackPlayView(APIView):
         generated: TrackGeneratedAudio,
     ) -> Response:
         """Редиректит на превью."""
-        if generated.preview_status in (
-            TrackGeneratedAudio.ProcessingStatus.PENDING,
-            TrackGeneratedAudio.ProcessingStatus.BUILDING,
-        ):
-            return Response(
-                {
-                    'detail': 'Превью трека ещё готовится.',
-                    'status': generated.preview_status,
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        if (
-            generated.preview_status
-            == TrackGeneratedAudio.ProcessingStatus.FAILED
-        ):
-            return Response(
-                {
-                    'detail': 'Не удалось подготовить превью трека.',
-                    'status': generated.preview_status,
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
-
-        if not generated.preview_file:
-            return self._preview_unavailable_response(
-                code='preview_file_missing',
-            )
-
         if not generated.preview_duration:
-            return self._preview_unavailable_response(
+            return self._audio_unavailable_response(
+                detail='Превью трека временно недоступно.',
                 code='preview_duration_missing',
             )
 
-        preview_file = generated.preview_file
-
-        try:
-            if not preview_file.storage.exists(preview_file.name):
-                logger.warning(
-                    'Preview file is missing in storage: '
-                    'track_id=%s generated_audio_id=%s file_name=%s',
-                    track.pk,
-                    generated.pk,
-                    preview_file.name,
-                )
-                return self._preview_unavailable_response(
-                    code='preview_file_not_found',
-                )
-
-            preview_url = preview_file.url
-        except Exception:
-            logger.exception(
-                'Could not access preview file in storage: '
-                'track_id=%s generated_audio_id=%s file_name=%s',
-                track.pk,
-                generated.pk,
-                preview_file.name,
-            )
-            return self._preview_unavailable_response(
-                code='preview_storage_unavailable',
-            )
-
-        return redirect(preview_url)
-
-    @staticmethod
-    def _preview_unavailable_response(code: str) -> Response:
-        """Возвращает ошибку недоступного preview."""
-        return Response(
-            {
-                'detail': 'Превью трека временно недоступно.',
-                'code': code,
-            },
-            status=status.HTTP_404_NOT_FOUND,
+        return self._redirect_to_audio(
+            track=track,
+            generated=generated,
+            audio_file=generated.preview_file,
+            audio_status=generated.preview_status,
+            pending_detail='Превью трека ещё готовится.',
+            failed_detail='Не удалось подготовить превью трека.',
+            unavailable_detail='Превью трека временно недоступно.',
+            code_prefix='preview',
         )
 
     @staticmethod
-    def _stream_unavailable_response(code: str) -> Response:
-        """Возвращает ошибку недоступной полной версии трека."""
+    def _audio_unavailable_response(
+        detail: str,
+        code: str,
+    ) -> Response:
+        """Возвращает ошибку недоступного аудио."""
         return Response(
             {
-                'detail': 'Трек временно недоступен.',
+                'detail': detail,
                 'code': code,
             },
             status=status.HTTP_404_NOT_FOUND,
