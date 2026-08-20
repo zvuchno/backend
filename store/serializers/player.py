@@ -41,6 +41,13 @@ class TrackPlaybackSerializer(serializers.Serializer):
                 TrackGeneratedAudio.ProcessingStatus.PENDING,
             )
 
+        if getattr(instance, 'has_full_access', False):
+            return self._full_representation(instance, generated)
+
+        return self._preview_representation(instance, generated)
+
+    def _preview_representation(self, instance, generated) -> dict:
+        """Возвращает данные превью версии трека."""
         if generated.preview_status != (
             TrackGeneratedAudio.ProcessingStatus.READY
         ):
@@ -60,6 +67,25 @@ class TrackPlaybackSerializer(serializers.Serializer):
                 kwargs={'track_id': instance.pk},
             ),
         }
+
+    def _full_representation(self, instance, generated) -> dict:
+        """Возвращает лучший доступный источник для купленного трека."""
+        if (
+            generated.stream_status
+            == TrackGeneratedAudio.ProcessingStatus.READY
+            and generated.stream_file
+        ):
+            return {
+                'status': TrackGeneratedAudio.ProcessingStatus.READY,
+                'kind': 'full',
+                'duration': instance.duration,
+                'url': reverse(
+                    'api:store:player-play-track',
+                    kwargs={'track_id': instance.pk},
+                ),
+            }
+
+        return self._preview_representation(instance, generated)
 
     @staticmethod
     def _not_ready(status: str) -> dict:

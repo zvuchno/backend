@@ -27,6 +27,7 @@ def _send_template_email(
     to_email: str,
     template_name: str,
     context: dict,
+    attachments: list[tuple[str, bytes, str]] | None = None,
 ) -> None:
     """Непосредственно отправляет текстовое и HTML-письмо."""
     text_body = render_to_string(f'emails/{template_name}.txt', context)
@@ -39,4 +40,8 @@ def _send_template_email(
         to=[to_email],
     )
     message.attach_alternative(html_body, 'text/html')
+
+    for filename, content, mimetype in attachments or []:
+        message.attach(filename, content, mimetype)
+
     message.send(fail_silently=False)

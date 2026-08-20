@@ -23,4 +23,4 @@ class ArtistFilter(django_filters.FilterSet):
 
     def filter_by_genre(self, queryset, name, value):
         """Фильтрация по жанрам альбомов артиста."""
-        return queryset.filter(user__album_set__genre__slug=value).distinct()
+        return queryset.filter(album_items__genre__slug=value).distinct()

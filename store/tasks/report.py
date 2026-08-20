@@ -2,11 +2,14 @@
 
 import datetime
 import logging
+import smtplib
 
 from celery import shared_task
 from django.core.files.base import ContentFile
 from django.db.models import Case, F, IntegerField, When
 from django.utils import timezone
+
+from common.services.email import _send_template_email
 
 from store.models import OrderItem, Payment, Product, Report
 from store.services.report import ReportService
@@ -135,7 +138,7 @@ def generate_report_task(
     )
 
     if send_email:
-        ...
+        send_report_email_task.delay(report.id)
 
 
 @shared_task
@@ -166,3 +169,59 @@ def dispatch_monthly_reports():
             period_end=period_end,
             send_email=True,
         )
+
+
+@shared_task(
+    bind=True,
+    autoretry_for=(
+        TimeoutError,
+        OSError,
+        smtplib.SMTPServerDisconnected,
+    ),
+    retry_backoff=30,
+    retry_backoff_max=300,
+    retry_jitter=True,
+    max_retries=5,
+)
+def send_report_email_task(self, report_id: int) -> None:
+    """Отправляет сформированный отчет артиста по email."""
+    report = Report.objects.select_related('artist__user').get(id=report_id)
+
+    user = report.artist.user
+
+    if user is None or not user.email:
+        logger.warning(
+            'Не удалось отправить отчет id=%s: у артиста нет email',
+            report.id,
+        )
+        return
+
+    if not report.report_file:
+        raise ValueError(
+            f'У отчета id={report.id} отсутствует файл',
+        )
+
+    filename = (
+        f'report_{report.period_start:%Y_%m_%d}_'
+        f'{report.period_end:%Y_%m_%d}.pdf'
+    )
+
+    with report.report_file.open('rb') as report_file:
+        content = report_file.read()
+
+    _send_template_email(
+        subject=(f'Отчёт агента ЗВУЧНО за {report.period_start:%m.%Y}'),
+        to_email=user.email,
+        template_name='monthly_report',
+        context={
+            'artist': report.artist,
+            'report': report,
+        },
+        attachments=[
+            (
+                filename,
+                content,
+                'application/pdf',
+            ),
+        ],
+    )

@@ -32,6 +32,7 @@ def build_sociallogin(
     uid: str,
     email: str,
     save: Mock | None = None,
+    is_existing: bool = False,
 ):
     """Создает минимальный объект SocialLogin для adapter-теста."""
     provider_obj = object()
@@ -45,6 +46,8 @@ def build_sociallogin(
         user=SimpleNamespace(
             email=email,
         ),
+        is_existing=is_existing,
+        connect=Mock(),
     )
     sociallogin.save = save if save is not None else Mock()
 
@@ -243,17 +246,18 @@ class TestSocialAccountAdapter:
         monkeypatch,
         rf,
     ):
-        """Подтверждает email существующего пользователя до social login."""
+        """Подтверждает email и привязывает соцсеть к существующему user."""
         user = UserFactory(
             email='listener@example.test',
             is_email_verified=False,
         )
-        adapter = SocialAccountAdapter()
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
             uid='yandex-2001',
             email=user.email,
         )
+        adapter = SocialAccountAdapter()
+        request = rf.post('/api/v1/auth/social/yandex/')
 
         monkeypatch.setattr(
             adapter,
@@ -261,13 +265,12 @@ class TestSocialAccountAdapter:
             lambda *args, **kwargs: True,
         )
 
-        adapter.pre_social_login(
-            rf.post('/api/v1/auth/social/yandex/'),
-            sociallogin,
-        )
+        adapter.pre_social_login(request, sociallogin)
 
         user.refresh_from_db()
+
         assert user.is_email_verified is True
+        sociallogin.connect.assert_called_once_with(request, user)
 
     def test_pre_social_login_does_not_confirm_untrusted_email(
         self,

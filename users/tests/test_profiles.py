@@ -4,9 +4,12 @@ from http import HTTPStatus
 
 import pytest
 from django.core.cache import cache
+from django.urls import reverse
 from rest_framework import status
 
+from store.tests.factories import AlbumFactory, GenreFactory
 from users.models import ArtistProfile, ArtistProfileType
+from users.tests.factories import ArtistProfileFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -448,3 +451,74 @@ class TestArtistPublicApi:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['profile_type'] == ArtistProfileType.LABEL
+
+
+class TestArtistListApi:
+    """Тесты публичного списка артистов."""
+
+    @pytest.fixture
+    def artist_list_url(self):
+        """URL публичного списка артистов."""
+        return reverse('api:users:artist_list')
+
+    def test_filter_by_genre(
+        self,
+        api_client,
+        artist_list_url,
+        artist_user,
+        other_artist_user,
+    ):
+        """Фильтрует артистов по жанру их альбомов."""
+        target_genre = GenreFactory(slug='rock')
+        other_genre = GenreFactory(slug='jazz')
+
+        AlbumFactory(
+            artist=artist_user.artist_profile,
+            genre=target_genre,
+        )
+        AlbumFactory(
+            artist=other_artist_user.artist_profile,
+            genre=other_genre,
+        )
+
+        response = api_client.get(
+            artist_list_url,
+            {'genre': target_genre.slug},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist_ids == {artist_user.artist_profile.id}
+
+    def test_filter_by_genre_returns_managed_artist_without_account(
+        self,
+        api_client,
+        artist_list_url,
+        label_user,
+    ):
+        """Фильтр по жанру работает для артиста без аккаунта."""
+        artist = ArtistProfileFactory(
+            user=None,
+            label=label_user.artist_profile,
+        )
+        genre = GenreFactory(slug='electronic')
+
+        AlbumFactory(
+            artist=artist,
+            genre=genre,
+            created_by=label_user,
+            payout_recipient=label_user,
+        )
+
+        response = api_client.get(
+            artist_list_url,
+            {'genre': genre.slug},
+        )
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id in artist_ids
