@@ -165,6 +165,8 @@ class PlayerTrackPlayView(APIView):
         failed_detail: str,
         unavailable_detail: str,
         code_prefix: str,
+        audio_duration: int | None = None,
+        require_duration: bool = False,
     ) -> Response:
         """Редиректит на подготовленный аудиофайл."""
         if audio_status in (
@@ -192,6 +194,12 @@ class PlayerTrackPlayView(APIView):
             return self._audio_unavailable_response(
                 detail=unavailable_detail,
                 code=f'{code_prefix}_file_missing',
+            )
+
+        if require_duration and not audio_duration:
+            return self._audio_unavailable_response(
+                detail=unavailable_detail,
+                code=f'{code_prefix}_duration_missing',
             )
 
         try:
@@ -251,12 +259,6 @@ class PlayerTrackPlayView(APIView):
         generated: TrackGeneratedAudio,
     ) -> Response:
         """Редиректит на превью."""
-        if not generated.preview_duration:
-            return self._audio_unavailable_response(
-                detail='Превью трека временно недоступно.',
-                code='preview_duration_missing',
-            )
-
         return self._redirect_to_audio(
             track=track,
             generated=generated,
@@ -266,6 +268,8 @@ class PlayerTrackPlayView(APIView):
             failed_detail='Не удалось подготовить превью трека.',
             unavailable_detail='Превью трека временно недоступно.',
             code_prefix='preview',
+            audio_duration=generated.preview_duration,
+            require_duration=True,
         )
 
     @staticmethod
