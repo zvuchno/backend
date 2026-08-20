@@ -331,6 +331,49 @@ class TestPlayerAlbumAPI:
             'url': player_track_play_url(track.id),
         }
 
+    def test_returns_preview_for_purchased_track_while_stream_building(
+        self,
+        api_client,
+        listener_user,
+        player_album_url,
+        player_track_play_url,
+        variant_factory,
+    ):
+        """Для купленного трека возвращается preview, пока stream готовится."""
+        variant = variant_factory(
+            'track',
+            name='Купленный трек',
+        )
+        track = variant.product.track
+
+        generated = TrackGeneratedAudio.objects.create(
+            track=track,
+            preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
+            preview_duration=PREVIEW_DURATION,
+            stream_status=TrackGeneratedAudio.ProcessingStatus.BUILDING,
+        )
+        generated.preview_file.name = 'test/previews/preview.mp3'
+        generated.save(update_fields=('preview_file',))
+
+        create_paid_order(listener_user, variant)
+
+        api_client.force_authenticate(user=listener_user)
+
+        response = api_client.get(
+            player_album_url(track.album.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        playback = response.data['tracks'][0]['playback']
+
+        assert playback == {
+            'status': TrackGeneratedAudio.ProcessingStatus.READY,
+            'kind': 'preview',
+            'duration': PREVIEW_DURATION,
+            'url': player_track_play_url(track.id),
+        }
+
 
 class TestPlayerTrackPlayAPI:
     """Тесты запуска воспроизведения трека."""
@@ -377,9 +420,7 @@ class TestPlayerTrackPlayAPI:
         track = self.create_track(variant_factory)
         generated = self.create_ready_preview(track)
 
-        storage = TrackGeneratedAudio._meta.get_field(
-            'preview_file',
-        ).storage
+        storage = generated.preview_file.storage
 
         monkeypatch.setattr(
             storage,
@@ -557,9 +598,7 @@ class TestPlayerTrackPlayAPI:
 
         create_paid_order(listener_user, variant)
 
-        storage = TrackGeneratedAudio._meta.get_field(
-            'stream_file',
-        ).storage
+        storage = generated.stream_file.storage
 
         monkeypatch.setattr(
             storage,
@@ -576,14 +615,15 @@ class TestPlayerTrackPlayAPI:
         assert response.status_code == status.HTTP_302_FOUND
         assert response['Location'] == generated.stream_file.url
 
-    def test_purchased_track_doesnt_fallback_to_preview_while_stream_building(
+    def test_purchased_track_falls_back_to_preview_while_stream_building(
         self,
         api_client,
         listener_user,
+        monkeypatch,
         player_track_play_url,
         variant_factory,
     ):
-        """Для трека не используется preview вместо не готового stream."""
+        """Для купленного трека используется preview, пока stream готовится."""
         variant = variant_factory('track')
         track = variant.product.track
 
@@ -598,14 +638,17 @@ class TestPlayerTrackPlayAPI:
 
         create_paid_order(listener_user, variant)
 
+        monkeypatch.setattr(
+            generated.preview_file.storage,
+            'exists',
+            lambda name: True,
+        )
+
         api_client.force_authenticate(user=listener_user)
 
         response = api_client.get(
             player_track_play_url(track.id),
         )
 
-        assert response.status_code == status.HTTP_409_CONFLICT
-        assert response.data == {
-            'detail': 'Трек ещё готовится.',
-            'status': TrackGeneratedAudio.ProcessingStatus.BUILDING,
-        }
+        assert response.status_code == status.HTTP_302_FOUND
+        assert response['Location'] == generated.preview_file.url

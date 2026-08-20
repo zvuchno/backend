@@ -150,7 +150,7 @@ class PlayerTrackPlayView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        if has_full_access:
+        if has_full_access and self._stream_is_ready(generated):
             return self._redirect_to_stream(track, generated)
 
         return self._redirect_to_preview(track, generated)
@@ -284,4 +284,13 @@ class PlayerTrackPlayView(APIView):
                 'code': code,
             },
             status=status.HTTP_404_NOT_FOUND,
+        )
+
+    @staticmethod
+    def _stream_is_ready(generated: TrackGeneratedAudio) -> bool:
+        """Проверяет готовность полной версии трека."""
+        return (
+            generated.stream_status
+            == TrackGeneratedAudio.ProcessingStatus.READY
+            and bool(generated.stream_file)
         )
