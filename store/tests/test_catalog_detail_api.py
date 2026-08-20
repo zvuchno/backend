@@ -146,12 +146,15 @@ class TestCatalogMerchDetail:
             },
         ]
 
-    def test_link_only_merch_variant_is_available_for_purchase(
-        self,
-        merch,
-        variant,
-    ):
+    def test_link_only_merch_variant_is_available_for_purchase(self):
         """Вариант link-only мерча доступен для покупки по прямой ссылке."""
+        product = create_merch_product(
+            name='Link Only Merch',
+            artist_name='Test Artist',
+        )
+        merch = product.merch
+        variant = product.variants.first()
+
         merch.visibility = merch.Visibility.LINK_ONLY
         merch.save(update_fields=('visibility',))
 
