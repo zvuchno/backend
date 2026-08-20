@@ -210,7 +210,7 @@ def send_report_email_task(self, report_id: int) -> None:
         content = report_file.read()
 
     _send_template_email(
-        subject=(f'Ежемесячный отчет ЗВУЧНО за {report.period_start:%m.%Y}'),
+        subject=(f'Отчёт агента ЗВУЧНО за {report.period_start:%m.%Y}'),
         to_email=user.email,
         template_name='monthly_report',
         context={

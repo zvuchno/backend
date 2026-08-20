@@ -2,18 +2,25 @@
 
 {% block content %}
 <p>
-    {{ artist.name }}, готов ваш ежемесячный отчет ЗВУЧНО.
+    {{ artist.name }}, ваш отчёт агента за период
 </p>
 
 <p>
-    В отчете собраны продажи за период
     <strong>
         {{ report.period_start|date:"d.m.Y" }} —
         {{ report.period_end|date:"d.m.Y" }}
-    </strong>.
+    </strong>
 </p>
 
 <p>
-    PDF-файл приложен к письму.
+    готов.
+</p>
+
+<p>
+    Отчёт в формате PDF во вложении.
+</p>
+
+<p>
+    музыкальный маркетплейс «ЗВУЧНО»
 </p>
 {% endblock %}

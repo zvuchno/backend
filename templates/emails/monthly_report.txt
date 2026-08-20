@@ -1,8 +1,9 @@
-{{ artist.name }}, готов ваш ежемесячный отчет ЗВУЧНО.
+{{ artist.name }}, ваш отчёт агента за период
 
-В отчете собраны продажи за период
-{{ report.period_start|date:"d.m.Y" }} — {{ report.period_end|date:"d.m.Y" }}.
+{{ report.period_start|date:"d.m.Y" }} — {{ report.period_end|date:"d.m.Y" }}
 
-PDF-файл приложен к письму.
+готов.
 
-ЗВУЧНО
+Отчёт в формате PDF во вложении.
+
+музыкальный маркетплейс «ЗВУЧНО»
