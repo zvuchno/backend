@@ -64,6 +64,9 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 provider,
             )
 
+        if user is not None and not sociallogin.is_existing:
+            sociallogin.connect(request, user)
+
     @transaction.atomic
     def save_user(self, request, sociallogin, form=None):
         """Создает или находит пользователя после входа через соцсеть."""
