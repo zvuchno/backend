@@ -53,7 +53,7 @@ class TestSendReportEmailTask:
 
         message = mail.outbox[0]
 
-        assert message.subject == ('Ежемесячный отчет ЗВУЧНО за 07.2026')
+        assert message.subject == ('Отчёт агента ЗВУЧНО за 07.2026')
 
     def test_email_contains_pdf_attachment(self, report):
         """PDF отчета прикладывается к письму."""
