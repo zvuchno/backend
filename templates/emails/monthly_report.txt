@@ -1,0 +1,9 @@
+{{ artist.name }}, ваш отчёт агента за период
+
+{{ report.period_start|date:"d.m.Y" }} — {{ report.period_end|date:"d.m.Y" }}
+
+готов.
+
+Отчёт в формате PDF во вложении.
+
+музыкальный маркетплейс «ЗВУЧНО»

@@ -1,0 +1,26 @@
+{% extends 'emails/base.html' %}
+
+{% block content %}
+<p>
+    {{ artist.name }}, ваш отчёт агента за период
+</p>
+
+<p>
+    <strong>
+        {{ report.period_start|date:"d.m.Y" }} —
+        {{ report.period_end|date:"d.m.Y" }}
+    </strong>
+</p>
+
+<p>
+    готов.
+</p>
+
+<p>
+    Отчёт в формате PDF во вложении.
+</p>
+
+<p>
+    музыкальный маркетплейс «ЗВУЧНО»
+</p>
+{% endblock %}
