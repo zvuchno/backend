@@ -150,8 +150,13 @@ class CoreUserAdmin(UserAdmin):
                 'fields': (
                     'is_email_verified',
                     'is_phone_verified',
-                    'legal_profile_link',
                 ),
+            },
+        ),
+        (
+            'Юридические данные',
+            {
+                'fields': ('legal_profile_link',),
             },
         ),
         (
@@ -174,7 +179,11 @@ class CoreUserAdmin(UserAdmin):
             },
         ),
     )
-    readonly_fields = ('last_login', 'date_joined')
+    readonly_fields = (
+        'last_login',
+        'date_joined',
+        'legal_profile_link',
+    )
     add_fieldsets = (
         (
             None,

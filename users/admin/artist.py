@@ -6,6 +6,8 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 
+from common.services import get_artist_publication_readiness
+
 from users.admin.mixins import ImagePreviewMixin
 from users.models import (
     ArtistContact,
@@ -83,10 +85,10 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'user',
         'city',
         'is_active',
-        'payout_legal_profile_verified',
+        'sales_readiness',
         'created_at',
     )
-    list_display_links = ('id', 'name', 'user')
+    list_display_links = ('id', 'name')
     list_filter = (
         'profile_type',
         'is_active',
@@ -96,7 +98,11 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'account_phone',
         'account_username',
         'user_link',
+        'sales_ready',
+        'digital_sales_ready',
+        'physical_sales_ready',
         'payout_legal_profile_verified',
+        'shipping_point_ready',
         'payout_legal_profile_link',
         'managed_artists',
         'image_preview',
@@ -162,9 +168,56 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             obj.user.email,
         )
 
+    @admin.display(description='Продажи')
+    def sales_readiness(self, obj):
+        readiness = get_artist_publication_readiness(obj)
+
+        if readiness.can_publish_physical:
+            return 'Все типы'
+
+        if readiness.can_publish_digital:
+            return 'Цифровые'
+
+        return 'Не готов'
+
+    @admin.display(description='Готов к продажам', boolean=True)
+    def sales_ready(self, obj):
+        readiness = get_artist_publication_readiness(obj)
+        return readiness.can_publish_digital
+
+    @admin.display(description='Цифровые продажи')
+    def digital_sales_ready(self, obj):
+        readiness = get_artist_publication_readiness(obj)
+
+        if readiness.can_publish_digital:
+            return 'Доступны'
+
+        return ', '.join(
+            requirement.description
+            for requirement in readiness.digital_missing
+        )
+
+    @admin.display(description='Физические продажи')
+    def physical_sales_ready(self, obj):
+        readiness = get_artist_publication_readiness(obj)
+
+        if readiness.can_publish_physical:
+            return 'Доступны'
+
+        return ', '.join(
+            requirement.description
+            for requirement in readiness.physical_missing
+        )
+
+    @admin.display(description='ПВЗ / СДЭК настроен', boolean=True)
+    def shipping_point_ready(self, obj):
+        return obj.effective_shipping_point is not None
+
     @admin.display(description='Юр. данные подтверждены', boolean=True)
     def payout_legal_profile_verified(self, obj):
-        legal_profile = obj.default_payout_recipient.legal_profile
+        payout_recipient = obj.default_payout_recipient
+        legal_profile = getattr(payout_recipient, 'legal_profile', None)
+
         return bool(legal_profile and legal_profile.is_verified)
 
     @admin.display(description='Юридический профиль получателя выплат')
@@ -299,8 +352,6 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                 'account_username',
                 'account_phone',
                 'display_connect_to_telegram',
-                'payout_legal_profile_verified',
-                'payout_legal_profile_link',
             ]
 
             if obj.profile_type == ArtistProfileType.LABEL:
@@ -312,6 +363,22 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                     'Тип и управление',
                     {
                         'fields': tuple(management_fields),
+                    },
+                ),
+            )
+            fieldsets.insert(
+                1,
+                (
+                    'Доступ к продажам',
+                    {
+                        'fields': (
+                            'sales_ready',
+                            'digital_sales_ready',
+                            'physical_sales_ready',
+                            'payout_legal_profile_verified',
+                            'shipping_point_ready',
+                            'payout_legal_profile_link',
+                        ),
                     },
                 ),
             )
