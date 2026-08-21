@@ -45,6 +45,9 @@ class ArtistIdentityDataInline(admin.StackedInline):
         'updated_at',
     )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('legal_profile')
+
 
 class ArtistBankDataInline(admin.StackedInline):
     """Инлайн банковских данных артиста."""
@@ -66,6 +69,9 @@ class ArtistBankDataInline(admin.StackedInline):
         'updated_at',
     )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('legal_profile')
+
 
 class ArtistCompanyDataInline(admin.StackedInline):
     """Инлайн данных юридического лица."""
@@ -86,6 +92,9 @@ class ArtistCompanyDataInline(admin.StackedInline):
         'created_at',
         'updated_at',
     )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('legal_profile')
 
 
 class VerificationReadinessFilter(admin.SimpleListFilter):
@@ -279,7 +288,6 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
             .select_related(
                 'user',
                 'user__artist_profile',
-                'identity_data',
                 'bank_data',
                 'company_data',
             )

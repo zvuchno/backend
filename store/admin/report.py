@@ -22,6 +22,8 @@ class ReportAdmin(admin.ModelAdmin):
         'period_end',
         'status',
         'get_sales_amount',
+        'get_commission_amount',
+        'get_payout_amount',
         'updated_at',
     )
     list_filter = (
@@ -54,7 +56,7 @@ class ReportAdmin(admin.ModelAdmin):
     )
 
     @admin.display(
-        description='Продано товаров на сумму (руб.)',
+        description='Продано (руб.)',
         ordering='sales_amount',
     )
     def get_sales_amount(self, obj):

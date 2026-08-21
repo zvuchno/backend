@@ -8,6 +8,7 @@ inlines для слушателя и артиста.
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
+from django.db.models import Exists, OuterRef
 
 from users.admin.mixins import ImagePreviewMixin
 from users.models import (
@@ -29,6 +30,10 @@ class ListenerProfileInline(admin.StackedInline):
     validate_min = True
     max_num = 1
     fields = ('full_name', 'is_active')
+
+    def get_queryset(self, request):
+        """Загружает пользователя вместе с профилем."""
+        return super().get_queryset(request).select_related('user')
 
 
 class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
@@ -69,12 +74,12 @@ class CoreUserAdmin(UserAdmin):
     @admin.display(description='Слушатель', boolean=True)
     def is_listener(self, obj):
         """Есть ли профиль слушателя."""
-        return hasattr(obj, 'listener_profile')
+        return obj.has_listener_profile
 
     @admin.display(description='Артист', boolean=True)
     def is_artist(self, obj):
         """Есть ли профиль артиста."""
-        return hasattr(obj, 'artist_profile')
+        return obj.has_artist_profile
 
     def save_related(self, request, form, formsets, change):
         """Сохраняет inlines и гарантирует наличие профиля слушателя."""
@@ -159,3 +164,22 @@ class CoreUserAdmin(UserAdmin):
             },
         ),
     )
+
+    def get_queryset(self, request):
+        """Оптимизирует проверку наличия профилей."""
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(
+                has_listener_profile=Exists(
+                    ListenerProfile.objects.filter(
+                        user=OuterRef('pk'),
+                    ),
+                ),
+                has_artist_profile=Exists(
+                    ArtistProfile.objects.filter(
+                        user=OuterRef('pk'),
+                    ),
+                ),
+            )
+        )

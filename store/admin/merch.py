@@ -47,6 +47,9 @@ class ProductVariantInline(NestedTabularInline):
     extra = 0
     readonly_fields = ('sku', 'updated_at')
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('product__merch')
+
 
 class ProductInline(NestedStackedInline):
     """Инлайн продукта с вложенными вариантами."""
@@ -56,6 +59,9 @@ class ProductInline(NestedStackedInline):
     inlines = (ProductVariantInline,)
     fields = ('price', 'allow_overpay', 'property_name')
     can_delete = False
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('merch')
 
     def has_delete_permission(self, request, obj=None):
         return False

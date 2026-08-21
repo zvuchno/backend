@@ -258,6 +258,9 @@ class ProductInline(NestedStackedInline):
     can_delete = False
     verbose_name = 'Торговые настройки альбома'
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('album')
+
 
 class AlbumArchiveInline(NestedStackedInline):
     """Инлайн подготовленного архива альбома."""
