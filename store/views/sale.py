@@ -112,7 +112,6 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
             Order.objects
             # Только заказы, где есть товары артиста
             .filter(order_filter)
-            .select_related('delivery')
             .annotate(
                 # Количество позиций артиста в заказе
                 items_count_annotated=Count(
