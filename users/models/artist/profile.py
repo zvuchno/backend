@@ -229,6 +229,29 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         """Проверяет корректность связи артиста с лейблом."""
         super().clean()
 
+        if self.profile_type == ArtistProfileType.LABEL:
+            if self.user_id is None:
+                raise ValidationError({
+                    'profile_type': (
+                        'Профиль лейбла должен быть связан с учётной записью.'
+                    ),
+                })
+
+            if self.label_id is not None:
+                raise ValidationError({
+                    'label': 'Профиль лейбла не может состоять в лейбле.',
+                })
+
+            return
+
+        if self.user_id is None and self.label_id is None:
+            raise ValidationError({
+                'label': (
+                    'Артист без собственной учётной записи '
+                    'должен быть связан с лейблом.'
+                ),
+            })
+
         if self.label_id is None:
             return
 

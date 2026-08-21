@@ -1,5 +1,7 @@
 """Модуль админки профиля артиста."""
 
+from urllib.parse import urlencode
+
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
@@ -93,6 +95,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'account_phone',
         'account_username',
         'user_link',
+        'payout_legal_profile_link',
         'managed_artists',
         'image_preview',
         'created_at',
@@ -128,7 +131,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             return '—'
 
         return format_html_join(
-            '<br>',
+            ', ',
             '<a href="{}">{}</a>',
             (
                 (
@@ -155,6 +158,67 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             '<a href="{}">{}</a>',
             url,
             obj.user.email,
+        )
+
+    @admin.display(description='Юридический профиль получателя выплат')
+    def payout_legal_profile_link(self, obj):
+        if not obj or not obj.pk:
+            return '—'
+
+        # Для управляемого артиста получателем является лейбл.
+        if obj.profile_type == ArtistProfileType.ARTIST and obj.label_id:
+            label = obj.label
+            label_url = reverse(
+                'admin:users_artistprofile_change',
+                args=(label.pk,),
+            )
+
+            if not label.user_id:
+                return format_html(
+                    'У лейбла нет учётной записи — '
+                    '<a href="{}">перейти к профилю лейбла</a>',
+                    label_url,
+                )
+
+            legal_profile = getattr(label.user, 'legal_profile', None)
+
+            if not legal_profile:
+                return format_html(
+                    'Не создан — <a href="{}">перейти к профилю лейбла</a>',
+                    label_url,
+                )
+
+            legal_profile_url = reverse(
+                'admin:users_artistlegalprofile_change',
+                args=(legal_profile.pk,),
+            )
+            return format_html(
+                '<a href="{}">Юридический профиль лейбла «{}»</a>',
+                legal_profile_url,
+                label.name,
+            )
+
+        if not obj.user_id:
+            return 'Учётная запись не настроена'
+
+        legal_profile = getattr(obj.user, 'legal_profile', None)
+
+        if legal_profile:
+            url = reverse(
+                'admin:users_artistlegalprofile_change',
+                args=(legal_profile.pk,),
+            )
+            return format_html(
+                '<a href="{}">Открыть юридический профиль</a>',
+                url,
+            )
+
+        url = reverse('admin:users_artistlegalprofile_add')
+        url = f'{url}?{urlencode({"user": obj.user_id})}'
+
+        return format_html(
+            '<a href="{}">Не создан. Создать?</a>',
+            url,
         )
 
     @admin.display(description='Телефон учетной записи')
@@ -228,6 +292,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                 'account_username',
                 'account_phone',
                 'display_connect_to_telegram',
+                'payout_legal_profile_link',
             ]
 
             if obj.profile_type == ArtistProfileType.LABEL:
