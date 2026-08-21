@@ -83,6 +83,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'user',
         'city',
         'is_active',
+        'payout_legal_profile_verified',
         'created_at',
     )
     list_display_links = ('id', 'name', 'user')
@@ -95,6 +96,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'account_phone',
         'account_username',
         'user_link',
+        'payout_legal_profile_verified',
         'payout_legal_profile_link',
         'managed_artists',
         'image_preview',
@@ -159,6 +161,11 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             url,
             obj.user.email,
         )
+
+    @admin.display(description='Юр. данные подтверждены', boolean=True)
+    def payout_legal_profile_verified(self, obj):
+        legal_profile = obj.default_payout_recipient.legal_profile
+        return bool(legal_profile and legal_profile.is_verified)
 
     @admin.display(description='Юридический профиль получателя выплат')
     def payout_legal_profile_link(self, obj):
@@ -292,6 +299,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                 'account_username',
                 'account_phone',
                 'display_connect_to_telegram',
+                'payout_legal_profile_verified',
                 'payout_legal_profile_link',
             ]
 

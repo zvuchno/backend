@@ -308,6 +308,9 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         if obj:
             readonly_fields.append('user')
 
+            if obj is None or not obj.is_ready_for_verification:
+                readonly_fields.append('is_verified')
+
         return readonly_fields
 
     def _get_verification_field_label(self, field_name) -> str:
@@ -319,3 +322,13 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         model = VERIFICATION_MODELS[prefix]
 
         return model._meta.get_field(related_field).verbose_name
+
+    def save_related(self, request, form, formsets, change):
+        """Сбрасывает подтверждение при неполных юридических данных."""
+        super().save_related(request, form, formsets, change)
+
+        obj = form.instance
+
+        if obj.is_verified and not obj.is_ready_for_verification:
+            obj.is_verified = False
+            obj.save(update_fields=('is_verified',))
