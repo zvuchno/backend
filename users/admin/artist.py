@@ -1,8 +1,12 @@
 """Модуль админки профиля артиста."""
 
+from urllib.parse import urlencode
+
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
+
+from common.services import get_artist_publication_readiness
 
 from users.admin.mixins import ImagePreviewMixin
 from users.models import (
@@ -81,9 +85,10 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'user',
         'city',
         'is_active',
+        'sales_readiness',
         'created_at',
     )
-    list_display_links = ('id', 'name', 'user')
+    list_display_links = ('id', 'name')
     list_filter = (
         'profile_type',
         'is_active',
@@ -93,6 +98,12 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
         'account_phone',
         'account_username',
         'user_link',
+        'sales_ready',
+        'digital_sales_ready',
+        'physical_sales_ready',
+        'payout_legal_profile_verified',
+        'shipping_point_ready',
+        'payout_legal_profile_link',
         'managed_artists',
         'image_preview',
         'created_at',
@@ -128,7 +139,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             return '—'
 
         return format_html_join(
-            '<br>',
+            ', ',
             '<a href="{}">{}</a>',
             (
                 (
@@ -155,6 +166,119 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             '<a href="{}">{}</a>',
             url,
             obj.user.email,
+        )
+
+    @admin.display(description='Продажи')
+    def sales_readiness(self, obj):
+        readiness = get_artist_publication_readiness(obj)
+
+        if readiness.can_publish_physical:
+            return 'Все типы'
+
+        if readiness.can_publish_digital:
+            return 'Цифровые'
+
+        return 'Не готов'
+
+    @admin.display(description='Готов к продажам', boolean=True)
+    def sales_ready(self, obj):
+        readiness = get_artist_publication_readiness(obj)
+        return readiness.can_publish_digital
+
+    @admin.display(description='Цифровые продажи')
+    def digital_sales_ready(self, obj):
+        readiness = get_artist_publication_readiness(obj)
+
+        if readiness.can_publish_digital:
+            return 'Доступны'
+
+        return ', '.join(
+            requirement.description
+            for requirement in readiness.digital_missing
+        )
+
+    @admin.display(description='Физические продажи')
+    def physical_sales_ready(self, obj):
+        readiness = get_artist_publication_readiness(obj)
+
+        if readiness.can_publish_physical:
+            return 'Доступны'
+
+        return ', '.join(
+            requirement.description
+            for requirement in readiness.physical_missing
+        )
+
+    @admin.display(description='ПВЗ / СДЭК настроен', boolean=True)
+    def shipping_point_ready(self, obj):
+        return obj.effective_shipping_point is not None
+
+    @admin.display(description='Юр. данные подтверждены', boolean=True)
+    def payout_legal_profile_verified(self, obj):
+        payout_recipient = obj.default_payout_recipient
+        legal_profile = getattr(payout_recipient, 'legal_profile', None)
+
+        return bool(legal_profile and legal_profile.is_verified)
+
+    @admin.display(description='Юридический профиль получателя выплат')
+    def payout_legal_profile_link(self, obj):
+        if not obj or not obj.pk:
+            return '—'
+
+        # Для управляемого артиста получателем является лейбл.
+        if obj.profile_type == ArtistProfileType.ARTIST and obj.label_id:
+            label = obj.label
+            label_url = reverse(
+                'admin:users_artistprofile_change',
+                args=(label.pk,),
+            )
+
+            if not label.user_id:
+                return format_html(
+                    'У лейбла нет учётной записи — '
+                    '<a href="{}">перейти к профилю лейбла</a>',
+                    label_url,
+                )
+
+            legal_profile = getattr(label.user, 'legal_profile', None)
+
+            if not legal_profile:
+                return format_html(
+                    'Не создан — <a href="{}">перейти к профилю лейбла</a>',
+                    label_url,
+                )
+
+            legal_profile_url = reverse(
+                'admin:users_artistlegalprofile_change',
+                args=(legal_profile.pk,),
+            )
+            return format_html(
+                '<a href="{}">Юридический профиль лейбла «{}»</a>',
+                legal_profile_url,
+                label.name,
+            )
+
+        if not obj.user_id:
+            return 'Учётная запись не настроена'
+
+        legal_profile = getattr(obj.user, 'legal_profile', None)
+
+        if legal_profile:
+            url = reverse(
+                'admin:users_artistlegalprofile_change',
+                args=(legal_profile.pk,),
+            )
+            return format_html(
+                '<a href="{}">Открыть юридический профиль</a>',
+                url,
+            )
+
+        url = reverse('admin:users_artistlegalprofile_add')
+        url = f'{url}?{urlencode({"user": obj.user_id})}'
+
+        return format_html(
+            '<a href="{}">Не создан. Создать?</a>',
+            url,
         )
 
     @admin.display(description='Телефон учетной записи')
@@ -239,6 +363,22 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
                     'Тип и управление',
                     {
                         'fields': tuple(management_fields),
+                    },
+                ),
+            )
+            fieldsets.insert(
+                1,
+                (
+                    'Доступ к продажам',
+                    {
+                        'fields': (
+                            'sales_ready',
+                            'digital_sales_ready',
+                            'physical_sales_ready',
+                            'payout_legal_profile_verified',
+                            'shipping_point_ready',
+                            'payout_legal_profile_link',
+                        ),
                     },
                 ),
             )

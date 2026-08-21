@@ -14,6 +14,18 @@ class PublicationRequirement(StrEnum):
     LEGAL_PROFILE_VERIFICATION = 'legal_profile_verification'
     SHIPPING_POINT = 'shipping_point'
 
+    @property
+    def description(self) -> str:
+        """Возвращает человекочитаемое описание причины."""
+        descriptions = {
+            self.EMAIL_VERIFICATION: 'не подтверждён email',
+            self.LEGAL_PROFILE_VERIFICATION: (
+                'не подтверждены юридические данные'
+            ),
+            self.SHIPPING_POINT: 'не настроен ПВЗ / СДЭК',
+        }
+        return descriptions[self]
+
 
 @dataclass(frozen=True)
 class ArtistPublicationReadiness:
