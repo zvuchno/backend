@@ -24,25 +24,23 @@ def _get_artist_notification_emails(artist) -> set[str]:
 def send_order_paid_notifications_to_artists(order) -> None:
     """Отправляет уведомления об оплате артистам чей товар есть в заказе."""
     all_items = order.items.select_related(
-        'product_variant__product__album__artist__user',
-        'product_variant__product__album__artist__label__user',
-        'product_variant__product__track__album__artist__user',
-        'product_variant__product__track__album__artist__label__user',
-        'product_variant__product__merch__artist__user',
-        'product_variant__product__merch__artist__label__user',
+        'artist__user',
+        'artist__label__user',
+        'payout_recipient',
     )
 
-    artists = set()
+    artist_emails = {}
+
     for item in all_items:
-        artist = item.product_variant.product.artist
+        emails = artist_emails.setdefault(item.artist, set())
 
-        if artist:
-            artists.add(artist)
+        if item.artist.user and item.artist.user.email:
+            emails.add(item.artist.user.email)
 
-    if not artists:
-        return
+        if item.payout_recipient.email:
+            emails.add(item.payout_recipient.email)
 
-    for artist in artists:
+    for artist, emails in artist_emails.items():
         message = f'💸 Покупатель оплатил заказ {order.order_number}'
 
         if artist.telegram_chat_id:
@@ -51,7 +49,7 @@ def send_order_paid_notifications_to_artists(order) -> None:
                 message=message,
             )
 
-        for email in _get_artist_notification_emails(artist):
+        for email in emails:
             send_template_email(
                 subject=f'Оплачен заказ {order.order_number}',
                 to_email=email,

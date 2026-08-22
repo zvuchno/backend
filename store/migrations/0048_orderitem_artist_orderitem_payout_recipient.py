@@ -7,6 +7,7 @@ from django.db.models import Q
 
 from store.migrations.utils import create_view, drop_view
 
+
 def fill_order_item_snapshots(apps, schema_editor):
     """Заполняет артиста и получателя выплаты для существующих позиций заказа."""
     OrderItem = apps.get_model('store', 'OrderItem')

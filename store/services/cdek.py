@@ -548,8 +548,9 @@ class CDEKService:
         merch_items = order.items.filter(
             product_variant__product__product_type=Product.ProductType.MERCH,
         ).select_related(
-            'product_variant__product__merch__artist',
-            'product_variant__product__merch__artist__shipping_point',
+            'artist',
+            'artist__shipping_point',
+            'artist__label__shipping_point',
         )
 
         if not merch_items.exists():
@@ -564,12 +565,12 @@ class CDEKService:
         artist_items = defaultdict(list)
         artist_profiles = {}
         for item in merch_items:
-            profile = item.product_variant.product.merch.artist
+            profile = item.artist
 
             if (
                 not profile
-                or not profile.shipping_point
-                or not profile.shipping_point.pvz_code
+                or not profile.effective_shipping_point
+                or not profile.effective_shipping_point.pvz_code
             ):
                 artist_id = profile.id if profile else 'unknown'
                 raise ValidationError({
