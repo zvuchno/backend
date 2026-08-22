@@ -51,6 +51,8 @@ class TestPurchasedMusicAPI:
             OrderItem.objects.create(
                 order=order,
                 product_variant=variant,
+                artist=variant.product.artist,
+                payout_recipient=variant.product.payout_recipient,
                 price_at_purchase=variant.product.price,
                 unit_price=variant.product.price,
                 quantity=1,
@@ -209,6 +211,8 @@ class TestPurchasedMusicDownloadDetailAPI:
             OrderItem.objects.create(
                 order=order,
                 product_variant=variant,
+                artist=variant.product.artist,
+                payout_recipient=variant.product.payout_recipient,
                 price_at_purchase=variant.product.price,
                 unit_price=variant.product.price,
                 quantity=1,

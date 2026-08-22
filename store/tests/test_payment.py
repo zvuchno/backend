@@ -43,6 +43,8 @@ def receipt_order_factory(user, variant_factory):
         OrderItem.objects.create(
             order=order,
             product_variant=variant,
+            artist=variant.product.artist,
+            payout_recipient=variant.product.payout_recipient,
             price_at_purchase=unit_price,
             unit_price=unit_price,
             quantity=quantity,
