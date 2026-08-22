@@ -564,14 +564,15 @@ class CDEKService:
         # Группируем позиции заказа по артисту
         artist_items = defaultdict(list)
         artist_profiles = {}
+        artist_shipping_points = {}
+
         for item in merch_items:
             profile = item.artist
+            shipping_point = (
+                profile.effective_shipping_point if profile else None
+            )
 
-            if (
-                not profile
-                or not profile.effective_shipping_point
-                or not profile.effective_shipping_point.pvz_code
-            ):
+            if not shipping_point or not shipping_point.pvz_code:
                 artist_id = profile.id if profile else 'unknown'
                 raise ValidationError({
                     'detail': (
@@ -582,6 +583,7 @@ class CDEKService:
 
             artist_items[profile.id].append(item)
             artist_profiles[profile.id] = profile
+            artist_shipping_points[profile.id] = shipping_point
 
         # Цикл обработки отправлений
         results = []
@@ -622,9 +624,7 @@ class CDEKService:
             result = self._register_order_for_artist(
                 order=order,
                 artist_id=artist_id,
-                shipment_point=artist_profiles[
-                    artist_id
-                ].shipping_point.pvz_code,
+                shipment_point=artist_shipping_points[artist_id].pvz_code,
                 items=items,
             )
 

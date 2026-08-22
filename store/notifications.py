@@ -25,7 +25,6 @@ def send_order_paid_notifications_to_artists(order) -> None:
     """Отправляет уведомления об оплате артистам чей товар есть в заказе."""
     all_items = order.items.select_related(
         'artist__user',
-        'artist__label__user',
         'payout_recipient',
     )
 
