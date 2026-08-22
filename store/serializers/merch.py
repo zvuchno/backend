@@ -1,3 +1,5 @@
+import logging
+
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -21,6 +23,32 @@ def validate_not_reserved(value):
             'системой и недоступно для использования.',
         )
     return value
+
+
+logger = logging.getLogger(__name__)
+
+
+def get_active_variants(product) -> list[ProductVariant]:
+    """Возвращает активные варианты продукта.
+
+    Ожидает, что `active_variants` был заранее подготовлен через
+    `Prefetch` во view.
+    Если prefetch отсутствует — делает fallback-запрос и логирует
+    предупреждение, чтобы деградация производительности не осталась
+    незамеченной.
+    """
+    variants = getattr(product, 'active_variants', None)
+    if variants is None:
+        logger.warning(
+            'active_variants не был prefetch-нут для Product id=%s. '
+            'Используется fallback-запрос — проверь get_queryset() '
+            'вьюсета/сериализатора на предмет отсутствующего Prefetch.',
+            product.id,
+        )
+        variants = list(
+            product.variants.filter(is_active=True),
+        )
+    return variants
 
 
 class MerchReadSerializer(serializers.ModelSerializer):
@@ -62,7 +90,7 @@ class MerchReadSerializer(serializers.ModelSerializer):
         simple = next(
             (
                 variant
-                for variant in getattr(product, 'active_variants', ())
+                for variant in get_active_variants(product)
                 if variant.property_value == CHAR_PRESET_SIMPLE
             ),
             None,
@@ -74,7 +102,7 @@ class MerchReadSerializer(serializers.ModelSerializer):
         if not product:
             return 0
 
-        variants = getattr(product, 'active_variants', ())
+        variants = get_active_variants(product)
 
         if not product.property_name:
             simple = next(
@@ -169,7 +197,7 @@ class MerchDetailSerializer(MerchReadSerializer):
 
         variants = [
             variant
-            for variant in getattr(product, 'active_variants', ())
+            for variant in get_active_variants(product)
             if variant.property_value != CHAR_PRESET_SIMPLE
         ]
 

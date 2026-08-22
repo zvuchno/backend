@@ -63,31 +63,23 @@ class CartItemInline(admin.TabularInline):
     }
 
     def get_queryset(self, request):
-        """Возвращает оптимизированный кверисет позиций корзины."""
         qs = (
             super()
             .get_queryset(request)
             .with_prices()
-            .select_related(
-                'cart',
-                'product_variant__product',
-            )
+            .select_related('cart', 'product_variant__product')
         )
 
-        # кэш сервисов по cart_id
         self._services = {}
-
-        for item in qs:
-            if item.cart_id not in self._services:
-                self._services[item.cart_id] = CartCalculationService(
-                    item.cart,
-                )
-
         return qs
 
     def _service(self, obj) -> CartCalculationService | None:
         """Получает CartCalculationService для корзины текущего объекта."""
-        return self._services.get(obj.cart_id)
+        service = self._services.get(obj.cart_id)
+        if service is None:
+            service = CartCalculationService(obj.cart)
+            self._services[obj.cart_id] = service
+        return service
 
     @admin.display(description='Скидка, руб.')
     def get_discount(self, obj):
@@ -174,7 +166,6 @@ class CartAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        """Возвращает кверисет корзин, кэшируя сервисы расчёта для списка."""
         qs = (
             super()
             .get_queryset(request)
@@ -183,15 +174,15 @@ class CartAdmin(admin.ModelAdmin):
         )
 
         self._services = {}
-
-        for cart in qs:
-            self._services[cart.id] = CartCalculationService(cart)
-
         return qs
 
     def _service(self, obj) -> CartCalculationService | None:
         """Получает CartCalculationService для корзины текущего объекта."""
-        return self._services.get(obj.id)
+        service = self._services.get(obj.id)
+        if service is None:
+            service = CartCalculationService(obj)
+            self._services[obj.id] = service
+        return service
 
     @admin.display(description='Покупатель')
     def get_user(self, obj):

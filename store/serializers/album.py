@@ -5,15 +5,46 @@
 Используются в API для создания и обновления альбомов и их товарных данных.
 """
 
+import logging
+
 from django.utils import timezone
 from rest_framework import serializers
 
 from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
+    CHAR_PRESET_DIGITAL,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album
+
+logger = logging.getLogger(__name__)
+
+
+def get_digital_variants(product):
+    """Возвращает digital-варианты продукта.
+
+    Ожидает, что `digital_variants` был заранее подготовлен через
+    `Prefetch`во view.
+    Если prefetch отсутствует — делает fallback-запрос
+    и логирует предупреждение, чтобы деградация производительности
+    не осталась незамеченной.
+    """
+    variants = getattr(product, 'digital_variants', None)
+    if variants is None:
+        logger.warning(
+            'digital_variants не был prefetch-нут для Product id=%s. '
+            'Используется fallback-запрос — проверь get_queryset() '
+            'вьюсета на предмет отсутствующего Prefetch.',
+            product.id,
+        )
+        variants = list(
+            product.variants.filter(
+                is_active=True,
+                property_value=CHAR_PRESET_DIGITAL,
+            ),
+        )
+    return variants
 
 
 class AlbumReadSerializer(serializers.ModelSerializer):
@@ -49,10 +80,7 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         if not product:
             return None
 
-        variant = next(
-            iter(getattr(product, 'digital_variants', ())),
-            None,
-        )
+        variant = next(iter(get_digital_variants(product)), None)
         return variant.sku if variant else None
 
 

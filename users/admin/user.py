@@ -78,7 +78,7 @@ class CoreUserAdmin(UserAdmin):
     @admin.display(description='Слушатель', boolean=True)
     def is_listener(self, obj):
         """Есть ли профиль слушателя."""
-        return obj.has_artist_profile
+        return obj.has_listener_profile
 
     @admin.display(description='Артист', boolean=True)
     def is_artist(self, obj):
