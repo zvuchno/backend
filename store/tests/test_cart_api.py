@@ -9,6 +9,11 @@ from rest_framework.response import Response
 
 from store.models import Cart, CartItem
 
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.usefixtures('publication_readiness_disabled'),
+]
+
 
 class TestCartAPI:
     """Набор тестов для проверки функциональности корзины покупок."""

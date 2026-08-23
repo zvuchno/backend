@@ -6,6 +6,11 @@ from rest_framework import status
 
 from store.models import Cart, Promocode
 
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.usefixtures('publication_readiness_disabled'),
+]
+
 
 class TestPromocodeAPI:
     """Набор тестов для логики промокодов в корзине."""

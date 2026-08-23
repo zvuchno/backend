@@ -7,6 +7,11 @@ from store.models import CartItem, Order, OrderItem
 from users.models import ConsentDocument, UserConsent
 from users.tests.factories import ArtistProfileFactory, LabelProfileFactory
 
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.usefixtures('publication_readiness_disabled'),
+]
+
 
 @pytest.mark.django_db
 class TestCheckoutAPI:
