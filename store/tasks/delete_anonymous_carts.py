@@ -18,8 +18,10 @@ def delete_stale_anonymous_carts() -> None:
     которые не обновлялись дольше STALE_ANONYMOUS_CART_DAYS дней.
     """
     cutoff = timezone.now() - timedelta(days=STALE_ANONYMOUS_CART_DAYS)
-    deleted, _ = Cart.objects.filter(
+    stale_carts = Cart.objects.filter(
         user__isnull=True,
         updated_at__lt=cutoff,
-    ).delete()
-    logger.info('Удалено брошенных гостевых корзин: %s', deleted)
+    )
+    carts_count = stale_carts.count()
+    stale_carts.delete()
+    logger.info('Удалено брошенных гостевых корзин: %s', carts_count)

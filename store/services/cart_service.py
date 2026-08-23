@@ -99,6 +99,7 @@ class CartService:
 
     @staticmethod
     def remove_from_cart(cart: Cart, variant_id: int) -> bool:
+        """Удаляет товар и возвращает True, если он был найден."""
         deleted_count, _ = cart.items.filter(
             product_variant_id=variant_id,
         ).delete()
