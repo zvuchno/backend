@@ -38,9 +38,12 @@ def create_order_item(
     name='Футболка',
 ) -> OrderItem:
     """Создает позицию заказа."""
+    product = product_variant.product
     return OrderItem.objects.create(
         order=order,
         product_variant=product_variant,
+        artist=product.artist,
+        payout_recipient=product.payout_recipient,
         shipment=shipment,
         price_at_purchase=product_variant.product.price,
         unit_price=product_variant.product.price,

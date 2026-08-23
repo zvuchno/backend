@@ -22,6 +22,8 @@ def create_paid_order(user, variant) -> Order:
     OrderItem.objects.create(
         order=order,
         product_variant=variant,
+        artist=variant.product.artist,
+        payout_recipient=variant.product.payout_recipient,
         price_at_purchase=variant.product.price,
         unit_price=variant.product.price,
         quantity=1,

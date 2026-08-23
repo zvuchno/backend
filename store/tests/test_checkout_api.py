@@ -5,6 +5,7 @@ from rest_framework import status
 
 from store.models import CartItem, Order, OrderItem
 from users.models import ConsentDocument, UserConsent
+from users.tests.factories import ArtistProfileFactory, LabelProfileFactory
 
 
 @pytest.mark.django_db
@@ -127,6 +128,92 @@ class TestCheckoutAPI:
             product_variant=variant,
         )
         assert order_item.unit_price == initial_price
+
+    def test_checkout_saves_artist_and_payout_recipient_snapshots(
+        self,
+        variant_factory,
+    ):
+        """При оформлении заказа фиксируются артист и получатель выплаты."""
+        label = LabelProfileFactory()
+        artist = ArtistProfileFactory(label=label)
+
+        variant = variant_factory(
+            'album',
+            artist=artist,
+            payout_recipient=label.user,
+        )
+
+        self.cart_with_items.items.all().delete()
+        self.cart_with_items.items.create(
+            product_variant=variant,
+            quantity=1,
+        )
+
+        response = self.auth_client.post(
+            self.checkout_url,
+            data=self.get_payload(),
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        order_item = OrderItem.objects.get(
+            order_id=response.data['id'],
+            product_variant=variant,
+        )
+
+        assert order_item.artist == artist
+        assert order_item.payout_recipient == label.user
+
+    def test_checkout_snapshots_do_not_change_with_product_relations(
+        self,
+        variant_factory,
+    ):
+        """Снапшоты позиции не меняются после изменения связей товара."""
+        label = LabelProfileFactory()
+        artist = ArtistProfileFactory(label=label)
+
+        variant = variant_factory(
+            'album',
+            artist=artist,
+            payout_recipient=label.user,
+        )
+
+        self.cart_with_items.items.all().delete()
+        self.cart_with_items.items.create(
+            product_variant=variant,
+            quantity=1,
+        )
+
+        response = self.auth_client.post(
+            self.checkout_url,
+            data=self.get_payload(),
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        order_item = OrderItem.objects.get(
+            order_id=response.data['id'],
+            product_variant=variant,
+        )
+
+        assert order_item.artist == artist
+        assert order_item.payout_recipient == label.user
+
+        old_payout_recipient_id = label.user.id
+
+        artist.label = None
+        artist.save(update_fields=['label'])
+
+        album = variant.product.album
+        album.payout_recipient = artist.user
+        album.save(update_fields=['payout_recipient'])
+
+        order_item.refresh_from_db()
+
+        assert order_item.artist_id == artist.id
+        assert order_item.payout_recipient_id == old_payout_recipient_id
 
     def test_checkout_atomic_rollback_on_error(self, monkeypatch):
         """Ошибка при сохранении → откат транзакции, корзина не удаляется."""
