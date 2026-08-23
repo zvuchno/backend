@@ -111,12 +111,21 @@ class ProductVariant(ActivatableModel, TimestampModel):
         if not content.is_active:
             return False
 
-        if not content.is_published:
+        publication_content = (
+            content.album
+            if product.product_type == product.ProductType.TRACK
+            else content
+        )
+
+        if not publication_content.is_active:
             return False
 
-        if content.visibility not in (
-            content.Visibility.PUBLIC,
-            content.Visibility.LINK_ONLY,
+        if not publication_content.is_published:
+            return False
+
+        if publication_content.visibility not in (
+            publication_content.Visibility.PUBLIC,
+            publication_content.Visibility.LINK_ONLY,
         ):
             return False
 
