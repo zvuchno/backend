@@ -63,6 +63,13 @@ class SalesExportService:
         writer = csv.writer(response, delimiter=';')
         writer.writerow(cls.HEADERS)
 
+        # Переменные для накопления итогов
+        total_quantity = 0
+        total_discount = ZERO_MONEY
+        total_donation = ZERO_MONEY
+        total_commission = ZERO_MONEY
+        total_payout = ZERO_MONEY
+
         for item in items:
             info = item.product_info or {}
 
@@ -80,6 +87,13 @@ class SalesExportService:
                 ZERO_MONEY,
             )
 
+            # Накапливаем итоги
+            total_quantity += item.quantity
+            total_discount += item.promocode_discount
+            total_donation += item.donation
+            total_commission += item.platform_commission
+            total_payout += payout
+
             writer.writerow([
                 paid_at,
                 item.order.order_number,
@@ -95,5 +109,26 @@ class SalesExportService:
                 format_document_money(item.platform_commission),
                 format_document_money(payout),
             ])
+
+        if items:
+            # fmt: off
+            # Добавляем пустую строку-разделитель и итоговую строку
+            writer.writerow([])
+            writer.writerow([
+                '',                                   # Дата/время
+                '',                                   # № заказа
+                '',                                   # Артист
+                '',                                   # Тип
+                'ИТОГО:',                             # Наименование
+                '',                                   # SKU
+                total_quantity,                       # Количество
+                '',                                   # Цена
+                '',                                   # Промокод
+                format_document_money(total_discount),   # Скидка
+                format_document_money(total_donation),   # Донат
+                format_document_money(total_commission), # Комиссия площадки
+                format_document_money(total_payout),     # Сумма к выплате
+            ])
+            # fmt: on
 
         return response
