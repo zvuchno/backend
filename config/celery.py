@@ -31,6 +31,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'users.tasks.invitation.expire_token_invitations',
         'schedule': crontab(hour=1, minute=0),
     },
+    'delete-stale-anonymous-carts': {
+        'task': 'store.tasks.delete_stale_anonymous_carts',
+        'schedule': crontab(hour=4, minute=0),
+    },
 }
 
 app.conf.beat_schedule = CELERY_BEAT_SCHEDULE
