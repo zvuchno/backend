@@ -7,6 +7,7 @@
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from store.models import Cart, CartItem, ProductVariant
@@ -64,6 +65,8 @@ class CartService:
 
             item.save(update_fields=update_fields)
 
+        CartService._touch(cart)
+
         return item
 
     @staticmethod
@@ -91,18 +94,20 @@ class CartService:
                 updated_items.append(item)
         if updated_items:
             CartItem.objects.bulk_update(updated_items, ['quantity'])
+            CartService._touch(cart)
         return cart
 
     @staticmethod
     def remove_from_cart(cart: Cart, variant_id: int) -> bool:
-        """Удаляет товар и возвращает True, если он был найден."""
         deleted_count, _ = cart.items.filter(
             product_variant_id=variant_id,
         ).delete()
 
-        if deleted_count > 0 and cart.promocode:
-            cart.refresh_from_db()
-            CartService.validate_cart_promocode(cart)
+        if deleted_count > 0:
+            CartService._touch(cart)
+            if cart.promocode:
+                cart.refresh_from_db()
+                CartService.validate_cart_promocode(cart)
 
         return deleted_count > 0
 
@@ -186,6 +191,11 @@ class CartService:
         guest_cart.delete()
         user_cart.refresh_from_db()
         CartService.validate_cart_promocode(user_cart)
+
+    @staticmethod
+    def _touch(cart: Cart) -> None:
+        """Обновляет updated_at корзины при действиях с её товарами."""
+        Cart.objects.filter(pk=cart.pk).update(updated_at=timezone.now())
 
     @staticmethod
     def validate_cart_promocode(cart: Cart) -> None:
