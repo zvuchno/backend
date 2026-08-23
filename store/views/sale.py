@@ -56,37 +56,9 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
         ).values('cdek_number')[:1]
 
         # Заказы, где есть товары этого артиста
-        order_filter = (
-            managed_artist_q(
-                user,
-                prefix='items__product_variant__product__album__artist',
-            )
-            | managed_artist_q(
-                user,
-                prefix=(
-                    'items__product_variant__product__track__album__artist'
-                ),
-            )
-            | managed_artist_q(
-                user,
-                prefix='items__product_variant__product__merch__artist',
-            )
-        )
+        order_filter = managed_artist_q(user, prefix='items__artist')
         # Фильтр items - только позиции этого артиста
-        items_filter = (
-            managed_artist_q(
-                user,
-                prefix='product_variant__product__album__artist',
-            )
-            | managed_artist_q(
-                user,
-                prefix='product_variant__product__track__album__artist',
-            )
-            | managed_artist_q(
-                user,
-                prefix='product_variant__product__merch__artist',
-            )
-        )
+        items_filter = managed_artist_q(user, prefix='artist')
 
         # Queryset для items
         items_qs = (

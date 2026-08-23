@@ -249,6 +249,25 @@ class OrderService:
         for item in cart_items:
             variant = item.product_variant
             product = variant.product
+
+            artist_profile = getattr(product, 'artist', None)
+            payout_recipient = getattr(product, 'payout_recipient', None)
+
+            if artist_profile is None or payout_recipient is None:
+                logger.error(
+                    'Невозможно создать позицию заказа '
+                    'без артиста или получателя выплаты: '
+                    'order_id=%s, product_id=%s, artist_id=%s, '
+                    'payout_recipient_id=%s',
+                    order.id,
+                    product.id,
+                    getattr(artist_profile, 'id', None),
+                    getattr(payout_recipient, 'id', None),
+                )
+                raise ValidationError(
+                    'Не удалось определить продавца для одного из товаров.',
+                )
+
             item_promocode_discount = item_discounts.get(item.id, ZERO_MONEY)
             item_line_total = max(
                 item.unit_price * item.quantity - item_promocode_discount,
@@ -258,8 +277,7 @@ class OrderService:
                 item_line_total * PLATFORM_COMMISSION_RATE
             )
 
-            artist_profile = getattr(product, 'artist', None)
-            artist_name = getattr(artist_profile, 'name', '')
+            artist_name = artist_profile.name
             product_kind = OrderService._get_product_kind(product)
             property_value = (
                 variant.property_value if product.property_name else ''
@@ -288,6 +306,8 @@ class OrderService:
                     quantity=item.quantity,
                     promocode_discount=item_promocode_discount,
                     product_info=product_info_snapshot,
+                    artist=artist_profile,
+                    payout_recipient=payout_recipient,
                     platform_commission=item_platform_commission,
                 ),
             )

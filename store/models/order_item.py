@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import F, Q
@@ -86,6 +87,20 @@ class OrderItem(models.Model):
 
     # Snapshot {name, variant_name, artist..}
     product_info = models.JSONField('Данные о товаре (snapshot)', default=dict)
+
+    artist = models.ForeignKey(
+        'users.ArtistProfile',
+        on_delete=models.PROTECT,
+        related_name='order_items',
+        verbose_name='Артист на момент покупки',
+    )
+
+    payout_recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='payout_order_items',
+        verbose_name='Получатель выплаты на момент покупки',
+    )
 
     objects = OrderItemQuerySet.as_manager()
 
