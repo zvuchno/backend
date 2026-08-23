@@ -48,6 +48,7 @@ def get_active_variants(product) -> list[ProductVariant]:
         variants = list(
             product.variants.filter(is_active=True),
         )
+        product.active_variants = variants
     return variants
 
 

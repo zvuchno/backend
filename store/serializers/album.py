@@ -44,6 +44,7 @@ def get_digital_variants(product):
                 property_value=CHAR_PRESET_DIGITAL,
             ),
         )
+        product.digital_variants = variants
     return variants
 
 

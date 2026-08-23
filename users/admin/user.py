@@ -110,31 +110,6 @@ class CoreUserAdmin(UserAdmin):
             url,
         )
 
-    @admin.display(description='Юридический профиль')
-    def legal_profile_link(self, obj):
-        if not obj or not obj.pk:
-            return '—'
-
-        legal_profile = getattr(obj, 'legal_profile', None)
-
-        if legal_profile:
-            url = reverse(
-                'admin:users_artistlegalprofile_change',
-                args=(legal_profile.pk,),
-            )
-            return format_html(
-                '<a href="{}">Открыть юридический профиль</a>',
-                url,
-            )
-
-        url = reverse('admin:users_artistlegalprofile_add')
-        url = f'{url}?{urlencode({"user": obj.pk})}'
-
-        return format_html(
-            '<a href="{}">Не создан. Создать?</a>',
-            url,
-        )
-
     def save_related(self, request, form, formsets, change):
         """Сохраняет inlines и гарантирует наличие профиля слушателя."""
         super().save_related(request, form, formsets, change)

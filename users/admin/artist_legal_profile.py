@@ -288,6 +288,7 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
             .select_related(
                 'user',
                 'user__artist_profile',
+                'identity_data',
                 'bank_data',
                 'company_data',
             )
