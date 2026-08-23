@@ -101,6 +101,17 @@ class OrderItemInline(admin.TabularInline):
     def display_promocode_discount(self, obj):
         return format_money(obj.promocode_discount)
 
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'product_variant__product__album',
+                'product_variant__product__track',
+                'product_variant__product__merch',
+            )
+        )
+
 
 class PaymentInline(admin.TabularInline):
     """Инлайн отображения платежей по заказу."""
@@ -132,6 +143,9 @@ class PaymentInline(admin.TabularInline):
             obj.get_status_display(),
         )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('order')
+
     def has_delete_permission(self, request, obj=None):
         return False
 
@@ -158,6 +172,9 @@ class ShipmentInline(admin.TabularInline):
     @admin.display(description='Расчетная стоимость доставки артиста (руб.)')
     def display_estimated_delivery_cost(self, obj):
         return format_money(obj.estimated_delivery_cost)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('artist', 'order')
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -325,7 +342,7 @@ class OrderAdmin(admin.ModelAdmin):
     @admin.display(description='Оплачен', boolean=True)
     def is_paid(self, obj):
         """Проверяет, есть ли у заказа успешно завершенный платеж."""
-        return obj.payments.filter(status='succeeded').exists()
+        return obj.has_successful_payment
 
     def save_model(self, request, obj, form, change):
         if not change:
@@ -345,10 +362,13 @@ class OrderAdmin(admin.ModelAdmin):
             return
 
     def get_queryset(self, request):
-        # Аннотируем заказы по наличию успешного платежа
         return (
             super()
             .get_queryset(request)
+            .select_related(
+                'user',
+                'delivery',
+            )
             .annotate(
                 has_successful_payment=Exists(
                     Payment.objects.filter(
@@ -356,11 +376,6 @@ class OrderAdmin(admin.ModelAdmin):
                         status='succeeded',
                     ),
                 ),
-            )
-            .prefetch_related(
-                'items__product_variant__product__album',
-                'items__product_variant__product__track',
-                'items__product_variant__product__merch',
             )
         )
 

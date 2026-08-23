@@ -7,6 +7,8 @@ from typing import NoReturn
 import requests
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import F
+from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 
 from store.constants import (
@@ -227,8 +229,8 @@ class CDEKService:
 
         if all_points is None:
             logger.info(
-                'Получение ПВЗ CDEK из API. '
-                f'city_code={city_code} ({city_code})',
+                'Получение ПВЗ CDEK из API. city_code=%s',
+                city_code,
             )
             all_points = self._fetch_all_points_from_api(
                 city_code,
@@ -237,13 +239,15 @@ class CDEKService:
             )
             cache.set(cache_key, all_points, timeout=DEFAULT_CACHE_TIMEOUT)
             logger.info(
-                f'Получено {len(all_points)} ПВЗ для города '
-                f'{city_code} ({city_code})',
+                'Получено %s ПВЗ для города city_code=%s',
+                len(all_points),
+                city_code,
             )
         else:
             logger.info(
-                f'Получено из кеша {len(all_points)} ПВЗ для города '
-                f'{city_code} ({city_code})',
+                'Получено из кеша %s ПВЗ для города city_code=%s',
+                len(all_points),
+                city_code,
             )
 
         return all_points
@@ -319,10 +323,13 @@ class CDEKService:
 
         logger.info(
             'Ответ CDEK Widget API сформирован. '
-            f'city_code={city_code}, '
-            f'page={page}, size={size}, '
-            f'total_elements={total_elements}, '
-            f'returned_points={len(returned_points)}',
+            'city_code=%s, page=%s, size=%s, '
+            'total_elements=%s, returned_points=%s',
+            city_code,
+            page,
+            size,
+            total_elements,
+            len(returned_points),
         )
 
         return {
@@ -340,38 +347,35 @@ class CDEKService:
         tariffs: str = 'office',
     ) -> dict:
         """Расчет стоимости доставки СДЭК на основе содержимого корзины."""
-        if not cart:
-            raise ValidationError({'detail': 'Ваша корзина пуста.'})
-
         calculation_service = CartCalculationService(cart)
 
-        # Получаем список ID уникальных артистов, чей мерч в корзине
-        cart_artist_ids = calculation_service.get_merch_artist_ids()
+        artist_quantities = defaultdict(int)
+        for item in calculation_service.checkout_items:
+            product = item.product_variant.product
 
-        if not cart_artist_ids:  # Если мерча нет
-            logger.warning('Нет физических товаров для доставки.')
+            if product.product_type != Product.ProductType.MERCH:
+                continue
+
+            artist_id = product.merch.artist_id
+            if artist_id:
+                artist_quantities[artist_id] += item.quantity
+
+        if not artist_quantities:
             raise ValidationError({
                 'detail': 'Нет физических товаров для доставки.',
             })
 
-        # Создаем словарь {artist_id: city_code} - в один запрос
         artist_city_codes = dict(
-            ArtistProfile.objects.filter(id__in=cart_artist_ids).values_list(
-                'id',
-                'shipping_point__city_code',
-            ),
+            ArtistProfile.objects
+            .filter(id__in=artist_quantities)
+            .annotate(
+                effective_shipping_city_code=Coalesce(
+                    F('shipping_point__city_code'),
+                    F('label__shipping_point__city_code'),
+                ),
+            )
+            .values_list('id', 'effective_shipping_city_code'),
         )
-        # Считаем количество мерча для каждого артиста
-        artist_quantities = defaultdict(int)
-        cart_items = calculation_service.checkout_items.filter(
-            product_variant__product__product_type=Product.ProductType.MERCH,
-        )
-
-        for item in cart_items:
-            artist_id = item.product_variant.product.merch.artist_id
-
-            if artist_id in artist_city_codes:
-                artist_quantities[artist_id] += item.quantity
 
         for artist_id in artist_quantities:
             if not artist_city_codes.get(artist_id):
@@ -425,11 +429,15 @@ class CDEKService:
                     all_max_periods.append(delivery_data['period_max'])
 
                 logger.info(
-                    f'Корзина {cart.user}: рассчитана сумма доставки '
-                    f'от артиста ID: {artist_id}, from_location: '
-                    f'{from_location_code}, to_location: '
-                    f'{city_code}, items_count '
-                    f'= {items_count} -> {delivery_data["total_sum"]} руб.',
+                    'Корзина id=%s: рассчитана сумма доставки от артиста '
+                    'id=%s, from_location=%s, to_location=%s, items_count=%s '
+                    '-> %s руб.',
+                    cart.id,
+                    artist_id,
+                    from_location_code,
+                    city_code,
+                    items_count,
+                    delivery_data['total_sum'],
                 )
 
         delivery_sum = round(total_delivery_sum, MONEY_DISPLAY_PRECISION)
@@ -439,9 +447,14 @@ class CDEKService:
         period_max = max(all_max_periods) if all_max_periods else None
 
         logger.info(
-            f'Корзина {cart.user}, тип доставки: {tariffs}, '
-            f'итоговая сумма доставки всех товаров -> {delivery_sum} руб. '
-            f'Сроки: {period_min}-{period_max} дн.',
+            'Корзина id=%s, тип доставки: %s, '
+            'итоговая сумма доставки всех товаров -> %s руб. '
+            'Сроки: %s-%s дн.',
+            cart.id,
+            tariffs,
+            delivery_sum,
+            period_min,
+            period_max,
         )
 
         return {
@@ -576,7 +589,7 @@ class CDEKService:
                 raise ValidationError({
                     'detail': (
                         f'У артиста id={artist_id} не указан код '
-                        'населенного пункта для отгрузки товара.'
+                        'ПВЗ для отгрузки товара.'
                     ),
                 })
 

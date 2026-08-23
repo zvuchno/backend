@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -9,7 +9,7 @@ from common.access import managed_artist_q
 from common.permissions import IsArtistOrLabel, IsStoreObjectManager
 
 from store.filters.merch import MerchFilter
-from store.models import Image, Merch
+from store.models import Image, Merch, ProductVariant
 from store.schema.merch import merch_schema
 from store.schema.merch_images import add_image_schema, image_detail_schema
 from store.serializers import (
@@ -72,11 +72,22 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         queryset = queryset.filter(
             Q(is_active=True) & managed_artist_q(user),
         )
+
+        active_variants_prefetch = Prefetch(
+            'product__variants',
+            queryset=ProductVariant.objects.filter(
+                is_active=True,
+            ).order_by('id'),
+            to_attr='active_variants',
+        )
+
         if self.action == 'list':
             queryset = queryset.select_related(
                 'product',
+                'artist',
             ).prefetch_related(
                 'images_merch',
+                active_variants_prefetch,
             )
         elif self.action == 'retrieve':
             queryset = queryset.select_related(
@@ -84,10 +95,10 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
                 'kind',
                 'album',
                 'artist',
-                'payout_recipient',
+                'artist__label',
             ).prefetch_related(
                 'images_merch',
-                'product__variants',
+                active_variants_prefetch,
             )
         return queryset
 

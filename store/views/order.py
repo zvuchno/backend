@@ -143,6 +143,15 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                         )
                     ),
                 )
+
+            order = Order.objects.prefetch_related(
+                Prefetch(
+                    'items',
+                    queryset=OrderItem.objects.select_related(
+                        'product_variant__product',
+                    ),
+                ),
+            ).get(pk=order.pk)
         except NotEnoughStock as exc:
             raise ValidationError({'detail': str(exc)})
 

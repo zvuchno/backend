@@ -1,6 +1,6 @@
 """ViewSet для управления альбомами."""
 
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
@@ -9,8 +9,9 @@ from common.access import managed_artist_q
 from common.permissions import IsArtistOrLabel, IsStoreObjectManager
 
 from .mixins import ProductActionMixin, SoftDeleteMixin
+from store.constants import CHAR_PRESET_DIGITAL
 from store.filters import AlbumFilter
-from store.models import Album
+from store.models import Album, ProductVariant
 from store.schema import album_schema
 from store.serializers import (
     AlbumReadDetailSerializer,
@@ -66,21 +67,30 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             Q(is_active=True) & managed_artist_q(user),
         )
 
+        digital_variants_prefetch = Prefetch(
+            'product__variants',
+            queryset=ProductVariant.objects.filter(
+                is_active=True,
+                property_value=CHAR_PRESET_DIGITAL,
+            ),
+            to_attr='digital_variants',
+        )
+
         if self.action == 'list':
             queryset = queryset.select_related(
                 'product',
                 'artist',
             ).prefetch_related(
-                'product__variants',
+                digital_variants_prefetch,
             )
-        if self.action == 'retrieve':
+        elif self.action == 'retrieve':
             queryset = queryset.select_related(
                 'product',
                 'genre',
                 'artist',
                 'artist__label',
             ).prefetch_related(
-                'product__variants',
+                digital_variants_prefetch,
             )
 
         return queryset

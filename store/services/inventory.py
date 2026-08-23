@@ -28,7 +28,7 @@ class ReservationService:
         order_items = list(
             order.items.filter(
                 product_variant__product__product_type=Product.ProductType.MERCH,
-            ).select_related('product_variant'),
+            ),
         )
 
         variant_ids = sorted({item.product_variant_id for item in order_items})

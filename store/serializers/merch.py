@@ -1,4 +1,5 @@
-from django.db.models import Sum
+import logging
+
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -22,6 +23,33 @@ def validate_not_reserved(value):
             'системой и недоступно для использования.',
         )
     return value
+
+
+logger = logging.getLogger(__name__)
+
+
+def get_active_variants(product) -> list[ProductVariant]:
+    """Возвращает активные варианты продукта.
+
+    Ожидает, что `active_variants` был заранее подготовлен через
+    `Prefetch` во view.
+    Если prefetch отсутствует — делает fallback-запрос и логирует
+    предупреждение, чтобы деградация производительности не осталась
+    незамеченной.
+    """
+    variants = getattr(product, 'active_variants', None)
+    if variants is None:
+        logger.warning(
+            'active_variants не был prefetch-нут для Product id=%s. '
+            'Используется fallback-запрос — проверь get_queryset() '
+            'вьюсета/сериализатора на предмет отсутствующего Prefetch.',
+            product.id,
+        )
+        variants = list(
+            product.variants.filter(is_active=True),
+        )
+        product.active_variants = variants
+    return variants
 
 
 class MerchReadSerializer(serializers.ModelSerializer):
@@ -62,9 +90,9 @@ class MerchReadSerializer(serializers.ModelSerializer):
 
         simple = next(
             (
-                v
-                for v in product.variants.all()
-                if v.is_active and v.property_value == CHAR_PRESET_SIMPLE
+                variant
+                for variant in get_active_variants(product)
+                if variant.property_value == CHAR_PRESET_SIMPLE
             ),
             None,
         )
@@ -75,18 +103,24 @@ class MerchReadSerializer(serializers.ModelSerializer):
         if not product:
             return 0
 
-        active_variants = product.variants.filter(is_active=True)
+        variants = get_active_variants(product)
 
         if not product.property_name:
-            simple = active_variants.filter(
-                property_value=CHAR_PRESET_SIMPLE,
-            ).first()
-            return (simple.stock or 0) if simple else 0
-        total_stock = active_variants.exclude(
-            property_value=CHAR_PRESET_SIMPLE,
-        ).aggregate(total=Sum('stock'))['total']
+            simple = next(
+                (
+                    variant
+                    for variant in variants
+                    if variant.property_value == CHAR_PRESET_SIMPLE
+                ),
+                None,
+            )
+            return simple.stock or 0 if simple else 0
 
-        return total_stock or 0
+        return sum(
+            variant.stock or 0
+            for variant in variants
+            if variant.property_value != CHAR_PRESET_SIMPLE
+        )
 
     def get_main_image(self, obj) -> str | None:
         request = self.context.get('request')
@@ -159,18 +193,14 @@ class MerchDetailSerializer(MerchReadSerializer):
     @extend_schema_field(VariantReadSerializer(many=True))
     def get_variants(self, obj):
         product = getattr(obj, 'product', None)
-        if not product:
+        if not product or not product.property_name:
             return []
 
-        if not product.property_name:
-            return []
-
-        variants = (
-            product.variants
-            .filter(is_active=True)
-            .exclude(property_value=CHAR_PRESET_SIMPLE)
-            .order_by('id')
-        )
+        variants = [
+            variant
+            for variant in get_active_variants(product)
+            if variant.property_value != CHAR_PRESET_SIMPLE
+        ]
 
         return VariantReadSerializer(variants, many=True).data
 

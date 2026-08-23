@@ -102,6 +102,7 @@ class CatalogReleaseDetailView(RetrieveAPIView):
                 'product__merch',
                 'product__merch__kind',
                 'product__merch__album',
+                'product__merch__artist',
             )
             .prefetch_related(
                 Prefetch(
@@ -192,7 +193,6 @@ class CatalogMerchDetailView(RetrieveAPIView):
                 'kind',
                 'album',
                 'artist',
-                'payout_recipient',
             )
             .prefetch_related(
                 Prefetch(

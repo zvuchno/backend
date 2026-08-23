@@ -26,6 +26,9 @@ class ProductInline(admin.StackedInline):
     can_delete = False
     verbose_name = 'Торговые настройки трека'
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('track')
+
 
 class TrackGeneratedAudioInline(admin.StackedInline):
     """Инлайн результатов фоновой подготовки аудиофайлов."""
@@ -91,6 +94,9 @@ class TrackGeneratedAudioInline(admin.StackedInline):
             '<audio controls preload="metadata" src="{}"></audio>',
             obj.stream_file.url,
         )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('track')
 
     def has_add_permission(self, request, obj=None):
         """Запрещает ручное создание результатов обработки."""
