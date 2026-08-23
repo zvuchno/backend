@@ -548,7 +548,6 @@ class CDEKService:
         merch_items = order.items.filter(
             product_variant__product__product_type=Product.ProductType.MERCH,
         ).select_related(
-            'artist',
             'artist__shipping_point',
             'artist__label__shipping_point',
         )
