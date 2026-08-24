@@ -17,7 +17,8 @@ class ReportAdmin(admin.ModelAdmin):
 
     list_display = (
         'id',
-        'payout_recipient',
+        'get_payout_recipient',
+        'payout_recipient_email',
         'period_start',
         'period_end',
         'status',
@@ -30,10 +31,13 @@ class ReportAdmin(admin.ModelAdmin):
         'status',
         'updated_at',
     )
-    search_fields = ('payout_recipient__email',)
+    search_fields = (
+        'payout_recipient__email',
+        'payout_recipient__artist_profile__name',
+    )
     readonly_fields = (
         'status',
-        'payout_recipient',
+        'get_payout_recipient',
         'period_start',
         'period_end',
         'get_sales_amount',
@@ -46,8 +50,11 @@ class ReportAdmin(admin.ModelAdmin):
         'updated_at',
     )
     ordering = ('-created_at',)
-    list_display_links = ('id', 'payout_recipient')
-    list_select_related = ('payout_recipient',)
+    list_display_links = ('id', 'get_payout_recipient')
+    list_select_related = (
+        'payout_recipient',
+        'payout_recipient__artist_profile',
+    )
 
     @admin.display(
         description='Продано (руб.)',
@@ -100,13 +107,72 @@ class ReportAdmin(admin.ModelAdmin):
             filename,
         )
 
+    @admin.display(
+        description='Получатель выплаты',
+        ordering='payout_recipient__email',
+    )
+    def get_payout_recipient(self, obj):
+        legal_profile = getattr(
+            obj.payout_recipient,
+            'legal_profile',
+            None,
+        )
+
+        if legal_profile:
+            recipient_type = legal_profile.recipient_type
+
+            if recipient_type == legal_profile.RecipientType.LEGAL_ENTITY:
+                company_data = getattr(
+                    legal_profile,
+                    'company_data',
+                    None,
+                )
+                if company_data and company_data.company_name:
+                    return company_data.company_name
+
+            identity_data = getattr(
+                legal_profile,
+                'identity_data',
+                None,
+            )
+            if identity_data:
+                full_name = ' '.join(
+                    part
+                    for part in (
+                        identity_data.last_name,
+                        identity_data.first_name,
+                        identity_data.middle_name,
+                    )
+                    if part
+                )
+                if full_name:
+                    return full_name
+
+        profile = getattr(
+            obj.payout_recipient,
+            'artist_profile',
+            None,
+        )
+        if profile and profile.name:
+            return profile.name
+
+        return obj.payout_recipient.email
+
+    @admin.display(
+        description='Email',
+        ordering='payout_recipient__email',
+    )
+    def payout_recipient_email(self, obj):
+        return obj.payout_recipient.email
+
     fieldsets = (
         (
             'Основная информация',
             {
                 'fields': (
                     'status',
-                    'payout_recipient',
+                    'get_payout_recipient',
+                    'payout_recipient_email',
                     'period_start',
                     'period_end',
                     'get_sales_amount',
