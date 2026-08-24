@@ -12,6 +12,7 @@ from django.utils import timezone
 from common.services.email import _send_template_email
 
 from store.models import OrderItem, Payment, Report
+from store.services.payout import PayoutService
 from store.services.report import ReportService
 from store.services.report_file_builder import ReportFileBuilder
 
@@ -73,6 +74,8 @@ def generate_report_task(
         )
         report.status = Report.Status.READY
         report.save(update_fields=['report_file', 'status'])
+
+        PayoutService.sync_with_report(report)
     except (ValueError, User.DoesNotExist) as exc:
         logger.error(
             'Невозможно сформировать отчет '

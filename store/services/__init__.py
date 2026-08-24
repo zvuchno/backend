@@ -12,6 +12,7 @@ from .music_download import (
 )
 from .order_service import OrderService
 from .payment import create_yookassa_payment, process_yookassa_webhook
+from .payout import PayoutService
 from .report import ReportService
 from .report_file_builder import ReportFileBuilder
 
@@ -26,6 +27,7 @@ __all__ = [
     'LocationService',
     'MerchImageService',
     'OrderService',
+    'PayoutService',
     'process_yookassa_webhook',
     'ProductService',
     'ReportService',
