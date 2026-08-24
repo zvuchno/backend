@@ -5,22 +5,23 @@ import logging
 import smtplib
 
 from celery import shared_task
+from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from django.db.models import Case, F, IntegerField, When
 from django.utils import timezone
 
 from common.services.email import _send_template_email
 
-from store.models import OrderItem, Payment, Product, Report
+from store.models import OrderItem, Payment, Report
 from store.services.report import ReportService
 from store.services.report_file_builder import ReportFileBuilder
-from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
 
+User = get_user_model()
 
-def _artists_with_sales(period_start, period_end) -> set[int]:
-    """Возвращает set id артистов с оплаченными продажами за период."""
+
+def _payout_recipients_with_sales(period_start, period_end) -> set[int]:
+    """Возвращает set id получателей с оплаченными продажами за период."""
     tz = timezone.get_current_timezone()
     start_dt = timezone.make_aware(
         datetime.datetime.combine(period_start, datetime.time.min),
@@ -31,50 +32,31 @@ def _artists_with_sales(period_start, period_end) -> set[int]:
         tz,
     )
 
-    artist_ids = (
+    payout_recipient_ids = (
         OrderItem.objects
         .filter(
             order__payments__status=Payment.PaymentStatus.SUCCEEDED,
             order__payments__paid_at__range=(start_dt, end_dt),
         )
-        .annotate(
-            artist_id=Case(
-                When(
-                    product_variant__product__product_type=Product.ProductType.ALBUM,
-                    then=F('product_variant__product__album__artist_id'),
-                ),
-                When(
-                    product_variant__product__product_type=Product.ProductType.TRACK,
-                    then=F(
-                        'product_variant__product__track__album__artist_id',
-                    ),
-                ),
-                When(
-                    product_variant__product__product_type=Product.ProductType.MERCH,
-                    then=F('product_variant__product__merch__artist_id'),
-                ),
-                output_field=IntegerField(),
-            ),
-        )
-        .values_list('artist_id', flat=True)
+        .values_list('payout_recipient_id', flat=True)
         .distinct()
     )
 
-    return set(artist_ids)
+    return set(payout_recipient_ids)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=300)
 def generate_report_task(
     self,
-    artist_id,
+    payout_recipient_id,
     period_start,
     period_end,
     send_email=False,
 ):
-    """Формирует отчет артиста и опционально отправляет его на почту."""
+    """Формирует отчет получателя и опционально отправляет его на почту."""
     try:
         report = ReportService.generate(
-            artist=ArtistProfile.objects.get(id=artist_id),
+            payout_recipient=User.objects.get(id=payout_recipient_id),
             period_start=period_start,
             period_end=period_end,
         )
@@ -91,10 +73,11 @@ def generate_report_task(
         )
         report.status = Report.Status.READY
         report.save(update_fields=['report_file', 'status'])
-    except (ValueError, ArtistProfile.DoesNotExist) as exc:
+    except (ValueError, User.DoesNotExist) as exc:
         logger.error(
-            'Невозможно сформировать отчет artist=%s period=%s—%s: %s',
-            artist_id,
+            'Невозможно сформировать отчет '
+            'payout_recipient_id=%s period=%s—%s: %s',
+            payout_recipient_id,
             period_start,
             period_end,
             exc,
@@ -103,7 +86,7 @@ def generate_report_task(
     except Exception as exc:
         if self.request.retries >= self.max_retries:
             Report.objects.filter(
-                artist_id=artist_id,
+                payout_recipient_id=payout_recipient_id,
                 period_start=period_start,
                 period_end=period_end,
             ).update(
@@ -112,16 +95,17 @@ def generate_report_task(
 
             logger.exception(
                 'Не удалось сформировать отчет после всех попыток '
-                'artist_id=%s period=%s—%s',
-                artist_id,
+                'payout_recipient_id=%s period=%s—%s',
+                payout_recipient_id,
                 period_start,
                 period_end,
             )
             raise
 
         logger.warning(
-            'Повтор генерации отчета artist_id=%s period=%s—%s, попытка %s/%s',
-            artist_id,
+            'Повтор генерации отчета '
+            'payout_recipient_id=%s period=%s—%s, попытка %s/%s',
+            payout_recipient_id,
             period_start,
             period_end,
             self.request.retries + 1,
@@ -130,9 +114,9 @@ def generate_report_task(
         raise self.retry(exc=exc)
 
     logger.info(
-        'Отчет id=%s сформирован: artist_id=%s period=%s—%s',
+        'Отчет id=%s сформирован: payout_recipient_id=%s period=%s—%s',
         report.id,
-        artist_id,
+        payout_recipient_id,
         period_start,
         period_end,
     )
@@ -146,25 +130,29 @@ def dispatch_monthly_reports():
     """Запуск генерации месячных отчетов.
 
     Формирует отчеты за предыдущий календарный месяц
-    для артистов, у которых были продажи за этот период.
+    для получателей, у которых были продажи за этот период.
     """
     today = timezone.localdate()
 
     period_end = today.replace(day=1) - datetime.timedelta(days=1)
     period_start = period_end.replace(day=1)
 
-    artist_ids = _artists_with_sales(period_start, period_end)
-
-    logger.info(
-        'Запуск месячных отчетов за период %s — %s, артистов с продажами: %s',
+    payout_recipient_ids = _payout_recipients_with_sales(
         period_start,
         period_end,
-        len(artist_ids),
     )
 
-    for artist_id in artist_ids:
+    logger.info(
+        'Запуск месячных отчетов за период'
+        ' %s — %s, получателей выплат с продажами: %s',
+        period_start,
+        period_end,
+        len(payout_recipient_ids),
+    )
+
+    for payout_recipient_id in payout_recipient_ids:
         generate_report_task.delay(
-            artist_id=artist_id,
+            payout_recipient_id=payout_recipient_id,
             period_start=period_start,
             period_end=period_end,
             send_email=True,
@@ -184,14 +172,17 @@ def dispatch_monthly_reports():
     max_retries=5,
 )
 def send_report_email_task(self, report_id: int) -> None:
-    """Отправляет сформированный отчет артиста по email."""
-    report = Report.objects.select_related('artist__user').get(id=report_id)
+    """Отправляет сформированный отчет получателю выплат по email."""
+    report = Report.objects.select_related(
+        'payout_recipient__artist_profile',
+    ).get(id=report_id)
 
-    user = report.artist.user
+    user = report.payout_recipient
+    payout_recipient_profile = user.artist_profile
 
-    if user is None or not user.email:
+    if not user.email:
         logger.warning(
-            'Не удалось отправить отчет id=%s: у артиста нет email',
+            'Не удалось отправить отчет id=%s: у получателя выплаты нет email',
             report.id,
         )
         return
@@ -214,7 +205,7 @@ def send_report_email_task(self, report_id: int) -> None:
         to_email=user.email,
         template_name='monthly_report',
         context={
-            'artist': report.artist,
+            'payout_recipient_profile': payout_recipient_profile,
             'report': report,
         },
         attachments=[

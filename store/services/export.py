@@ -1,13 +1,17 @@
 """Экспорт продаж артиста в CSV."""
 
 import csv
+import datetime
 
+from django.db.models import OuterRef, QuerySet, Subquery
 from django.http import HttpResponse
+from django.utils import timezone
 
+from common.access import managed_artist_q
 from common.utils import format_document_money
 
 from store.constants import ZERO_MONEY
-from store.services.report import ReportService
+from store.models import OrderItem, Payment
 
 
 class SalesExportService:
@@ -17,6 +21,7 @@ class SalesExportService:
         'Дата/время',
         '№ заказа',
         'Артист',
+        'Получатель выплаты',
         'Тип',
         'Наименование',
         'SKU',
@@ -29,27 +34,68 @@ class SalesExportService:
         'Сумма к выплате',
     ]
 
+    @staticmethod
+    def get_sales_queryset(
+        *,
+        user,
+        period_start,
+        period_end,
+    ) -> QuerySet[OrderItem]:
+        """Возвращает продажи артистов за период."""
+        tz = timezone.get_current_timezone()
+
+        start_dt = timezone.make_aware(
+            datetime.datetime.combine(
+                period_start,
+                datetime.time.min,
+            ),
+            tz,
+        )
+        end_dt = timezone.make_aware(
+            datetime.datetime.combine(
+                period_end,
+                datetime.time.max,
+            ),
+            tz,
+        )
+
+        successful_payment = Payment.objects.filter(
+            order_id=OuterRef('order_id'),
+            status=Payment.PaymentStatus.SUCCEEDED,
+        ).order_by('paid_at')
+
+        return (
+            OrderItem.objects
+            .select_related(
+                'order',
+                'product_variant',
+                'payout_recipient__artist_profile',
+            )
+            .annotate(
+                paid_at=Subquery(
+                    successful_payment.values('paid_at')[:1],
+                ),
+            )
+            .filter(
+                managed_artist_q(user),
+                paid_at__range=(start_dt, end_dt),
+            )
+            .order_by('paid_at', 'order_id', 'id')
+        )
+
     @classmethod
     def build_response(
         cls,
         *,
-        artist,
+        user,
         period_start,
         period_end,
     ) -> HttpResponse:
         """Возвращает CSV-файл."""
-        items = (
-            ReportService
-            .get_report_items_queryset(
-                artist=artist,
-                period_start=period_start,
-                period_end=period_end,
-            )
-            .select_related(
-                'order',
-                'product_variant',
-            )
-            .order_by('paid_at', 'order_id', 'id')
+        items = cls.get_sales_queryset(
+            user=user,
+            period_start=period_start,
+            period_end=period_end,
         )
 
         response = HttpResponse(
@@ -87,6 +133,17 @@ class SalesExportService:
                 ZERO_MONEY,
             )
 
+            payout_recipient_profile = getattr(
+                item.payout_recipient,
+                'artist_profile',
+                None,
+            )
+            payout_recipient_name = (
+                payout_recipient_profile.name
+                if payout_recipient_profile
+                else item.payout_recipient.email
+            )
+
             # Накапливаем итоги
             total_quantity += item.quantity
             total_discount += item.promocode_discount
@@ -98,6 +155,7 @@ class SalesExportService:
                 paid_at,
                 item.order.order_number,
                 info.get('artist_name', ''),
+                payout_recipient_name,
                 product_type,
                 f'{info.get("kind", "")} {info.get("name", "")}',
                 info.get('sku', ''),
@@ -118,6 +176,7 @@ class SalesExportService:
                 '',                                   # Дата/время
                 '',                                   # № заказа
                 '',                                   # Артист
+                '',                                   # Получатель выплаты
                 '',                                   # Тип
                 'ИТОГО:',                             # Наименование
                 '',                                   # SKU

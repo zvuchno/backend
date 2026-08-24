@@ -20,7 +20,7 @@ class ArtistReportViewSet(
     mixins.ListModelMixin,
     GenericViewSet,
 ):
-    """Агентские отчеты текущего артиста."""
+    """Агентские отчеты текущего получателя выплаты."""
 
     queryset = Report.objects.all()
     serializer_class = ArtistReportSerializer
@@ -30,7 +30,7 @@ class ArtistReportViewSet(
 
     def get_queryset(self):
         return Report.objects.filter(
-            artist__user=self.request.user,
+            payout_recipient=self.request.user,
             status=Report.Status.READY,
         ).order_by('-period_end')
 

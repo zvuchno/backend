@@ -4,6 +4,7 @@
 """
 
 from django.contrib import admin
+from django.urls import reverse
 from django.utils.html import format_html
 
 from common.utils.money import format_money
@@ -17,7 +18,8 @@ class ReportAdmin(admin.ModelAdmin):
 
     list_display = (
         'id',
-        'artist',
+        'get_payout_recipient',
+        'payout_recipient_email',
         'period_start',
         'period_end',
         'status',
@@ -31,12 +33,14 @@ class ReportAdmin(admin.ModelAdmin):
         'updated_at',
     )
     search_fields = (
-        'artist__name',
-        'artist__user__email',
+        'payout_recipient__email',
+        'payout_recipient__artist_profile__name',
     )
     readonly_fields = (
         'status',
-        'artist',
+        'get_payout_recipient',
+        'payout_recipient_profile_link',
+        'payout_recipient_email',
         'period_start',
         'period_end',
         'get_sales_amount',
@@ -49,10 +53,10 @@ class ReportAdmin(admin.ModelAdmin):
         'updated_at',
     )
     ordering = ('-created_at',)
-    list_display_links = ('id', 'artist')
+    list_display_links = ('id', 'get_payout_recipient')
     list_select_related = (
-        'artist',
-        'artist__user',
+        'payout_recipient',
+        'payout_recipient__artist_profile',
     )
 
     @admin.display(
@@ -96,7 +100,7 @@ class ReportAdmin(admin.ModelAdmin):
             return '—'
 
         filename = (
-            f'Отчет {obj.artist.name} '
+            f'Отчет {obj.payout_recipient.email} '
             f'{obj.period_start:%d.%m.%Y}-{obj.period_end:%d.%m.%Y}'
         )
 
@@ -106,13 +110,96 @@ class ReportAdmin(admin.ModelAdmin):
             filename,
         )
 
+    @admin.display(
+        description='Получатель выплаты',
+        ordering='payout_recipient__email',
+    )
+    def get_payout_recipient(self, obj):
+        legal_profile = getattr(
+            obj.payout_recipient,
+            'legal_profile',
+            None,
+        )
+
+        if legal_profile:
+            recipient_type = legal_profile.recipient_type
+
+            if recipient_type == legal_profile.RecipientType.LEGAL_ENTITY:
+                company_data = getattr(
+                    legal_profile,
+                    'company_data',
+                    None,
+                )
+                if company_data and company_data.company_name:
+                    return company_data.company_name
+
+            identity_data = getattr(
+                legal_profile,
+                'identity_data',
+                None,
+            )
+            if identity_data:
+                full_name = ' '.join(
+                    part
+                    for part in (
+                        identity_data.last_name,
+                        identity_data.first_name,
+                        identity_data.middle_name,
+                    )
+                    if part
+                )
+                if full_name:
+                    return full_name
+
+        profile = getattr(
+            obj.payout_recipient,
+            'artist_profile',
+            None,
+        )
+        if profile and profile.name:
+            return profile.name
+
+        return obj.payout_recipient.email
+
+    @admin.display(description='Профиль получателя')
+    def payout_recipient_profile_link(self, obj):
+        """Возвращает ссылку на профиль получателя выплаты."""
+        profile = getattr(
+            obj.payout_recipient,
+            'artist_profile',
+            None,
+        )
+
+        if profile is None:
+            return '—'
+
+        url = reverse(
+            'admin:users_artistprofile_change',
+            args=(profile.pk,),
+        )
+
+        return format_html(
+            '<a href="{}">{}</a>',
+            url,
+            profile.name,
+        )
+
+    @admin.display(
+        description='Email',
+        ordering='payout_recipient__email',
+    )
+    def payout_recipient_email(self, obj):
+        return obj.payout_recipient.email
+
     fieldsets = (
         (
             'Основная информация',
             {
                 'fields': (
                     'status',
-                    'artist',
+                    'get_payout_recipient',
+                    'payout_recipient_profile_link',
+                    'payout_recipient_email',
                     'period_start',
                     'period_end',
                     'get_sales_amount',

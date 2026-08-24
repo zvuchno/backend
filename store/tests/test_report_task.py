@@ -24,7 +24,7 @@ def report():
     )
 
     report = Report.objects.create(
-        artist=artist,
+        payout_recipient=artist.user,
         status=Report.Status.READY,
         period_start=datetime.date(2026, 7, 1),
         period_end=datetime.date(2026, 7, 31),
@@ -40,8 +40,8 @@ def report():
 class TestSendReportEmailTask:
     """Тесты отправки сформированного отчета."""
 
-    def test_sends_report_to_artist_email(self, report):
-        """Отчет отправляется на email артиста."""
+    def test_sends_report_to_payout_recipient_email(self, report):
+        """Отчет отправляется на email получателя выплаты."""
         send_report_email_task.run(report.id)
 
         assert len(mail.outbox) == 1
@@ -69,19 +69,14 @@ class TestSendReportEmailTask:
         assert attachment[1] == b'%PDF-test-content'
         assert attachment[2] == 'application/pdf'
 
-    def test_does_not_send_email_when_artist_has_no_account(self):
-        """Отчет не отправляется артисту без аккаунта."""
+    def test_sends_report_to_label_payout_recipient(self):
+        """Отчет managed artist отправляется лейблу."""
         label = ArtistProfileFactory(
             profile_type=ArtistProfileType.LABEL,
         )
-        artist = ArtistProfileFactory(
-            user=None,
-            label=label,
-            profile_type=ArtistProfileType.ARTIST,
-        )
 
         report = Report.objects.create(
-            artist=artist,
+            payout_recipient=label.user,
             status=Report.Status.READY,
             period_start=datetime.date(2026, 7, 1),
             period_end=datetime.date(2026, 7, 31),
@@ -93,12 +88,13 @@ class TestSendReportEmailTask:
 
         send_report_email_task.run(report.id)
 
-        assert len(mail.outbox) == 0
+        assert len(mail.outbox) == 1
+        assert mail.outbox[0].to == [label.user.email]
 
     def test_does_not_send_email_when_user_has_no_email(self, report):
         """Отчет не отправляется при отсутствии email."""
-        report.artist.user.email = ''
-        report.artist.user.save(update_fields=['email'])
+        report.payout_recipient.email = ''
+        report.payout_recipient.save(update_fields=['email'])
 
         send_report_email_task.run(report.id)
 

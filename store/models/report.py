@@ -1,5 +1,6 @@
 """Модель для формирования отчетов."""
 
+from django.conf import settings
 from django.db import models
 
 from common.models.abstract import TimestampModel
@@ -9,30 +10,29 @@ from store.constants import (
     MONEY_INTERNAL_PRECISION,
     ZERO_MONEY,
 )
-from users.models import ArtistProfile
 
 
 def report_upload_path(instance, filename):
     """Путь для хранения файла отчета."""
     return (
-        f'reports/artist_id_{instance.artist_id}/'
+        f'reports/recipient_id_{instance.payout_recipient_id}/'
         f'{instance.period_start:%Y-%m}/{filename}'
     )
 
 
 class Report(TimestampModel):
-    """Агрегированный отчет о продажах артиста за месяц."""
+    """Агрегированный отчет о продажах за месяц."""
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'Формируется'
         READY = 'ready', 'Готов'
         FAILED = 'failed', 'Ошибка'
 
-    artist = models.ForeignKey(
-        ArtistProfile,
+    payout_recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='reports',
-        verbose_name='Артист',
+        verbose_name='Получатель выплаты',
     )
     status = models.CharField(
         'Статус отчета',
@@ -91,17 +91,18 @@ class Report(TimestampModel):
         constraints = [
             models.UniqueConstraint(
                 fields=[
-                    'artist',
+                    'payout_recipient',
                     'period_start',
                     'period_end',
                 ],
-                name='unique_artist_report',
+                name='unique_payout_recipient_report',
             ),
         ]
 
     def __str__(self):
         return (
-            f'{self.artist.name} (ID: {self.artist_id}) / '
+            f'{self.payout_recipient.email} (ID: '
+            f'{self.payout_recipient_id}) / '
             f'{self.period_start.strftime("%d.%m.%y")} — '
             f'{self.period_end.strftime("%d.%m.%y")}'
         )

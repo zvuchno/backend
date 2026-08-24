@@ -1,15 +1,15 @@
-"""Сервис формирования финансовых отчетов артистов."""
+"""Сервис формирования финансовых отчетов."""
 
 import datetime
 import logging
 from datetime import date
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import (
     DecimalField,
     F,
     OuterRef,
-    Q,
     QuerySet,
     Subquery,
     Sum,
@@ -24,29 +24,30 @@ from store.constants import (
     ZERO_MONEY,
 )
 from store.models import OrderItem, Payment, Report
-from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
 
+User = get_user_model()
+
 
 class ReportService:
-    """Сервис формирования финансовых отчетов артистов."""
+    """Сервис формирования финансовых отчетов получателей выплат."""
 
     @classmethod
     def generate(
         cls,
         *,
-        artist: ArtistProfile,
+        payout_recipient: User,
         period_start: date,
         period_end: date,
     ) -> Report:
-        """Формирует отчет артиста за отчетный период."""
+        """Формирует отчет получателю выплаты за отчетный период."""
         if period_start > period_end:
             raise ValueError('period_start должен быть <= period_end')
         try:
             with transaction.atomic():
                 items = cls.get_report_items_queryset(
-                    artist=artist,
+                    payout_recipient=payout_recipient,
                     period_start=period_start,
                     period_end=period_end,
                 )
@@ -92,7 +93,7 @@ class ReportService:
                 )
 
                 report = Report.objects.filter(
-                    artist=artist,
+                    payout_recipient=payout_recipient,
                     period_start=period_start,
                     period_end=period_end,
                 ).first()
@@ -101,7 +102,7 @@ class ReportService:
                     report.report_file.delete(save=False)
 
                 report, _ = Report.objects.update_or_create(
-                    artist=artist,
+                    payout_recipient=payout_recipient,
                     period_start=period_start,
                     period_end=period_end,
                     defaults={
@@ -114,8 +115,9 @@ class ReportService:
                 return report
         except Exception:
             logger.exception(
-                'Не удалось сформировать отчет artist=%s, period=%s—%s',
-                artist.id,
+                'Не удалось сформировать отчет '
+                'payout_recipient=%s, period=%s—%s',
+                payout_recipient.id,
                 period_start,
                 period_end,
             )
@@ -124,7 +126,7 @@ class ReportService:
     @staticmethod
     def get_report_items_queryset(
         *,
-        artist: ArtistProfile,
+        payout_recipient: User,
         period_start: date,
         period_end: date,
     ) -> QuerySet[OrderItem]:
@@ -145,19 +147,11 @@ class ReportService:
             'paid_at',
         )
 
-        return (
-            OrderItem.objects
-            .annotate(
-                paid_at=Subquery(
-                    successful_payment.values('paid_at')[:1],
-                ),
-            )
-            .filter(
-                paid_at__range=(start_dt, end_dt),
-            )
-            .filter(
-                Q(product_variant__product__album__artist=artist)
-                | Q(product_variant__product__track__album__artist=artist)
-                | Q(product_variant__product__merch__artist=artist),
-            )
+        return OrderItem.objects.annotate(
+            paid_at=Subquery(
+                successful_payment.values('paid_at')[:1],
+            ),
+        ).filter(
+            payout_recipient=payout_recipient,
+            paid_at__range=(start_dt, end_dt),
         )
