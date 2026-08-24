@@ -369,7 +369,7 @@ class ReportFileBuilder:
         items = (
             ReportService
             .get_report_items_queryset(
-                artist=report.artist,
+                payout_recipient=report.payout_recipient,
                 period_start=report.period_start,
                 period_end=report.period_end,
             )
@@ -567,14 +567,17 @@ class ReportFileBuilder:
         report,
     ) -> tuple[str, str]:
         """Возвращает статус и наименование принципала."""
+        payout_recipient = report.payout_recipient
+        profile_name = payout_recipient.artist_profile.name
+
         legal_profile = getattr(
-            report.artist.user,
+            payout_recipient,
             'legal_profile',
             None,
         )
 
         if legal_profile is None:
-            return '', report.artist.name
+            return '', profile_name
 
         recipient_type = legal_profile.recipient_type
         artist_status = legal_profile.get_recipient_type_display()
@@ -589,7 +592,7 @@ class ReportFileBuilder:
             principal = (
                 company_data.company_name
                 if company_data and company_data.company_name
-                else report.artist.name
+                else profile_name
             )
 
             return artist_status, principal
@@ -601,7 +604,7 @@ class ReportFileBuilder:
         )
 
         if identity_data is None:
-            return artist_status, report.artist.name
+            return artist_status, profile_name
 
         principal = ' '.join(
             part
@@ -613,4 +616,7 @@ class ReportFileBuilder:
             if part
         )
 
-        return artist_status, principal or report.artist.name
+        return (
+            artist_status,
+            principal or profile_name,
+        )
