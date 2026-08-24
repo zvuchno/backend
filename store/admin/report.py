@@ -4,6 +4,7 @@
 """
 
 from django.contrib import admin
+from django.urls import reverse
 from django.utils.html import format_html
 
 from common.utils.money import format_money
@@ -38,6 +39,8 @@ class ReportAdmin(admin.ModelAdmin):
     readonly_fields = (
         'status',
         'get_payout_recipient',
+        'payout_recipient_profile_link',
+        'payout_recipient_email',
         'period_start',
         'period_end',
         'get_sales_amount',
@@ -158,6 +161,29 @@ class ReportAdmin(admin.ModelAdmin):
 
         return obj.payout_recipient.email
 
+    @admin.display(description='Профиль получателя')
+    def payout_recipient_profile_link(self, obj):
+        """Возвращает ссылку на профиль получателя выплаты."""
+        profile = getattr(
+            obj.payout_recipient,
+            'artist_profile',
+            None,
+        )
+
+        if profile is None:
+            return '—'
+
+        url = reverse(
+            'admin:users_artistprofile_change',
+            args=(profile.pk,),
+        )
+
+        return format_html(
+            '<a href="{}">{}</a>',
+            url,
+            profile.name,
+        )
+
     @admin.display(
         description='Email',
         ordering='payout_recipient__email',
@@ -172,6 +198,7 @@ class ReportAdmin(admin.ModelAdmin):
                 'fields': (
                     'status',
                     'get_payout_recipient',
+                    'payout_recipient_profile_link',
                     'payout_recipient_email',
                     'period_start',
                     'period_end',

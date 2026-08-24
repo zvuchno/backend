@@ -9,18 +9,18 @@ from store.services.export import SalesExportService
 
 @sales_export_schema
 class SalesExportView(APIView):
-    """Экспорт детализированного отчета по продажам получателя в CSV."""
+    """Экспорт детализированного отчета по продажам в CSV."""
 
     permission_classes = (IsArtistOrLabel,)
 
     def get(self, request):
-        """Возвращает CSV-файл с продажами получателя выплаты за период."""
+        """Возвращает CSV-файл с доступными пользователю продажами."""
         serializer = SalesExportQuerySerializer(
             data=request.query_params,
         )
         serializer.is_valid(raise_exception=True)
 
         return SalesExportService.build_response(
-            payout_recipient=request.user,
+            user=request.user,
             **serializer.validated_data,
         )
