@@ -1,4 +1,4 @@
-from store.models import Payout
+from store.models import Payout, Report
 
 
 class PayoutService:
@@ -7,6 +7,11 @@ class PayoutService:
     @staticmethod
     def sync_with_report(report) -> Payout:
         """Создает или обновляет незавершенную выплату по отчету."""
+        if report.status != Report.Status.READY:
+            raise ValueError(
+                'Выплата может быть создана только для готового отчета.',
+            )
+
         payout, created = Payout.objects.get_or_create(
             report=report,
             defaults={

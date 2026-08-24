@@ -32,7 +32,7 @@ class Payout(TimestampModel):
         verbose_name='Получатель выплаты',
     )
     amount = models.DecimalField(
-        'Сумма выплаты, руб.',
+        'Сумма выплаты',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,
