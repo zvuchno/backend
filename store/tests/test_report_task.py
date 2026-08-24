@@ -69,7 +69,7 @@ class TestSendReportEmailTask:
         assert attachment[1] == b'%PDF-test-content'
         assert attachment[2] == 'application/pdf'
 
-    def test_sends_report_to_label_when_artist_has_no_account(self):
+    def test_sends_report_to_label_payout_recipient(self):
         """Отчет managed artist отправляется лейблу."""
         label = ArtistProfileFactory(
             profile_type=ArtistProfileType.LABEL,

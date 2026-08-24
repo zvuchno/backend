@@ -33,7 +33,7 @@ class SalesExportService:
     def build_response(
         cls,
         *,
-        artist,
+        payout_recipient,
         period_start,
         period_end,
     ) -> HttpResponse:
@@ -41,7 +41,7 @@ class SalesExportService:
         items = (
             ReportService
             .get_report_items_queryset(
-                artist=artist,
+                payout_recipient=payout_recipient,
                 period_start=period_start,
                 period_end=period_end,
             )

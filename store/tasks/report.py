@@ -172,7 +172,7 @@ def dispatch_monthly_reports():
     max_retries=5,
 )
 def send_report_email_task(self, report_id: int) -> None:
-    """Отправляет сформированный отчет артиста по email."""
+    """Отправляет сформированный отчет получателю выплат по email."""
     report = Report.objects.select_related(
         'payout_recipient__artist_profile',
     ).get(id=report_id)
