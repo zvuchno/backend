@@ -17,7 +17,7 @@ class ReportAdmin(admin.ModelAdmin):
 
     list_display = (
         'id',
-        'artist',
+        'payout_recipient',
         'period_start',
         'period_end',
         'status',
@@ -30,13 +30,10 @@ class ReportAdmin(admin.ModelAdmin):
         'status',
         'updated_at',
     )
-    search_fields = (
-        'artist__name',
-        'artist__user__email',
-    )
+    search_fields = ('payout_recipient__email',)
     readonly_fields = (
         'status',
-        'artist',
+        'payout_recipient',
         'period_start',
         'period_end',
         'get_sales_amount',
@@ -49,11 +46,8 @@ class ReportAdmin(admin.ModelAdmin):
         'updated_at',
     )
     ordering = ('-created_at',)
-    list_display_links = ('id', 'artist')
-    list_select_related = (
-        'artist',
-        'artist__user',
-    )
+    list_display_links = ('id', 'payout_recipient')
+    list_select_related = ('payout_recipient__email',)
 
     @admin.display(
         description='Продано (руб.)',
@@ -96,7 +90,7 @@ class ReportAdmin(admin.ModelAdmin):
             return '—'
 
         filename = (
-            f'Отчет {obj.artist.name} '
+            f'Отчет {obj.payout_recipient.email} '
             f'{obj.period_start:%d.%m.%Y}-{obj.period_end:%d.%m.%Y}'
         )
 
@@ -112,7 +106,7 @@ class ReportAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'status',
-                    'artist',
+                    'payout_recipient',
                     'period_start',
                     'period_end',
                     'get_sales_amount',
