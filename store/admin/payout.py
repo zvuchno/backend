@@ -1,5 +1,6 @@
 """Админка выплат."""
 
+from django import forms
 from django.contrib import admin
 from django.urls import reverse
 from django.utils import timezone
@@ -15,6 +16,17 @@ class PayoutAdminForm(MoneyForm):
     """Форма выплаты с форматированием суммы."""
 
     money_fields = ['amount']
+
+    class Meta:
+        model = Payout
+        fields = '__all__'
+        widgets = {
+            'comment': forms.Textarea(
+                attrs={
+                    'rows': 3,
+                },
+            ),
+        }
 
 
 class ReportMonthFilter(admin.SimpleListFilter):
