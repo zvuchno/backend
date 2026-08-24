@@ -32,7 +32,8 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=1, minute=0),
     },
     'delete-stale-anonymous-carts': {
-        'task': 'store.tasks.delete_stale_anonymous_carts',
+        'task': 'store.tasks.delete_anonymous_carts'
+        '.delete_stale_anonymous_carts',
         'schedule': crontab(hour=4, minute=0),
     },
 }
