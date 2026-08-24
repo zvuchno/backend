@@ -47,7 +47,7 @@ class ReportAdmin(admin.ModelAdmin):
     )
     ordering = ('-created_at',)
     list_display_links = ('id', 'payout_recipient')
-    list_select_related = ('payout_recipient__email',)
+    list_select_related = ('payout_recipient',)
 
     @admin.display(
         description='Продано (руб.)',
