@@ -17,6 +17,7 @@ from .music_access import (
 from .order import Order
 from .order_item import OrderItem
 from .payment import Payment
+from .payout import Payout
 from .product import Product
 from .product_variant import ProductVariant
 from .promocode import Promocode
@@ -44,6 +45,7 @@ __all__ = [
     'Order',
     'OrderItem',
     'Payment',
+    'Payout',
     'Product',
     'ProductVariant',
     'Promocode',
