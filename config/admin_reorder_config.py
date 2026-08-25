@@ -79,6 +79,11 @@ ADMIN_REORDER = (
         ),
     },
     {
+        'app': 'store',
+        'label': 'Обслуживание',
+        'models': ('store.MaintenanceOperations',),
+    },
+    {
         'app': 'admin',
         'label': 'Журнал действий',
         'models': ('admin.LogEntry',),

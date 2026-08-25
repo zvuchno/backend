@@ -8,6 +8,7 @@ from .delivery import Delivery
 from .favorite import Favorite
 from .genre import Genre
 from .image import Image
+from .maintenance import MaintenanceOperations
 from .merch import Merch
 from .merch_kind import MerchKind
 from .music_access import (
@@ -40,6 +41,7 @@ __all__ = [
     'Image',
     'ListenerAlbumAccess',
     'ListenerTrackAccess',
+    'MaintenanceOperations',
     'MerchKind',
     'Merch',
     'Order',
