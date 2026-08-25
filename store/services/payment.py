@@ -9,13 +9,14 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 from yookassa import Configuration
 from yookassa import Payment as YookassaPayment
 
 from store.constants import MONEY_ROUNDING
 from store.exceptions import ReceiptValidationError
-from store.models import Order, Payment
+from store.models import Order, OrderItem, Payment
 from store.notifications import send_order_paid_notifications_to_artists
 from store.tasks import register_cdek_orders_task
 
@@ -25,16 +26,29 @@ logger = logging.getLogger(__name__)
 Configuration.account_id = settings.YOOKASSA_SHOP_ID
 Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 
-RECEIPT_VAT_CODE = 1
+RECEIPT_VAT_CODE = 1  # Без НДС
 RECEIPT_PAYMENT_MODE = 'full_prepayment'
 RECEIPT_PRODUCT_SUBJECT = 'commodity'
+RECEIPT_INTELLECTUAL_SUBJECT = 'intellectual_activity'
 RECEIPT_DELIVERY_SUBJECT = 'service'
 
 
 def create_yookassa_payment(order, retry=True):
     """Создает или переиспользует платеж в ЮKassa."""
     with transaction.atomic():
-        order = Order.objects.select_for_update().get(pk=order.pk)
+        order = (
+            Order.objects
+            .select_for_update()
+            .prefetch_related(
+                Prefetch(
+                    'items',
+                    queryset=OrderItem.objects.select_related(
+                        'product_variant',
+                    ),
+                ),
+            )
+            .get(pk=order.pk)
+        )
 
         if order.status == Order.Status.CREATED:
             logger.info(
@@ -221,6 +235,7 @@ def build_receipt_items(order) -> list[dict]:
             rounding=ROUND_HALF_UP,
         )
         quantity = item.quantity
+        payment_subject = _get_payment_subject(item)
 
         price_per_item = (line_total / quantity).quantize(
             MONEY_ROUNDING,
@@ -235,7 +250,7 @@ def build_receipt_items(order) -> list[dict]:
                     description=_get_item_description(item),
                     quantity=quantity,
                     price=price_per_item,
-                    payment_subject=RECEIPT_PRODUCT_SUBJECT,
+                    payment_subject=payment_subject,
                 ),
             )
             continue
@@ -250,7 +265,7 @@ def build_receipt_items(order) -> list[dict]:
                     description=_get_item_description(item),
                     quantity=first_quantity,
                     price=first_price,
-                    payment_subject=RECEIPT_PRODUCT_SUBJECT,
+                    payment_subject=payment_subject,
                 ),
             )
 
@@ -259,7 +274,7 @@ def build_receipt_items(order) -> list[dict]:
                 description=_get_item_description(item),
                 quantity=1,
                 price=second_price,
-                payment_subject=RECEIPT_PRODUCT_SUBJECT,
+                payment_subject=payment_subject,
             ),
         )
 
@@ -336,6 +351,18 @@ def _get_item_description(order_item) -> str:
         ),
     )
     return description or f'Товар #{order_item.product_variant_id}'
+
+
+def _get_payment_subject(order_item) -> str:
+    """Определяет признак предмета расчёта для позиции чека.
+
+    Цифровой товар (трек, альбом) относится к результату
+    интеллектуальной деятельности (РИД), физический (мерч) —
+    к обычному товару.
+    """
+    if order_item.product_variant.is_digital:
+        return RECEIPT_INTELLECTUAL_SUBJECT
+    return RECEIPT_PRODUCT_SUBJECT
 
 
 def mark_payment_succeeded(payment):

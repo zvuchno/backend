@@ -100,6 +100,11 @@ class ProductVariant(ActivatableModel, TimestampModel):
         return product_name
 
     @property
+    def is_digital(self) -> bool:
+        """Цифровой товар — не имеет учёта остатков (трек, альбом)."""
+        return self.stock is None
+
+    @property
     def is_available_for_purchase(self) -> bool:
         """Доступен ли вариант товара для покупки."""
         product = self.product
