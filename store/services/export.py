@@ -123,11 +123,8 @@ class SalesExportService:
                 item.paid_at.strftime('%d.%m.%Y %H:%M') if item.paid_at else ''
             )
             product_type = (
-                'цифровой'
-                if item.product_variant.stock is None
-                else 'физический'
+                'цифровой' if item.product_variant.is_digital else 'физический'
             )
-
             payout = max(
                 item.line_total - item.platform_commission,
                 ZERO_MONEY,
