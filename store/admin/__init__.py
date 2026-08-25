@@ -11,6 +11,7 @@ from .cart import CartAdmin
 from .delivery import DeliveryAdmin
 from .favorite import FavoriteAdmin
 from .genre import GenreAdmin
+from .maintenance import MaintenanceOperationsAdmin
 from .merch import MerchAdmin
 from .merch_kind import MerchKindAdmin
 from .order import OrderAdmin
@@ -27,6 +28,7 @@ __all__ = [
     'DeliveryAdmin',
     'FavoriteAdmin',
     'GenreAdmin',
+    'MaintenanceOperationsAdmin',
     'MerchKindAdmin',
     'MerchAdmin',
     'OrderAdmin',

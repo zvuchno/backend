@@ -1,0 +1,74 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<form method="post">
+    {% csrf_token %}
+
+    <fieldset class="module aligned">
+        <h2>Аудио</h2>
+        <p>
+            Запускает подготовку отсутствующих или неуспешных
+            preview/stream.
+        </p>
+        <button
+            type="submit"
+            name="operation"
+            value="audio"
+            class="button"
+        >
+            Запустить недостающее аудио
+        </button>
+    </fieldset>
+
+    <fieldset class="module aligned">
+        <h2>Архивы альбомов</h2>
+        <p>
+            Ставит в очередь отсутствующие и устаревшие архивы.
+        </p>
+        <button
+            type="submit"
+            name="operation"
+            value="archives"
+            class="button"
+        >
+            Запустить недостающие архивы
+        </button>
+    </fieldset>
+
+    <fieldset class="module aligned">
+        <h2>Отчеты</h2>
+
+        <label for="month">Отчетный месяц:</label>
+        <input
+            type="month"
+            id="month"
+            name="month"
+            value="{{ previous_month }}"
+        >
+
+        <button
+            type="submit"
+            name="operation"
+            value="reports"
+            class="button"
+        >
+            Запустить недостающие отчеты
+        </button>
+    </fieldset>
+
+    <fieldset class="module aligned">
+        <h2>Выплаты</h2>
+        <p>
+            Создает выплаты для готовых отчетов, где их еще нет.
+        </p>
+        <button
+            type="submit"
+            name="operation"
+            value="payouts"
+            class="button"
+        >
+            Создать отсутствующие выплаты
+        </button>
+    </fieldset>
+</form>
+{% endblock %}

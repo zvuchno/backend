@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-def _payout_recipients_with_sales(period_start, period_end) -> set[int]:
+def get_payout_recipients_with_sales(period_start, period_end) -> set[int]:
     """Возвращает set id получателей с оплаченными продажами за период."""
     tz = timezone.get_current_timezone()
     start_dt = timezone.make_aware(
@@ -140,7 +140,7 @@ def dispatch_monthly_reports():
     period_end = today.replace(day=1) - datetime.timedelta(days=1)
     period_start = period_end.replace(day=1)
 
-    payout_recipient_ids = _payout_recipients_with_sales(
+    payout_recipient_ids = get_payout_recipients_with_sales(
         period_start,
         period_end,
     )
