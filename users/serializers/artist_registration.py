@@ -53,6 +53,12 @@ class ArtistRegistrationSerializer(
         profile_type = validated_data.pop('profile_type')
         accepted_types = set(validated_data.pop('consents'))
 
+        context = (
+            ConsentContext.LABEL_ONBOARDING
+            if profile_type == ArtistProfileType.LABEL
+            else ConsentContext.ARTIST_ONBOARDING
+        )
+
         user = super().create(validated_data)
         ListenerProfile.objects.create(user=user)
         ArtistProfile.objects.create(
@@ -64,15 +70,13 @@ class ArtistRegistrationSerializer(
         request = self.context.get('request')
 
         ConsentService.accept(
-            context=ConsentContext.ARTIST_ONBOARDING,
+            context=context,
             accepted_types=accepted_types,
             user=user,
             email=user.email,
             ip_address=get_client_ip(request),
             user_agent=get_user_agent(request),
         )
-        return user
-
         return user
 
     def to_representation(self, instance):

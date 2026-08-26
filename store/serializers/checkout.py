@@ -12,7 +12,9 @@ from store.constants import (
 )
 from store.models import Delivery
 from store.services import CartCalculationService
-from users.models import ArtistPickupPoint
+from users.consents_policy import ConsentContext
+from users.models import ArtistPickupPoint, ConsentDocument
+from users.services import ConsentService
 
 CDEK_FIELDS = (
     'city',
@@ -49,6 +51,15 @@ class CheckoutSerializer(serializers.Serializer):
 
     personal_data_consent = serializers.BooleanField(
         write_only=True,
+        label='legacy field',
+    )
+    consents = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=ConsentDocument.DocumentType.choices,
+        ),
+        required=False,
+        write_only=True,
+        label='consents type list',
     )
 
     city = serializers.CharField(
@@ -155,6 +166,12 @@ class CheckoutSerializer(serializers.Serializer):
             raise serializers.ValidationError({
                 'delivery': 'Неизвестный тип доставки.',
             })
+
+        if 'consents' in attrs:
+            ConsentService.validate(
+                context=ConsentContext.CHECKOUT,
+                accepted_types=set(attrs['consents']),
+            )
 
         return attrs
 

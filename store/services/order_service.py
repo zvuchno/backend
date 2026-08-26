@@ -211,6 +211,7 @@ class OrderService:
             cart.promocode,
         )
 
+        # TODO заменить новым.
         OrderService._process_user_consents(
             user,
             order,

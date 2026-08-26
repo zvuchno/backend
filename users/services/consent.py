@@ -1,5 +1,7 @@
 """Сервис фиксации пользовательских согласий."""
 
+from collections.abc import Iterable
+
 from rest_framework.exceptions import ValidationError
 
 from users.consents_policy import ConsentContext, ConsentPolicy
@@ -14,11 +16,13 @@ class ConsentService:
         cls,
         *,
         context: ConsentContext,
-        accepted_types: set[str],
+        accepted_types: Iterable[str],
         user,
         email: str,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        order=None,
+        artist=None,
     ) -> None:
         """Фиксирует принятые пользователем согласия."""
         accepted_types = set(accepted_types)
@@ -54,6 +58,8 @@ class ConsentService:
                 document=documents_by_type[document_type],
                 ip_address=ip_address,
                 user_agent=user_agent,
+                order=order,
+                artist=artist,
             )
 
     @staticmethod

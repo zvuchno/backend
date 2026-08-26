@@ -9,8 +9,9 @@ class ConsentContext(StrEnum):
     """Контекст, в котором пользователь принимает согласия."""
 
     LISTENER_REGISTRATION = 'listener_registration'
-    ARTIST_ONBOARDING = 'artist_registration'
-    LABEL_ONBOARDING = 'label_registration'
+    ARTIST_ONBOARDING = 'artist_onboarding'
+    LABEL_ONBOARDING = 'label_onboarding'
+    CHECKOUT = 'checkout'
 
 
 class ConsentPolicy:
@@ -29,6 +30,9 @@ class ConsentPolicy:
             ConsentDocument.DocumentType.ARTIST_OFFER,
             ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
             ConsentDocument.DocumentType.ARTIST_DISTRIBUTION,
+        }),
+        ConsentContext.CHECKOUT: frozenset({
+            ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
         }),
     }
 
