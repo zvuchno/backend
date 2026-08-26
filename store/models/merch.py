@@ -36,7 +36,7 @@ class Merch(ArtistContent, VisibilityModel):
 
     class Meta:
         verbose_name = 'мерч'
-        verbose_name_plural = 'мерчи'
+        verbose_name_plural = 'мерч'
         ordering = ('name',)
 
     def __str__(self):
