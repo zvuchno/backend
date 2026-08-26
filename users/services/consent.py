@@ -20,7 +20,7 @@ class ConsentService:
         user,
         email: str,
         ip_address: str | None = None,
-        user_agent: str | None = None,
+        user_agent: str = '',
         order=None,
         artist=None,
     ) -> None:
