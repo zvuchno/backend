@@ -4,6 +4,10 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
 
+from common.utils import get_client_ip, get_user_agent
+
+from ..consents_policy import ConsentContext
+from ..services import ConsentService
 from .base_registration import BaseRegistrationSerializer
 from .mixins import PhoneRegistrationMixin
 from users.models import ArtistProfile, ArtistProfileType, ListenerProfile
@@ -21,7 +25,11 @@ class ArtistRegistrationSerializer(
     или лейбла.
     """
 
-    extra_fields_names = ['name', 'profile_type']
+    extra_fields_names = (
+        *BaseRegistrationSerializer.extra_fields_names,
+        'name',
+        'profile_type',
+    )
     name = serializers.CharField(
         label='Имя артиста / название лейбла',
         required=True,
@@ -43,6 +51,7 @@ class ArtistRegistrationSerializer(
         """
         name = validated_data.pop('name')
         profile_type = validated_data.pop('profile_type')
+        accepted_types = set(validated_data.pop('consents'))
 
         user = super().create(validated_data)
         ListenerProfile.objects.create(user=user)
@@ -51,6 +60,19 @@ class ArtistRegistrationSerializer(
             name=name,
             profile_type=profile_type,
         )
+
+        request = self.context.get('request')
+
+        ConsentService.accept(
+            context=ConsentContext.ARTIST_ONBOARDING,
+            accepted_types=accepted_types,
+            user=user,
+            email=user.email,
+            ip_address=get_client_ip(request),
+            user_agent=get_user_agent(request),
+        )
+        return user
+
         return user
 
     def to_representation(self, instance):
@@ -71,6 +93,12 @@ class ArtistRegistrationSerializer(
         )
         return data
 
+    def get_consent_context(self, attrs):
+        if attrs['profile_type'] == ArtistProfileType.LABEL:
+            return ConsentContext.LABEL_ONBOARDING
+
+        return ConsentContext.ARTIST_ONBOARDING
+
     class Meta:
         model = User
         fields = (
@@ -81,6 +109,7 @@ class ArtistRegistrationSerializer(
             'name',
             'profile_type',
             'password',
+            'consents',
         )
 
 
