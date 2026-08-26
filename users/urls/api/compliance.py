@@ -16,8 +16,8 @@ router.register(
 urlpatterns = [
     path('', include(router.urls)),
     path(
-        'consent-requerements/',
+        'consent-requirements/',
         ConsentRequirementsView.as_view(),
-        name='consent_requirements',
+        name='consent-requirements',
     ),
 ]

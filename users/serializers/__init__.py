@@ -36,7 +36,6 @@ from .consent_documents import (
     ConsentDocumentDetailSerializer,
     ConsentDocumentSerializer,
     ConsentRequirementSerializer,
-    ConsentRequirementsSerializer,
 )
 from .cookie_auth import (
     CookieLoginResponseSerializer,
@@ -83,7 +82,6 @@ __all__ = [
     'ConsentDocumentDetailSerializer',
     'ConsentDocumentSerializer',
     'ConsentRequirementSerializer',
-    'ConsentRequirementsSerializer',
     'CookieLoginResponseSerializer',
     'CookieLoginSerializer',
     'CookieLogoutResponseSerializer',

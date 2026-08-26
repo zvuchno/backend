@@ -13,7 +13,7 @@ from users.schemas.consent_documents import CONSENT_DOC_TAGS
 from users.serializers import (
     ConsentDocumentDetailSerializer,
     ConsentDocumentSerializer,
-    ConsentRequirementsSerializer,
+    ConsentRequirementSerializer,
 )
 
 
@@ -39,7 +39,7 @@ class ConsentRequirementsView(APIView):
 
     @extend_schema(
         tags=CONSENT_DOC_TAGS,
-        responses=ConsentRequirementsSerializer,
+        responses=ConsentRequirementSerializer(many=True),
     )
     def get(self, request):
         return Response(ConsentPolicy.get_requirements())

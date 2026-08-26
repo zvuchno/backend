@@ -70,12 +70,13 @@ class ConsentPolicy:
         return cls.get_required(context) | cls.get_optional(context)
 
     @classmethod
-    def get_requirements(cls) -> dict[str, dict[str, list[str]]]:
+    def get_requirements(cls) -> list[dict[str, str | list[str]]]:
         """Возвращает требования согласий для всех сценариев."""
-        return {
-            context.value: {
+        return [
+            {
+                'context': context.value,
                 'required': sorted(cls.get_required(context)),
                 'optional': sorted(cls.get_optional(context)),
             }
             for context in ConsentContext
-        }
+        ]
