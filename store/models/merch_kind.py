@@ -46,6 +46,7 @@ class MerchKind(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'тип мерча'
         verbose_name_plural = 'типы мерча'
+        ordering = ('-is_carrier', 'name')
 
     def __str__(self):
         return self.name
