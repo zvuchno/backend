@@ -51,7 +51,7 @@ class CheckoutSerializer(serializers.Serializer):
 
     personal_data_consent = serializers.BooleanField(
         write_only=True,
-        label='legacy field',
+        label='Согласие на обработку персональных данных',
     )
     consents = serializers.ListField(
         child=serializers.ChoiceField(
@@ -59,7 +59,7 @@ class CheckoutSerializer(serializers.Serializer):
         ),
         required=False,
         write_only=True,
-        label='consents type list',
+        label='Принятые согласия',
     )
 
     city = serializers.CharField(
