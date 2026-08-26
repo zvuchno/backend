@@ -1,13 +1,19 @@
 """Представления юридических документов."""
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from users.consents_policy import ConsentPolicy
 from users.models import ConsentDocument
 from users.schemas import consent_doc_schema
+from users.schemas.consent_documents import CONSENT_DOC_TAGS
 from users.serializers import (
     ConsentDocumentDetailSerializer,
     ConsentDocumentSerializer,
+    ConsentRequirementsSerializer,
 )
 
 
@@ -24,3 +30,16 @@ class ConsentDocumentViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'retrieve':
             return ConsentDocumentDetailSerializer
         return ConsentDocumentSerializer
+
+
+class ConsentRequirementsView(APIView):
+    """Возвращает требования согласий для пользовательских сценариев."""
+
+    permission_classes = (AllowAny,)
+
+    @extend_schema(
+        tags=CONSENT_DOC_TAGS,
+        responses=ConsentRequirementsSerializer,
+    )
+    def get(self, request):
+        return Response(ConsentPolicy.get_requirements())

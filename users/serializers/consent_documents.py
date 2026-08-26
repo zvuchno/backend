@@ -22,3 +22,23 @@ class ConsentDocumentDetailSerializer(ConsentDocumentSerializer):
 
     class Meta(ConsentDocumentSerializer.Meta):
         fields = ConsentDocumentSerializer.Meta.fields + ('content',)
+
+
+class ConsentRequirementSerializer(serializers.Serializer):
+    """Требования согласий для одного сценария."""
+
+    required = serializers.ListField(
+        child=serializers.CharField(),
+    )
+    optional = serializers.ListField(
+        child=serializers.CharField(),
+    )
+
+
+class ConsentRequirementsSerializer(serializers.Serializer):
+    """Справочник требований согласий по сценариям."""
+
+    listener_registration = ConsentRequirementSerializer()
+    artist_onboarding = ConsentRequirementSerializer()
+    label_onboarding = ConsentRequirementSerializer()
+    checkout = ConsentRequirementSerializer()

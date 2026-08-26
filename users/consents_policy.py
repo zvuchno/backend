@@ -68,3 +68,14 @@ class ConsentPolicy:
     ) -> frozenset[str]:
         """Возвращает все допустимые согласия для контекста."""
         return cls.get_required(context) | cls.get_optional(context)
+
+    @classmethod
+    def get_requirements(cls) -> dict[str, dict[str, list[str]]]:
+        """Возвращает требования согласий для всех сценариев."""
+        return {
+            context.value: {
+                'required': sorted(cls.get_required(context)),
+                'optional': sorted(cls.get_optional(context)),
+            }
+            for context in ConsentContext
+        }

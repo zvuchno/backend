@@ -37,7 +37,10 @@ from .artist_store_settings import (
     ManagedArtistStoreSettingsView,
 )
 from .base_registration import BaseRegistrationView
-from .consent_documents import ConsentDocumentViewSet
+from .consent_documents import (
+    ConsentDocumentViewSet,
+    ConsentRequirementsView,
+)
 from .cookie_auth import (
     CookieLoginView,
     CookieLogoutView,
@@ -90,6 +93,7 @@ __all__ = [
     'BaseRegistrationView',
     'BecomeArtistOrLabelView',
     'ConsentDocumentViewSet',
+    'ConsentRequirementsView',
     'ChangePasswordView',
     'ChangePhoneView',
     'CookieLoginView',
