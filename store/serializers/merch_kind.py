@@ -8,4 +8,4 @@ class MerchKindSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MerchKind
-        fields = ('id', 'name', 'slug')
+        fields = ('id', 'name', 'slug', 'is_carrier')
