@@ -5,7 +5,9 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from common.services import get_artist_publication_readiness
+from common.utils import get_client_ip, get_user_agent
 
+from users.consents_policy import ConsentContext
 from users.helpers import ensure_listener_profile
 from users.models import (
     ArtistContact,
@@ -13,7 +15,9 @@ from users.models import (
     ArtistProfileClaimInvitation,
     ArtistProfileType,
     ArtistSocial,
+    ConsentDocument,
 )
+from users.services import ConsentService
 
 
 class ArtistCoverUpdateSerializer(serializers.ModelSerializer):
@@ -238,16 +242,27 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
         required=False,
         allow_blank=False,
     )
+    consents = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=ConsentDocument.DocumentType.choices,
+        ),
+        required=False,
+        write_only=True,
+        label='Принятые согласия',
+    )
 
     class Meta:
         model = ArtistProfile
-        fields = ('name', 'profile_type')
+        fields = ('name', 'profile_type', 'consents')
 
     def validate(self, attrs):
         """Проверяет создание профиля или повышение артиста до лейбла."""
         user = self.context['request'].user
         profile = getattr(user, 'artist_profile', None)
-        target_type = attrs['profile_type']
+        target_type = attrs.get(
+            'profile_type',
+            ArtistProfileType.ARTIST,
+        )
 
         if profile is None:
             if not attrs.get('name'):
@@ -272,6 +287,16 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 ),
             })
 
+        context = self._get_consent_context(
+            user,
+            target_type,
+        )
+        if context is not None:
+            ConsentService.validate(
+                context=context,
+                accepted_types=set(attrs.get('consents') or ()),
+            )
+
         return attrs
 
     @transaction.atomic
@@ -288,10 +313,29 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
         ensure_listener_profile(user)
         try:
             with transaction.atomic():
-                return ArtistProfile.objects.create(
+                accepted_types = set(validated_data.pop('consents', ()))
+                profile = ArtistProfile.objects.create(
                     user=user,
                     **validated_data,
                 )
+                context = (
+                    ConsentContext.LABEL_ONBOARDING
+                    if profile.profile_type == ArtistProfileType.LABEL
+                    else ConsentContext.ARTIST_ONBOARDING
+                )
+
+                request = self.context['request']
+
+                ConsentService.accept(
+                    context=context,
+                    accepted_types=accepted_types,
+                    user=user,
+                    email=user.email,
+                    ip_address=get_client_ip(request),
+                    user_agent=get_user_agent(request),
+                )
+                return profile
+
         except IntegrityError:
             if ArtistProfile.objects.filter(user=user).exists():
                 raise serializers.ValidationError(
@@ -303,6 +347,22 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                     },
                 )
             raise
+
+    def _get_consent_context(
+        self,
+        user,
+        profile_type,
+    ) -> ConsentContext | None:
+        """Возвращает контекст согласий для повышения пользователя."""
+        profile = getattr(user, 'artist_profile', None)
+
+        if profile is not None:
+            return None
+
+        if profile_type == ArtistProfileType.LABEL:
+            return ConsentContext.LABEL_ONBOARDING
+
+        return ConsentContext.ARTIST_ONBOARDING
 
 
 class ArtistProfileClaimInvitationShortSerializer(

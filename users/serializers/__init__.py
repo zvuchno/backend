@@ -35,6 +35,7 @@ from .base_registration import BaseRegistrationSerializer
 from .consent_documents import (
     ConsentDocumentDetailSerializer,
     ConsentDocumentSerializer,
+    ConsentRequirementSerializer,
 )
 from .cookie_auth import (
     CookieLoginResponseSerializer,
@@ -80,6 +81,7 @@ __all__ = [
     'ChangePasswordSerializer',
     'ConsentDocumentDetailSerializer',
     'ConsentDocumentSerializer',
+    'ConsentRequirementSerializer',
     'CookieLoginResponseSerializer',
     'CookieLoginSerializer',
     'CookieLogoutResponseSerializer',

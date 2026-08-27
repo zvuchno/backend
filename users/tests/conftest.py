@@ -23,6 +23,7 @@ from config import settings
 from users.models import (
     ArtistProfile,
     ArtistProfileClaimInvitation,
+    ConsentDocument,
     TokenInvitation,
     TokenInvitationStatus,
 )
@@ -114,7 +115,7 @@ def company_data_payload():
 
 
 @pytest.fixture
-def artist_register_payload():
+def artist_register_payload(artist_onboarding_consents):
     """Payload регистрации артиста."""
     return {
         'username': 'artist_username',
@@ -122,17 +123,19 @@ def artist_register_payload():
         'phone': '+79991234567',
         'password': 'qwertyhgfdsa123',
         'name': 'my rock band',
+        'consents': artist_onboarding_consents,
     }
 
 
 @pytest.fixture
-def listener_register_payload():
+def listener_register_payload(listener_registration_consents):
     """Payload регистрации слушателя."""
     return {
         'username': 'listener_username',
         'email': 'listener@newmail.ru',
         'phone': '+79991234567',
         'password': 'qwertyhgfdsa123',
+        'consents': listener_registration_consents,
     }
 
 
@@ -177,6 +180,42 @@ def artist_claim_factory() -> Callable[..., tuple]:
         return claim, token
 
     return create
+
+
+@pytest.fixture
+def listener_registration_consents():
+    """Создаёт документы и возвращает согласия регистрации слушателя."""
+    document_types = (ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,)
+
+    for document_type in document_types:
+        ConsentDocument.objects.create(
+            document_type=document_type,
+            version='1.0',
+            content=f'Тестовый документ: {document_type}',
+            is_active=True,
+        )
+
+    return list(document_types)
+
+
+@pytest.fixture
+def artist_onboarding_consents():
+    """Создаёт документы и возвращает обязательные согласия артиста."""
+    document_types = (
+        ConsentDocument.DocumentType.ARTIST_OFFER,
+        ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
+        ConsentDocument.DocumentType.ARTIST_DISTRIBUTION,
+    )
+
+    for document_type in document_types:
+        ConsentDocument.objects.create(
+            document_type=document_type,
+            version='1.0',
+            content=f'Тестовый документ: {document_type}',
+            is_active=True,
+        )
+
+    return list(document_types)
 
 
 # =================================
