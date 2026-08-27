@@ -23,6 +23,7 @@ from common.permissions import (
     IsLabel,
     IsNotLabel,
 )
+from common.services import artist_publication_ready_q
 
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
@@ -130,9 +131,7 @@ class ArtistPublicView(RetrieveAPIView):
 class ArtistListView(ListAPIView):
     """Публичный список артистов."""
 
-    queryset = ArtistProfile.objects.filter(
-        is_active=True,
-    ).select_related('user', 'label')
+    queryset = ArtistProfile.objects.all()
     permission_classes = [AllowAny]
     serializer_class = ArtistPublicShortSerializer
     filter_backends = [
@@ -144,6 +143,22 @@ class ArtistListView(ListAPIView):
     search_fields = ['name', 'slug', 'city']
     ordering_fields = ['name', 'created_at']
     ordering = ['name', '-created_at']
+
+    def get_queryset(self):
+        """Возвращает артистов, доступных в публичном списке."""
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                artist_publication_ready_q(),
+                is_active=True,
+            )
+            .select_related(
+                'user',
+                'label',
+                'label__user',
+            )
+        )
 
 
 @become_artist_schema

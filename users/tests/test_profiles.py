@@ -525,6 +525,7 @@ class TestArtistPublicApi:
         assert response.data['profile_type'] == ArtistProfileType.LABEL
 
 
+@pytest.mark.usefixtures('publication_readiness_disabled')
 class TestArtistListApi:
     """Тесты публичного списка артистов."""
 
@@ -594,3 +595,85 @@ class TestArtistListApi:
         artist_ids = {item['id'] for item in response.data['results']}
 
         assert artist.id in artist_ids
+
+
+@pytest.mark.usefixtures('publication_readiness_enabled')
+class TestArtistListReadiness:
+    """Тесты готовности артистов в публичном списке."""
+
+    @pytest.fixture
+    def artist_list_url(self):
+        """URL публичного списка артистов."""
+        return reverse('api:users:artist_list')
+
+    def test_list_hides_artist_without_readiness(
+        self,
+        api_client,
+        artist_list_url,
+    ):
+        """Неготовый артист не отображается в публичном списке."""
+        artist = ArtistProfileFactory(
+            user__is_email_verified=False,
+        )
+
+        response = api_client.get(artist_list_url)
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id not in artist_ids
+
+    def test_list_returns_ready_artist(
+        self,
+        api_client,
+        artist_list_url,
+        ready_artist_factory,
+    ):
+        """Готовый артист отображается в публичном списке."""
+        artist = ready_artist_factory()
+
+        response = api_client.get(artist_list_url)
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id in artist_ids
+
+    def test_list_uses_label_readiness_for_managed_artist(
+        self,
+        api_client,
+        artist_list_url,
+        ready_label_factory,
+    ):
+        """Для управляемого артиста используется готовность лейбла."""
+        label_user = ready_label_factory()
+
+        artist = ArtistProfileFactory(
+            user=None,
+            label=label_user.artist_profile,
+        )
+
+        response = api_client.get(artist_list_url)
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id in artist_ids
+
+    @pytest.mark.usefixtures('publication_readiness_enabled')
+    def test_public_profile_remains_available_without_readiness(
+        self,
+        api_client,
+        artist_public_url,
+    ):
+        """Публичный профиль доступен по прямой ссылке без readiness."""
+        artist = ArtistProfileFactory(
+            user__is_email_verified=False,
+        )
+
+        response = api_client.get(
+            artist_public_url(artist),
+        )
+
+        assert response.status_code == HTTPStatus.OK

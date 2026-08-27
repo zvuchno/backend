@@ -317,9 +317,6 @@ class ArtistLegalProfileAdmin(admin.ModelAdmin):
         if obj:
             readonly_fields.append('user')
 
-        if obj is None or not obj.is_ready_for_verification:
-            readonly_fields.append('is_verified')
-
         return readonly_fields
 
     def _get_verification_field_label(self, field_name) -> str:
