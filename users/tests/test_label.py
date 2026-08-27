@@ -8,9 +8,11 @@ from users.models import (
     ArtistProfileType,
     TokenInvitationStatus,
 )
+from users.services import ArtistMembershipService
+
+pytestmark = pytest.mark.django_db
 
 
-@pytest.mark.django_db
 class TestLabelManagedProfileList:
     """Тесты списка профилей, доступных текущему лейблу."""
 
@@ -546,3 +548,80 @@ class TestArtistLeaveLabel:
         response = client.post(artist_leave_label_url)
 
         assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestArtistMembershipPayoutRecipient:
+    """Тесты состояния получателя выплат."""
+
+    def test_sync_payout_recipient_updates_artist_content(
+        self,
+        artist_user,
+        label_user,
+    ):
+        """Синхронизация передаёт выплаты за контент текущему лейблу."""
+        artist = artist_user.artist_profile
+        label = label_user.artist_profile
+
+        album = AlbumFactory(
+            artist=artist,
+        )
+        merch = MerchFactory(
+            artist=artist,
+        )
+
+        assert album.payout_recipient == artist_user
+        assert merch.payout_recipient == artist_user
+
+        artist.label = label
+        artist.save(update_fields=('label',))
+
+        ArtistMembershipService.sync_payout_recipient(
+            artist=artist,
+        )
+
+        album.refresh_from_db()
+        merch.refresh_from_db()
+
+        assert album.payout_recipient == label_user
+        assert merch.payout_recipient == label_user
+
+    def test_sync_payout_recipient_updates_content_after_label_change(
+        self,
+        artist_user,
+        label_user,
+        user_factory,
+        label_profile_factory,
+    ):
+        """При смене лейбла выплаты передаются новому лейблу."""
+        artist = artist_user.artist_profile
+        first_label = label_user.artist_profile
+
+        second_label_user = user_factory(
+            email='second-label@test.com',
+            username='second_label',
+        )
+        second_label = label_profile_factory(
+            user=second_label_user,
+            name='Second Label',
+        )
+
+        artist.label = first_label
+        artist.save(update_fields=('label',))
+
+        album = AlbumFactory(
+            artist=artist,
+        )
+
+        assert album.payout_recipient == label_user
+
+        artist.label = second_label
+        artist.save(update_fields=('label',))
+
+        ArtistMembershipService.sync_payout_recipient(
+            artist=artist,
+        )
+
+        album.refresh_from_db()
+
+        assert album.payout_recipient == second_label_user
