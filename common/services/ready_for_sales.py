@@ -112,3 +112,27 @@ def physical_publication_ready_q(prefix: str = '') -> Q:
     )
 
     return digital_publication_ready_q(prefix) & shipping_point_q
+
+
+def artist_publication_ready_q(prefix: str = '') -> Q:
+    """Возвращает условие готовности артиста к публичному отображению."""
+    if not settings.PUBLICATION_READINESS_ENABLED:
+        return Q()
+
+    own_user_q = Q(
+        **{
+            f'{prefix}label__isnull': True,
+            f'{prefix}user__is_email_verified': True,
+            f'{prefix}user__legal_profile__is_verified': True,
+        },
+    )
+
+    label_user_q = Q(
+        **{
+            f'{prefix}label__isnull': False,
+            f'{prefix}label__user__is_email_verified': True,
+            f'{prefix}label__user__legal_profile__is_verified': True,
+        },
+    )
+
+    return own_user_q | label_user_q
