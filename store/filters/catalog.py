@@ -39,16 +39,21 @@ class ProductCatalogFilter(django_filters.FilterSet):
         if not value:
             return queryset
 
-        return queryset.filter(
-            models.Q(
-                product_type=Product.ProductType.ALBUM,
-                album__artist__slug=value,
-            )
-            | models.Q(
-                product_type=Product.ProductType.MERCH,
-                merch__artist__slug=value,
-            ),
+        album_q = models.Q(
+            product_type=Product.ProductType.ALBUM,
+        ) & (
+            models.Q(album__artist__slug=value)
+            | models.Q(album__artist__label__slug=value)
         )
+
+        merch_q = models.Q(
+            product_type=Product.ProductType.MERCH,
+        ) & (
+            models.Q(merch__artist__slug=value)
+            | models.Q(merch__artist__label__slug=value)
+        )
+
+        return queryset.filter(album_q | merch_q)
 
     def filter_ordering(self, queryset, name, value):
         """Сортирует товары каталога."""

@@ -17,6 +17,7 @@ from store.tests.scenarios import (
     create_merch_product,
     get_product_ids,
 )
+from users.tests.factories import ArtistProfileFactory, LabelProfileFactory
 
 pytestmark = [
     pytest.mark.django_db,
@@ -325,6 +326,48 @@ class TestCatalogArtistFilter:
             products['tshirt_merch'].id,
             products['rock_carrier'].id,
         }
+
+    def test_catalog_filters_label_and_managed_artists(
+        self,
+        api_client,
+        catalog_url,
+        variant_factory,
+    ):
+        """Фильтр лейбла возвращает его контент и подопечных артистов."""
+        label = LabelProfileFactory()
+        managed_artist = ArtistProfileFactory(
+            label=label,
+        )
+        foreign_artist = ArtistProfileFactory()
+
+        label_variant = variant_factory(
+            product_type='album',
+            artist=label,
+        )
+        managed_variant = variant_factory(
+            product_type='album',
+            artist=managed_artist,
+        )
+        foreign_variant = variant_factory(
+            product_type='album',
+            artist=foreign_artist,
+        )
+
+        response = api_client.get(
+            catalog_url,
+            {'artist': label.slug},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        product_ids = {item['product_id'] for item in response.data['results']}
+
+        assert product_ids == {
+            label_variant.product_id,
+            managed_variant.product_id,
+        }
+
+        assert foreign_variant.product_id not in product_ids
 
 
 class TestCatalogOrdering:
