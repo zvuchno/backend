@@ -154,7 +154,7 @@ class CatalogCardTargetSerializer(serializers.Serializer):
     """Данные для перехода из карточки товара."""
 
     type = serializers.CharField(
-        help_text=('Тип детальной карточки: release или merch.'),
+        help_text=('Тип детальной карточки: release, merch или artist.'),
     )
     id = serializers.IntegerField(
         allow_null=True,

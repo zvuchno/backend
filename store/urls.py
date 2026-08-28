@@ -14,6 +14,7 @@ from .views import (
     CartViewSet,
     CatalogMerchDetailView,
     CatalogReleaseDetailView,
+    CatalogSearchView,
     CdekCalculateView,
     CdekCitiesView,
     CreatePaymentView,
@@ -134,5 +135,10 @@ urlpatterns = [
         'artists/me/sales/export/',
         SalesExportView.as_view(),
         name='sales-export',
+    ),
+    path(
+        'search/',
+        CatalogSearchView.as_view(),
+        name='catalog-search',
     ),
 ]
