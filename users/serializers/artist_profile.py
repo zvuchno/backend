@@ -287,7 +287,7 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 ),
             })
 
-        context = self._get_consent_context(
+        context = self._get_consent_scenario(
             user,
             target_type,
         )
@@ -313,12 +313,14 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
         ensure_listener_profile(user)
         try:
             with transaction.atomic():
-                accepted_types = set(validated_data.pop('consents', ()))
+                accepted_types = set(
+                    validated_data.pop('consents', None) or (),
+                )
                 profile = ArtistProfile.objects.create(
                     user=user,
                     **validated_data,
                 )
-                context = (
+                scenario = (
                     ConsentScenario.LABEL_ONBOARDING
                     if profile.profile_type == ArtistProfileType.LABEL
                     else ConsentScenario.ARTIST_ONBOARDING
@@ -327,7 +329,7 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 request = self.context['request']
 
                 ConsentService.accept(
-                    context=context,
+                    scenario=scenario,
                     accepted_types=accepted_types,
                     user=user,
                     email=user.email,
@@ -348,7 +350,7 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 )
             raise
 
-    def _get_consent_context(
+    def _get_consent_scenario(
         self,
         user,
         profile_type,

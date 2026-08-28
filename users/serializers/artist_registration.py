@@ -51,7 +51,9 @@ class ArtistRegistrationSerializer(
         """
         name = validated_data.pop('name')
         profile_type = validated_data.pop('profile_type')
-        accepted_types = set(validated_data.pop('consents', ()))
+        accepted_types = set(
+            validated_data.pop('consents', None) or (),
+        )
 
         scenario = (
             ConsentScenario.LABEL_REGISTRATION

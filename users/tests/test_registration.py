@@ -227,6 +227,7 @@ class TestListenerRegistration:
 
         assert user.password.startswith('scrypt$')
 
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
     def test_register_listener_requires_consents(
         self,
         api_client,
@@ -234,9 +235,18 @@ class TestListenerRegistration:
         listener_register_payload,
         verification_email_mock,
     ):
-        """Регистрация слушателя требует согласия на обработку ПДн."""
-        payload = listener_register_payload.copy()
-        payload.pop('consents')
+        """Регистрация слушателя требует все обязательные согласия."""
+        required = set(
+            ConsentPolicy.get_required(
+                ConsentScenario.LISTENER_REGISTRATION,
+            ),
+        )
+        required.pop()
+
+        payload = {
+            **listener_register_payload,
+            'consents': list(required),
+        }
 
         response = api_client.post(
             listener_register_url,
@@ -249,7 +259,7 @@ class TestListenerRegistration:
         assert User.objects.count() == 0
         verification_email_mock.assert_not_called()
 
-    def test_register_listener_saves_consent(
+    def test_register_listener_saves_consents(
         self,
         api_client,
         listener_register_url,
@@ -270,15 +280,65 @@ class TestListenerRegistration:
         user = User.objects.get(
             email=listener_register_payload['email'],
         )
-        consent = UserConsent.objects.get(user=user)
-
-        assert (
-            consent.document.document_type
-            == ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA
+        consent_types = set(
+            UserConsent.objects.filter(user=user).values_list(
+                'document__document_type',
+                flat=True,
+            ),
         )
-        assert consent.email == user.email
-        assert consent.ip_address == '192.0.2.10'
-        assert consent.user_agent == 'Test Agent'
+
+        assert consent_types == ConsentPolicy.get_required(
+            ConsentScenario.LISTENER_REGISTRATION,
+        )
+        consents = UserConsent.objects.filter(user=user)
+
+        assert all(consent.email == user.email for consent in consents)
+        assert all(consent.ip_address == '192.0.2.10' for consent in consents)
+        assert all(consent.user_agent == 'Test Agent' for consent in consents)
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=False)
+    def test_register_listener_without_consents_when_enforcement_disabled(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+    ):
+        """При отключенной проверке регистрация возможна без согласий."""
+        payload = listener_register_payload.copy()
+        payload.pop('consents')
+
+        response = api_client.post(
+            listener_register_url,
+            data=payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert UserConsent.objects.count() == 0
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=False)
+    def test_register_listener_saves_passed_consents_when_enforcement_disabled(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+    ):
+        response = api_client.post(
+            listener_register_url,
+            data=listener_register_payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        user = User.objects.get(email=listener_register_payload['email'])
+
+        assert set(
+            UserConsent.objects.filter(user=user).values_list(
+                'document__document_type',
+                flat=True,
+            ),
+        ) == set(listener_register_payload['consents'])
 
 
 @pytest.mark.usefixtures('disable_registration_throttling')
@@ -448,6 +508,7 @@ class TestArtistRegistration:
         assert ArtistProfile.objects.count() == 0
         verification_email_mock.assert_not_called()
 
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
     def test_register_artist_requires_all_mandatory_consents(
         self,
         api_client,
@@ -456,12 +517,16 @@ class TestArtistRegistration:
         verification_email_mock,
     ):
         """Регистрация артиста требует все обязательные согласия."""
+        required = set(
+            ConsentPolicy.get_required(
+                ConsentScenario.ARTIST_REGISTRATION,
+            ),
+        )
+        required.pop()
+
         payload = {
             **artist_register_payload,
-            'consents': [
-                ConsentDocument.DocumentType.ARTIST_OFFER,
-                ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
-            ],
+            'consents': list(required),
         }
 
         response = api_client.post(
@@ -501,7 +566,7 @@ class TestArtistRegistration:
         )
 
         assert consent_types == ConsentPolicy.get_required(
-            ConsentScenario.ARTIST_ONBOARDING,
+            ConsentScenario.ARTIST_REGISTRATION,
         )
 
     def test_register_artist_accepts_optional_newsletter_consent(

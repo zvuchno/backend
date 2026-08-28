@@ -54,5 +54,5 @@ class BaseRegistrationSerializer(UserCreateSerializer):
         return attrs
 
     def get_consent_scenario(self, attrs):
-        """Возвращает контекст согласий для регистрации."""
+        """Возвращает сценарий согласий для регистрации."""
         raise NotImplementedError

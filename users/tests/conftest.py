@@ -20,6 +20,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from config import settings
+from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.models import (
     ArtistProfile,
     ArtistProfileClaimInvitation,
@@ -115,7 +116,7 @@ def company_data_payload():
 
 
 @pytest.fixture
-def artist_register_payload(artist_onboarding_consents):
+def artist_register_payload(artist_registration_consents):
     """Payload регистрации артиста."""
     return {
         'username': 'artist_username',
@@ -123,7 +124,7 @@ def artist_register_payload(artist_onboarding_consents):
         'phone': '+79991234567',
         'password': 'qwertyhgfdsa123',
         'name': 'my rock band',
-        'consents': artist_onboarding_consents,
+        'consents': artist_registration_consents,
     }
 
 
@@ -185,7 +186,27 @@ def artist_claim_factory() -> Callable[..., tuple]:
 @pytest.fixture
 def listener_registration_consents():
     """Создаёт документы и возвращает согласия регистрации слушателя."""
-    document_types = (ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,)
+    document_types = ConsentPolicy.get_required(
+        ConsentScenario.LISTENER_REGISTRATION,
+    )
+
+    for document_type in document_types:
+        ConsentDocument.objects.create(
+            document_type=document_type,
+            version='1.0',
+            content=f'Тестовый документ: {document_type}',
+            is_active=True,
+        )
+
+    return list(document_types)
+
+
+@pytest.fixture
+def artist_registration_consents():
+    """Создаёт документы и возвращает обязательные согласия артиста."""
+    document_types = ConsentPolicy.get_required(
+        ConsentScenario.ARTIST_REGISTRATION,
+    )
 
     for document_type in document_types:
         ConsentDocument.objects.create(
@@ -201,10 +222,8 @@ def listener_registration_consents():
 @pytest.fixture
 def artist_onboarding_consents():
     """Создаёт документы и возвращает обязательные согласия артиста."""
-    document_types = (
-        ConsentDocument.DocumentType.ARTIST_OFFER,
-        ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
-        ConsentDocument.DocumentType.ARTIST_DISTRIBUTION,
+    document_types = ConsentPolicy.get_required(
+        ConsentScenario.ARTIST_ONBOARDING,
     )
 
     for document_type in document_types:

@@ -4,6 +4,7 @@ from http import HTTPStatus
 
 import pytest
 from django.core.cache import cache
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 
@@ -343,6 +344,7 @@ class TestBecomeArtistOrLabelApi:
         assert profile.name == 'Новый артист'
         assert profile.profile_type == ArtistProfileType.ARTIST
 
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
     def test_listener_cannot_become_artist_without_consents(
         self,
         listener_client,
@@ -360,6 +362,7 @@ class TestBecomeArtistOrLabelApi:
         assert 'consents' in response.data
         assert not ArtistProfile.objects.filter(user=listener_user).exists()
 
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
     def test_listener_cannot_become_label_without_consents(
         self,
         listener_client,

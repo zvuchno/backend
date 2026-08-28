@@ -33,7 +33,9 @@ class ListenerRegistrationSerializer(
         сериализатора, затем создает связанный профиль слушателя
         с переданным номером телефона. Операция выполняется атомарно.
         """
-        accepted_types = set(validated_data.pop('consents', ()))
+        accepted_types = set(
+            validated_data.pop('consents', None) or (),
+        )
         user = super().create(validated_data)
         ListenerProfile.objects.create(
             user=user,
