@@ -8,7 +8,8 @@ from django.urls import reverse
 from rest_framework import status
 
 from store.tests.factories import AlbumFactory, GenreFactory
-from users.models import ArtistProfile, ArtistProfileType
+from users.consents_policy import ConsentContext, ConsentPolicy
+from users.models import ArtistProfile, ArtistProfileType, UserConsent
 from users.tests.factories import ArtistProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -29,11 +30,15 @@ class TestBecomeArtistOrLabelApi:
         listener_client,
         listener_user,
         become_artist_url,
+        artist_onboarding_consents,
     ):
         """Без указания типа создается профиль артиста."""
         response = listener_client.post(
             become_artist_url,
-            data={'name': 'Новый артист'},
+            data={
+                'name': 'Новый артист',
+                'consents': artist_onboarding_consents,
+            },
             format='json',
         )
 
@@ -46,11 +51,25 @@ class TestBecomeArtistOrLabelApi:
         assert profile.name == 'Новый артист'
         assert profile.profile_type == ArtistProfileType.ARTIST
 
+        required = ConsentPolicy.get_required(
+            ConsentContext.ARTIST_ONBOARDING,
+        )
+
+        saved_types = set(
+            UserConsent.objects.filter(user=listener_user).values_list(
+                'document__document_type',
+                flat=True,
+            ),
+        )
+
+        assert saved_types == required
+
     def test_listener_becomes_label(
         self,
         listener_client,
         listener_user,
         become_artist_url,
+        artist_onboarding_consents,
     ):
         """Слушатель может создать профиль лейбла."""
         response = listener_client.post(
@@ -58,6 +77,7 @@ class TestBecomeArtistOrLabelApi:
             data={
                 'name': 'Новый лейбл',
                 'profile_type': ArtistProfileType.LABEL,
+                'consents': artist_onboarding_consents,
             },
             format='json',
         )
@@ -70,6 +90,19 @@ class TestBecomeArtistOrLabelApi:
 
         assert profile.name == 'Новый лейбл'
         assert profile.profile_type == ArtistProfileType.LABEL
+
+        required = ConsentPolicy.get_required(
+            ConsentContext.LABEL_ONBOARDING,
+        )
+
+        saved_types = set(
+            UserConsent.objects.filter(user=listener_user).values_list(
+                'document__document_type',
+                flat=True,
+            ),
+        )
+
+        assert saved_types == required
 
     def test_rejects_invalid_profile_type(
         self,
@@ -292,11 +325,13 @@ class TestBecomeArtistOrLabelApi:
         auth_client,
         user,
         become_artist_url,
+        artist_onboarding_consents,
     ):
         response = auth_client.post(
             become_artist_url,
             data={
                 'name': 'Новый артист',
+                'consents': artist_onboarding_consents,
             },
             format='json',
         )
@@ -307,6 +342,43 @@ class TestBecomeArtistOrLabelApi:
 
         assert profile.name == 'Новый артист'
         assert profile.profile_type == ArtistProfileType.ARTIST
+
+    def test_listener_cannot_become_artist_without_consents(
+        self,
+        listener_client,
+        listener_user,
+        become_artist_url,
+    ):
+        """Слушатель не может стать артистом без обязательных согласий."""
+        response = listener_client.post(
+            become_artist_url,
+            data={'name': 'Новый артист'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'consents' in response.data
+        assert not ArtistProfile.objects.filter(user=listener_user).exists()
+
+    def test_listener_cannot_become_label_without_consents(
+        self,
+        listener_client,
+        listener_user,
+        become_artist_url,
+    ):
+        """Слушатель не может стать лейблом без обязательных согласий."""
+        response = listener_client.post(
+            become_artist_url,
+            data={
+                'name': 'Новый лейбл',
+                'profile_type': ArtistProfileType.LABEL,
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'consents' in response.data
+        assert not ArtistProfile.objects.filter(user=listener_user).exists()
 
 
 class TestArtistMeApi:
@@ -453,6 +525,7 @@ class TestArtistPublicApi:
         assert response.data['profile_type'] == ArtistProfileType.LABEL
 
 
+@pytest.mark.usefixtures('publication_readiness_disabled')
 class TestArtistListApi:
     """Тесты публичного списка артистов."""
 
@@ -522,3 +595,85 @@ class TestArtistListApi:
         artist_ids = {item['id'] for item in response.data['results']}
 
         assert artist.id in artist_ids
+
+
+@pytest.mark.usefixtures('publication_readiness_enabled')
+class TestArtistListReadiness:
+    """Тесты готовности артистов в публичном списке."""
+
+    @pytest.fixture
+    def artist_list_url(self):
+        """URL публичного списка артистов."""
+        return reverse('api:users:artist_list')
+
+    def test_list_hides_artist_without_readiness(
+        self,
+        api_client,
+        artist_list_url,
+    ):
+        """Неготовый артист не отображается в публичном списке."""
+        artist = ArtistProfileFactory(
+            user__is_email_verified=False,
+        )
+
+        response = api_client.get(artist_list_url)
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id not in artist_ids
+
+    def test_list_returns_ready_artist(
+        self,
+        api_client,
+        artist_list_url,
+        ready_artist_factory,
+    ):
+        """Готовый артист отображается в публичном списке."""
+        artist = ready_artist_factory()
+
+        response = api_client.get(artist_list_url)
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id in artist_ids
+
+    def test_list_uses_label_readiness_for_managed_artist(
+        self,
+        api_client,
+        artist_list_url,
+        ready_label_factory,
+    ):
+        """Для управляемого артиста используется готовность лейбла."""
+        label_user = ready_label_factory()
+
+        artist = ArtistProfileFactory(
+            user=None,
+            label=label_user.artist_profile,
+        )
+
+        response = api_client.get(artist_list_url)
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id in artist_ids
+
+    @pytest.mark.usefixtures('publication_readiness_enabled')
+    def test_public_profile_remains_available_without_readiness(
+        self,
+        api_client,
+        artist_public_url,
+    ):
+        """Публичный профиль доступен по прямой ссылке без readiness."""
+        artist = ArtistProfileFactory(
+            user__is_email_verified=False,
+        )
+
+        response = api_client.get(
+            artist_public_url(artist),
+        )
+
+        assert response.status_code == HTTPStatus.OK

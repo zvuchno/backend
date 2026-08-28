@@ -1,4 +1,5 @@
 from .artist_membership import ArtistMembershipService
+from .consent import ConsentService
 from .email import (
     send_artist_profile_claim_accepted_mail,
     send_artist_profile_claim_invitation_mail,
@@ -26,6 +27,7 @@ from .utils import (
 __all__ = [
     'ArtistMembershipService',
     'build_email_verification_url',
+    'ConsentService',
     'generate_password_reset_data',
     'build_password_reset_url',
     'verify_password_reset_token',

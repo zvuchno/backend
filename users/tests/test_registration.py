@@ -9,7 +9,14 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.settings import api_settings
 
-from users.models import ArtistProfile, ArtistProfileType, ListenerProfile
+from users.consents_policy import ConsentContext, ConsentPolicy
+from users.models import (
+    ArtistProfile,
+    ArtistProfileType,
+    ConsentDocument,
+    ListenerProfile,
+    UserConsent,
+)
 from users.views import BaseRegistrationView
 
 User = get_user_model()
@@ -46,6 +53,17 @@ def verification_email_mock(monkeypatch):
     )
 
     return mock
+
+
+@pytest.fixture
+def artist_newsletter_document():
+    """Создаёт активное согласие на рекламную рассылку артиста."""
+    return ConsentDocument.objects.create(
+        document_type=ConsentDocument.DocumentType.ARTIST_NEWSLETTER,
+        version='1.0',
+        content='Тестовое согласие на рекламную рассылку.',
+        is_active=True,
+    )
 
 
 @pytest.mark.usefixtures('disable_registration_throttling')
@@ -208,6 +226,59 @@ class TestListenerRegistration:
         )
 
         assert user.password.startswith('scrypt$')
+
+    def test_register_listener_requires_consents(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+        verification_email_mock,
+    ):
+        """Регистрация слушателя требует согласия на обработку ПДн."""
+        payload = listener_register_payload.copy()
+        payload.pop('consents')
+
+        response = api_client.post(
+            listener_register_url,
+            data=payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'consents' in response.data
+        assert User.objects.count() == 0
+        verification_email_mock.assert_not_called()
+
+    def test_register_listener_saves_consent(
+        self,
+        api_client,
+        listener_register_url,
+        listener_register_payload,
+        verification_email_mock,
+    ):
+        """Регистрация фиксирует согласие слушателя."""
+        response = api_client.post(
+            listener_register_url,
+            data=listener_register_payload,
+            format='json',
+            REMOTE_ADDR='192.0.2.10',
+            HTTP_USER_AGENT='Test Agent',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        user = User.objects.get(
+            email=listener_register_payload['email'],
+        )
+        consent = UserConsent.objects.get(user=user)
+
+        assert (
+            consent.document.document_type
+            == ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA
+        )
+        assert consent.email == user.email
+        assert consent.ip_address == '192.0.2.10'
+        assert consent.user_agent == 'Test Agent'
 
 
 @pytest.mark.usefixtures('disable_registration_throttling')
@@ -376,6 +447,96 @@ class TestArtistRegistration:
         assert ListenerProfile.objects.count() == 0
         assert ArtistProfile.objects.count() == 0
         verification_email_mock.assert_not_called()
+
+    def test_register_artist_requires_all_mandatory_consents(
+        self,
+        api_client,
+        artist_register_url,
+        artist_register_payload,
+        verification_email_mock,
+    ):
+        """Регистрация артиста требует все обязательные согласия."""
+        payload = {
+            **artist_register_payload,
+            'consents': [
+                ConsentDocument.DocumentType.ARTIST_OFFER,
+                ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
+            ],
+        }
+
+        response = api_client.post(
+            artist_register_url,
+            data=payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'consents' in response.data
+        assert User.objects.count() == 0
+        verification_email_mock.assert_not_called()
+
+    def test_register_artist_saves_required_consents(
+        self,
+        api_client,
+        artist_register_url,
+        artist_register_payload,
+        verification_email_mock,
+    ):
+        """Регистрация артиста фиксирует обязательные согласия."""
+        response = api_client.post(
+            artist_register_url,
+            data=artist_register_payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        user = User.objects.get(email=artist_register_payload['email'])
+
+        consent_types = set(
+            UserConsent.objects.filter(user=user).values_list(
+                'document__document_type',
+                flat=True,
+            ),
+        )
+
+        assert consent_types == ConsentPolicy.get_required(
+            ConsentContext.ARTIST_ONBOARDING,
+        )
+
+    def test_register_artist_accepts_optional_newsletter_consent(
+        self,
+        api_client,
+        artist_register_url,
+        artist_register_payload,
+        artist_newsletter_document,
+        verification_email_mock,
+    ):
+        """Артист может дополнительно согласиться на рекламную рассылку."""
+        payload = {
+            **artist_register_payload,
+            'consents': [
+                *artist_register_payload['consents'],
+                ConsentDocument.DocumentType.ARTIST_NEWSLETTER,
+            ],
+        }
+
+        response = api_client.post(
+            artist_register_url,
+            data=payload,
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        user = User.objects.get(email=payload['email'])
+
+        assert UserConsent.objects.filter(
+            user=user,
+            document__document_type=(
+                ConsentDocument.DocumentType.ARTIST_NEWSLETTER
+            ),
+        ).exists()
 
 
 class TestRegistrationThrottle:

@@ -3,6 +3,9 @@
 from djoser.serializers import UserCreateSerializer
 from rest_framework import serializers
 
+from users.models import ConsentDocument
+from users.services import ConsentService
+
 
 class BaseRegistrationSerializer(UserCreateSerializer):
     """Базовый сериализатор регистрации пользователя.
@@ -13,7 +16,15 @@ class BaseRegistrationSerializer(UserCreateSerializer):
     """
 
     phone = serializers.CharField(required=True, allow_blank=False)
-    extra_fields_names = []
+    consents = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=ConsentDocument.DocumentType.choices,
+        ),
+        allow_empty=False,
+        write_only=True,
+    )
+
+    extra_fields_names = ('consents',)
 
     def validate(self, attrs):
         """Подготавливает данные перед общей валидацией.
@@ -32,4 +43,16 @@ class BaseRegistrationSerializer(UserCreateSerializer):
         attrs = super().validate(attrs)
         attrs.update(skipped_fields)
 
+        context = self.get_consent_context(attrs)
+        accepted_types = set(attrs.get('consents') or ())
+
+        ConsentService.validate(
+            context=context,
+            accepted_types=accepted_types,
+        )
+
         return attrs
+
+    def get_consent_context(self, attrs):
+        """Возвращает контекст согласий для регистрации."""
+        raise NotImplementedError

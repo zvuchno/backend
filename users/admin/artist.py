@@ -18,6 +18,7 @@ from users.models import (
     ArtistSocial,
     ArtistStoreSettings,
 )
+from users.services import ArtistMembershipService
 
 
 class ArtistContactInline(admin.TabularInline):
@@ -398,4 +399,22 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
 
     def get_queryset(self, request):
         """Оптимизирует загрузку связанных объектов профиля."""
-        return super().get_queryset(request).select_related('user')
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'user__legal_profile',
+                'label__user__legal_profile',
+            )
+        )
+
+    def save_model(self, request, obj, form, change):
+        """Сохраняет профиль и синхронизирует получателя выплат."""
+        label_changed = change and 'label' in form.changed_data
+
+        super().save_model(request, obj, form, change)
+
+        if label_changed:
+            ArtistMembershipService.sync_payout_recipient(
+                artist=obj,
+            )
