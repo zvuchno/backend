@@ -287,13 +287,13 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 ),
             })
 
-        context = self._get_consent_scenario(
+        scenario = self._get_consent_scenario(
             user,
             target_type,
         )
-        if context is not None:
+        if scenario is not None:
             ConsentService.validate(
-                context=context,
+                scenario=scenario,
                 accepted_types=set(attrs.get('consents') or ()),
             )
 

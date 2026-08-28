@@ -13,7 +13,6 @@ class ConsentScenario(StrEnum):
     LABEL_REGISTRATION = 'label_registration'
     ARTIST_ONBOARDING = 'artist_onboarding'
     LABEL_ONBOARDING = 'label_onboarding'
-    CHECKOUT = 'checkout'
 
 
 class ConsentPolicy:
@@ -50,9 +49,6 @@ class ConsentPolicy:
             ConsentDocument.DocumentType.ARTIST_OFFER,
             ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
             ConsentDocument.DocumentType.ARTIST_DISTRIBUTION,
-        }),
-        ConsentScenario.CHECKOUT: frozenset({
-            ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
         }),
     }
 
@@ -97,7 +93,7 @@ class ConsentPolicy:
         """Возвращает требования согласий для всех сценариев."""
         return [
             {
-                'scenario': scenario.value,
+                'context': scenario.value,
                 'required': sorted(cls.get_required(scenario)),
                 'optional': sorted(cls.get_optional(scenario)),
             }

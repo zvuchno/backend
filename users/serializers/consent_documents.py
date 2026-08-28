@@ -28,7 +28,7 @@ class ConsentDocumentDetailSerializer(ConsentDocumentSerializer):
 class ConsentRequirementSerializer(serializers.Serializer):
     """Требования согласий для одного сценария."""
 
-    scenario = serializers.ChoiceField(
+    context = serializers.ChoiceField(
         choices=[scenario.value for scenario in ConsentScenario],
     )
     required = serializers.ListField(
