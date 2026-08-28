@@ -14,31 +14,59 @@ class ArtistMembershipService:
 
     @classmethod
     @transaction.atomic
-    def leave_label(cls, *, artist: ArtistProfile) -> ArtistProfile:
-        """Открепляет артиста от лейбла и передаёт ему выплаты."""
+    def sync_payout_recipient(
+        cls,
+        *,
+        artist: ArtistProfile,
+    ) -> ArtistProfile:
+        """Синхронизирует получателя выплат контента артиста."""
         artist = (
             ArtistProfile.objects
             .select_for_update(of=('self',))
-            .select_related('user', 'user__legal_profile')
+            .select_related('user', 'label__user')
             .get(pk=artist.pk)
         )
 
-        cls._validate_leave_label(artist)
+        cls._sync_payout_recipient(artist)
+
+        return artist
+
+    @staticmethod
+    def _sync_payout_recipient(artist: ArtistProfile) -> None:
+        """Обновляет получателя выплат существующего контента."""
+        payout_recipient = artist.default_payout_recipient
 
         Album.objects.filter(
             artist=artist,
         ).update(
-            payout_recipient=artist.user,
+            payout_recipient=payout_recipient,
         )
 
         Merch.objects.filter(
             artist=artist,
         ).update(
-            payout_recipient=artist.user,
+            payout_recipient=payout_recipient,
         )
+
+    @classmethod
+    @transaction.atomic
+    def leave_label(cls, *, artist: ArtistProfile) -> ArtistProfile:
+        """Открепляет артиста от лейбла и передаёт ему выплаты."""
+        artist = (
+            ArtistProfile.objects
+            .select_for_update(of=('self',))
+            .select_related('user__legal_profile')
+            .get(pk=artist.pk)
+        )
+
+        cls._validate_leave_label(artist)
 
         artist.label = None
         artist.save(update_fields=('label', 'updated_at'))
+
+        cls._sync_payout_recipient(
+            artist=artist,
+        )
 
         return artist
 
