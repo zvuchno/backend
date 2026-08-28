@@ -55,7 +55,7 @@ class ArtistMembershipService:
         artist = (
             ArtistProfile.objects
             .select_for_update(of=('self',))
-            .select_related('user', 'user__legal_profile')
+            .select_related('user__legal_profile')
             .get(pk=artist.pk)
         )
 

@@ -550,7 +550,6 @@ class TestArtistLeaveLabel:
         assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-@pytest.mark.django_db
 class TestArtistMembershipPayoutRecipient:
     """Тесты состояния получателя выплат."""
 
