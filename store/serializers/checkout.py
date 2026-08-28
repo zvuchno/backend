@@ -12,7 +12,7 @@ from store.constants import (
 )
 from store.models import Delivery
 from store.services import CartCalculationService
-from users.consents_policy import ConsentContext
+from users.consents_policy import ConsentScenario
 from users.models import ArtistPickupPoint, ConsentDocument
 from users.services import ConsentService
 
@@ -169,7 +169,7 @@ class CheckoutSerializer(serializers.Serializer):
 
         if 'consents' in attrs:
             ConsentService.validate(
-                context=ConsentContext.CHECKOUT,
+                scenario=ConsentScenario.CHECKOUT,
                 accepted_types=set(attrs['consents']),
             )
 

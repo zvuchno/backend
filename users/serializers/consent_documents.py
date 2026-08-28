@@ -2,7 +2,7 @@
 
 from rest_framework import serializers
 
-from users.consents_policy import ConsentContext
+from users.consents_policy import ConsentScenario
 from users.models import ConsentDocument
 
 
@@ -28,8 +28,8 @@ class ConsentDocumentDetailSerializer(ConsentDocumentSerializer):
 class ConsentRequirementSerializer(serializers.Serializer):
     """Требования согласий для одного сценария."""
 
-    context = serializers.ChoiceField(
-        choices=[context.value for context in ConsentContext],
+    scenario = serializers.ChoiceField(
+        choices=[scenario.value for scenario in ConsentScenario],
     )
     required = serializers.ListField(
         child=serializers.ChoiceField(

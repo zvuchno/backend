@@ -5,10 +5,12 @@ from enum import StrEnum
 from users.models import ConsentDocument
 
 
-class ConsentContext(StrEnum):
-    """Контекст, в котором пользователь принимает согласия."""
+class ConsentScenario(StrEnum):
+    """Пользовательские сценарии для согласий."""
 
     LISTENER_REGISTRATION = 'listener_registration'
+    ARTIST_REGISTRATION = 'artist_registration'
+    LABEL_REGISTRATION = 'label_registration'
     ARTIST_ONBOARDING = 'artist_onboarding'
     LABEL_ONBOARDING = 'label_onboarding'
     CHECKOUT = 'checkout'
@@ -18,29 +20,58 @@ class ConsentPolicy:
     """Определяет набор согласий для пользовательского сценария."""
 
     REQUIRED = {
-        ConsentContext.LISTENER_REGISTRATION: frozenset({
+        ConsentScenario.LISTENER_REGISTRATION: frozenset({
+            ConsentDocument.DocumentType.LISTENER_OFFER,
             ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+            ConsentDocument.DocumentType.LISTENER_DISTRIBUTION,
         }),
-        ConsentContext.ARTIST_ONBOARDING: frozenset({
+        ConsentScenario.ARTIST_REGISTRATION: frozenset({
+            ConsentDocument.DocumentType.LISTENER_OFFER,
+            ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+            ConsentDocument.DocumentType.LISTENER_DISTRIBUTION,
             ConsentDocument.DocumentType.ARTIST_OFFER,
             ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
             ConsentDocument.DocumentType.ARTIST_DISTRIBUTION,
         }),
-        ConsentContext.LABEL_ONBOARDING: frozenset({
+        ConsentScenario.LABEL_REGISTRATION: frozenset({
+            ConsentDocument.DocumentType.LISTENER_OFFER,
+            ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+            ConsentDocument.DocumentType.LISTENER_DISTRIBUTION,
             ConsentDocument.DocumentType.ARTIST_OFFER,
             ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
             ConsentDocument.DocumentType.ARTIST_DISTRIBUTION,
         }),
-        ConsentContext.CHECKOUT: frozenset({
+        ConsentScenario.ARTIST_ONBOARDING: frozenset({
+            ConsentDocument.DocumentType.ARTIST_OFFER,
+            ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
+            ConsentDocument.DocumentType.ARTIST_DISTRIBUTION,
+        }),
+        ConsentScenario.LABEL_ONBOARDING: frozenset({
+            ConsentDocument.DocumentType.ARTIST_OFFER,
+            ConsentDocument.DocumentType.ARTIST_PERSONAL_DATA,
+            ConsentDocument.DocumentType.ARTIST_DISTRIBUTION,
+        }),
+        ConsentScenario.CHECKOUT: frozenset({
             ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
         }),
     }
 
     OPTIONAL = {
-        ConsentContext.ARTIST_ONBOARDING: frozenset({
+        ConsentScenario.LISTENER_REGISTRATION: frozenset({
+            ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+        }),
+        ConsentScenario.ARTIST_REGISTRATION: frozenset({
+            ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
             ConsentDocument.DocumentType.ARTIST_NEWSLETTER,
         }),
-        ConsentContext.LABEL_ONBOARDING: frozenset({
+        ConsentScenario.LABEL_REGISTRATION: frozenset({
+            ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+            ConsentDocument.DocumentType.ARTIST_NEWSLETTER,
+        }),
+        ConsentScenario.ARTIST_ONBOARDING: frozenset({
+            ConsentDocument.DocumentType.ARTIST_NEWSLETTER,
+        }),
+        ConsentScenario.LABEL_ONBOARDING: frozenset({
             ConsentDocument.DocumentType.ARTIST_NEWSLETTER,
         }),
     }
@@ -48,35 +79,27 @@ class ConsentPolicy:
     @classmethod
     def get_required(
         cls,
-        context: ConsentContext,
+        scenario: ConsentScenario,
     ) -> frozenset[str]:
-        """Возвращает обязательные согласия для контекста."""
-        return cls.REQUIRED.get(context, frozenset())
+        """Возвращает обязательные согласия для сценария."""
+        return cls.REQUIRED.get(scenario, frozenset())
 
     @classmethod
     def get_optional(
         cls,
-        context: ConsentContext,
+        scenario: ConsentScenario,
     ) -> frozenset[str]:
-        """Возвращает необязательные согласия для контекста."""
-        return cls.OPTIONAL.get(context, frozenset())
-
-    @classmethod
-    def get_allowed(
-        cls,
-        context: ConsentContext,
-    ) -> frozenset[str]:
-        """Возвращает все допустимые согласия для контекста."""
-        return cls.get_required(context) | cls.get_optional(context)
+        """Возвращает необязательные согласия для сценария."""
+        return cls.OPTIONAL.get(scenario, frozenset())
 
     @classmethod
     def get_requirements(cls) -> list[dict[str, str | list[str]]]:
         """Возвращает требования согласий для всех сценариев."""
         return [
             {
-                'context': context.value,
-                'required': sorted(cls.get_required(context)),
-                'optional': sorted(cls.get_optional(context)),
+                'scenario': scenario.value,
+                'required': sorted(cls.get_required(scenario)),
+                'optional': sorted(cls.get_optional(scenario)),
             }
-            for context in ConsentContext
+            for scenario in ConsentScenario
         ]

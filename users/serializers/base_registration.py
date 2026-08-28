@@ -20,7 +20,7 @@ class BaseRegistrationSerializer(UserCreateSerializer):
         child=serializers.ChoiceField(
             choices=ConsentDocument.DocumentType.choices,
         ),
-        allow_empty=False,
+        required=False,
         write_only=True,
     )
 
@@ -43,16 +43,16 @@ class BaseRegistrationSerializer(UserCreateSerializer):
         attrs = super().validate(attrs)
         attrs.update(skipped_fields)
 
-        context = self.get_consent_context(attrs)
+        scenario = self.get_consent_scenario(attrs)
         accepted_types = set(attrs.get('consents') or ())
 
         ConsentService.validate(
-            context=context,
+            scenario=scenario,
             accepted_types=accepted_types,
         )
 
         return attrs
 
-    def get_consent_context(self, attrs):
+    def get_consent_scenario(self, attrs):
         """Возвращает контекст согласий для регистрации."""
         raise NotImplementedError

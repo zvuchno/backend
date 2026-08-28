@@ -8,7 +8,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from store.tests.factories import AlbumFactory, GenreFactory
-from users.consents_policy import ConsentContext, ConsentPolicy
+from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.models import ArtistProfile, ArtistProfileType, UserConsent
 from users.tests.factories import ArtistProfileFactory
 
@@ -52,7 +52,7 @@ class TestBecomeArtistOrLabelApi:
         assert profile.profile_type == ArtistProfileType.ARTIST
 
         required = ConsentPolicy.get_required(
-            ConsentContext.ARTIST_ONBOARDING,
+            ConsentScenario.ARTIST_ONBOARDING,
         )
 
         saved_types = set(
@@ -92,7 +92,7 @@ class TestBecomeArtistOrLabelApi:
         assert profile.profile_type == ArtistProfileType.LABEL
 
         required = ConsentPolicy.get_required(
-            ConsentContext.LABEL_ONBOARDING,
+            ConsentScenario.LABEL_ONBOARDING,
         )
 
         saved_types = set(

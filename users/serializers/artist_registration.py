@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from common.utils import get_client_ip, get_user_agent
 
-from ..consents_policy import ConsentContext
+from ..consents_policy import ConsentScenario
 from ..services import ConsentService
 from .base_registration import BaseRegistrationSerializer
 from .mixins import PhoneRegistrationMixin
@@ -51,12 +51,12 @@ class ArtistRegistrationSerializer(
         """
         name = validated_data.pop('name')
         profile_type = validated_data.pop('profile_type')
-        accepted_types = set(validated_data.pop('consents'))
+        accepted_types = set(validated_data.pop('consents', ()))
 
-        context = (
-            ConsentContext.LABEL_ONBOARDING
+        scenario = (
+            ConsentScenario.LABEL_REGISTRATION
             if profile_type == ArtistProfileType.LABEL
-            else ConsentContext.ARTIST_ONBOARDING
+            else ConsentScenario.ARTIST_REGISTRATION
         )
 
         user = super().create(validated_data)
@@ -70,7 +70,7 @@ class ArtistRegistrationSerializer(
         request = self.context.get('request')
 
         ConsentService.accept(
-            context=context,
+            scenario=scenario,
             accepted_types=accepted_types,
             user=user,
             email=user.email,
@@ -97,11 +97,11 @@ class ArtistRegistrationSerializer(
         )
         return data
 
-    def get_consent_context(self, attrs):
+    def get_consent_scenario(self, attrs):
         if attrs['profile_type'] == ArtistProfileType.LABEL:
-            return ConsentContext.LABEL_ONBOARDING
+            return ConsentScenario.LABEL_REGISTRATION
 
-        return ConsentContext.ARTIST_ONBOARDING
+        return ConsentScenario.ARTIST_REGISTRATION
 
     class Meta:
         model = User

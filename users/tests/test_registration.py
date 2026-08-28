@@ -9,7 +9,7 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.settings import api_settings
 
-from users.consents_policy import ConsentContext, ConsentPolicy
+from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.models import (
     ArtistProfile,
     ArtistProfileType,
@@ -501,7 +501,7 @@ class TestArtistRegistration:
         )
 
         assert consent_types == ConsentPolicy.get_required(
-            ConsentContext.ARTIST_ONBOARDING,
+            ConsentScenario.ARTIST_ONBOARDING,
         )
 
     def test_register_artist_accepts_optional_newsletter_consent(
