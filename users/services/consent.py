@@ -82,4 +82,5 @@ class ConsentService:
         if missing:
             raise ValidationError({
                 'consents': 'Не приняты все обязательные согласия.',
+                'missing': sorted(missing),
             })
