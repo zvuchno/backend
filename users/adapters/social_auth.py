@@ -2,6 +2,7 @@
 
 import logging
 
+from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.db import IntegrityError, transaction
@@ -39,6 +40,29 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         email = sociallogin.user.email
         provider_obj = sociallogin.account.get_provider()
 
+        is_email_verified = self.is_email_verified(
+            provider_obj,
+            email,
+        )
+
+        if email and not sociallogin.email_addresses:
+            sociallogin.email_addresses = [
+                EmailAddress(
+                    email=email,
+                    verified=is_email_verified,
+                    primary=True,
+                ),
+            ]
+
+        logger.debug(
+            'Social login email data: email=%s email_addresses=%s',
+            sociallogin.user.email,
+            [
+                (item.email, item.verified)
+                for item in sociallogin.email_addresses
+            ],
+        )
+
         service = self.get_service()
         user = service.find_user_by_social_account(
             provider=provider,
@@ -53,10 +77,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             service.mark_email_verified_from_social_provider(
                 user=user,
                 email=email,
-                is_email_verified=self.is_email_verified(
-                    provider_obj,
-                    email,
-                ),
+                is_email_verified=is_email_verified,
             )
         except SocialAuthException as exc:
             self._handle_auth_error(
@@ -184,3 +205,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         raise ImmediateHttpResponse(
             self._frontend_error_redirect(error_code, provider),
         )
+
+    def is_auto_signup_allowed(self, request, sociallogin) -> bool:
+        """Передаёт решение о регистрации нашему social auth flow."""
+        return True

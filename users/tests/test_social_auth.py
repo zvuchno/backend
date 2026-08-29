@@ -53,6 +53,7 @@ def build_sociallogin(
         user=SimpleNamespace(
             email=email,
         ),
+        email_addresses=[],
         is_existing=is_existing,
         connect=Mock(),
     )
@@ -123,6 +124,10 @@ class TestSocialAuthService:
         assert user.email == 'new.user@example.test'
         assert user.is_email_verified is False
         assert user.has_usable_password() is False
+        assert ListenerProfile.objects.filter(
+            user=user,
+            is_active=True,
+        ).exists()
 
     def test_confirms_existing_unverified_user_from_trusted_social_email(
         self,
@@ -379,7 +384,11 @@ class TestSocialAccountAdapter:
         user.refresh_from_db()
         assert user.is_email_verified is False
 
-    def test_pre_social_login_rejects_blocked_existing_user(self, rf):
+    def test_pre_social_login_rejects_blocked_existing_user(
+        self,
+        monkeypatch,
+        rf,
+    ):
         """Не разрешает social login заблокированному пользователю."""
         user = UserFactory(
             email='blocked@example.test',
@@ -390,6 +399,12 @@ class TestSocialAccountAdapter:
             provider=YANDEX_PROVIDER,
             uid='yandex-2003',
             email=user.email,
+        )
+
+        monkeypatch.setattr(
+            adapter,
+            'is_email_verified',
+            lambda *args, **kwargs: True,
         )
 
         with pytest.raises(SocialAuthException) as exc_info:
@@ -557,4 +572,16 @@ class TestSocialAccountAdapter:
 
         assert (
             exc_info.value.error_code == SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED
+        )
+
+    def test_allows_allauth_auto_signup_flow(self, rf):
+        """Передаёт обработку нового пользователя нашему social auth flow."""
+        adapter = SocialAccountAdapter()
+
+        assert (
+            adapter.is_auto_signup_allowed(
+                rf.post('/api/v1/auth/social/yandex/'),
+                Mock(),
+            )
+            is True
         )
