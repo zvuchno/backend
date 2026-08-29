@@ -5,19 +5,26 @@ from unittest.mock import Mock
 
 import pytest
 from allauth.socialaccount.models import SocialAccount
+from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.test import override_settings
+from rest_framework.exceptions import ValidationError
 
 from users.adapters import SocialAccountAdapter
+from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.constants import (
     SOCIAL_AUTH_ERROR_BLOCKED_USER,
     SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
     SOCIAL_AUTH_ERROR_MISSING_EMAIL,
+    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
 )
 from users.exceptions import SocialAuthException
-from users.models import ListenerProfile
+from users.models import ListenerProfile, UserConsent
 from users.services import SocialAuthService
 from users.tests.factories import UserFactory
+
+User = get_user_model()
 
 pytestmark = pytest.mark.django_db
 
@@ -57,13 +64,37 @@ def build_sociallogin(
 class TestSocialAuthService:
     """Тесты обработки пользователя после входа через соцсеть."""
 
-    def test_creates_new_passwordless_user_from_trusted_social_email(self):
-        """Создает passwordless-пользователя с подтвержденным email."""
+    def test_requires_registration_for_new_social_user(self):
+        """Требует явного разрешения на регистрацию нового пользователя."""
+        with pytest.raises(SocialAuthException) as exc_info:
+            SocialAuthService().resolve_user(
+                provider=YANDEX_PROVIDER,
+                provider_uid='yandex-1001',
+                email='new.user@example.test',
+                is_email_verified=True,
+            )
+
+        assert (
+            exc_info.value.error_code
+            == SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED
+        )
+        assert not User.objects.filter(
+            email='new.user@example.test',
+        ).exists()
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_creates_new_passwordless_user_from_trusted_social_email(
+        self,
+        listener_registration_consents,
+    ):
+        """Создает нового пользователя после подтверждения регистрации."""
         user = SocialAuthService().resolve_user(
             provider=YANDEX_PROVIDER,
             provider_uid='yandex-1001',
             email='  New.User@Example.Test ',
             is_email_verified=True,
+            create_account=True,
+            accepted_consents=listener_registration_consents,
         )
 
         assert user.email == 'new.user@example.test'
@@ -74,22 +105,24 @@ class TestSocialAuthService:
             is_active=True,
         ).exists()
 
-    def test_creates_new_unverified_user_from_untrusted_social_email(self):
-        """Не подтверждает email пользователя от недоверенного provider."""
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_creates_new_unverified_user_from_untrusted_social_email(
+        self,
+        listener_registration_consents,
+    ):
+        """Создает неподтвержденного пользователя от недоверенного provider."""
         user = SocialAuthService().resolve_user(
             provider=VK_PROVIDER,
             provider_uid='vk-1002',
             email='new.user@example.test',
             is_email_verified=False,
+            create_account=True,
+            accepted_consents=listener_registration_consents,
         )
 
         assert user.email == 'new.user@example.test'
         assert user.is_email_verified is False
         assert user.has_usable_password() is False
-        assert ListenerProfile.objects.filter(
-            user=user,
-            is_active=True,
-        ).exists()
 
     def test_confirms_existing_unverified_user_from_trusted_social_email(
         self,
@@ -237,6 +270,49 @@ class TestSocialAuthService:
 
         assert exc_info.value.error_code == SOCIAL_AUTH_ERROR_BLOCKED_USER
 
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_rejects_social_registration_without_required_consents(
+        self,
+    ):
+        """Не создает пользователя без обязательных согласий."""
+        with pytest.raises(ValidationError):
+            SocialAuthService().resolve_user(
+                provider=YANDEX_PROVIDER,
+                provider_uid='yandex-1010',
+                email='new.user@example.test',
+                is_email_verified=True,
+                create_account=True,
+                accepted_consents=(),
+            )
+
+        assert not User.objects.filter(
+            email='new.user@example.test',
+        ).exists()
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_social_registration_saves_consents(
+        self,
+        listener_registration_consents,
+    ):
+        """Сохраняет согласия при регистрации через соцсеть."""
+        user = SocialAuthService().resolve_user(
+            provider=YANDEX_PROVIDER,
+            provider_uid='yandex-1011',
+            email='new.user@example.test',
+            is_email_verified=True,
+            create_account=True,
+            accepted_consents=listener_registration_consents,
+        )
+
+        saved_types = set(
+            UserConsent.objects.filter(user=user).values_list(
+                'document__document_type',
+                flat=True,
+            ),
+        )
+
+        assert saved_types == set(listener_registration_consents)
+
 
 class TestSocialAccountAdapter:
     """Тесты custom adapter-а социальной аутентификации."""
@@ -359,8 +435,59 @@ class TestSocialAccountAdapter:
             provider_uid='yandex-2004',
             email='listener@example.test',
             is_email_verified=True,
+            create_account=False,
+            accepted_consents=(),
+            ip_address='127.0.0.1',
+            user_agent='',
         )
         sociallogin.save.assert_called_once_with(request)
+
+    def test_save_user_passes_registration_data_to_service(
+        self,
+        monkeypatch,
+        rf,
+    ):
+        """Передает параметры регистрации и согласия в social auth service."""
+        resolved_user = UserFactory()
+        service = Mock()
+        service.resolve_user.return_value = resolved_user
+
+        adapter = SocialAccountAdapter()
+        sociallogin = build_sociallogin(
+            provider=YANDEX_PROVIDER,
+            uid='yandex-2007',
+            email='listener@example.test',
+        )
+
+        consents = set(
+            ConsentPolicy.get_required(
+                ConsentScenario.LISTENER_REGISTRATION,
+            ),
+        )
+
+        request = rf.post('/api/v1/auth/social/yandex/')
+        request.social_create_account = True
+        request.social_consents = consents
+
+        monkeypatch.setattr(adapter, 'get_service', lambda: service)
+        monkeypatch.setattr(
+            adapter,
+            'is_email_verified',
+            lambda *args, **kwargs: True,
+        )
+
+        adapter.save_user(request, sociallogin)
+
+        service.resolve_user.assert_called_once_with(
+            provider=YANDEX_PROVIDER,
+            provider_uid='yandex-2007',
+            email='listener@example.test',
+            is_email_verified=True,
+            create_account=True,
+            accepted_consents=consents,
+            ip_address='127.0.0.1',
+            user_agent='',
+        )
 
     def test_save_user_returns_service_domain_error_for_api_request(
         self,

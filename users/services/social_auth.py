@@ -4,12 +4,14 @@ from django.db import IntegrityError, transaction
 
 from common.utils import normalize_email
 
+from users.consents_policy import ConsentScenario
 from users.constants import (
     MAX_USER_CREATE_ATTEMPTS,
     SOCIAL_AUTH_ERRORS,
     SOCIAL_AUTH_ERROR_BLOCKED_USER,
     SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
     SOCIAL_AUTH_ERROR_MISSING_EMAIL,
+    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
     SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED,
 )
 from users.exceptions import SocialAuthException
@@ -18,6 +20,7 @@ from users.helpers import (
     generate_username,
     set_unusable_password,
 )
+from users.services import ConsentService
 
 User = get_user_model()
 
@@ -61,6 +64,10 @@ class SocialAuthService:
         provider_uid: str,
         email: str,
         is_email_verified: bool,
+        create_account: bool = False,
+        accepted_consents=(),
+        ip_address: str | None = None,
+        user_agent: str = '',
     ) -> User:
         """Возвращает существующего или создает нового пользователя."""
         user = self.find_user_by_social_account(
@@ -103,10 +110,35 @@ class SocialAuthService:
 
             return existing_user
 
-        return self._create_account_from_social(
+        if not create_account:
+            raise SocialAuthException(
+                SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
+                SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED],
+            )
+
+        accepted_consents = set(accepted_consents)
+
+        ConsentService.validate(
+            scenario=ConsentScenario.LISTENER_REGISTRATION,
+            accepted_types=accepted_consents,
+        )
+
+        user, created = self._create_account_from_social(
             email=email,
             is_email_verified=is_email_verified,
         )
+
+        if created:
+            ConsentService.accept(
+                scenario=ConsentScenario.LISTENER_REGISTRATION,
+                accepted_types=accepted_consents,
+                user=user,
+                email=user.email,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+
+        return user
 
     def find_user_by_social_account(
         self,
@@ -128,7 +160,7 @@ class SocialAuthService:
         *,
         email: str,
         is_email_verified: bool,
-    ) -> User:
+    ) -> tuple[User, bool]:
         """Создает пользователя из соцсети с retry при конфликте username."""
         for attempt in range(MAX_USER_CREATE_ATTEMPTS):
             try:
@@ -140,7 +172,7 @@ class SocialAuthService:
                     )
                     set_unusable_password(user)
                     ensure_listener_profile(user)
-                    return user
+                    return user, True
 
             except IntegrityError:
                 existing_user = User.objects.filter(email=email).first()
@@ -154,7 +186,7 @@ class SocialAuthService:
                                 SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED
                             ],
                         )
-                    return existing_user
+                    return existing_user, False
                 continue
         raise SocialAuthException(
             SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED,

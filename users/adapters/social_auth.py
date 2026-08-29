@@ -8,6 +8,7 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 
+from common.utils import get_client_ip, get_user_agent
 from common.utils.urls import build_frontend_url
 
 from config import settings
@@ -82,6 +83,18 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 provider_uid=uid,
                 email=email,
                 is_email_verified=is_email_verified,
+                create_account=getattr(
+                    request,
+                    'social_create_account',
+                    False,
+                ),
+                accepted_consents=getattr(
+                    request,
+                    'social_consents',
+                    (),
+                ),
+                ip_address=get_client_ip(request),
+                user_agent=get_user_agent(request),
             )
         except SocialAuthException as exc:
             logger.warning(
