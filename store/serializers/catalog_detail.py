@@ -18,6 +18,7 @@ class CatalogDetailBaseSerializer(ProductImagesMixin, serializers.Serializer):
     """Базовый сериализатор витринной detail-карточки."""
 
     artist_name = serializers.SerializerMethodField()
+    artist_slug = serializers.SerializerMethodField()
     artist_image = serializers.SerializerMethodField()
 
     def get_artist_name(self, obj) -> str | None:
@@ -33,6 +34,13 @@ class CatalogDetailBaseSerializer(ProductImagesMixin, serializers.Serializer):
         if artist is None:
             return None
         return self.get_image_url(artist.cover)
+
+    def get_artist_slug(self, obj) -> str | None:
+        """Возвращает slug артиста-владельца."""
+        artist = getattr(obj, 'artist', None)
+        if artist is None:
+            return None
+        return artist.slug
 
 
 class CatalogReleaseVariantSerializer(
@@ -167,6 +175,7 @@ class CatalogReleaseDetailSerializer(
         fields = (
             'id',
             'artist_name',
+            'artist_slug',
             'artist_image',
             'is_single',
             'variants',
@@ -267,6 +276,7 @@ class CatalogMerchDetailSerializer(
             'description',
             'price',
             'artist_name',
+            'artist_slug',
             'artist_image',
             'allow_overpay',
             'images',
