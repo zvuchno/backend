@@ -17,16 +17,17 @@ from store.serializers.mixins import (
 class CatalogDetailBaseSerializer(ProductImagesMixin, serializers.Serializer):
     """Базовый сериализатор витринной detail-карточки."""
 
-    artist_name = serializers.SerializerMethodField()
-    artist_slug = serializers.SerializerMethodField()
+    artist_name = serializers.CharField(
+        source='artist.name',
+        read_only=True,
+        allow_null=True,
+    )
+    artist_slug = serializers.CharField(
+        source='artist.slug',
+        read_only=True,
+        allow_null=True,
+    )
     artist_image = serializers.SerializerMethodField()
-
-    def get_artist_name(self, obj) -> str | None:
-        """Возвращает имя артиста-владельца."""
-        artist = getattr(obj, 'artist', None)
-        if artist is None:
-            return None
-        return artist.name
 
     def get_artist_image(self, obj) -> str | None:
         """Возвращает изображение артиста."""
@@ -34,13 +35,6 @@ class CatalogDetailBaseSerializer(ProductImagesMixin, serializers.Serializer):
         if artist is None:
             return None
         return self.get_image_url(artist.cover)
-
-    def get_artist_slug(self, obj) -> str | None:
-        """Возвращает slug артиста-владельца."""
-        artist = getattr(obj, 'artist', None)
-        if artist is None:
-            return None
-        return artist.slug
 
 
 class CatalogReleaseVariantSerializer(
