@@ -2,9 +2,10 @@
 
 from collections.abc import Iterable
 
+from django.conf import settings
 from rest_framework.exceptions import ValidationError
 
-from users.consents_policy import ConsentContext, ConsentPolicy
+from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.models import ConsentDocument, UserConsent
 
 
@@ -15,7 +16,7 @@ class ConsentService:
     def accept(
         cls,
         *,
-        context: ConsentContext,
+        scenario: ConsentScenario,
         accepted_types: Iterable[str],
         user,
         email: str,
@@ -28,9 +29,12 @@ class ConsentService:
         accepted_types = set(accepted_types)
 
         cls.validate(
-            context=context,
+            scenario=scenario,
             accepted_types=accepted_types,
         )
+
+        if not accepted_types:
+            return
 
         documents = ConsentDocument.objects.filter(
             document_type__in=accepted_types,
@@ -65,25 +69,18 @@ class ConsentService:
     @staticmethod
     def validate(
         *,
-        context: ConsentContext,
+        scenario: ConsentScenario,
         accepted_types: set[str],
     ) -> None:
-        """Проверяет обязательные и допустимые типы согласий."""
-        required = ConsentPolicy.get_required(context)
-        allowed = ConsentPolicy.get_allowed(context)
+        """Проверяет обязательные типы согласий."""
+        if not settings.CONSENT_ENFORCE_REQUIRED:
+            return
 
+        required = ConsentPolicy.get_required(scenario)
         missing = required - accepted_types
 
         if missing:
             raise ValidationError({
                 'consents': 'Не приняты все обязательные согласия.',
-            })
-
-        unknown = accepted_types - allowed
-
-        if unknown:
-            raise ValidationError({
-                'consents': (
-                    'Переданы согласия, недоступные для этого сценария.'
-                ),
+                'missing': sorted(missing),
             })

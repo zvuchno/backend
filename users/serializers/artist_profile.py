@@ -7,7 +7,7 @@ from rest_framework import serializers
 from common.services import get_artist_publication_readiness
 from common.utils import get_client_ip, get_user_agent
 
-from users.consents_policy import ConsentContext
+from users.consents_policy import ConsentScenario
 from users.helpers import ensure_listener_profile
 from users.models import (
     ArtistContact,
@@ -287,13 +287,13 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 ),
             })
 
-        context = self._get_consent_context(
+        scenario = self._get_consent_scenario(
             user,
             target_type,
         )
-        if context is not None:
+        if scenario is not None:
             ConsentService.validate(
-                context=context,
+                scenario=scenario,
                 accepted_types=set(attrs.get('consents') or ()),
             )
 
@@ -313,21 +313,23 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
         ensure_listener_profile(user)
         try:
             with transaction.atomic():
-                accepted_types = set(validated_data.pop('consents', ()))
+                accepted_types = set(
+                    validated_data.pop('consents', None) or (),
+                )
                 profile = ArtistProfile.objects.create(
                     user=user,
                     **validated_data,
                 )
-                context = (
-                    ConsentContext.LABEL_ONBOARDING
+                scenario = (
+                    ConsentScenario.LABEL_ONBOARDING
                     if profile.profile_type == ArtistProfileType.LABEL
-                    else ConsentContext.ARTIST_ONBOARDING
+                    else ConsentScenario.ARTIST_ONBOARDING
                 )
 
                 request = self.context['request']
 
                 ConsentService.accept(
-                    context=context,
+                    scenario=scenario,
                     accepted_types=accepted_types,
                     user=user,
                     email=user.email,
@@ -348,11 +350,11 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 )
             raise
 
-    def _get_consent_context(
+    def _get_consent_scenario(
         self,
         user,
         profile_type,
-    ) -> ConsentContext | None:
+    ) -> ConsentScenario | None:
         """Возвращает контекст согласий для повышения пользователя."""
         profile = getattr(user, 'artist_profile', None)
 
@@ -360,9 +362,9 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
             return None
 
         if profile_type == ArtistProfileType.LABEL:
-            return ConsentContext.LABEL_ONBOARDING
+            return ConsentScenario.LABEL_ONBOARDING
 
-        return ConsentContext.ARTIST_ONBOARDING
+        return ConsentScenario.ARTIST_ONBOARDING
 
 
 class ArtistProfileClaimInvitationShortSerializer(

@@ -594,3 +594,9 @@ PUBLICATION_READINESS_ENABLED = os.getenv(
     'PUBLICATION_READINESS_ENABLED',
     'True',
 ).lower() == 'true'
+
+# требовать обязательные согласия пользователя.
+CONSENT_ENFORCE_REQUIRED = os.getenv(
+    'CONSENT_ENFORCE_REQUIRED',
+    'True',
+).lower() == 'true'
