@@ -37,6 +37,7 @@ SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED = 'email_not_confirmed'
 SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED = 'username_generation_failed'
 SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED = 'social_save_failed'
 SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED = 'oauth_auth_failed'
+SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED = 'registration_required'
 
 SOCIAL_AUTH_ERRORS = {
     SOCIAL_AUTH_ERROR_BLOCKED_USER: 'Учетная запись заблокирована.',
@@ -52,6 +53,9 @@ SOCIAL_AUTH_ERRORS = {
     ),
     SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED: (
         'Ошибка аутентификации через OAuth.'
+    ),
+    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED: (
+        'Для входа через соцсеть необходимо создать аккаунт.'
     ),
 }
 
