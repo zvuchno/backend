@@ -225,8 +225,8 @@ SELECT
     artist.name AS artist_name,
 
     CASE
-        WHEN album.is_single = TRUE THEN 'Сингл'
-        ELSE 'Альбом'
+        WHEN album.is_single = TRUE THEN 'Сингл'::varchar
+        ELSE 'Альбом'::varchar
     END AS kind,
 
     genre.name AS genre_name,
@@ -362,6 +362,7 @@ SELECT
         FROM store_image image
         WHERE
             image.merch_id = merch.id
+            AND image.is_active = TRUE
         ORDER BY
             image.is_main DESC,
             image.id

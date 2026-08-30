@@ -1,4 +1,10 @@
-"""Тесты глобального поиска по каталогу (CatalogSearch)."""
+"""Тесты глобального поиска по каталогу (CatalogSearch).
+
+Требуют DB Postgres
+запуск: pytest -m postgres
+(docker compose exec backend
+pytest store/tests/test_catalog_search.py -m postgres)
+"""
 
 import pytest
 from django.core.files.base import ContentFile
@@ -6,7 +12,7 @@ from django.db import connection
 from django.urls import reverse
 
 from store.models import Product
-from store.tests.factories import GenreFactory, MerchKindFactory
+from store.tests.factories import GenreFactory
 from store.tests.scenarios import (
     create_album_product,
     create_merch_product,
@@ -63,6 +69,7 @@ def find_item(response, name):
 # =================================
 # Пустой / некорректный запрос
 # =================================
+@pytest.mark.postgres
 @pytest.mark.django_db
 class TestCatalogSearchEmptyQuery:
     """Поведение при пустом или отсутствующем поисковом запросе."""
@@ -102,6 +109,7 @@ class TestCatalogSearchEmptyQuery:
 # =================================
 # Альбомы
 # =================================
+@pytest.mark.postgres
 @pytest.mark.django_db
 @pytest.mark.usefixtures('publication_readiness_disabled')
 class TestCatalogSearchAlbum:
@@ -217,6 +225,7 @@ class TestCatalogSearchAlbum:
 # =================================
 # Треки
 # =================================
+@pytest.mark.postgres
 @pytest.mark.django_db
 @pytest.mark.usefixtures('publication_readiness_disabled')
 class TestCatalogSearchTrack:
@@ -300,6 +309,7 @@ class TestCatalogSearchTrack:
 # =================================
 # Мерч
 # =================================
+@pytest.mark.postgres
 @pytest.mark.django_db
 @pytest.mark.usefixtures('publication_readiness_disabled')
 class TestCatalogSearchMerch:
@@ -398,6 +408,7 @@ class TestCatalogSearchMerch:
 # =================================
 # Артисты, жанры, типы мерча
 # =================================
+@pytest.mark.postgres
 @pytest.mark.django_db
 class TestCatalogSearchReferenceEntities:
     """Поиск по справочным сущностям без товаров."""
@@ -450,42 +461,11 @@ class TestCatalogSearchReferenceEntities:
             args=(artist.id,),
         )
 
-    def test_genre_result_has_no_clickable_target(
-        self,
-        api_client,
-        catalog_search_url,
-        refresh_catalog_search,
-    ):
-        """У жанра нет detail-карточки — target.type/url пустые."""
-        GenreFactory(name='Vaporwave', is_active=True)
-        refresh_catalog_search()
-
-        response = do_search(api_client, catalog_search_url, 'Vaporwave')
-        item = find_item(response, 'Vaporwave')
-
-        assert item['target']['type'] is None
-        assert item['target']['url'] is None
-
-    def test_merch_kind_result_has_no_clickable_target(
-        self,
-        api_client,
-        catalog_search_url,
-        refresh_catalog_search,
-    ):
-        """У типа мерча тоже нет detail-карточки."""
-        MerchKindFactory(name='Худи', is_active=True)
-        refresh_catalog_search()
-
-        response = do_search(api_client, catalog_search_url, 'Худи')
-        item = find_item(response, 'Худи')
-
-        assert item['target']['type'] is None
-        assert item['target']['url'] is None
-
 
 # =================================
 # Опечатки (trigram similarity)
 # =================================
+@pytest.mark.postgres
 @pytest.mark.django_db
 @pytest.mark.usefixtures('publication_readiness_disabled')
 class TestCatalogSearchFuzzyMatch:
@@ -531,6 +511,7 @@ class TestCatalogSearchFuzzyMatch:
 # =================================
 # Готовность артиста к публикации (54-ФЗ)
 # =================================
+@pytest.mark.postgres
 @pytest.mark.django_db
 @pytest.mark.usefixtures('publication_readiness_enabled')
 class TestCatalogSearchPublicationReadiness:
@@ -575,6 +556,7 @@ class TestCatalogSearchPublicationReadiness:
 # =================================
 # Изображение
 # =================================
+@pytest.mark.postgres
 @pytest.mark.django_db
 @pytest.mark.usefixtures('publication_readiness_disabled')
 class TestCatalogSearchImage:

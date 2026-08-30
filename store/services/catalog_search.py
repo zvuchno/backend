@@ -9,8 +9,6 @@ ENTITY_TYPE_PRIORITY = {
     CatalogSearch.EntityType.ALBUM: 2,
     CatalogSearch.EntityType.TRACK: 3,
     CatalogSearch.EntityType.MERCH: 4,
-    CatalogSearch.EntityType.GENRE: 5,
-    CatalogSearch.EntityType.MERCH_KIND: 6,
 }
 
 

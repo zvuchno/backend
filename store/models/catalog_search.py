@@ -14,8 +14,6 @@ class CatalogSearch(models.Model):
         TRACK = 'track', 'Трек'
         MERCH = 'merch', 'Мерч'
         ARTIST = 'artist', 'Артист'
-        GENRE = 'genre', 'Жанр'
-        MERCH_KIND = 'merch_kind', 'Тип мерча'
 
     # Суррогатный id из ROW_NUMBER() в VIEW.
     # Не стабилен между REFRESH MATERIALIZED VIEW — не хранить,
