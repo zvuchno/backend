@@ -1,5 +1,9 @@
 from django.conf import settings
-from django.contrib.postgres.search import SearchQuery, SearchRank
+from django.contrib.postgres.search import (
+    SearchQuery,
+    SearchRank,
+    TrigramSimilarity,
+)
 from django.db.models import Case, F, Q, QuerySet, Value, When
 
 from store.models import CatalogSearch
@@ -38,31 +42,24 @@ class CatalogSearchService:
 
         entity_priority = Case(
             *(
-                When(
-                    entity_type=entity_type,
-                    then=Value(priority),
-                )
+                When(entity_type=entity_type, then=Value(priority))
                 for entity_type, priority in ENTITY_TYPE_PRIORITY.items()
             ),
             default=Value(99),
         )
 
         return qs.annotate(
-            fts_rank=SearchRank(
-                F('search_vector'),
-                search_query,
-            ),
+            fts_rank=SearchRank(F('search_vector'), search_query),
             has_fts=Case(
-                When(
-                    search_vector=search_query,
-                    then=Value(1),
-                ),
+                When(search_vector=search_query, then=Value(1)),
                 default=Value(0),
             ),
+            trigram_rank=TrigramSimilarity('search_text', query),
             entity_priority=entity_priority,
         ).order_by(
-            'entity_priority',
             '-has_fts',
             '-fts_rank',
+            '-trigram_rank',
+            'entity_priority',
             'name',
         )

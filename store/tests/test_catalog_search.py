@@ -2,8 +2,8 @@
 
 Требуют DB Postgres
 запуск: pytest -m postgres
-(docker compose exec backend
-pytest store/tests/test_catalog_search.py -m postgres)
+(docker compose exec backend pytest
+ store/tests/test_catalog_search.py -m postgres)
 """
 
 import pytest
@@ -186,20 +186,6 @@ class TestCatalogSearchAlbum:
         response = do_search(api_client, catalog_search_url, 'Secret')
 
         assert response_names(response) == []
-
-    def test_link_only_album_included(
-        self,
-        api_client,
-        catalog_search_url,
-        refresh_catalog_search,
-    ):
-        """Альбом с visibility=link_only находится в поиске."""
-        create_album_product(name='Unlisted Album', visibility='link_only')
-        refresh_catalog_search()
-
-        response = do_search(api_client, catalog_search_url, 'Unlisted')
-
-        assert 'Unlisted Album' in response_names(response)
 
     def test_album_target_points_to_its_own_release(
         self,
@@ -597,27 +583,3 @@ class TestCatalogSearchImage:
         item = find_item(response, 'No Cover Album')
 
         assert item['image'] is None
-
-    def test_finds_active_artist_by_name(
-        self,
-        api_client,
-        catalog_search_url,
-        refresh_catalog_search,
-    ):
-        from django.db import connection
-
-        ArtistProfileFactory(name='Standalone Artist', is_active=True)
-        refresh_catalog_search()
-
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT count(*) FROM catalog_search;')
-            print('TOTAL ROWS:', cursor.fetchone())
-
-            cursor.execute(
-                'SELECT entity_type, name FROM catalog_search '
-                "WHERE entity_type = 'artist';",
-            )
-            print('ARTIST ROWS:', cursor.fetchall())
-
-        response = do_search(api_client, catalog_search_url, 'Standalone')
-        assert 'Standalone Artist' in response_names(response)

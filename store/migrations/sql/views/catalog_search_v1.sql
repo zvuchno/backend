@@ -48,7 +48,7 @@ WITH available_products AS (
 
         AND album.is_active = TRUE
         AND album.is_published = TRUE
-        AND album.visibility IN ('public', 'link_only')
+        AND album.visibility = 'public'
 
         AND artist.is_active = TRUE
 

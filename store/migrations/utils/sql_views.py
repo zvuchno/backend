@@ -316,3 +316,114 @@ def drop_materialized_view(
         drop,
         reverse_code=migrations.RunPython.noop,
     )
+
+
+def _read_view_indexes_sql(view_name: str, version: int) -> str:
+    """Читает SQL-файл индексов указанной версии materialized view."""
+    path = SQL_VIEWS_DIR / f'{view_name}_v{version}_indexes.sql'
+    return path.read_text(encoding='utf-8')
+
+
+def _drop_all_indexes_sql(view_name: str) -> str:
+    """Возвращает SQL, который дропает ВСЕ индексы объекта view_name."""
+    return f"""
+DO $$
+DECLARE
+    idx RECORD;
+BEGIN
+    FOR idx IN
+        SELECT indexname
+        FROM pg_indexes
+        WHERE tablename = '{view_name}'
+    LOOP
+        EXECUTE format('DROP INDEX IF EXISTS %I', idx.indexname);
+    END LOOP;
+END $$;
+"""
+
+
+def create_postgres_extension(
+    extension_name: str,
+) -> migrations.RunPython:
+    """Создаёт PostgreSQL extension (например pg_trgm, unaccent).
+
+    Пример:
+
+        operations = [
+            create_postgres_extension('pg_trgm'),
+        ]
+
+    На SQLite операция пропускается. CREATE EXTENSION IF NOT EXISTS
+    идемпотентен — если extension уже создан другой миграцией,
+    повторный вызов ничего не делает и не падает.
+
+    При откате extension намеренно не удаляется: его может использовать
+    другой объект БД, созданный уже после этой миграции (в том числе
+    в другом приложении), и DROP EXTENSION мог бы сломать несвязанный
+    функционал. Extension — это ресурс уровня базы данных, а не
+    конкретной миграции.
+    """
+
+    def create(apps, schema_editor):
+        if schema_editor.connection.vendor != 'postgresql':
+            return
+
+        schema_editor.execute(
+            f'CREATE EXTENSION IF NOT EXISTS {extension_name};',
+        )
+
+    return migrations.RunPython(
+        create,
+        reverse_code=migrations.RunPython.noop,
+    )
+
+
+def create_materialized_view_indexes(
+    view_name: str,
+    version: int,
+) -> migrations.RunPython:
+    """Создаёт индексы materialized view из версионного SQL-файла.
+
+    Используется сразу после create_materialized_view() тем же
+    view_name/version — индексы физически относятся к конкретной
+    версии SQL самой view.
+
+    Пример:
+
+        operations = [
+            create_materialized_view('catalog_search', version=1),
+            create_materialized_view_indexes('catalog_search', version=1),
+        ]
+
+    SQL-файл должен содержать только CREATE [UNIQUE] INDEX.
+    На SQLite операция пропускается (GIN/trgm-индексы недоступны).
+
+    При откате все индексы объекта view_name удаляются динамически —
+    см. _drop_all_indexes_sql(). Отдельный DROP INDEX SQL поддерживать
+    не нужно.
+
+    Важно: при DROP MATERIALIZED VIEW (например, внутри
+    replace_materialized_view()) все её индексы удаляются автоматически
+    вместе с ней на уровне PostgreSQL — после replace их нужно создать
+    заново отдельной операцией create_materialized_view_indexes()
+    с новой версией.
+    """
+
+    def create(apps, schema_editor):
+        if schema_editor.connection.vendor != 'postgresql':
+            return
+
+        schema_editor.execute(
+            _read_view_indexes_sql(view_name, version),
+        )
+
+    def drop(apps, schema_editor):
+        if schema_editor.connection.vendor != 'postgresql':
+            return
+
+        schema_editor.execute(_drop_all_indexes_sql(view_name))
+
+    return migrations.RunPython(
+        create,
+        reverse_code=drop,
+    )
