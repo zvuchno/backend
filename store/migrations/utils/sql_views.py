@@ -185,3 +185,88 @@ def replace_related_views(
         sql=f'{drop_sql}\n{create_sql}',
         reverse_sql=f'{reverse_drop_sql}\n{reverse_create_sql}',
     )
+
+
+def create_materialized_view(
+    view_name: str,
+    version: int,
+) -> migrations.RunSQL:
+    """Создаёт materialized view из версионного SQL-файла.
+
+    Используется, когда materialized view появляется впервые.
+
+    Пример:
+
+        operations = [
+            create_materialized_view('catalog_search', version=1),
+        ]
+
+    SQL-файл должен содержать только CREATE MATERIALIZED VIEW.
+    При откате миграции materialized view будет удалена.
+    """
+    return migrations.RunSQL(
+        sql=read_view_sql(view_name, version),
+        reverse_sql=(
+            f'DROP MATERIALIZED VIEW IF EXISTS {view_name};'
+        ),
+    )
+
+
+def replace_materialized_view(
+    view_name: str,
+    from_version: int,
+    to_version: int,
+) -> migrations.RunSQL:
+    """Заменяет существующую materialized view на новую версию.
+
+    Используется, когда меняется SQL существующей materialized view.
+
+    Пример:
+
+        operations = [
+            replace_materialized_view(
+                view_name='catalog_search',
+                from_version=1,
+                to_version=2,
+            ),
+        ]
+
+    При применении миграции:
+    - удаляется текущая materialized view;
+    - создаётся materialized view из файла новой версии.
+
+    При откате:
+    - удаляется новая materialized view;
+    - создаётся materialized view из файла прошлой версии.
+
+    Важно:
+    Индексы materialized view при DROP удаляются вместе с ней.
+    Поэтому после replace_materialized_view() их необходимо
+    создать заново отдельной операцией миграции.
+    """
+    return migrations.RunSQL(
+        sql=(
+            f'DROP MATERIALIZED VIEW IF EXISTS {view_name};\n'
+            f'{read_view_sql(view_name, to_version)}'
+        ),
+        reverse_sql=(
+            f'DROP MATERIALIZED VIEW IF EXISTS {view_name};\n'
+            f'{read_view_sql(view_name, from_version)}'
+        ),
+    )
+
+
+def drop_materialized_view(
+    view_name: str,
+) -> migrations.RunSQL:
+    """Возвращает операцию удаления materialized view.
+
+    Используется, когда materialized view необходимо удалить
+    без создания новой версии.
+
+    При откате миграции materialized view не восстанавливается.
+    """
+    return migrations.RunSQL(
+        sql=f'DROP MATERIALIZED VIEW IF EXISTS {view_name};',
+        reverse_sql=migrations.RunSQL.noop,
+    )

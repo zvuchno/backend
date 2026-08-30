@@ -4,6 +4,15 @@ from django.db.models import Case, F, Q, QuerySet, Value, When
 
 from store.models import CatalogSearch
 
+ENTITY_TYPE_PRIORITY = {
+    CatalogSearch.EntityType.ARTIST: 1,
+    CatalogSearch.EntityType.ALBUM: 2,
+    CatalogSearch.EntityType.TRACK: 3,
+    CatalogSearch.EntityType.MERCH: 4,
+    CatalogSearch.EntityType.GENRE: 5,
+    CatalogSearch.EntityType.MERCH_KIND: 6,
+}
+
 
 class CatalogSearchService:
     """Поиск по глобальному каталогу."""
@@ -29,15 +38,33 @@ class CatalogSearchService:
                 | Q(is_publication_ready__isnull=True),
             )
 
+        entity_priority = Case(
+            *(
+                When(
+                    entity_type=entity_type,
+                    then=Value(priority),
+                )
+                for entity_type, priority in ENTITY_TYPE_PRIORITY.items()
+            ),
+            default=Value(99),
+        )
+
         return qs.annotate(
-            fts_rank=SearchRank(F('search_vector'), search_query),
+            fts_rank=SearchRank(
+                F('search_vector'),
+                search_query,
+            ),
             has_fts=Case(
-                When(search_vector=search_query, then=Value(1)),
+                When(
+                    search_vector=search_query,
+                    then=Value(1),
+                ),
                 default=Value(0),
             ),
+            entity_priority=entity_priority,
         ).order_by(
+            'entity_priority',
             '-has_fts',
             '-fts_rank',
-            'entity_type',
             'name',
         )

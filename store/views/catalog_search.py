@@ -2,10 +2,12 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
+from store.schema.catalog_search_schema import catalog_search_schema
 from store.serializers import CatalogSearchSerializer
 from store.services.catalog_search import CatalogSearchService
 
 
+@catalog_search_schema
 class CatalogSearchView(ListAPIView):
     """Глобальный поиск по каталогу."""
 

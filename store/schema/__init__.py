@@ -17,6 +17,7 @@ from .catalog_datail import (
     catalog_merch_detail_schema,
     catalog_release_detail_schema,
 )
+from .catalog_search_schema import catalog_search_schema
 from .cdek import cdek_cities_suggest_schema, cdek_widget_schema
 from .cdek_calculate import cdek_calculate_schema
 from .checkout import checkout_schema
@@ -59,6 +60,7 @@ __all__ = [
     'cart_schema',
     'catalog_list_schema',
     'catalog_merch_detail_schema',
+    'catalog_search_schema',
     'catalog_release_detail_schema',
     'cdek_calculate_schema',
     'cdek_cities_suggest_schema',

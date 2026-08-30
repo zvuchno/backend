@@ -16,11 +16,22 @@ class CatalogSearchSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()
     target = serializers.SerializerMethodField()
+    artist = serializers.CharField(
+        source='artist_name',
+        read_only=True,
+        allow_null=True,
+        help_text=(
+            'Имя артиста для альбома, трека и мерча. '
+            'Для остальных типов — null.'
+        ),
+    )
 
     class Meta:
         model = CatalogSearch
         fields = (
             'image',
+            'artist',
+            'kind',
             'name',
             'target',
         )

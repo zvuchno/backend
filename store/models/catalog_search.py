@@ -40,6 +40,11 @@ class CatalogSearch(models.Model):
         'Название',
         max_length=MAX_CHAR_LENGTH,
     )
+    kind = models.CharField(
+        'Вид карточки',
+        max_length=MAX_CHAR_LENGTH,
+        null=True,
+    )
     artist_name = models.CharField(
         'Артист',
         max_length=MAX_CHAR_LENGTH,
