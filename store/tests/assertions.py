@@ -23,6 +23,7 @@ PUBLIC_PRODUCT_CARD_TARGET_KEYS = {
 CATALOG_RELEASE_DETAIL_KEYS = {
     'id',
     'artist_name',
+    'artist_slug',
     'artist_image',
     'is_single',
     'variants',
@@ -59,6 +60,7 @@ CATALOG_MERCH_DETAIL_KEYS = {
     'stock',
     'variants',
     'artist_name',
+    'artist_slug',
     'artist_image',
     'images',
 }

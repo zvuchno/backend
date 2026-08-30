@@ -3,6 +3,8 @@
 from dj_rest_auth.registration.serializers import SocialLoginSerializer
 from rest_framework import serializers
 
+from users.models import ConsentDocument
+
 
 class SocialAuthInputSerializer(SocialLoginSerializer):
     """Сериализатор принимает code / token от провайдера."""
@@ -17,12 +19,36 @@ class SocialAuthInputSerializer(SocialLoginSerializer):
     )
     id_token = serializers.HiddenField(default='')
 
+    create_account = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text='Разрешает создать аккаунт, '
+        'если пользователь ещё не существует.',
+    )
+    consents = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=ConsentDocument.DocumentType.choices,
+        ),
+        required=False,
+        default=list,
+        write_only=True,
+        label='Принятые согласия',
+    )
+
     def validate(self, attrs):
         """Передано хотя бы одно поле."""
         if not attrs.get('code') and not attrs.get('access_token'):
             raise serializers.ValidationError(
                 'Необходимо предоставить code или access_token.',
             )
+
+        create_account = attrs.pop('create_account', False)
+        consents = attrs.pop('consents', [])
+
+        request = self.context['request']
+        request.social_create_account = create_account
+        request.social_consents = set(consents)
+
         attrs = super().validate(attrs)
         if not attrs.get('user'):
             raise serializers.ValidationError(

@@ -15,8 +15,8 @@ catalog_release_detail_schema = extend_schema(
     summary='Детальная карточка релиза в каталоге',
     description=(
         'Возвращает данные релиза для публичной витрины.\n\n'
-        'В корне ответа находятся данные самого релиза: название альбома, '
-        'имя артиста, признак сингла и описание.\n\n'
+        'В корне ответа находятся id релиза, данные '
+        'артиста и признак сингла.\n\n'
         'Коммерческие данные находятся в variants. Каждый вариант содержит '
         'цену, остаток, возможность переплаты, изображения и variant_id '
         'для добавления в корзину.\n\n'
@@ -34,6 +34,8 @@ catalog_release_detail_schema = extend_schema(
             value={
                 'id': 10,
                 'artist_name': 'Артист',
+                'artist_slug': 'artist',
+                'artist_image': 'https://zvuchno.ru/media/artists/artist.jpg',
                 'is_single': False,
                 'variants': [
                     {
@@ -103,6 +105,8 @@ catalog_merch_detail_schema = extend_schema(
                 'price': '1500.00',
                 'description': 'Описание футболки.',
                 'artist_name': 'Артист',
+                'artist_slug': 'artist',
+                'artist_image': 'https://zvuchno.ru/media/artists/artist.jpg',
                 'kind': 'Футболка',
                 'property_name': 'Размер',
                 'stock': 7,

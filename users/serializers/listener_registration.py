@@ -8,7 +8,7 @@ from common.utils import get_client_ip, get_user_agent
 from ..services import ConsentService
 from .base_registration import BaseRegistrationSerializer
 from .mixins import PhoneRegistrationMixin
-from users.consents_policy import ConsentContext
+from users.consents_policy import ConsentScenario
 from users.models import ListenerProfile
 
 User = get_user_model()
@@ -33,7 +33,9 @@ class ListenerRegistrationSerializer(
         сериализатора, затем создает связанный профиль слушателя
         с переданным номером телефона. Операция выполняется атомарно.
         """
-        accepted_types = set(validated_data.pop('consents'))
+        accepted_types = set(
+            validated_data.pop('consents', None) or (),
+        )
         user = super().create(validated_data)
         ListenerProfile.objects.create(
             user=user,
@@ -42,7 +44,7 @@ class ListenerRegistrationSerializer(
         request = self.context.get('request')
 
         ConsentService.accept(
-            context=ConsentContext.LISTENER_REGISTRATION,
+            scenario=ConsentScenario.LISTENER_REGISTRATION,
             accepted_types=accepted_types,
             user=user,
             email=user.email,
@@ -61,8 +63,8 @@ class ListenerRegistrationSerializer(
         data['phone'] = str(instance.phone) if instance.phone else None
         return data
 
-    def get_consent_context(self, attrs):
-        return ConsentContext.LISTENER_REGISTRATION
+    def get_consent_scenario(self, attrs):
+        return ConsentScenario.LISTENER_REGISTRATION
 
     class Meta:
         model = User

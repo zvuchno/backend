@@ -8,12 +8,15 @@ from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 
+from common.utils import get_client_ip, get_user_agent
 from common.utils.urls import build_frontend_url
 
 from config import settings
 from users.constants import (
     SOCIAL_AUTH_ERRORS,
+    SOCIAL_AUTH_ERROR_MISSING_EMAIL,
     SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
+    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
 )
 from users.exceptions import SocialAuthException
@@ -47,25 +50,42 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         if user is None:
             user = service.find_user_by_email(email)
 
-        try:
-            service.ensure_user_is_active(user)
-            service.mark_email_verified_from_social_provider(
-                user=user,
-                email=email,
-                is_email_verified=self.is_email_verified(
-                    provider_obj,
-                    email,
-                ),
-            )
-        except SocialAuthException as exc:
+        if user is not None:
+            try:
+                service.ensure_user_is_active(user)
+                service.mark_email_verified_from_social_provider(
+                    user=user,
+                    email=email,
+                    is_email_verified=self.is_email_verified(
+                        provider_obj,
+                        email,
+                    ),
+                )
+            except SocialAuthException as exc:
+                self._handle_auth_error(
+                    request,
+                    exc.error_code,
+                    provider,
+                )
+
+            if not sociallogin.is_existing:
+                sociallogin.connect(request, user)
+
+            return
+
+        if not email:
             self._handle_auth_error(
                 request,
-                exc.error_code,
+                SOCIAL_AUTH_ERROR_MISSING_EMAIL,
                 provider,
             )
 
-        if user is not None and not sociallogin.is_existing:
-            sociallogin.connect(request, user)
+        if not getattr(request, 'social_create_account', False):
+            self._handle_auth_error(
+                request,
+                SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
+                provider,
+            )
 
     @transaction.atomic
     def save_user(self, request, sociallogin, form=None):
@@ -82,6 +102,18 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 provider_uid=uid,
                 email=email,
                 is_email_verified=is_email_verified,
+                create_account=getattr(
+                    request,
+                    'social_create_account',
+                    False,
+                ),
+                accepted_consents=getattr(
+                    request,
+                    'social_consents',
+                    (),
+                ),
+                ip_address=get_client_ip(request),
+                user_agent=get_user_agent(request),
             )
         except SocialAuthException as exc:
             logger.warning(
