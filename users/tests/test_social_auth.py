@@ -415,6 +415,36 @@ class TestSocialAccountAdapter:
 
         assert exc_info.value.error_code == SOCIAL_AUTH_ERROR_BLOCKED_USER
 
+    def test_pre_social_login_rejects_new_user_without_create_account(
+        self,
+        monkeypatch,
+        rf,
+    ):
+        """Прерывает social auth до signup для нового пользователя."""
+        adapter = SocialAccountAdapter()
+        sociallogin = build_sociallogin(
+            provider=YANDEX_PROVIDER,
+            uid='yandex-new-1',
+            email='brand.new@example.test',
+        )
+        request = rf.post('/api/v1/auth/social/yandex/')
+        request.social_create_account = False
+
+        monkeypatch.setattr(
+            adapter,
+            'is_email_verified',
+            lambda *args, **kwargs: True,
+        )
+
+        with pytest.raises(SocialAuthException) as exc_info:
+            adapter.pre_social_login(request, sociallogin)
+
+        assert (
+            exc_info.value.error_code
+            == SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED
+        )
+        sociallogin.connect.assert_not_called()
+
     def test_save_user_resolves_user_and_saves_sociallogin(
         self,
         monkeypatch,

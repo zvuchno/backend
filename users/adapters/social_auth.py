@@ -2,7 +2,6 @@
 
 import logging
 
-from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.db import IntegrityError, transaction
@@ -15,7 +14,9 @@ from common.utils.urls import build_frontend_url
 from config import settings
 from users.constants import (
     SOCIAL_AUTH_ERRORS,
+    SOCIAL_AUTH_ERROR_MISSING_EMAIL,
     SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
+    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
 )
 from users.exceptions import SocialAuthException
@@ -40,29 +41,6 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         email = sociallogin.user.email
         provider_obj = sociallogin.account.get_provider()
 
-        is_email_verified = self.is_email_verified(
-            provider_obj,
-            email,
-        )
-
-        if email and not sociallogin.email_addresses:
-            sociallogin.email_addresses = [
-                EmailAddress(
-                    email=email,
-                    verified=is_email_verified,
-                    primary=True,
-                ),
-            ]
-
-        logger.debug(
-            'Social login email data: email=%s email_addresses=%s',
-            sociallogin.user.email,
-            [
-                (item.email, item.verified)
-                for item in sociallogin.email_addresses
-            ],
-        )
-
         service = self.get_service()
         user = service.find_user_by_social_account(
             provider=provider,
@@ -72,22 +50,42 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         if user is None:
             user = service.find_user_by_email(email)
 
-        try:
-            service.ensure_user_is_active(user)
-            service.mark_email_verified_from_social_provider(
-                user=user,
-                email=email,
-                is_email_verified=is_email_verified,
-            )
-        except SocialAuthException as exc:
+        if user is not None:
+            try:
+                service.ensure_user_is_active(user)
+                service.mark_email_verified_from_social_provider(
+                    user=user,
+                    email=email,
+                    is_email_verified=self.is_email_verified(
+                        provider_obj,
+                        email,
+                    ),
+                )
+            except SocialAuthException as exc:
+                self._handle_auth_error(
+                    request,
+                    exc.error_code,
+                    provider,
+                )
+
+            if not sociallogin.is_existing:
+                sociallogin.connect(request, user)
+
+            return
+
+        if not email:
             self._handle_auth_error(
                 request,
-                exc.error_code,
+                SOCIAL_AUTH_ERROR_MISSING_EMAIL,
                 provider,
             )
 
-        if user is not None and not sociallogin.is_existing:
-            sociallogin.connect(request, user)
+        if not getattr(request, 'social_create_account', False):
+            self._handle_auth_error(
+                request,
+                SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
+                provider,
+            )
 
     @transaction.atomic
     def save_user(self, request, sociallogin, form=None):
@@ -205,7 +203,3 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         raise ImmediateHttpResponse(
             self._frontend_error_redirect(error_code, provider),
         )
-
-    def is_auto_signup_allowed(self, request, sociallogin) -> bool:
-        """Передаёт решение о регистрации нашему social auth flow."""
-        return True
