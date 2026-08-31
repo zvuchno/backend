@@ -15,6 +15,7 @@ from .catalog_card import (
     CatalogCardTargetSerializer,
     ProductCardSerializer,
 )
+from .catalog_search import CatalogSearchSerializer
 from .cdek_calculate import CdekCalculateSerializer
 from .checkout import (
     ArtistPickupPointsSerializer,
@@ -80,6 +81,7 @@ __all__ = [
     'CartItemWriteSerializer',
     'CatalogCardSerializer',
     'CatalogCardTargetSerializer',
+    'CatalogSearchSerializer',
     'CartReadSerializer',
     'CartWriteSerializer',
     'CdekCalculateSerializer',

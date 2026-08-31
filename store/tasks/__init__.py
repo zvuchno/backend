@@ -1,5 +1,6 @@
 from .album_archive import build_album_archive
 from .audio import prepare_track_audio
+from .catalog_search import refresh_catalog_search
 from .cdek import register_cdek_orders_task, update_cdek_shipment_task
 from .delete_anonymous_carts import delete_stale_anonymous_carts
 from .report import dispatch_monthly_reports
@@ -13,6 +14,7 @@ __all__ = [
     'delete_stale_anonymous_carts',
     'dispatch_monthly_reports',
     'prepare_track_audio',
+    'refresh_catalog_search',
     'register_cdek_orders_task',
     'release_expired_reservations',
     'send_telegram_notification',
