@@ -4,7 +4,6 @@
 """
 
 from django.contrib import admin, messages
-from rest_framework.exceptions import PermissionDenied
 
 from users.models import UserConsent
 from users.services import ConsentService
@@ -64,7 +63,6 @@ class UserConsentAdmin(admin.ModelAdmin):
         ConsentStatusFilter,
         'document__document_type',
         'accepted_at',
-        'revoked_at',
     )
     search_fields = ('email', 'user__email')
     fieldsets = (
@@ -116,27 +114,18 @@ class UserConsentAdmin(admin.ModelAdmin):
         """Запрещает ручное удаление согласий через кнопку 'Удалить'."""
         return False
 
-    def has_change_permission(self, request, obj=None):
-        """Запрещает ручное редактирование."""
-        return False
-
-    @admin.action(description='Отозвать выбранные согласия')
+    @admin.action(
+        description='Отозвать выбранные согласия',
+        permissions=('change',),
+    )
     def revoke_selected_consents(self, request, queryset):
         """Отзывает выбранные типы согласий пользователя."""
-        if not request.user.has_perm('users.change_userconsent'):
-            raise PermissionDenied
-
         revoked_count = 0
         processed = set()
 
         for consent in queryset.select_related('document', 'user'):
-            subject = (
-                ('user', consent.user_id)
-                if consent.user_id
-                else ('email', consent.email)
-            )
             key = (
-                subject,
+                consent.user_id or consent.email,
                 consent.document.document_type,
             )
 
