@@ -4,6 +4,7 @@ from .album import (
 )
 from .cart import Cart
 from .cart_item import CartItem
+from .catalog_search import CatalogSearch
 from .delivery import Delivery
 from .favorite import Favorite
 from .genre import Genre
@@ -35,6 +36,7 @@ __all__ = [
     'AlbumArchive',
     'Cart',
     'CartItem',
+    'CatalogSearch',
     'Delivery',
     'Favorite',
     'Genre',
