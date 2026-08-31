@@ -444,7 +444,7 @@ class TestCatalogSearchReferenceEntities:
         assert item['target']['id'] == artist.id
         assert item['target']['url'] == reverse(
             'api:users:artist_public',
-            args=(artist.id,),
+            args=(artist.slug,),
         )
 
 

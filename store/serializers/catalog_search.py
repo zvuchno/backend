@@ -77,15 +77,24 @@ class CatalogSearchSerializer(serializers.ModelSerializer):
 
         return obj.entity_id
 
-    def _get_target_url(self, target_type, target_id) -> str | None:
-        """Возвращает URL detail-ручки."""
+    def _get_target_url(self, obj, target_type, target_id) -> str | None:
+        """Возвращает URL detail-ручки.
+
+        Публичная ручка артиста работает по slug — для
+        entity_type=artist в reverse() передаём obj.target_slug.
+        """
+        if target_type == 'artist':
+            if not obj.target_slug:
+                return None
+
+            return reverse('api:users:artist_public', args=(obj.target_slug,))
+
         if target_id is None:
             return None
 
         url_names = {
             'release': 'api:store:catalog-release-detail',
             'merch': 'api:store:catalog-merch-detail',
-            'artist': 'api:users:artist_public',
         }
 
         url_name = url_names.get(target_type)
@@ -104,9 +113,6 @@ class CatalogSearchSerializer(serializers.ModelSerializer):
         return {
             'type': target_type,
             'id': target_id,
-            'url': self._get_target_url(
-                target_type,
-                target_id,
-            ),
+            'url': self._get_target_url(obj, target_type, target_id),
             'selected_variant_id': obj.selected_variant_id,
         }

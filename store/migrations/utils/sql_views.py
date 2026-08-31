@@ -323,7 +323,6 @@ def _read_view_indexes_sql(view_name: str, version: int) -> str:
     path = SQL_VIEWS_DIR / f'{view_name}_v{version}_indexes.sql'
     return path.read_text(encoding='utf-8')
 
-
 def _drop_all_indexes_sql(view_name: str) -> str:
     """Возвращает SQL, который дропает ВСЕ индексы объекта view_name."""
     return f"""
@@ -336,7 +335,7 @@ BEGIN
         FROM pg_indexes
         WHERE tablename = '{view_name}'
     LOOP
-        EXECUTE format('DROP INDEX IF EXISTS %I', idx.indexname);
+        EXECUTE format('DROP INDEX IF EXISTS %%I', idx.indexname);
     END LOOP;
 END $$;
 """

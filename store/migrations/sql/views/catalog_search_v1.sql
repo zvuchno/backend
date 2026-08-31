@@ -101,7 +101,7 @@ WITH available_products AS (
 
         AND album.is_active = TRUE
         AND album.is_published = TRUE
-        AND album.visibility IN ('public', 'link_only')
+        AND album.visibility = 'public'
 
         AND artist.is_active = TRUE
 
@@ -162,7 +162,7 @@ WITH available_products AS (
 
         AND merch.is_active = TRUE
         AND merch.is_published = TRUE
-        AND merch.visibility IN ('public', 'link_only')
+        AND merch.visibility = 'public'
 
         AND artist.is_active = TRUE
 
@@ -234,6 +234,7 @@ SELECT
     variants.variant_values,
     variants.selected_variant_id,
     NULL::bigint AS target_id,
+    NULL::varchar AS target_slug,
     ap.is_publication_ready,
 
     album.cover_image AS image,
@@ -293,6 +294,7 @@ SELECT
     variants.variant_values,
     variants.selected_variant_id,
     album.id AS target_id,
+    NULL::varchar AS target_slug,
     ap.is_publication_ready,
 
     album.cover_image AS image,
@@ -355,6 +357,7 @@ SELECT
     variants.variant_values,
     variants.selected_variant_id,
     NULL::bigint AS target_id,
+    NULL::varchar AS target_slug,
     ap.is_publication_ready,
 
     (
@@ -424,6 +427,7 @@ SELECT
     NULL::text AS variant_values,
     NULL::bigint AS selected_variant_id,
     NULL::bigint AS target_id,
+    artist.slug AS target_slug,
     NULL::boolean AS is_publication_ready,
 
     artist.cover AS image,

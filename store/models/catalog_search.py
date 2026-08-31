@@ -34,6 +34,11 @@ class CatalogSearch(models.Model):
         'ID целевой сущности',
         null=True,
     )
+    target_slug = models.CharField(
+        'Slug цели перехода',
+        max_length=MAX_CHAR_LENGTH,
+        null=True,
+    )
     name = models.CharField(
         'Название',
         max_length=MAX_CHAR_LENGTH,
