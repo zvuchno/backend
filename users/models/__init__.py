@@ -11,7 +11,7 @@ from .artist import (
     ArtistSocial,
     ArtistStoreSettings,
 )
-from .consent_document import ConsentDocument
+from .consents import ConsentDocument, UserConsent
 from .core_user import CoreUser
 from .email_verification_code import EmailVerificationCode
 from .invitation import (
@@ -20,7 +20,6 @@ from .invitation import (
     TokenInvitationStatus,
 )
 from .listener_profile import ListenerProfile
-from .user_consent import UserConsent
 
 __all__ = [
     'ArtistBankData',
