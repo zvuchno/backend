@@ -80,15 +80,10 @@ class UserConsent(TimestampModel):
         blank=True,
     )
 
-    revocation_reason = models.TextField(
-        'Причина отзыва',
-        blank=True,
-    )
-
     @property
-    def is_active(self) -> bool:
-        """Возвращает признак актуальности согласия."""
-        return self.revoked_at is None
+    def is_revoked(self) -> bool:
+        """Возвращает признак отзыва согласия."""
+        return self.revoked_at is not None
 
     def clean(self):
         super().clean()
