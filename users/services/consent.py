@@ -3,6 +3,8 @@
 from collections.abc import Iterable
 
 from django.conf import settings
+from django.db.models import Q
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from users.consents_policy import ConsentPolicy, ConsentScenario
@@ -65,6 +67,46 @@ class ConsentService:
                 order=order,
                 artist=artist,
             )
+
+    @classmethod
+    def revoke(
+        cls,
+        *,
+        document_type: str,
+        user=None,
+        email: str | None = None,
+    ) -> int:
+        """Отзывает действующие согласия указанного типа."""
+        if user is None and not email:
+            raise ValueError(
+                'Для отзыва согласия нужен пользователь или email.',
+            )
+
+        queryset = UserConsent.objects.filter(
+            document__document_type=document_type,
+            revoked_at__isnull=True,
+        )
+
+        if user is not None:
+            identity_q = Q(user=user)
+
+            effective_email = email or user.email
+            if effective_email:
+                identity_q |= Q(
+                    user__isnull=True,
+                    email=effective_email,
+                )
+
+            queryset = queryset.filter(identity_q)
+        else:
+            queryset = queryset.filter(
+                user__isnull=True,
+                email=email,
+            )
+
+        return queryset.update(
+            revoked_at=timezone.now(),
+        )
 
     @staticmethod
     def validate(

@@ -74,6 +74,17 @@ class UserConsent(TimestampModel):
         verbose_name='Принятый документ',
     )
 
+    revoked_at = models.DateTimeField(
+        'Дата отзыва',
+        null=True,
+        blank=True,
+    )
+
+    @property
+    def is_revoked(self) -> bool:
+        """Возвращает признак отзыва согласия."""
+        return self.revoked_at is not None
+
     def clean(self):
         super().clean()
         if not self.document_id:

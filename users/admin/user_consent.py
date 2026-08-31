@@ -3,34 +3,67 @@
 Содержит настройку интерфейса Django Admin для модели ConsentDocument.
 """
 
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from users.models import UserConsent
+from users.services import ConsentService
+
+
+class ConsentStatusFilter(admin.SimpleListFilter):
+    """Фильтр согласий по статусу отзыва."""
+
+    title = 'статус согласия'
+    parameter_name = 'consent_status'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('active', 'Действующие'),
+            ('revoked', 'Отозванные'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'active':
+            return queryset.filter(revoked_at__isnull=True)
+
+        if self.value() == 'revoked':
+            return queryset.filter(revoked_at__isnull=False)
+
+        return queryset
 
 
 @admin.register(UserConsent)
 class UserConsentAdmin(admin.ModelAdmin):
     """Админка модели UserConsent."""
 
+    actions = ('revoke_selected_consents',)
+
     list_display = (
         'email',
         'is_authorized',
         'document',
+        'consent_status',
         'accepted_at',
+        'revoked_at',
     )
     readonly_fields = (
         'email',
         'user',
         'created_at',
         'updated_at',
+        'consent_status',
         'accepted_at',
+        'revoked_at',
         'document',
         'order',
         'artist',
         'user_agent',
         'ip_address',
     )
-    list_filter = ('accepted_at',)
+    list_filter = (
+        ConsentStatusFilter,
+        'document__document_type',
+        'accepted_at',
+    )
     search_fields = ('email', 'user__email')
     fieldsets = (
         (
@@ -47,7 +80,9 @@ class UserConsentAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'document',
+                    'consent_status',
                     'accepted_at',
+                    'revoked_at',
                 ),
             },
         ),
@@ -79,6 +114,39 @@ class UserConsentAdmin(admin.ModelAdmin):
         """Запрещает ручное удаление согласий через кнопку 'Удалить'."""
         return False
 
-    def has_change_permission(self, request, obj=None):
-        """Запрещает ручное редактирование."""
-        return False
+    @admin.action(
+        description='Отозвать выбранные согласия',
+        permissions=('change',),
+    )
+    def revoke_selected_consents(self, request, queryset):
+        """Отзывает выбранные типы согласий пользователя."""
+        revoked_count = 0
+        processed = set()
+
+        for consent in queryset.select_related('document', 'user'):
+            key = (
+                consent.user_id or consent.email,
+                consent.document.document_type,
+            )
+
+            if key in processed:
+                continue
+
+            processed.add(key)
+
+            revoked_count += ConsentService.revoke(
+                document_type=consent.document.document_type,
+                user=consent.user,
+                email=consent.email,
+            )
+
+        self.message_user(
+            request,
+            f'Отозвано согласий: {revoked_count}.',
+            level=messages.SUCCESS,
+        )
+
+    @admin.display(description='Статус')
+    def consent_status(self, obj):
+        """Возвращает статус согласия."""
+        return 'Отозвано' if obj.is_revoked else 'Действует'
