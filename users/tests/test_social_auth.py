@@ -20,7 +20,7 @@ from users.constants import (
     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
 )
 from users.exceptions import SocialAuthException
-from users.models import ListenerProfile, UserConsent
+from users.models import ConsentDocument, ListenerProfile, UserConsent
 from users.services import SocialAuthService
 from users.tests.factories import UserFactory
 
@@ -317,6 +317,192 @@ class TestSocialAuthService:
         )
 
         assert saved_types == set(listener_registration_consents)
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_existing_user_accepts_consents_from_registration_flow(
+        self,
+        listener_registration_consents,
+    ):
+        """Сохраняет согласия существующему user с формы регистрации."""
+        user = UserFactory(
+            email='listener@example.test',
+            is_email_verified=True,
+        )
+
+        resolved_user = SocialAuthService().resolve_user(
+            provider=YANDEX_PROVIDER,
+            provider_uid='yandex-1012',
+            email=user.email,
+            is_email_verified=True,
+            create_account=True,
+            accepted_consents=listener_registration_consents,
+        )
+
+        saved_types = set(
+            UserConsent.objects.filter(
+                user=user,
+                revoked_at__isnull=True,
+            ).values_list(
+                'document__document_type',
+                flat=True,
+            ),
+        )
+
+        assert resolved_user.pk == user.pk
+        assert saved_types == set(listener_registration_consents)
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_existing_social_user_does_not_duplicate_current_consents(
+        self,
+        listener_registration_consents,
+    ):
+        """Не дублирует согласия на уже принятую актуальную версию."""
+        user = UserFactory(
+            email='listener@example.test',
+            is_email_verified=True,
+        )
+        SocialAccount.objects.create(
+            user=user,
+            provider=YANDEX_PROVIDER,
+            uid='yandex-1013',
+            extra_data={},
+        )
+
+        service = SocialAuthService()
+
+        service.resolve_user(
+            provider=YANDEX_PROVIDER,
+            provider_uid='yandex-1013',
+            email=user.email,
+            is_email_verified=True,
+            create_account=True,
+            accepted_consents=listener_registration_consents,
+        )
+
+        first_count = UserConsent.objects.filter(user=user).count()
+
+        service.resolve_user(
+            provider=YANDEX_PROVIDER,
+            provider_uid='yandex-1013',
+            email=user.email,
+            is_email_verified=True,
+            create_account=True,
+            accepted_consents=listener_registration_consents,
+        )
+
+        assert first_count == len(listener_registration_consents)
+        assert UserConsent.objects.filter(user=user).count() == first_count
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_existing_user_accepts_new_document_version(
+        self,
+        listener_registration_consents,
+    ):
+        """Сохраняет согласие на новую актуальную версию документа."""
+        user = UserFactory(
+            email='listener@example.test',
+            is_email_verified=True,
+        )
+        service = SocialAuthService()
+
+        service.resolve_user(
+            provider=YANDEX_PROVIDER,
+            provider_uid='yandex-1014',
+            email=user.email,
+            is_email_verified=True,
+            create_account=True,
+            accepted_consents=listener_registration_consents,
+        )
+
+        document_type = listener_registration_consents[0]
+
+        old_document = ConsentDocument.objects.get(
+            document_type=document_type,
+            is_active=True,
+        )
+        old_document.is_active = False
+        old_document.save(update_fields=('is_active',))
+
+        new_document = ConsentDocument.objects.create(
+            document_type=document_type,
+            version='2.0',
+            content=f'Новая версия документа: {document_type}',
+            is_active=True,
+        )
+
+        service.resolve_user(
+            provider=YANDEX_PROVIDER,
+            provider_uid='yandex-1014',
+            email=user.email,
+            is_email_verified=True,
+            create_account=True,
+            accepted_consents=listener_registration_consents,
+        )
+
+        assert (
+            UserConsent.objects.filter(
+                user=user,
+                document=old_document,
+                revoked_at__isnull=True,
+            ).count()
+            == 1
+        )
+        assert (
+            UserConsent.objects.filter(
+                user=user,
+                document=new_document,
+                revoked_at__isnull=True,
+            ).count()
+            == 1
+        )
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_existing_user_registration_requires_all_consents(
+        self,
+        listener_registration_consents,
+    ):
+        """Проверяет обязательные согласия и для существующего user."""
+        user = UserFactory(
+            email='listener@example.test',
+            is_email_verified=True,
+        )
+
+        incomplete_consents = listener_registration_consents[:-1]
+
+        with pytest.raises(ValidationError):
+            SocialAuthService().resolve_user(
+                provider=YANDEX_PROVIDER,
+                provider_uid='yandex-1015',
+                email=user.email,
+                is_email_verified=True,
+                create_account=True,
+                accepted_consents=incomplete_consents,
+            )
+
+        assert not UserConsent.objects.filter(user=user).exists()
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_existing_user_login_does_not_save_passed_consents(
+        self,
+        listener_registration_consents,
+    ):
+        """Не меняет согласия при обычном входе без флага регистрации."""
+        user = UserFactory(
+            email='listener@example.test',
+            is_email_verified=True,
+        )
+
+        resolved_user = SocialAuthService().resolve_user(
+            provider=YANDEX_PROVIDER,
+            provider_uid='yandex-1016',
+            email=user.email,
+            is_email_verified=True,
+            create_account=False,
+            accepted_consents=listener_registration_consents,
+        )
+
+        assert resolved_user.pk == user.pk
+        assert not UserConsent.objects.filter(user=user).exists()
 
 
 class TestSocialAccountAdapter:
