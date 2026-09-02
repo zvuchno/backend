@@ -24,12 +24,6 @@ class SafePhoneNumberField(PhoneNumberField):
 class PhoneRegistrationMixin:
     """Миксин для поля и валидации номера телефона."""
 
-    phone = SafePhoneNumberField(
-        label='Номер телефона',
-        required=True,
-        write_only=True,
-    )
-
     def validate_phone(self, value) -> str:
         """Проверяет корректность и уникальность номера телефона.
 

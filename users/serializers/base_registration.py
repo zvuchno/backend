@@ -4,6 +4,7 @@ from djoser.serializers import UserCreateSerializer
 from rest_framework import serializers
 
 from users.models import ConsentDocument
+from users.serializers.mixins import SafePhoneNumberField
 from users.services import ConsentService
 
 
@@ -15,7 +16,10 @@ class BaseRegistrationSerializer(UserCreateSerializer):
     используется при создании связанного профиля роли.
     """
 
-    phone = serializers.CharField(required=True, allow_blank=False)
+    phone = SafePhoneNumberField(
+        label='Номер телефона',
+        required=True,
+    )
     consents = serializers.ListField(
         child=serializers.ChoiceField(
             choices=ConsentDocument.DocumentType.choices,
