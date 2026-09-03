@@ -14,8 +14,8 @@ from users.constants import (
 )
 from users.models import ArtistProfileType, EmailVerificationCode
 from users.serializers.mixins import (
-    PhoneRegistrationMixin,
     SafePhoneNumberField,
+    UniquePhoneValidationMixin,
 )
 from users.services import (
     get_user_from_uid,
@@ -203,7 +203,7 @@ class EmailVerificationSerializer(serializers.Serializer):
 
 
 class PhoneChangeSerializer(
-    PhoneRegistrationMixin,
+    UniquePhoneValidationMixin,
     serializers.ModelSerializer,
 ):
     """Сериализатор для изменения телефона аккаунта."""

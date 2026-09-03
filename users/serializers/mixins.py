@@ -21,7 +21,7 @@ class SafePhoneNumberField(PhoneNumberField):
             )
 
 
-class PhoneRegistrationMixin:
+class UniquePhoneValidationMixin:
     """Миксин для поля и валидации номера телефона."""
 
     def validate_phone(self, value) -> str:
@@ -35,10 +35,6 @@ class PhoneRegistrationMixin:
         queryset = User.objects.filter(phone=normalized_value)
         if self.instance is not None:
             queryset = queryset.exclude(pk=self.instance.pk)
-        else:
-            request = self.context.get('request')
-            if request and request.user.is_authenticated:
-                queryset = queryset.exclude(pk=request.user.pk)
 
         if queryset.exists():
             raise serializers.ValidationError(

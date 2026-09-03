@@ -9,14 +9,14 @@ from common.utils import get_client_ip, get_user_agent
 from ..consents_policy import ConsentScenario
 from ..services import ConsentService
 from .base_registration import BaseRegistrationSerializer
-from .mixins import PhoneRegistrationMixin
+from .mixins import UniquePhoneValidationMixin
 from users.models import ArtistProfile, ArtistProfileType, ListenerProfile
 
 User = get_user_model()
 
 
 class ArtistRegistrationSerializer(
-    PhoneRegistrationMixin,
+    UniquePhoneValidationMixin,
     BaseRegistrationSerializer,
 ):
     """Сериализатор регистрации артиста или лейбла.

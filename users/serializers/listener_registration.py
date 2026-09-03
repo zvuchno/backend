@@ -7,7 +7,7 @@ from common.utils import get_client_ip, get_user_agent
 
 from ..services import ConsentService
 from .base_registration import BaseRegistrationSerializer
-from .mixins import PhoneRegistrationMixin
+from .mixins import UniquePhoneValidationMixin
 from users.consents_policy import ConsentScenario
 from users.models import ListenerProfile
 
@@ -15,7 +15,7 @@ User = get_user_model()
 
 
 class ListenerRegistrationSerializer(
-    PhoneRegistrationMixin,
+    UniquePhoneValidationMixin,
     BaseRegistrationSerializer,
 ):
     """Сериализатор регистрации слушателя.
