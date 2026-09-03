@@ -26,6 +26,7 @@ class ConsentService:
         user_agent: str = '',
         order=None,
         artist=None,
+        skip_existing: bool = False,
     ) -> None:
         """Фиксирует принятые пользователем согласия."""
         accepted_types = set(accepted_types)
@@ -57,7 +58,25 @@ class ConsentService:
                 ),
             })
 
+        existing_document_ids = set()
+
+        if skip_existing and user is not None:
+            existing_document_ids = set(
+                UserConsent.objects.filter(
+                    user=user,
+                    document__in=documents_by_type.values(),
+                    revoked_at__isnull=True,
+                ).values_list(
+                    'document_id',
+                    flat=True,
+                ),
+            )
+
         for document_type in accepted_types:
+            document = documents_by_type[document_type]
+            if document.id in existing_document_ids:
+                continue
+
             UserConsent.objects.create(
                 user=user,
                 email=email,

@@ -119,8 +119,6 @@ _price_validator = DecimalValidator(MAX_PRICE_DIGITS, MONEY_INTERNAL_PRECISION)
 
 def validate_price(price) -> None:
     """Валидирует price на соответствие max_digits/decimal_places."""
-    if price is None:
-        raise ValidationError({'price': 'Цена обязательна.'})
     try:
         _price_validator(price)
     except DjangoValidationError as exc:
