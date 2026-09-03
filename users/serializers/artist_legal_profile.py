@@ -2,7 +2,6 @@
 
 from django.db import transaction
 from drf_spectacular.utils import extend_schema_field
-from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from users.models import (
@@ -11,6 +10,7 @@ from users.models import (
     ArtistIdentityData,
     ArtistLegalProfile,
 )
+from users.serializers.mixins import SafePhoneNumberField
 
 
 class ArtistIdentityDataSerializer(serializers.ModelSerializer):
@@ -61,7 +61,11 @@ class ArtistCompanyDataSerializer(serializers.ModelSerializer):
 class ArtistLegalProfileSerializer(serializers.ModelSerializer):
     """Сериализатор юридического профиля артиста."""
 
-    phone = PhoneNumberField(required=False, allow_blank=True, allow_null=True)
+    phone = SafePhoneNumberField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
     is_verified = serializers.BooleanField(read_only=True)
     comment = serializers.CharField(read_only=True)
 

@@ -13,7 +13,10 @@ from users.constants import (
     EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
 )
 from users.models import ArtistProfileType, EmailVerificationCode
-from users.serializers.mixins import PhoneRegistrationMixin
+from users.serializers.mixins import (
+    SafePhoneNumberField,
+    UniquePhoneValidationMixin,
+)
 from users.services import (
     get_user_from_uid,
     set_user_password,
@@ -200,10 +203,15 @@ class EmailVerificationSerializer(serializers.Serializer):
 
 
 class PhoneChangeSerializer(
-    PhoneRegistrationMixin,
+    UniquePhoneValidationMixin,
     serializers.ModelSerializer,
 ):
     """Сериализатор для изменения телефона аккаунта."""
+
+    phone = SafePhoneNumberField(
+        label='Номер телефона',
+        required=True,
+    )
 
     class Meta:
         model = User
