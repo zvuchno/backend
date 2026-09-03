@@ -6,6 +6,7 @@
 
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -91,6 +92,10 @@ class CartService:
             item = current_items[variant.id]
             if item.quantity != quantity:
                 item.quantity = quantity
+                try:
+                    item.clean()
+                except DjangoValidationError as exc:
+                    raise ValidationError(exc.message_dict) from exc
                 updated_items.append(item)
         if updated_items:
             CartItem.objects.bulk_update(updated_items, ['quantity'])
