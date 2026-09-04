@@ -68,7 +68,6 @@ ADMIN_REORDER = (
     # Sites framework (django.contrib.sites)
     'sites',
     # Социальная авторизация (social accounts + providers)
-    # Социальная авторизация и связанные email-адреса allauth
     {
         'app': 'socialaccount',
         'label': 'Социальная авторизация',

@@ -2,6 +2,7 @@
 
 import logging
 
+from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.db import IntegrityError, transaction
@@ -14,6 +15,7 @@ from common.utils.urls import build_frontend_url
 from config import settings
 from users.constants import (
     SOCIAL_AUTH_ERRORS,
+    SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,
     SOCIAL_AUTH_ERROR_MISSING_EMAIL,
     SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
     SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
@@ -42,22 +44,32 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             False,
         )
 
-        logger.warning(
-            'SOCIAL auto signup create_account=%r email=%r',
-            create_account,
-            sociallogin.user.email,
-        )
+        if not create_account:
+            if self._is_api_request(request):
+                raise SocialAuthException(
+                    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
+                    SOCIAL_AUTH_ERRORS[
+                        SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED
+                    ],
+                )
 
-        if create_account:
-            return True
+            return False
 
         if self._is_api_request(request):
-            raise SocialAuthException(
-                SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
-                SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED],
-            )
+            email = sociallogin.user.email
 
-        return False
+            if (
+                email
+                and EmailAddress.objects.filter(
+                    email__iexact=email,
+                ).exists()
+            ):
+                raise SocialAuthException(
+                    SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,
+                    SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_EMAIL_CONFLICT],
+                )
+
+        return True
 
     def pre_social_login(self, request, sociallogin):
         """Обрабатывает пользователя до завершения social login."""
@@ -85,6 +97,21 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                         provider_obj,
                         email,
                     ),
+                )
+                service.accept_registration_consents(
+                    user=user,
+                    create_account=getattr(
+                        request,
+                        'social_create_account',
+                        False,
+                    ),
+                    accepted_consents=getattr(
+                        request,
+                        'social_consents',
+                        (),
+                    ),
+                    ip_address=get_client_ip(request),
+                    user_agent=get_user_agent(request),
                 )
             except SocialAuthException as exc:
                 self._handle_auth_error(

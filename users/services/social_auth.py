@@ -82,7 +82,7 @@ class SocialAuthService:
                 email=email,
                 is_email_verified=is_email_verified,
             )
-            self._accept_registration_consents(
+            self.accept_registration_consents(
                 user=user,
                 create_account=create_account,
                 accepted_consents=accepted_consents,
@@ -115,7 +115,7 @@ class SocialAuthService:
                     SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED],
                 )
 
-            self._accept_registration_consents(
+            self.accept_registration_consents(
                 user=existing_user,
                 create_account=create_account,
                 accepted_consents=accepted_consents,
@@ -218,7 +218,7 @@ class SocialAuthService:
                 SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_BLOCKED_USER],
             )
 
-    def _accept_registration_consents(
+    def accept_registration_consents(
         self,
         *,
         user,
