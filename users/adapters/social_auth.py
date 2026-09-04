@@ -80,6 +80,13 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 provider,
             )
 
+        logger.warning(
+            'SOCIAL adapter request=%s create_account=%r consents=%r',
+            id(request),
+            getattr(request, 'social_create_account', None),
+            getattr(request, 'social_consents', None),
+        )
+
         if not getattr(request, 'social_create_account', False):
             self._handle_auth_error(
                 request,

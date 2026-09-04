@@ -1,9 +1,13 @@
 """Сериализаторы аутентификации через сторонние сервисы."""
 
+import logging
+
 from dj_rest_auth.registration.serializers import SocialLoginSerializer
 from rest_framework import serializers
 
 from users.models import ConsentDocument
+
+logger = logging.getLogger(__name__)
 
 
 class SocialAuthInputSerializer(SocialLoginSerializer):
@@ -48,6 +52,13 @@ class SocialAuthInputSerializer(SocialLoginSerializer):
         request = self.context['request']
         request.social_create_account = create_account
         request.social_consents = set(consents)
+
+        logger.warning(
+            'SOCIAL serializer request=%s create_account=%r consents=%r',
+            id(request),
+            create_account,
+            consents,
+        )
 
         attrs = super().validate(attrs)
         if not attrs.get('user'):
