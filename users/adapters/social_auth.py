@@ -34,6 +34,31 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         """Возвращает объект обработчика social auth."""
         return self.service_class()
 
+    def is_auto_signup_allowed(self, request, sociallogin) -> bool:
+        """Разрешает регистрацию только по явному флагу."""
+        create_account = getattr(
+            request,
+            'social_create_account',
+            False,
+        )
+
+        logger.warning(
+            'SOCIAL auto signup create_account=%r email=%r',
+            create_account,
+            sociallogin.user.email,
+        )
+
+        if create_account:
+            return True
+
+        if self._is_api_request(request):
+            raise SocialAuthException(
+                SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
+                SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED],
+            )
+
+        return False
+
     def pre_social_login(self, request, sociallogin):
         """Обрабатывает пользователя до завершения social login."""
         provider = sociallogin.account.provider
@@ -77,20 +102,6 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
             self._handle_auth_error(
                 request,
                 SOCIAL_AUTH_ERROR_MISSING_EMAIL,
-                provider,
-            )
-
-        logger.warning(
-            'SOCIAL adapter request=%s create_account=%r consents=%r',
-            id(request),
-            getattr(request, 'social_create_account', None),
-            getattr(request, 'social_consents', None),
-        )
-
-        if not getattr(request, 'social_create_account', False):
-            self._handle_auth_error(
-                request,
-                SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
                 provider,
             )
 
