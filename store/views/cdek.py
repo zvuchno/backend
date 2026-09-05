@@ -17,6 +17,14 @@ from store.services import CDEKService, CartService
 logger = logging.getLogger(__name__)
 
 
+OFFICE_SEARCH_ACTIONS = frozenset({'offices', 'byCoordinate'})
+# TODO: в сентябре 2026 CDEK удосужились добавить в виджет 3.0 поиск/
+# динамическую подгрузку ПВЗ по координатам (action=byCoordinate,
+# bbox-параметры latitude/longitude_left_bottom/right_top). Пока просто
+# отдаём точки по city_code, как для action=offices. В будущем можно
+# предпринять попытку реализовать поиск по bbox на бэкенде, если понадобится.
+
+
 @cdek_widget_schema
 class CDEKWidgetView(APIView):
     """Эндпоинт-прокси для интеграции и обеспечения работы виджета СДЭК v3."""
@@ -32,7 +40,7 @@ class CDEKWidgetView(APIView):
         )
         action = request.query_params.get('action')
 
-        if action == 'offices':
+        if action in OFFICE_SEARCH_ACTIONS:
             # Передаем QueryDict в сервис
             result = self.service.get_offices(request.query_params)
 
@@ -46,7 +54,7 @@ class CDEKWidgetView(APIView):
             )
             return response
 
-        logger.error('unknown get action: %s', action)
+        logger.warning('unknown get action: %s', action)
         return Response(
             {'error': f'unknown get action: {action}'},
             status=status.HTTP_400_BAD_REQUEST,
