@@ -94,3 +94,26 @@ class TrackViewSet(
             context=self.get_serializer_context(),
         )
         return Response(read_serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Удаляет трек и снимает пустой альбом с публикации."""
+        track = self.get_object()
+        album = track.album
+
+        response = super().destroy(request, *args, **kwargs)
+
+        has_uploaded_track = (
+            album.tracks
+            .filter(
+                audio_file__isnull=False,
+                is_active=True,
+            )
+            .exclude(audio_file='')
+            .exists()
+        )
+
+        if album.is_published and not has_uploaded_track:
+            album.is_published = False
+            album.save(update_fields=('is_published',))
+
+        return response
