@@ -39,7 +39,7 @@ def get_active_variants(product) -> list[ProductVariant]:
     """
     variants = getattr(product, 'active_variants', None)
     if variants is None:
-        logger.warning(
+        logger.debug(
             'active_variants не был prefetch-нут для Product id=%s. '
             'Используется fallback-запрос — проверь get_queryset() '
             'вьюсета/сериализатора на предмет отсутствующего Prefetch.',

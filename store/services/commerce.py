@@ -3,8 +3,13 @@
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
-from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
+from store.constants import (
+    CHAR_PRESET_DIGITAL,
+    CHAR_PRESET_SIMPLE,
+    ZERO_MONEY,
+)
 from store.models import Product, ProductVariant
+from store.validators import validate_price
 
 
 class ProductService:
@@ -19,8 +24,10 @@ class ProductService:
     def ensure_commerce(cls, content_instance, validated_data) -> Product:
         model_name = content_instance.__class__.__name__.lower()
 
+        price = validated_data.get('price', ZERO_MONEY)
+        validate_price(price)
         defaults = {
-            'price': validated_data.get('price', 0),
+            'price': price,
             'allow_overpay': validated_data.get('allow_overpay', False),
             'property_name': validated_data.get('property_name', ''),
         }
@@ -77,6 +84,8 @@ class ProductService:
         for key in allowed_fields:
             if key in validated_data:
                 value = validated_data[key]
+                if key == 'price':
+                    validate_price(value)
                 if getattr(product, key) != value:
                     setattr(product, key, value)
                     updated_fields.append(key)
