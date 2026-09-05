@@ -112,7 +112,81 @@ def test_cannot_publish_album_without_tracks(
     assert album.is_published is False
 
 
-def test_can_publish_album_with_uploaded_track(
+def test_cannot_publish_album_with_pending_track(
+    artist_client,
+    ready_artist_user,
+):
+    """Нельзя публиковать альбом с незавершённой загрузкой трека."""
+    album = AlbumFactory(
+        artist=ready_artist_user.artist_profile,
+        payout_recipient=ready_artist_user,
+        created_by=ready_artist_user,
+        is_published=False,
+    )
+    Track.objects.create(
+        album=album,
+        created_by=ready_artist_user,
+        name='Незагруженный трек',
+        position=1,
+        is_active=True,
+        audio_file=None,
+    )
+
+    url = reverse(
+        'api:store:albums-detail',
+        args=(album.id,),
+    )
+
+    response = artist_client.patch(
+        url,
+        {'is_published': True},
+        format='json',
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    album.refresh_from_db()
+    assert album.is_published is False
+
+
+def test_cannot_publish_album_with_only_inactive_track(
+    artist_client,
+    ready_artist_user,
+):
+    """Неактивный трек не позволяет опубликовать альбом."""
+    album = AlbumFactory(
+        artist=ready_artist_user.artist_profile,
+        payout_recipient=ready_artist_user,
+        created_by=ready_artist_user,
+        is_published=False,
+    )
+    Track.objects.create(
+        album=album,
+        created_by=ready_artist_user,
+        name='Неактивный трек',
+        position=1,
+        audio_file=make_audio_file(),
+        is_active=False,
+    )
+
+    url = reverse(
+        'api:store:albums-detail',
+        args=(album.id,),
+    )
+
+    response = artist_client.patch(
+        url,
+        {'is_published': True},
+        format='json',
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    album.refresh_from_db()
+    assert album.is_published is False
+
+
+def test_can_publish_album_with_uploaded_active_track(
     artist_client,
     ready_artist_user,
 ):
@@ -149,55 +223,79 @@ def test_can_publish_album_with_uploaded_track(
     assert album.is_published is True
 
 
-@pytest.mark.parametrize(
-    'audio_file, is_active',
-    [
-        (None, True),
-        ('', True),
-        ('uploaded', False),
-    ],
-)
-def test_cannot_publish_album_without_available_uploaded_track(
+def test_deleting_last_track_unpublishes_album(
     artist_client,
     ready_artist_user,
-    audio_file,
-    is_active,
 ):
-    """Для публикации нужен активный трек с завершённой загрузкой файла."""
+    """Удаление последнего трека снимает альбом с публикации."""
     album = AlbumFactory(
         artist=ready_artist_user.artist_profile,
         payout_recipient=ready_artist_user,
         created_by=ready_artist_user,
-        is_published=False,
+        is_published=True,
     )
-
-    track_kwargs = {
-        'album': album,
-        'created_by': ready_artist_user,
-        'name': 'Тестовый трек',
-        'position': 1,
-        'is_active': is_active,
-    }
-
-    if audio_file == 'uploaded':
-        track_kwargs['audio_file'] = make_audio_file()
-    else:
-        track_kwargs['audio_file'] = audio_file
-
-    Track.objects.create(**track_kwargs)
+    track = Track.objects.create(
+        album=album,
+        created_by=ready_artist_user,
+        name='Последний трек',
+        position=1,
+        audio_file=make_audio_file(),
+        is_active=True,
+    )
 
     url = reverse(
-        'api:store:albums-detail',
-        args=(album.id,),
+        'api:store:tracks-detail',
+        args=(track.id,),
     )
 
-    response = artist_client.patch(
-        url,
-        {'is_published': True},
-        format='json',
-    )
+    response = artist_client.delete(url)
 
-    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.status_code == HTTPStatus.NO_CONTENT
 
     album.refresh_from_db()
+    track.refresh_from_db()
+
+    assert track.is_active is False
     assert album.is_published is False
+
+
+def test_deleting_one_of_multiple_tracks_keeps_album_published(
+    artist_client,
+    ready_artist_user,
+):
+    """Удаление не последнего трека не снимает альбом с публикации."""
+    album = AlbumFactory(
+        artist=ready_artist_user.artist_profile,
+        payout_recipient=ready_artist_user,
+        created_by=ready_artist_user,
+        is_published=True,
+    )
+    track = Track.objects.create(
+        album=album,
+        created_by=ready_artist_user,
+        name='Первый трек',
+        position=1,
+        audio_file=make_audio_file(),
+        is_active=True,
+    )
+    Track.objects.create(
+        album=album,
+        created_by=ready_artist_user,
+        name='Второй трек',
+        position=2,
+        audio_file=make_audio_file(),
+        is_active=True,
+    )
+
+    url = reverse(
+        'api:store:tracks-detail',
+        args=(track.id,),
+    )
+
+    response = artist_client.delete(url)
+
+    assert response.status_code == HTTPStatus.NO_CONTENT
+
+    album.refresh_from_db()
+
+    assert album.is_published is True
