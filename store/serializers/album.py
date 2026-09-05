@@ -158,6 +158,22 @@ class AlbumWriteSerializer(
 
         return value
 
+    def validate(self, attrs):
+        """Проверяет возможность публикации релиза."""
+        attrs = super().validate(attrs)
+
+        if (
+            attrs.get('is_published') is True
+            and not self._has_uploaded_track()
+        ):
+            raise serializers.ValidationError({
+                'is_published': (
+                    'Нельзя опубликовать релиз без загруженных треков.'
+                ),
+            })
+
+        return attrs
+
     def create(self, validated_data):
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
@@ -167,3 +183,18 @@ class AlbumWriteSerializer(
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
         return super().update(instance, validated_data)
+
+    def _has_uploaded_track(self) -> bool:
+        """Проверяет наличие активного трека с загруженным аудиофайлом."""
+        if self.instance is None:
+            return False
+
+        return (
+            self.instance.tracks
+            .filter(
+                audio_file__isnull=False,
+                is_active=True,
+            )
+            .exclude(audio_file='')
+            .exists()
+        )
