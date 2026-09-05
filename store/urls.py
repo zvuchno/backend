@@ -69,7 +69,7 @@ urlpatterns = [
         name='catalog-merch-detail',
     ),
     path(
-        'me/purchased-music',
+        'me/purchased-music/',
         PurchasedMusicView.as_view(),
         name='purchased-music',
     ),

@@ -1,4 +1,3 @@
-from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialToken
 from django.contrib import admin
 from django.contrib.admin.sites import NotRegistered
@@ -19,7 +18,6 @@ from . import user_consent as user_consent
 for model in (
     OutstandingToken,
     BlacklistedToken,
-    EmailAddress,
     SocialToken,
 ):
     try:
