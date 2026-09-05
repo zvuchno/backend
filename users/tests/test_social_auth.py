@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from allauth.account.models import EmailAddress
 from allauth.socialaccount.models import SocialAccount
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
@@ -14,6 +15,7 @@ from users.adapters import SocialAccountAdapter
 from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.constants import (
     SOCIAL_AUTH_ERROR_BLOCKED_USER,
+    SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,
     SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
     SOCIAL_AUTH_ERROR_MISSING_EMAIL,
     SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
@@ -601,35 +603,24 @@ class TestSocialAccountAdapter:
 
         assert exc_info.value.error_code == SOCIAL_AUTH_ERROR_BLOCKED_USER
 
-    def test_pre_social_login_rejects_new_user_without_create_account(
-        self,
-        monkeypatch,
-        rf,
-    ):
-        """Прерывает social auth до signup для нового пользователя."""
+    def test_auto_signup_requires_create_account_for_api_request(self, rf):
+        """Требует явного разрешения на регистрацию через API."""
         adapter = SocialAccountAdapter()
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
-            uid='yandex-new-1',
-            email='brand.new@example.test',
+            uid='yandex-new',
+            email='new.user@example.test',
         )
         request = rf.post('/api/v1/auth/social/yandex/')
         request.social_create_account = False
 
-        monkeypatch.setattr(
-            adapter,
-            'is_email_verified',
-            lambda *args, **kwargs: True,
-        )
-
         with pytest.raises(SocialAuthException) as exc_info:
-            adapter.pre_social_login(request, sociallogin)
+            adapter.is_auto_signup_allowed(request, sociallogin)
 
         assert (
             exc_info.value.error_code
             == SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED
         )
-        sociallogin.connect.assert_not_called()
 
     def test_save_user_resolves_user_and_saves_sociallogin(
         self,
@@ -790,14 +781,93 @@ class TestSocialAccountAdapter:
             exc_info.value.error_code == SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED
         )
 
-    def test_allows_allauth_auto_signup_flow(self, rf):
-        """Передаёт обработку нового пользователя нашему social auth flow."""
+    def test_auto_signup_allowed_with_create_account(self, rf):
+        """Разрешает auto signup при явном флаге регистрации."""
         adapter = SocialAccountAdapter()
+        sociallogin = build_sociallogin(
+            provider=YANDEX_PROVIDER,
+            uid='yandex-new',
+            email='new.user@example.test',
+        )
+        request = rf.post('/api/v1/auth/social/yandex/')
+        request.social_create_account = True
 
         assert (
             adapter.is_auto_signup_allowed(
-                rf.post('/api/v1/auth/social/yandex/'),
-                Mock(),
+                request,
+                sociallogin,
             )
             is True
         )
+
+    def test_auto_signup_rejects_existing_allauth_email(self, rf):
+        """Не уходит в web signup при занятом email allauth."""
+        email = 'social.user@example.test'
+        user = UserFactory(
+            email='another.email@example.test',
+        )
+        EmailAddress.objects.create(
+            user=user,
+            email=email,
+            verified=True,
+            primary=True,
+        )
+
+        adapter = SocialAccountAdapter()
+        sociallogin = build_sociallogin(
+            provider=YANDEX_PROVIDER,
+            uid='yandex-new',
+            email=email,
+        )
+        request = rf.post('/api/v1/auth/social/yandex/')
+        request.social_create_account = True
+
+        with pytest.raises(SocialAuthException) as exc_info:
+            adapter.is_auto_signup_allowed(request, sociallogin)
+
+        assert exc_info.value.error_code == SOCIAL_AUTH_ERROR_EMAIL_CONFLICT
+
+    @override_settings(CONSENT_ENFORCE_REQUIRED=True)
+    def test_pre_social_login_accepts_registration_consents_for_existing_user(
+        self,
+        monkeypatch,
+        rf,
+        listener_registration_consents,
+    ):
+        """Фиксирует согласия существующему user из registration flow."""
+        user = UserFactory(
+            email='listener@example.test',
+            is_email_verified=True,
+        )
+        sociallogin = build_sociallogin(
+            provider=YANDEX_PROVIDER,
+            uid='yandex-existing',
+            email=user.email,
+        )
+
+        request = rf.post('/api/v1/auth/social/yandex/')
+        request.social_create_account = True
+        request.social_consents = set(listener_registration_consents)
+
+        adapter = SocialAccountAdapter()
+
+        monkeypatch.setattr(
+            adapter,
+            'is_email_verified',
+            lambda *args, **kwargs: True,
+        )
+
+        adapter.pre_social_login(request, sociallogin)
+
+        saved_types = set(
+            UserConsent.objects.filter(
+                user=user,
+                revoked_at__isnull=True,
+            ).values_list(
+                'document__document_type',
+                flat=True,
+            ),
+        )
+
+        assert saved_types == set(listener_registration_consents)
+        sociallogin.connect.assert_called_once_with(request, user)

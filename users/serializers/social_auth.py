@@ -46,8 +46,10 @@ class SocialAuthInputSerializer(SocialLoginSerializer):
         consents = attrs.pop('consents', [])
 
         request = self.context['request']
-        request.social_create_account = create_account
-        request.social_consents = set(consents)
+        django_request = request._request
+
+        django_request.social_create_account = create_account
+        django_request.social_consents = set(consents)
 
         attrs = super().validate(attrs)
         if not attrs.get('user'):
