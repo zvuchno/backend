@@ -191,10 +191,4 @@ class OrderDetailSerializer(OrderSerializer):
         if obj.delivery.delivery_type == Delivery.DeliveryType.PICKPOINT:
             return obj.delivery_point_address
 
-        parts = [
-            obj.city,
-            obj.street,
-            obj.house,
-            f'кв/оф. {obj.apartment}' if obj.apartment else None,
-        ]
-        return ', '.join(filter(None, parts))
+        return obj.full_address

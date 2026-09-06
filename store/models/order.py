@@ -212,9 +212,9 @@ class Order(TimestampModel):
     @property
     def full_address(self) -> str:
         parts = [
-            f'г. {self.city}' if self.city else None,
-            f'ул. {self.street}' if self.street else None,
-            f'д. {self.house}' if self.house else None,
+            self.city,
+            self.street,
+            self.house,
             f'кв/оф. {self.apartment}' if self.apartment else None,
         ]
         return ', '.join(filter(None, parts))
