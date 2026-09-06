@@ -91,6 +91,11 @@ class CheckoutSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
     )
+    delivery_point_address = serializers.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        required=False,
+        allow_blank=True,
+    )
     pickup_point = serializers.PrimaryKeyRelatedField(
         queryset=ArtistPickupPoint.objects.all(),
         required=False,

@@ -172,9 +172,10 @@ class OrderDetailSerializer(OrderSerializer):
         )
 
     def get_full_address(self, obj) -> str:
-        if obj.delivery and obj.delivery.delivery_type == (
-            Delivery.DeliveryType.ARTIST_PICKUP
-        ):
+        if not obj.delivery:
+            return ''
+
+        if obj.delivery.delivery_type == Delivery.DeliveryType.ARTIST_PICKUP:
             pickup = obj.pickup_point or {}
 
             address = pickup.get('address')
@@ -187,10 +188,13 @@ class OrderDetailSerializer(OrderSerializer):
 
             return ', '.join(filter(None, (address, date)))
 
+        if obj.delivery.delivery_type == Delivery.DeliveryType.PICKPOINT:
+            return obj.delivery_point_address
+
         parts = [
-            f'г. {obj.city}' if obj.city else None,
-            f'ул. {obj.street}' if obj.street else None,
-            f'д. {obj.house}' if obj.house else None,
+            obj.city,
+            obj.street,
+            obj.house,
             f'кв/оф. {obj.apartment}' if obj.apartment else None,
         ]
         return ', '.join(filter(None, parts))

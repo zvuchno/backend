@@ -84,6 +84,12 @@ class Order(TimestampModel):
         blank=True,
         default='',
     )
+    delivery_point_address = models.CharField(
+        'Адрес ПВЗ / Постамата',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+    )
     pickup_point = models.JSONField(
         'Адрес самовывоза от артиста',
         default=dict,
