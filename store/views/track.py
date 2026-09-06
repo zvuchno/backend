@@ -1,5 +1,6 @@
 """ViewSet для работы с моделью track."""
 
+from django.db import transaction
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -21,6 +22,7 @@ from store.serializers import (
     TrackReadSerializer,
     TrackWriteSerializer,
 )
+from store.services.album_publication import unpublish_if_empty
 
 
 @track_schema
@@ -100,20 +102,8 @@ class TrackViewSet(
         track = self.get_object()
         album = track.album
 
-        response = super().destroy(request, *args, **kwargs)
-
-        has_uploaded_track = (
-            album.tracks
-            .filter(
-                audio_file__isnull=False,
-                is_active=True,
-            )
-            .exclude(audio_file='')
-            .exists()
-        )
-
-        if album.is_published and not has_uploaded_track:
-            album.is_published = False
-            album.save(update_fields=('is_published',))
+        with transaction.atomic():
+            response = super().destroy(request, *args, **kwargs)
+            unpublish_if_empty(album)
 
         return response

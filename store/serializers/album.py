@@ -17,6 +17,10 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album
+from store.services.album_publication import (
+    PUBLICATION_ERROR,
+    has_uploaded_track,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -162,14 +166,11 @@ class AlbumWriteSerializer(
         """Проверяет возможность публикации релиза."""
         attrs = super().validate(attrs)
 
-        if (
-            attrs.get('is_published') is True
-            and not self._has_uploaded_track()
+        if attrs.get('is_published') is True and (
+            self.instance is None or not has_uploaded_track(self.instance)
         ):
             raise serializers.ValidationError({
-                'is_published': (
-                    'Нельзя опубликовать релиз без загруженных треков.'
-                ),
+                'is_published': PUBLICATION_ERROR,
             })
 
         return attrs
@@ -183,18 +184,3 @@ class AlbumWriteSerializer(
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
         return super().update(instance, validated_data)
-
-    def _has_uploaded_track(self) -> bool:
-        """Проверяет наличие активного трека с загруженным аудиофайлом."""
-        if self.instance is None:
-            return False
-
-        return (
-            self.instance.tracks
-            .filter(
-                audio_file__isnull=False,
-                is_active=True,
-            )
-            .exclude(audio_file='')
-            .exists()
-        )

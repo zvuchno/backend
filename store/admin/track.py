@@ -5,8 +5,10 @@ TODO: позже перевести замену audio_file в админке н
 """
 
 from django.contrib import admin
+from django.db import transaction
 from django.utils.html import format_html
 
+from ..services.album_publication import unpublish_if_empty
 from .forms import MoneyForm
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -226,6 +228,13 @@ class TrackAdmin(
 
     def save_model(self, request, obj, form, change):
         """Сохраняет трек и запускает обработку при изменении исходника."""
-        super().save_model(request, obj, form, change)
-        if not change or 'audio_file' in form.changed_data:
-            TrackGeneratedAudioScheduler.schedule(obj)
+        should_schedule = not change or 'audio_file' in form.changed_data
+
+        with transaction.atomic():
+            super().save_model(request, obj, form, change)
+            unpublish_if_empty(obj.album)
+
+            if should_schedule:
+                transaction.on_commit(
+                    lambda: TrackGeneratedAudioScheduler.schedule(obj),
+                )
