@@ -31,7 +31,7 @@ class TestLabelAlbumCreate:
             'description': 'Описание альбома.',
             'allow_overpay': False,
             'visibility': 'public',
-            'is_published': True,
+            'is_published': False,
         }
 
     def test_label_must_explicitly_select_profile(

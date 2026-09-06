@@ -23,6 +23,7 @@ from nested_admin.nested import (
     NestedTabularInline,
 )
 
+from ..services.album_publication import PUBLICATION_ERROR, has_uploaded_track
 from .forms import MoneyForm
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -293,6 +294,28 @@ class AlbumArchiveInline(NestedStackedInline):
         return False
 
 
+class AlbumAdminForm(forms.ModelForm):
+    """Форма альбома с проверкой возможности публикации."""
+
+    class Meta:
+        model = Album
+        fields = '__all__'
+
+    def clean(self):
+        """Проверяет наличие треков при публикации релиза."""
+        cleaned_data = super().clean()
+
+        if cleaned_data.get('is_published') is True and (
+            self.instance.pk is None or not has_uploaded_track(self.instance)
+        ):
+            self.add_error(
+                'is_published',
+                PUBLICATION_ERROR,
+            )
+
+        return cleaned_data
+
+
 @admin.register(Album)
 class AlbumAdmin(
     AutoCreatedByAdminMixin,
@@ -313,6 +336,7 @@ class AlbumAdmin(
     """
 
     change_form_template = 'admin/store/album/change_form.html'
+    form = AlbumAdminForm
 
     class Media:
         """Подключает ресурсы формы альбома."""
