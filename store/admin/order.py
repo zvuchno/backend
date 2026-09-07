@@ -16,7 +16,7 @@ from common.utils.money import format_money
 
 from .hooks import handle_order_status_change
 from store.exceptions import NotEnoughStock
-from store.models import Order, OrderItem, Payment, Shipment
+from store.models import Delivery, Order, OrderItem, Payment, Shipment
 
 
 class OrderItemInline(admin.TabularInline):
@@ -295,14 +295,24 @@ class OrderAdmin(admin.ModelAdmin):
         if not obj:
             return fieldsets
 
+        is_pickpoint = (
+            obj.delivery
+            and obj.delivery.delivery_type == Delivery.DeliveryType.PICKPOINT
+        )
+
+        is_courier = (
+            obj.delivery
+            and obj.delivery.delivery_type == Delivery.DeliveryType.COURIER
+        )
+
         checks = {
             'pickup_point': bool(obj.pickup_point),
-            'display_address': bool(self.display_address(obj)),
+            'display_address': is_courier and bool(self.display_address(obj)),
+            'display_delivery_point_address': (
+                is_pickpoint and bool(obj.delivery_point_address)
+            ),
             'cdek_city_code': bool(obj.cdek_city_code),
             'delivery_calculation': bool(obj.delivery_calculation),
-            'display_delivery_point_address': bool(
-                self.display_delivery_point_address(obj),
-            ),
         }
 
         for title, options in fieldsets:
@@ -338,10 +348,16 @@ class OrderAdmin(admin.ModelAdmin):
     def display_address(self, obj):
         return obj.full_address
 
-    @admin.display(description='Адрес ПВЗ / Постамата')
+    @admin.display(description='ПВЗ/Постамат')
     def display_delivery_point_address(self, obj):
+        delivery_point = (
+            f'[ {obj.delivery_point} ]' if obj.delivery_point else None
+        )
         return ', '.join(
-            filter(None, (obj.city, obj.delivery_point_address)),
+            filter(
+                None,
+                (delivery_point, obj.city, obj.delivery_point_address),
+            ),
         )
 
     @admin.display(description='Оплачен', boolean=True)
