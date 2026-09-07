@@ -56,6 +56,7 @@ class ProductQuerySet(models.QuerySet):
             track__isnull=False,
             track__is_active=True,
             track__album__is_active=True,
+            track__album__artist__is_active=True,
             track__album__is_published=True,
             track__album__visibility='public',
         )
@@ -66,6 +67,7 @@ class ProductQuerySet(models.QuerySet):
             digital_publication_ready_q('album__'),
             album__isnull=False,
             album__is_active=True,
+            album__artist__is_active=True,
             album__is_published=True,
             album__visibility='public',
         )
@@ -76,6 +78,7 @@ class ProductQuerySet(models.QuerySet):
             physical_publication_ready_q('merch__'),
             merch__isnull=False,
             merch__is_active=True,
+            merch__artist__is_active=True,
             merch__is_published=True,
             merch__visibility='public',
             has_available_variant=True,
@@ -90,6 +93,7 @@ class ProductQuerySet(models.QuerySet):
         album_q = models.Q(
             album__isnull=False,
             album__is_active=True,
+            album__artist__is_active=True,
             album__is_published=True,
             album__visibility='public',
         ) & digital_publication_ready_q('album__')
@@ -97,6 +101,7 @@ class ProductQuerySet(models.QuerySet):
         merch_q = models.Q(
             merch__isnull=False,
             merch__is_active=True,
+            merch__artist__is_active=True,
             merch__is_published=True,
             merch__visibility='public',
             has_available_variant=True,

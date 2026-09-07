@@ -40,6 +40,7 @@ class MeSerializer(serializers.ModelSerializer):
     is_listener = serializers.SerializerMethodField()
     is_artist = serializers.SerializerMethodField()
     profile_type = serializers.SerializerMethodField()
+    available_profile_upgrades = serializers.SerializerMethodField()
     has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
@@ -54,6 +55,7 @@ class MeSerializer(serializers.ModelSerializer):
             'is_listener',
             'is_artist',
             'profile_type',
+            'available_profile_upgrades',
             'has_usable_password',
         )
 
@@ -81,8 +83,41 @@ class MeSerializer(serializers.ModelSerializer):
         ),
     )
     def get_profile_type(self, obj):
+        """Возвращает тип активного профиля артиста или лейбла."""
         artist_profile = getattr(obj, 'artist_profile', None)
-        return artist_profile.profile_type if artist_profile else None
+
+        if not artist_profile or not artist_profile.is_active:
+            return None
+
+        return artist_profile.profile_type
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.ChoiceField(
+                choices=ArtistProfileType.choices,
+            ),
+        ),
+    )
+    def get_available_profile_upgrades(self, obj):
+        """Возвращает доступные переходы между типами профиля."""
+        artist_profile = getattr(obj, 'artist_profile', None)
+
+        if artist_profile is None:
+            return [
+                ArtistProfileType.ARTIST,
+                ArtistProfileType.LABEL,
+            ]
+
+        if not artist_profile.is_active:
+            return []
+
+        if (
+            artist_profile.profile_type == ArtistProfileType.ARTIST
+            and artist_profile.label_id is None
+        ):
+            return [ArtistProfileType.LABEL]
+
+        return []
 
 
 class NewPasswordSerializer(serializers.Serializer):
