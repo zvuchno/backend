@@ -117,6 +117,7 @@ class CatalogReleaseDetailView(RetrieveAPIView):
         carrier_qs = (
             Merch.objects
             .filter(
+                artist__is_active=True,
                 kind__is_carrier=True,
                 is_active=True,
                 is_published=True,
@@ -140,6 +141,7 @@ class CatalogReleaseDetailView(RetrieveAPIView):
         return (
             Album.objects
             .filter(
+                artist__is_active=True,
                 is_published=True,
                 is_active=True,
                 visibility=Album.Visibility.PUBLIC,
@@ -180,6 +182,7 @@ class CatalogMerchDetailView(RetrieveAPIView):
         return (
             Merch.objects
             .filter(
+                artist__is_active=True,
                 is_active=True,
                 is_published=True,
                 visibility=Merch.Visibility.PUBLIC,
