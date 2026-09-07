@@ -19,6 +19,7 @@ CDEK_FIELDS = (
     'street',
     'house',
     'apartment',
+    'delivery_point_address',
     'cdek_city_code',
     'tariffs',
     'delivery_point',
@@ -91,6 +92,11 @@ class CheckoutSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
     )
+    delivery_point_address = serializers.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        required=False,
+        allow_blank=True,
+    )
     pickup_point = serializers.PrimaryKeyRelatedField(
         queryset=ArtistPickupPoint.objects.all(),
         required=False,
@@ -140,7 +146,11 @@ class CheckoutSerializer(serializers.Serializer):
             })
 
         if delivery.delivery_type == Delivery.DeliveryType.COURIER:
-            self._clear_fields(attrs, 'delivery_point')
+            self._clear_fields(
+                attrs,
+                'delivery_point',
+                'delivery_point_address',
+            )
             attrs['pickup_point'] = None
             self._validate_delivery_address(attrs)
 
@@ -166,6 +176,7 @@ class CheckoutSerializer(serializers.Serializer):
             {
                 'tariffs': 'Метод доставки для СДЭК обязателен.',
                 'city': 'Город обязателен для выбора пункта выдачи.',
+                'delivery_point_address': 'Адрес пункта выдачи обязателен.',
                 'cdek_city_code': 'Код города обязателен для '
                 'выбора пункта выдачи.',
                 'delivery_point': 'Код пункта выдачи обязателен.',

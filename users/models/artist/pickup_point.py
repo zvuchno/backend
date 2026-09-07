@@ -30,8 +30,8 @@ class ArtistPickupPoint(ActivatableModel, TimestampModel):
     )
 
     class Meta:
-        verbose_name = 'пункт самовывоза артиста'
-        verbose_name_plural = 'пункты самовывоза артистов'
+        verbose_name = 'точка самовывоза артиста'
+        verbose_name_plural = 'точки самовывоза артистов'
         ordering = ('id',)
         constraints = [
             models.UniqueConstraint(

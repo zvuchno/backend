@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files import File
 from django.core.validators import (
@@ -119,6 +121,13 @@ _price_validator = DecimalValidator(MAX_PRICE_DIGITS, MONEY_INTERNAL_PRECISION)
 
 def validate_price(price) -> None:
     """Валидирует price на соответствие max_digits/decimal_places."""
+    if not isinstance(price, Decimal):
+        try:
+            price = Decimal(str(price))
+        except InvalidOperation as exc:
+            raise ValidationError(
+                {'price': ['Некорректное значение price.']},
+            ) from exc
     try:
         _price_validator(price)
     except DjangoValidationError as exc:
