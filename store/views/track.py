@@ -1,12 +1,19 @@
 """ViewSet для работы с моделью track."""
 
+from django.db import transaction
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
-from common.permissions import IsStoreObjectOwnerOrReadOnly
+from common.access import managed_artist_q
+from common.permissions import IsArtistOrLabel, IsStoreObjectManager
 
-from .mixins import ProductActionMixin
+from .mixins import (
+    ProductActionMixin,
+    SoftDeleteMixin,
+    TrackReadQuerysetMixin,
+)
 from store.filters import TrackFilter
 from store.models import Track
 from store.schema import track_schema
@@ -15,21 +22,26 @@ from store.serializers import (
     TrackReadSerializer,
     TrackWriteSerializer,
 )
+from store.services.album_publication import unpublish_if_empty
 
 
 @track_schema
-class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
+class TrackViewSet(
+    TrackReadQuerysetMixin,
+    ProductActionMixin,
+    SoftDeleteMixin,
+    viewsets.ModelViewSet,
+):
     """API для работы с треками."""
 
     queryset = Track.objects.all()
-    permission_classes = (IsStoreObjectOwnerOrReadOnly,)
+    permission_classes = (IsArtistOrLabel, IsStoreObjectManager)
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
         DjangoFilterBackend,
         filters.SearchFilter,
         filters.OrderingFilter,
     )
-
     filterset_class = TrackFilter
     search_fields = ('name',)
     ordering_fields = ('name', 'position')
@@ -43,18 +55,19 @@ class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
         return TrackReadSerializer
 
     def get_queryset(self):
-        queryset = (
-            super()
-            .get_queryset()
-            .visible_for(
-                user=self.request.user,
-                action=self.action,
-            )
+        """Возвращает треки, доступные текущему пользователю."""
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if not user.is_authenticated:
+            return queryset.none()
+
+        queryset = queryset.filter(
+            Q(is_active=True) & managed_artist_q(user, prefix='album__artist'),
         )
-        return queryset.select_related(
-            'album',
-            'album__genre',
-            'album__owner__artist_profile',
+        return self.get_track_read_queryset(
+            action=self.action,
+            queryset=queryset,
         )
 
     def create(self, request, *args, **kwargs):
@@ -83,3 +96,14 @@ class TrackViewSet(ProductActionMixin, viewsets.ModelViewSet):
             context=self.get_serializer_context(),
         )
         return Response(read_serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Удаляет трек и снимает пустой альбом с публикации."""
+        track = self.get_object()
+        album = track.album
+
+        with transaction.atomic():
+            response = super().destroy(request, *args, **kwargs)
+            unpublish_if_empty(album)
+
+        return response

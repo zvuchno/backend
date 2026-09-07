@@ -7,14 +7,16 @@ from django.db.models import F
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
+from common.models.abstract import TimestampModel
+
 from store.constants import (
+    MAX_CDEK_CODE_LENGTH,
     MAX_CHAR_LENGTH,
     MAX_NUMBER_ORDER_LENGTH,
     MAX_PRICE_DIGITS,
     MONEY_INTERNAL_PRECISION,
     ZERO_MONEY,
 )
-from users.models.abstract import TimestampModel
 
 
 class OrderNumberCounter(models.Model):
@@ -29,7 +31,7 @@ class Order(TimestampModel):
 
     class Status(models.TextChoices):
         CREATED = 'created', 'Создан'
-        CONFIRMED = 'confirmed', 'Ожидает оплаты'
+        RESERVED = 'reserved', 'Резерв'
         PAID = 'paid', 'Оплачен'
         SHIPPED = 'shipped', 'Отправлен'
         COMPLETED = 'completed', 'Завершен'
@@ -59,11 +61,50 @@ class Order(TimestampModel):
     # --- Контакты ---
     full_name = models.CharField('Имя и фамилия', max_length=MAX_CHAR_LENGTH)
     email = models.EmailField('Email')
-    phone = PhoneNumberField(
-        'Номер телефона',
-    )
+    phone = PhoneNumberField('Номер телефона')
 
-    # --- Адрес доставки ---
+    # --- Доставка ---
+    delivery = models.ForeignKey(
+        'store.Delivery',
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+        related_name='orders',
+        verbose_name='Способ доставки',
+    )
+    tariffs = models.CharField(
+        'Метод доставки СДЭК',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+    )
+    delivery_point = models.CharField(
+        'Код ПВЗ / Постамата',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+    )
+    delivery_point_address = models.CharField(
+        'Адрес ПВЗ / Постамата',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+    )
+    pickup_point = models.JSONField(
+        'Адрес самовывоза от артиста',
+        default=dict,
+        blank=True,
+        help_text=(
+            'Адрес и дата, где фанат может получить мерч от артиста. '
+            'Формат: {"address": "Адрес", "date": "YYYY-MM-DD"}.'
+        ),
+    )
+    cdek_city_code = models.CharField(
+        'Код населенного пункта в СДЭК',
+        max_length=MAX_CDEK_CODE_LENGTH,
+        blank=True,
+        default='',
+    )
     city = models.CharField(
         'Город',
         max_length=MAX_CHAR_LENGTH,
@@ -89,11 +130,13 @@ class Order(TimestampModel):
         default='',
     )
 
-    delivery = models.CharField(
-        'Способ доставки',
-        max_length=MAX_CHAR_LENGTH,
+    promocode = models.ForeignKey(
+        'store.Promocode',
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        default='',
+        verbose_name='Примененный промокод',
+        related_name='orders',
     )
     subtotal = models.DecimalField(
         'Сумма товаров (руб.)',
@@ -102,8 +145,24 @@ class Order(TimestampModel):
         default=ZERO_MONEY,
         validators=[MinValueValidator(ZERO_MONEY)],
     )
+    delivery_calculation = models.JSONField(
+        'Стоимость доставки по артистам (руб.)',
+        default=dict,
+        blank=True,
+        help_text=(
+            'Расчетная стоимость доставки, полученная от СДЭК на этапе '
+            'checkout. Формат: {"artist_id": {"cost": "0.00"}}.'
+        ),
+    )
     delivery_price = models.DecimalField(
-        'Стоимость доставки (руб.)',
+        'Стоимость доставки всего заказа (руб.)',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    promocode_discount = models.DecimalField(
+        'Сумма скидки по промокоду (руб.)',
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,
@@ -115,6 +174,12 @@ class Order(TimestampModel):
         decimal_places=MONEY_INTERNAL_PRECISION,
         default=ZERO_MONEY,
         validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    reserved_until = models.DateTimeField(
+        'Зарезервирован до',
+        null=True,
+        blank=True,
+        help_text='Только автоматическое резервирование, ручное - бессрочно',
     )
 
     def _generate_order_number(self) -> str:
@@ -144,6 +209,16 @@ class Order(TimestampModel):
 
             return f'ZV-{short_year}{counter.last_number:06d}'
 
+    @property
+    def full_address(self) -> str:
+        parts = [
+            self.city,
+            self.street,
+            self.house,
+            f'кв/оф. {self.apartment}' if self.apartment else None,
+        ]
+        return ', '.join(filter(None, parts))
+
     def save(self, *args, **kwargs):
         if not self.order_number:
             with transaction.atomic():
@@ -159,7 +234,4 @@ class Order(TimestampModel):
         ordering = ('-created_at',)
 
     def __str__(self):
-        return (
-            f'Заказ {self.order_number} '
-            f'({self.user if self.user else self.full_name})'
-        )
+        return f'Заказ {self.order_number} ({self.user}) [ id: {self.id} ]'

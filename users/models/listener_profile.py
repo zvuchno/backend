@@ -3,8 +3,8 @@
 from django.conf import settings
 from django.db import models
 
-from .abstract.activatable_model import ActivatableModel
-from .abstract.timestamp_model import TimestampModel
+from common.models.abstract import ActivatableModel, TimestampModel
+
 from users.constants import FULL_NAME_FIELD_MAX_LENGTH
 
 

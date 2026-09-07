@@ -5,66 +5,107 @@
 Используются в API для создания и обновления альбомов и их товарных данных.
 """
 
-from decimal import Decimal
+import logging
 
 from django.utils import timezone
 from rest_framework import serializers
 
-from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from .mixins import ImmutableFieldsSerializerMixin
+from store.constants import (
+    CHAR_PRESET_DIGITAL,
+    MAX_PRICE_DIGITS,
+    MONEY_DISPLAY_PRECISION,
+)
 from store.models import Album
+from store.services.album_publication import (
+    PUBLICATION_ERROR,
+    has_uploaded_track,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def get_digital_variants(product):
+    """Возвращает digital-варианты продукта.
+
+    Ожидает, что `digital_variants` был заранее подготовлен через
+    `Prefetch`во view.
+    Если prefetch отсутствует — делает fallback-запрос
+    и логирует предупреждение, чтобы деградация производительности
+    не осталась незамеченной.
+    """
+    variants = getattr(product, 'digital_variants', None)
+    if variants is None:
+        logger.warning(
+            'digital_variants не был prefetch-нут для Product id=%s. '
+            'Используется fallback-запрос — проверь get_queryset() '
+            'вьюсета на предмет отсутствующего Prefetch.',
+            product.id,
+        )
+        variants = list(
+            product.variants.filter(
+                is_active=True,
+                property_value=CHAR_PRESET_DIGITAL,
+            ),
+        )
+        product.digital_variants = variants
+    return variants
 
 
 class AlbumReadSerializer(serializers.ModelSerializer):
     """Сериализатор для чтения Album."""
 
-    price = serializers.SerializerMethodField()
+    price = serializers.DecimalField(
+        source='product.price',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        read_only=True,
+    )
+    sku = serializers.SerializerMethodField()
+    artist_name = serializers.CharField(
+        source='artist.name',
+        read_only=True,
+    )
 
     class Meta:
         model = Album
         fields = (
             'id',
+            'sku',
             'name',
+            'artist_name',
+            'is_single',
             'price',
-            'description',
             'cover_image',
-            'visibility',
             'is_published',
         )
 
-    def get_price(self, obj) -> Decimal | None:
+    def get_sku(self, obj) -> str | None:
         product = getattr(obj, 'product', None)
-        if product:
-            return product.price
-        return None
+        if not product:
+            return None
 
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        user = (
-            self.context.get('request').user
-            if self.context.get('request')
-            else None
-        )
-
-        # Скрываем поля, если юзера нет, если не владелец и не админ
-        if not user or not (
-            user.is_authenticated and (user == instance.owner or user.is_staff)
-        ):
-            ret.pop('visibility', None)
-            ret.pop('is_published', None)
-        return ret
+        variant = next(iter(get_digital_variants(product)), None)
+        return variant.sku if variant else None
 
 
 class AlbumReadDetailSerializer(AlbumReadSerializer):
     """Сериализатор для подробного просмотра (retrieve) объекта Album."""
 
     allow_overpay = serializers.SerializerMethodField()
+    genre_id = serializers.ReadOnlyField()
+    genre = serializers.StringRelatedField()
+    artist_id = serializers.ReadOnlyField()
 
     class Meta(AlbumReadSerializer.Meta):
         fields = AlbumReadSerializer.Meta.fields + (
-            'is_single',
+            'artist_id',
+            'genre_id',
             'genre',
+            'description',
             'release_date',
             'allow_overpay',
+            'visibility',
         )
 
     def get_allow_overpay(self, obj) -> bool:
@@ -74,8 +115,13 @@ class AlbumReadDetailSerializer(AlbumReadSerializer):
         return False
 
 
-class AlbumWriteSerializer(serializers.ModelSerializer):
+class AlbumWriteSerializer(
+    ImmutableFieldsSerializerMixin,
+    serializers.ModelSerializer,
+):
     """Сериализатор для создания и обновления Album."""
+
+    immutable_fields = ('artist',)
 
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
@@ -88,6 +134,7 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
         model = Album
         fields = (
             'name',
+            'artist',
             'is_single',
             'release_date',
             'genre',
@@ -98,13 +145,35 @@ class AlbumWriteSerializer(serializers.ModelSerializer):
             'visibility',
             'is_published',
         )
+        extra_kwargs = {
+            'artist': {
+                'required': False,
+            },
+        }
 
     def validate_release_date(self, value):
+        if value is None:
+            return value
+
         if value > timezone.now().date():
             raise serializers.ValidationError(
                 'Дата релиза не может быть в будущем.',
             )
+
         return value
+
+    def validate(self, attrs):
+        """Проверяет возможность публикации релиза."""
+        attrs = super().validate(attrs)
+
+        if attrs.get('is_published') is True and (
+            self.instance is None or not has_uploaded_track(self.instance)
+        ):
+            raise serializers.ValidationError({
+                'is_published': PUBLICATION_ERROR,
+            })
+
+        return attrs
 
     def create(self, validated_data):
         validated_data.pop('price', None)

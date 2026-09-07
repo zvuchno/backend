@@ -16,6 +16,7 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_INTERNAL_PRECISION,
 )
+from store.querysets import ProductQuerySet
 
 
 class Product(models.Model):
@@ -32,9 +33,9 @@ class Product(models.Model):
     """
 
     class ProductType(models.TextChoices):
-        TRACK = 'track', 'Track'
-        ALBUM = 'album', 'Album'
-        MERCH = 'merch', 'Merch'
+        TRACK = 'track', 'Трек'
+        ALBUM = 'album', 'Альбом'
+        MERCH = 'merch', 'Мерч'
 
     product_type = models.CharField(
         'Тип продукта',
@@ -58,7 +59,7 @@ class Product(models.Model):
         'Название свойства',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
-        null=True,
+        default='',
     )
     album = models.OneToOneField(
         'store.Album',
@@ -82,22 +83,51 @@ class Product(models.Model):
         related_name='product',
     )
 
+    @property
+    def content(self):
+        """Возвращает связанный объект контента на основе типа продукта."""
+        if not self.product_type:
+            return None
+        return getattr(self, self.product_type, None)
+
+    @property
+    def content_id(self):
+        """Возвращает ID связанного контента без обращения к БД."""
+        if not self.product_type:
+            return None
+        return getattr(self, f'{self.product_type}_id', None)
+
+    @property
+    def name(self):
+        """Возвращает имя связанного контента."""
+        return self.content.name if self.content else ''
+
+    @property
+    def artist(self):
+        """Возвращает публичный профиль артиста товара."""
+        return self.content.artist if self.content else None
+
+    @property
+    def payout_recipient(self):
+        """Возвращает получателя выплат товара."""
+        return self.content.payout_recipient if self.content else None
+
     def determine_product_type(self):
         """Автозаполнение поля product_type.
 
         Автоматически определяет категорию товара на основе заполненной связи.
         """
-        filled = (self.album, self.track, self.merch)
-        if sum(map(bool, filled)) != 1:
+        filled_ids = (self.album_id, self.track_id, self.merch_id)
+        if sum(map(bool, filled_ids)) != 1:
             raise ValidationError(
                 'Должен быть указан ровно один тип продукта.',
             )
 
-        if self.album:
+        if self.album_id:
             self.product_type = self.ProductType.ALBUM
-        elif self.track:
+        elif self.track_id:
             self.product_type = self.ProductType.TRACK
-        elif self.merch:
+        elif self.merch_id:
             self.product_type = self.ProductType.MERCH
 
     def save(self, *args, **kwargs):
@@ -134,7 +164,8 @@ class Product(models.Model):
         ]
 
     def __str__(self):
-        content_object = self.album or self.track or self.merch
-        if not content_object:
+        if not self.content:
             return f'Новый товар ({self.get_product_type_display()})'
-        return f'{self.get_product_type_display()}: {content_object}'
+        return f'{self.get_product_type_display()}: {self.content}'
+
+    objects = ProductQuerySet.as_manager()

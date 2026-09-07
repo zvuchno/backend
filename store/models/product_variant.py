@@ -4,11 +4,14 @@ import uuid
 
 from django.db import models, transaction
 
+from common.models.abstract import ActivatableModel, TimestampModel
+from common.services import get_artist_publication_readiness
+
 from store.constants import (
     MAX_CHAR_LENGTH,
+    ZERO_MONEY,
 )
 from store.models import Product
-from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class ProductVariant(ActivatableModel, TimestampModel):
@@ -43,7 +46,7 @@ class ProductVariant(ActivatableModel, TimestampModel):
         'Значение свойства',
         max_length=MAX_CHAR_LENGTH,
         blank=True,
-        null=True,
+        default='',
     )
 
     def generate_sku(self):
@@ -51,15 +54,13 @@ class ProductVariant(ActivatableModel, TimestampModel):
 
         Пример: ALB-12-V1 (Альбом №12, Вариант 1).
         """
-        if not self.product:
+        if not self.product or not self.product.product_type:
             return f'TMP-{uuid.uuid4().hex[:6].upper()}'
-        p_type = self.product.product_type[:3].upper()  # ALB, TRA, MER
-        p_id = (
-            self.product.album_id
-            or self.product.track_id
-            or self.product.merch_id
-        )
-        new_sku = f'{p_type}-{p_id}-V{self.id}'
+
+        product_type = self.product.product_type[:3].upper()  # ALB, TRA, MER
+        profile_id = self.product.artist.id
+
+        new_sku = f'{product_type}-{profile_id}-{self.id}'
         # Проверка на уникальность (на случай коллизий или ручного ввода)
         if ProductVariant.objects.filter(sku=new_sku).exists():
             return f'{new_sku}-{uuid.uuid4().hex[:2].upper()}'
@@ -87,26 +88,70 @@ class ProductVariant(ActivatableModel, TimestampModel):
 
     @property
     def variant_name(self):
-        """Генерирует информативное имя варианта продукта."""
-        parts = []
-        # Тип продукта
-        p_type = getattr(self.product, 'product_type', None)
-        if p_type:
-            parts.append(str(p_type))
-        # Название
-        name = None
-        if hasattr(self.product, 'album') and self.product.album:
-            name = self.product.album.name
-        elif hasattr(self.product, 'track') and self.product.track:
-            name = self.product.track.name
-        elif hasattr(self.product, 'merch') and self.product.merch:
-            name = self.product.merch.name
-        if name:
-            parts.append(f'"{name}"')
-        # Свойства
-        if self.property_value:
-            parts.append(f'({self.property_value})')
-        return ' '.join(parts)
+        """Генерирует имя варианта продукта: имя контента (свойство)."""
+        if not self.product:
+            return ''
+        product_name = self.product.name
+        if self.property_value and self.property_value not in [
+            'simple',
+            'digital',
+        ]:
+            return f'{product_name} ({self.property_value})'
+        return product_name
+
+    @property
+    def is_digital(self) -> bool:
+        """Цифровой товар — не имеет учёта остатков (трек, альбом)."""
+        return self.stock is None
+
+    @property
+    def is_available_for_purchase(self) -> bool:
+        """Доступен ли вариант товара для покупки."""
+        product = self.product
+        content = product.content
+
+        if not self.is_active:
+            return False
+
+        if not content.is_active:
+            return False
+
+        publication_content = (
+            content.album
+            if product.product_type == product.ProductType.TRACK
+            else content
+        )
+
+        if not publication_content.is_active:
+            return False
+
+        if not publication_content.is_published:
+            return False
+
+        if publication_content.visibility not in (
+            publication_content.Visibility.PUBLIC,
+            publication_content.Visibility.LINK_ONLY,
+        ):
+            return False
+
+        readiness = get_artist_publication_readiness(product.artist)
+
+        if product.product_type == product.ProductType.MERCH:
+            if not readiness.can_publish_physical:
+                return False
+
+            return self.stock is None or self.stock > 0
+
+        if not readiness.can_publish_digital:
+            return False
+
+        if (
+            product.product_type == product.ProductType.TRACK
+            and product.price == ZERO_MONEY
+        ):
+            return False
+
+        return True
 
     def __str__(self):
-        return f'SKU: {self.sku} | {self.variant_name}'
+        return self.variant_name

@@ -1,15 +1,25 @@
-from .artist_bank_data import ArtistBankData
-from .artist_company_data import ArtistCompanyData
-from .artist_contact import ArtistContact
-from .artist_identity_data import ArtistIdentityData
-from .artist_legal_profile import ArtistLegalProfile
-from .artist_profile import ArtistProfile
-from .artist_social import ArtistSocial
-from .consent_document import ConsentDocument
+from .artist import (
+    ArtistBankData,
+    ArtistCompanyData,
+    ArtistContact,
+    ArtistIdentityData,
+    ArtistLegalProfile,
+    ArtistPickupPoint,
+    ArtistProfile,
+    ArtistProfileType,
+    ArtistShippingPoint,
+    ArtistSocial,
+    ArtistStoreSettings,
+)
+from .consents import ConsentDocument, UserConsent
 from .core_user import CoreUser
-from .document_type import DocumentType
+from .email_verification_code import EmailVerificationCode
+from .invitation import (
+    ArtistProfileClaimInvitation,
+    TokenInvitation,
+    TokenInvitationStatus,
+)
 from .listener_profile import ListenerProfile
-from .user_consent import UserConsent
 
 __all__ = [
     'ArtistBankData',
@@ -17,11 +27,18 @@ __all__ = [
     'ArtistContact',
     'ArtistIdentityData',
     'ArtistLegalProfile',
+    'ArtistPickupPoint',
     'ArtistProfile',
+    'ArtistProfileType',
+    'ArtistShippingPoint',
     'ArtistSocial',
+    'ArtistStoreSettings',
+    'ArtistProfileClaimInvitation',
     'ConsentDocument',
     'CoreUser',
-    'DocumentType',
+    'EmailVerificationCode',
     'ListenerProfile',
+    'TokenInvitation',
+    'TokenInvitationStatus',
     'UserConsent',
 ]

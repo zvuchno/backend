@@ -45,9 +45,6 @@ class FavoriteAdmin(admin.ModelAdmin):
             .select_related(
                 'user',
                 'product_variant__product',
-                'product_variant__product__track',
-                'product_variant__product__album',
-                'product_variant__product__merch',
             )
         )
 
@@ -63,7 +60,7 @@ class FavoriteAdmin(admin.ModelAdmin):
 
     # Отображение формы редактирования
     fieldsets = (
-        ('Основное', {'fields': ('user', 'product_variant')}),
+        ('Основная информация', {'fields': ('user', 'product_variant')}),
         (
             'Системная информация',
             {'fields': ('created_at', 'updated_at')},

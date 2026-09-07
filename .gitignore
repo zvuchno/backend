@@ -138,11 +138,12 @@ dmypy.json
 .idea
 .vscode
 
-static/
-media/
+/static/
+/media/
 backend/user_media
 user_media
 dump.json
 logs/
+tmp/
 
 *:Zone.Identifier

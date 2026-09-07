@@ -6,7 +6,15 @@
 """
 
 from .commerce import ProductActionMixin
+from .managed_artist import ManagedArtistActionMixin
+from .music_access import PurchasedMusicAccessMixin
+from .soft_delete import SoftDeleteMixin
+from .track import TrackReadQuerysetMixin
 
 __all__ = [
+    'ManagedArtistActionMixin',
+    'PurchasedMusicAccessMixin',
     'ProductActionMixin',
+    'SoftDeleteMixin',
+    'TrackReadQuerysetMixin',
 ]

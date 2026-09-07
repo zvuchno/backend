@@ -12,7 +12,7 @@ class TrackFilter(filters.FilterSet):
     genre = filters.CharFilter(field_name='album__genre__slug')
     album = filters.NumberFilter(field_name='album_id')
     artist = filters.CharFilter(
-        field_name='album__owner__artist_profile__slug',
+        field_name='album__artist__slug',
     )
 
     class Meta:

@@ -20,6 +20,9 @@ class MoneyForm(forms.ModelForm):
             if field and isinstance(field, forms.DecimalField):
                 # Валидация
                 field.decimal_places = MONEY_DISPLAY_PRECISION
+                step = f'0.{"0" * (MONEY_DISPLAY_PRECISION - 1)}1'
+
+                field.widget.attrs['step'] = step
 
                 def format_value(
                     value,

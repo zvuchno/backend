@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import sentry_sdk
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -48,6 +49,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    'django.contrib.postgres',
+    'corsheaders',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -63,11 +66,14 @@ INSTALLED_APPS = [
     'djoser',
     'phonenumber_field',
     'admin_reorder',
+    'common.apps.CommonConfig',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
+    'storages',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -100,7 +106,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -124,6 +130,9 @@ if USE_SQLITE:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 30,  # Ожидать освобождения базы до 30 секунд
+            },
         }
     }
 else:
@@ -155,6 +164,11 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+]
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Zvuchno API',
@@ -167,6 +181,23 @@ SPECTACULAR_SETTINGS = {
         'deepLinking': True,
         'persistAuthorization': True,  # Не вылетает логин при обновлении
     },
+    'ENUM_NAME_OVERRIDES': {
+        'AlbumArchiveStatusEnum': (
+            'store.models.album.AlbumArchive.Status'
+        ),
+        'MediaPreparationStatusEnum': (
+            'store.models.track.TrackGeneratedAudio.ProcessingStatus'
+        ),
+        'TrackUploadStatusEnum': (
+            'store.models.track.TrackUpload.Status'
+        ),
+        'OrderStatusEnum': (
+            'store.models.order.Order.Status'
+        ),
+    },
+    'POSTPROCESSING_HOOKS': [
+        'common.schema.hooks.remove_content_from_no_content_responses',
+    ],
 }
 
 # Internationalization
@@ -189,6 +220,124 @@ STATIC_ROOT = '/app/staticfiles'
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
 
+# S3 / media paths
+MEDIA_LOCATION = str(os.getenv(
+    'MEDIA_LOCATION',
+    default='media',
+).strip('/'))
+
+PUBLIC_MEDIA_ROOT = MEDIA_ROOT / 'public'
+PRIVATE_MEDIA_ROOT = MEDIA_ROOT / 'private'
+
+PUBLIC_MEDIA_URL = f'{MEDIA_URL}public/'
+PRIVATE_MEDIA_URL = f'{MEDIA_URL}private/'
+
+USE_S3_MEDIA = os.getenv('USE_S3_MEDIA', 'False').lower() == 'true'
+
+def get_required_env(name: str) -> str:
+    """Возвращает обязательную переменную окружения."""
+    value = os.getenv(name)
+    if not value:
+        raise ImproperlyConfigured(
+            f'Переменная окружения {name} обязательна при USE_S3_MEDIA=True.',
+        )
+    return value
+
+if USE_S3_MEDIA:
+    AWS_ACCESS_KEY_ID = get_required_env('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = get_required_env('AWS_SECRET_ACCESS_KEY')
+    AWS_PUBLIC_STORAGE_BUCKET_NAME = get_required_env(
+        'AWS_PUBLIC_STORAGE_BUCKET_NAME',
+    )
+    AWS_PRIVATE_STORAGE_BUCKET_NAME = get_required_env(
+        'AWS_PRIVATE_STORAGE_BUCKET_NAME',
+    )
+    AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', 'https://storage.yandexcloud.net')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'ru-central1')
+    AWS_S3_ADDRESSING_STYLE = os.getenv('AWS_S3_ADDRESSING_STYLE', 'path')
+
+    AWS_QUERYSTRING_AUTH = os.getenv('AWS_QUERYSTRING_AUTH', 'False').lower() == 'true'
+    AWS_QUERYSTRING_EXPIRE = int(os.getenv('AWS_QUERYSTRING_EXPIRE', 120))
+    AWS_S3_FILE_OVERWRITE = os.getenv('AWS_S3_FILE_OVERWRITE', 'False').lower() == 'true'
+    AWS_DEFAULT_ACL = None
+
+    s3_common_options = {
+        'access_key': AWS_ACCESS_KEY_ID,
+        'secret_key': AWS_SECRET_ACCESS_KEY,
+        'endpoint_url': AWS_S3_ENDPOINT_URL,
+        'region_name': AWS_S3_REGION_NAME,
+        'addressing_style': AWS_S3_ADDRESSING_STYLE,
+        'default_acl': AWS_DEFAULT_ACL,
+        'file_overwrite': AWS_S3_FILE_OVERWRITE,
+    }
+
+    STORAGES = {
+        # Django default storage считаем приватным.
+        'default': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                **s3_common_options,
+                'bucket_name': AWS_PRIVATE_STORAGE_BUCKET_NAME,
+                'location': MEDIA_LOCATION,
+                'querystring_auth': True,
+                'querystring_expire': AWS_QUERYSTRING_EXPIRE,
+            },
+        },
+        'public_media': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                **s3_common_options,
+                'bucket_name': AWS_PUBLIC_STORAGE_BUCKET_NAME,
+                'location': MEDIA_LOCATION,
+                'querystring_auth': False,
+            },
+        },
+        'private_media': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+            'OPTIONS': {
+                **s3_common_options,
+                'bucket_name': AWS_PRIVATE_STORAGE_BUCKET_NAME,
+                'location': MEDIA_LOCATION,
+                'querystring_auth': True,
+                'querystring_expire': AWS_QUERYSTRING_EXPIRE,
+            },
+        },
+        'staticfiles': {
+            'BACKEND': (
+                'django.contrib.staticfiles.storage.StaticFilesStorage'
+            ),
+        },
+    }
+else:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {
+                'location': PRIVATE_MEDIA_ROOT,
+                'base_url': PRIVATE_MEDIA_URL,
+            },
+        },
+        'public_media': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {
+                'location': PUBLIC_MEDIA_ROOT,
+                'base_url': PUBLIC_MEDIA_URL,
+            },
+        },
+        'private_media': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+            'OPTIONS': {
+                'location': PRIVATE_MEDIA_ROOT,
+                'base_url': PRIVATE_MEDIA_URL,
+            },
+        },
+        'staticfiles': {
+            'BACKEND': (
+                'django.contrib.staticfiles.storage.StaticFilesStorage'
+            ),
+        },
+    }
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -203,15 +352,90 @@ AUTH_USER_MODEL = 'users.CoreUser'
 
 PHONENUMBER_DEFAULT_REGION = 'RU'
 
-FRONTEND_VERIFY_EMAIL_URL = os.getenv('FRONTEND_VERIFY_EMAIL_URL', 'http://localhost:3000/verify-email')
-FRONTEND_RESET_PASSWORD_URL = os.getenv('FRONTEND_RESET_PASSWORD_URL', 'http://localhost:3000/reset-password-confirm')
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000')
+FRONTEND_VERIFY_EMAIL_PATH = os.getenv('FRONTEND_VERIFY_EMAIL_PATH', '/verify/verify-success')
+FRONTEND_RESET_PASSWORD_PATH = os.getenv('FRONTEND_RESET_PASSWORD_PATH', '/reset-password-confirm')
+FRONTEND_ARTIST_CLAIM_PATH = os.getenv('FRONTEND_ARTIST_CLAIM_PATH', '/artist-claim')
+
+INVITATION_TTL_DAYS = int(os.getenv('INVITATION_TTL_DAYS', 7))
+INVITATION_RESEND_COOLDOWN_SECONDS = int(
+    os.getenv('INVITATION_RESEND_COOLDOWN_SECONDS', 600),
+)
+
+
+# Настройки CELERY
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND')
+
+if DEBUG:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_ACKS_LATE = True
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_SOFT_TIME_LIMIT = 240
+CELERY_TASK_TIME_LIMIT = 300
+CELERY_WORKER_SEND_TASK_EVENTS = True
+CELERY_TASK_SEND_SENT_EVENT = True
+
+if DEBUG:
+    # Локальная разработка: кэш в оперативной памяти
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+else:
+    # Продакшн: Redis
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL', 'redis://redis:6379/1'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            }
+        }
+    }
+
+# Настройки CDEK
+CDEK_API_URL = os.getenv('CDEK_API_URL')
+CDEK_CLIENT_ID = os.getenv('CDEK_CLIENT_ID')
+CDEK_CLIENT_SECRET = os.getenv('CDEK_CLIENT_SECRET')
+DEFAULT_FIAS = os.getenv('DEFAULT_FIAS')
+GEO_PROVIDER = os.getenv('GEO_PROVIDER')
+TARIFF_OFFICE=os.getenv('TARIFF_OFFICE')
+TARIFF_DOOR=os.getenv('TARIFF_DOOR')
+TARIFF_PICKUP=os.getenv('TARIFF_PICKUP')
+DEFAULT_ITEM_WEIGHT=os.getenv('DEFAULT_ITEM_WEIGHT')
+
+DADATA_API_KEY=os.getenv('DADATA_API_KEY')
+
+# YOOKASSA
+YOOKASSA_SHOP_ID=os.getenv('YOOKASSA_SHOP_ID')
+YOOKASSA_SECRET_KEY=os.getenv('YOOKASSA_SECRET_KEY')
+
+# Secrets bot_telegram
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_BOT_USERNAME = os.getenv('TELEGRAM_BOT_USERNAME')
+TELEGRAM_ADMIN_CHAT_ID = os.getenv('TELEGRAM_ADMIN_CHAT_ID')
+TELEGRAM_PROXY_URL = os.getenv('TELEGRAM_PROXY_URL')
 
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
     ),
     'DEFAULT_THROTTLE_RATES': {
+
+        'anon': '200/min',
+        'user': '600/min',
+
         'login': '5/min',
         'social_auth': '10/min',
         'registration': '5/min',
@@ -223,12 +447,14 @@ REST_FRAMEWORK = {
         'change_phone': '5/min',
         'change_username': '5/min',
         'change_password': '5/min',
+        'set_password': '5/hour',
 
         'reset_password_verify': '5/min',
         'reset_password_request': '5/min',
         'reset_password_confirm': '5/min',
 
         'verify_email': '10/min',
+        'verify_email_code': '10/min',
         'resend_verification_email': '5/min',
 
         'become_artist': '5/min',
@@ -238,7 +464,9 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'config.pagination.DefaultLimitOffsetPagination',
 }
 
-# TODO: настроить периодический запуск flushexpiredtokens
+ROTATE_REFRESH_TOKENS = (
+    os.getenv('ROTATE_REFRESH_TOKENS', 'False').strip().lower() == 'true'
+)
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(
         minutes=int(os.getenv('JWT_ACCESS_MINUTES', 30))
@@ -246,7 +474,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(
         days=int(os.getenv('JWT_REFRESH_DAYS', 7))
     ),
-    'ROTATE_REFRESH_TOKENS': True,
+    'ROTATE_REFRESH_TOKENS': ROTATE_REFRESH_TOKENS,
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
@@ -255,13 +483,42 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 )
+
+JWT_ACCESS_COOKIE_NAME = os.getenv(
+    'JWT_ACCESS_COOKIE_NAME',
+    'zvuchno_access',
+)
+JWT_REFRESH_COOKIE_NAME = os.getenv(
+    'JWT_REFRESH_COOKIE_NAME',
+    'zvuchno_refresh',
+)
+JWT_COOKIE_SECURE = (
+    os.getenv('JWT_COOKIE_SECURE', str(not DEBUG)).strip().lower() == 'true'
+)
+JWT_COOKIE_SAMESITE = os.getenv('JWT_COOKIE_SAMESITE', 'Lax')
 REST_AUTH = {
     'USE_JWT': True,
     'TOKEN_MODEL': None,
-    'JWT_AUTH_HTTPONLY': False,
-    'JWT_SERIALIZER': 'users.serializers.TokenPairSerializer',
+    'JWT_AUTH_HTTPONLY': True,
+    'SESSION_LOGIN': False,
+    'JWT_AUTH_COOKIE': JWT_ACCESS_COOKIE_NAME,
+    'JWT_AUTH_REFRESH_COOKIE': JWT_REFRESH_COOKIE_NAME,
+    'JWT_AUTH_SECURE': JWT_COOKIE_SECURE,
+    'JWT_AUTH_SAMESITE': JWT_COOKIE_SAMESITE,
+    'LOGIN_SERIALIZER': 'users.serializers.CookieLoginSerializer',
+    'JWT_AUTH_COOKIE_USE_CSRF': True,
 }
-SITE_ID = 1  # id записи таблицы sites, где указан домен бэкенда для allauth.
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+
+ACCOUNT_LOGIN_METHODS = {'email'}
+
+ACCOUNT_SIGNUP_FIELDS = [
+    'email*',
+    'password1*',
+    'password2*',
+]
+
+SITE_ID = int(os.getenv('SITE_ID', default=1))  # id записи таблицы sites, где указан домен бэкенда для allauth.
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_PROVIDERS = {
     'vk': {
@@ -277,15 +534,17 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 SOCIALACCOUNT_ADAPTER = 'users.adapters.SocialAccountAdapter'
 SOCIALACCOUNT_QUERY_EMAIL = True  # запрашивать email у провайдера
-SOCIALACCOUNT_EMAIL_AUTHENTICATION = True  # разрешить вход по email из соцсети
-SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True  # автоматически связывать
+# Сопоставление пользователя, привязку соцсети и подтверждение email
+# выполняет SocialAuthService, а не встроенная логика allauth.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = False  # разрешить allauth вход по email из соцсети
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = False  # автоматически связывать allauth
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_LOGIN_ON_GET = True  # сразу редиректить вход без промежуточной страницы
-FRONTEND_SOCIAL_AUTH_URL = os.getenv(
-    'FRONTEND_SOCIAL_AUTH_URL',
+FRONTEND_SOCIAL_AUTH_PATH = os.getenv(
+    'FRONTEND_SOCIAL_AUTH_PATH',
     '/'
 )
-LOGIN_REDIRECT_URL = FRONTEND_SOCIAL_AUTH_URL  # Для успешных входов по умолчанию
+LOGIN_REDIRECT_URL = FRONTEND_SOCIAL_AUTH_PATH  # Для успешных входов по умолчанию
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 # SESSION_COOKIE_AGE = 86400
@@ -294,6 +553,54 @@ LOGGING = logging_config.LOGGING
 
 # Настройка отправки ошибок проекта в GlitchTip
 init_glitchtip()
+
+#CORS
+DEFAULT_CORS_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+]
+EXTRA_CORS_ORIGINS = []
+if not DEBUG:
+    origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+    EXTRA_CORS_ORIGINS = [o.strip() for o in origins.split(',') if o.strip()]
+
+CORS_ALLOWED_ORIGINS = list({
+    *DEFAULT_CORS_ORIGINS,
+    *EXTRA_CORS_ORIGINS,
+})
+CORS_ALLOW_CREDENTIALS = True
+
+# EMAIL backend
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+    EMAIL_FILE_PATH = BASE_DIR / 'tmp' / 'emails'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', 10))
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+
+# FFMPEG. Если локально пути отличаются.
+FFMPEG_BINARY = os.getenv('FFMPEG_BINARY') or 'ffmpeg'
+FFPROBE_BINARY = os.getenv('FFPROBE_BINARY') or 'ffprobe'
+
+# Проверять готовность артиста к публикации
+PUBLICATION_READINESS_ENABLED = os.getenv(
+    'PUBLICATION_READINESS_ENABLED',
+    'True',
+).lower() == 'true'
+
+# требовать обязательные согласия пользователя.
+CONSENT_ENFORCE_REQUIRED = os.getenv(
+    'CONSENT_ENFORCE_REQUIRED',
+    'True',
+).lower() == 'true'
 
 # Параметры шифрования полей в бд.
 FIELD_ENCRYPTION_ENABLED = os.getenv(

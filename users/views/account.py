@@ -18,15 +18,18 @@ from users.schemas import (
     change_password_schema,
     change_phone_schema,
     change_username_schema,
+    email_verification_code_schema,
     email_verification_schema,
     me_schema,
     password_reset_confirm_schema,
     password_reset_request_schema,
     password_reset_verify_schema,
     resend_verification_email_schema,
+    set_password_schema,
 )
 from users.serializers import (
     ChangePasswordSerializer,
+    EmailVerificationCodeSerializer,
     EmailVerificationSerializer,
     EmptySerializer,
     MeSerializer,
@@ -34,12 +37,11 @@ from users.serializers import (
     PasswordResetRequestSerializer,
     PasswordResetVerifySerializer,
     PhoneChangeSerializer,
+    SetPasswordSerializer,
     UsernameChangeSerializer,
 )
-from users.services import (
-    build_email_verification_url,
-    build_password_reset_url,
-)
+from users.services import request_password_reset
+from users.services.email_verification import request_email_verification
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -92,6 +94,27 @@ class ChangePasswordView(GenericAPIView):
         )
 
 
+@set_password_schema
+class SetPasswordView(GenericAPIView):
+    """Устанавливает пароль для аккаунта без пароля."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = SetPasswordSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'set_password'
+
+    def post(self, request, *args, **kwargs):
+        """Валидирует и устанавливает первый пароль пользователя."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {'detail': 'Пароль успешно установлен.'},
+            status=status.HTTP_200_OK,
+        )
+
+
 @email_verification_schema
 class EmailVerificationView(GenericAPIView):
     """Подтверждает email пользователя по uid и токену."""
@@ -106,6 +129,27 @@ class EmailVerificationView(GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        return Response(
+            {'detail': 'Email подтвержден.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+@email_verification_code_schema
+class EmailVerificationCodeView(GenericAPIView):
+    """Подтверждает email текущего пользователя по коду."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = EmailVerificationCodeSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'verify_email_code'
+
+    def post(self, request, *args, **kwargs):
+        """Проверяет код и подтверждает email."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
         return Response(
             {'detail': 'Email подтвержден.'},
             status=status.HTTP_200_OK,
@@ -131,17 +175,17 @@ class ResendVerificationEmailView(GenericAPIView):
                 status=status.HTTP_200_OK,
             )
 
-        frontend_base_url = settings.FRONTEND_VERIFY_EMAIL_URL
-
-        verification_url = build_email_verification_url(
-            user=user,
-            frontend_base_url=frontend_base_url,
-        )
         response_data = {
             'detail': 'Запрос на подтверждение Email принят.',
         }
+        verification_data = request_email_verification(user=user)
         if settings.DEBUG:
-            response_data['debug_verification_url'] = verification_url
+            response_data['debug_verification_url'] = verification_data[
+                'verification_url'
+            ]
+            response_data['debug_verification_code'] = verification_data[
+                'verification_code'
+            ]
 
         return Response(
             response_data,
@@ -174,8 +218,7 @@ class PasswordResetRequestView(GenericAPIView):
         }
 
         if user:
-            frontend_base_url = settings.FRONTEND_RESET_PASSWORD_URL
-            reset_url = build_password_reset_url(user, frontend_base_url)
+            reset_url = request_password_reset(user)
 
             if settings.DEBUG:
                 response_data['debug_reset_url'] = reset_url

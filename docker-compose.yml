@@ -2,6 +2,9 @@ volumes:
   pg_data:
   static:
   media:
+  celery_beat_data:
+  redis_data:
+  flower_data:
 
 services:
   db:
@@ -9,28 +12,159 @@ services:
     env_file: .env
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  redis:
+    image: redis:7
+    volumes:
+      - redis_data:/data
+    command:
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   backend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zvuchno_backend:dev
     env_file: .env
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
       - static:/app/staticfiles
-      - media:/app/media/
-    depends_on:
-      - db
+      - ./media:/app/media
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  celery_worker:
+    image: zvuchno_backend:dev
+    env_file: .env
+    command: >
+      celery -A config worker
+      -Q celery
+      --hostname=default@%h
+      -l info
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  celery_archives:
+    image: zvuchno_backend:dev
+    env_file: .env
+    command: >
+      celery -A config worker
+      -Q archives
+      --concurrency=2
+      --hostname=archives@%h
+      -l info
+    volumes:
+      - .:/app
+      - ./media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  celery_media:
+    image: zvuchno_backend:dev
+    env_file: .env
+    command: >
+      celery -A config worker
+      -Q media
+      --concurrency=4
+      --hostname=media@%h
+      -l info
+    volumes:
+      - .:/app
+      - ./media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  celery_beat:
+    image: zvuchno_backend:dev
+    env_file: .env
+    command: celery -A config beat -l warning --schedule=/var/run/celery/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/var/run/celery
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  flower:
+    image: zvuchno_backend:dev
+    env_file:
+      - .env
+    command: >
+      celery -A config flower
+      --address=0.0.0.0
+      --port=5555
+      --url-prefix=internal/flower
+      --xheaders=True
+      --persistent=True
+      --db=/data/flower
+      --state-save-interval=5000
+    volumes:
+      - flower_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:5555:5555'
+  bot:
+    image: zvuchno_backend:dev
+    env_file: .env
+    command: python manage.py runbot
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    restart: on-failure
   gateway:
     build: ./nginx/
     env_file: .env
     volumes:
       - static:/staticfiles
-      - media:/media/
+      - ./media:/media:ro
     depends_on:
       - backend
+      - flower
     ports:
       - 8000:80

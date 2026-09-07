@@ -5,9 +5,14 @@ inlines для слушателя и артиста.
 Добавлены флаги наличия профиля артиста и слушателя.
 """
 
+from urllib.parse import urlencode
+
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
+from django.db.models import Exists, OuterRef
+from django.urls import reverse
+from django.utils.html import format_html
 
 from users.admin.mixins import ImagePreviewMixin
 from users.models import (
@@ -30,6 +35,10 @@ class ListenerProfileInline(admin.StackedInline):
     max_num = 1
     fields = ('full_name', 'is_active')
 
+    def get_queryset(self, request):
+        """Загружает пользователя вместе с профилем."""
+        return super().get_queryset(request).select_related('user')
+
 
 class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
     """Инлайн для профиля артиста."""
@@ -45,7 +54,7 @@ class ArtistProfileInline(ImagePreviewMixin, admin.StackedInline):
         'cover',
         'image_preview',
         'city',
-        'url',
+        'slug',
         'is_active',
     )
 
@@ -69,12 +78,37 @@ class CoreUserAdmin(UserAdmin):
     @admin.display(description='Слушатель', boolean=True)
     def is_listener(self, obj):
         """Есть ли профиль слушателя."""
-        return hasattr(obj, 'listener_profile')
+        return obj.has_listener_profile
 
     @admin.display(description='Артист', boolean=True)
     def is_artist(self, obj):
         """Есть ли профиль артиста."""
-        return hasattr(obj, 'artist_profile')
+        return obj.has_artist_profile
+
+    @admin.display(description='Юридический профиль')
+    def legal_profile_link(self, obj):
+        if not obj or not obj.pk:
+            return '—'
+
+        legal_profile = getattr(obj, 'legal_profile', None)
+
+        if legal_profile:
+            url = reverse(
+                'admin:users_artistlegalprofile_change',
+                args=(legal_profile.pk,),
+            )
+            return format_html(
+                '<a href="{}">Открыть юридический профиль</a>',
+                url,
+            )
+
+        url = reverse('admin:users_artistlegalprofile_add')
+        url = f'{url}?{urlencode({"user": obj.pk})}'
+
+        return format_html(
+            '<a href="{}">Не создан. Создать?</a>',
+            url,
+        )
 
     def save_related(self, request, form, formsets, change):
         """Сохраняет inlines и гарантирует наличие профиля слушателя."""
@@ -103,6 +137,9 @@ class CoreUserAdmin(UserAdmin):
     search_fields = (
         'email',
         'username',
+        'phone',
+        'artist_profile__name',
+        'artist_profile__slug',
     )
     ordering = ('-date_joined',)
     fieldsets = (
@@ -115,7 +152,16 @@ class CoreUserAdmin(UserAdmin):
         (
             'Подтверждение контактов',
             {
-                'fields': ('is_email_verified', 'is_phone_verified'),
+                'fields': (
+                    'is_email_verified',
+                    'is_phone_verified',
+                ),
+            },
+        ),
+        (
+            'Юридические данные',
+            {
+                'fields': ('legal_profile_link',),
             },
         ),
         (
@@ -138,7 +184,11 @@ class CoreUserAdmin(UserAdmin):
             },
         ),
     )
-    readonly_fields = ('last_login', 'date_joined')
+    readonly_fields = (
+        'last_login',
+        'date_joined',
+        'legal_profile_link',
+    )
     add_fieldsets = (
         (
             None,
@@ -156,3 +206,22 @@ class CoreUserAdmin(UserAdmin):
             },
         ),
     )
+
+    def get_queryset(self, request):
+        """Оптимизирует проверку наличия профилей."""
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(
+                has_listener_profile=Exists(
+                    ListenerProfile.objects.filter(
+                        user=OuterRef('pk'),
+                    ),
+                ),
+                has_artist_profile=Exists(
+                    ArtistProfile.objects.filter(
+                        user=OuterRef('pk'),
+                    ),
+                ),
+            )
+        )

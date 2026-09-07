@@ -1,17 +1,22 @@
 """Модуль админки для модели Track.
 
 Содержит настройку интерфейса Django Admin для модели музыкального трека.
+TODO: позже перевести замену audio_file в админке на direct upload.
 """
 
 from django.contrib import admin
+from django.db import transaction
+from django.utils.html import format_html
 
+from ..services.album_publication import unpublish_if_empty
 from .forms import MoneyForm
 from .mixins import (
-    AutoOwnerAdminMixin,
+    AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
 )
-from store.models import Product, Track
+from store.models import Product, Track, TrackGeneratedAudio
+from store.services.audio.schedule import TrackGeneratedAudioScheduler
 
 
 class ProductInline(admin.StackedInline):
@@ -23,10 +28,94 @@ class ProductInline(admin.StackedInline):
     can_delete = False
     verbose_name = 'Торговые настройки трека'
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('track')
+
+
+class TrackGeneratedAudioInline(admin.StackedInline):
+    """Инлайн результатов фоновой подготовки аудиофайлов."""
+
+    model = TrackGeneratedAudio
+    extra = 0
+    max_num = 1
+    can_delete = False
+    verbose_name = 'Сгенерированные аудиофайлы'
+    verbose_name_plural = 'Сгенерированные аудиофайлы'
+
+    fields = (
+        'preview_file',
+        'preview_player',
+        'preview_duration',
+        'preview_status',
+        'preview_error',
+        'preview_started_at',
+        'stream_file',
+        'stream_player',
+        'stream_status',
+        'stream_error',
+        'stream_started_at',
+    )
+    readonly_fields = fields
+
+    @admin.display(description='Прослушать превью')
+    def preview_player(self, obj):
+        """Показывает плеер подготовленного превью."""
+        if obj.preview_status == TrackGeneratedAudio.ProcessingStatus.FAILED:
+            return format_html(
+                '<span class="errornote">Ошибка: {}</span>',
+                obj.preview_error or 'подробности в логах',
+            )
+
+        if obj.preview_status != TrackGeneratedAudio.ProcessingStatus.READY:
+            return obj.get_preview_status_display()
+
+        if not obj.preview_file:
+            return 'Файл не создан'
+
+        return format_html(
+            '<audio controls preload="metadata" src="{}"></audio>',
+            obj.preview_file.url,
+        )
+
+    @admin.display(description='Прослушать stream')
+    def stream_player(self, obj):
+        """Показывает плеер подготовленного stream-файла."""
+        if obj.stream_status == TrackGeneratedAudio.ProcessingStatus.FAILED:
+            return format_html(
+                '<span class="errornote">Ошибка: {}</span>',
+                obj.stream_error or 'подробности в логах',
+            )
+
+        if obj.stream_status != TrackGeneratedAudio.ProcessingStatus.READY:
+            return obj.get_stream_status_display()
+
+        if not obj.stream_file:
+            return 'Файл не создан'
+
+        return format_html(
+            '<audio controls preload="metadata" src="{}"></audio>',
+            obj.stream_file.url,
+        )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('track')
+
+    def has_add_permission(self, request, obj=None):
+        """Запрещает ручное создание результатов обработки."""
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        """Запрещает ручное изменение результатов обработки."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает ручное удаление результатов обработки."""
+        return False
+
 
 @admin.register(Track)
 class TrackAdmin(
-    AutoOwnerAdminMixin,
+    AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
     admin.ModelAdmin,
@@ -36,12 +125,19 @@ class TrackAdmin(
     list_display = (
         'name',
         'album',
-        'owner',
+        'artist',
+        'payout_recipient',
         'get_price',
         'get_allow_overpay',
         'is_active',
     )
-    search_fields = ('album__name', 'lyrics', 'name')
+    search_fields = (
+        'album__name',
+        'album__artist__name',
+        'album__payout_recipient__email',
+        'description',
+        'name',
+    )
     list_filter = (
         'is_active',
         'created_at',
@@ -50,15 +146,18 @@ class TrackAdmin(
     ordering = ('album', 'position')
     readonly_fields = (
         'formatted_duration',
+        'duration',
         'created_at',
         'updated_at',
+        'created_by',
         'get_sku',
-        'owner',
+        'artist',
+        'payout_recipient',
     )
     list_editable = ('is_active',)
     fieldsets = (
         (
-            'Основные данные',
+            'Основная информация',
             {
                 'fields': (
                     'name',
@@ -66,16 +165,44 @@ class TrackAdmin(
                     'is_active',
                     'audio_file',
                     'formatted_duration',
-                    'lyrics',
+                    'description',
                     'get_sku',
-                    'owner',
+                    'artist',
+                    'payout_recipient',
+                ),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'classes': ('collapse',),
+                'fields': (
                     'created_at',
                     'updated_at',
+                    'created_by',
                 ),
             },
         ),
     )
-    inlines = (ProductInline,)
+    inlines = (ProductInline, TrackGeneratedAudioInline)
+
+    autocomplete_fields = ('album',)
+
+    @admin.display(
+        description='Артист',
+        ordering='album__artist__name',
+    )
+    def artist(self, obj):
+        """Возвращает артиста альбома."""
+        return obj.album.artist
+
+    @admin.display(
+        description='Получатель выплат',
+        ordering='album__payout_recipient__email',
+    )
+    def payout_recipient(self, obj):
+        """Возвращает получателя выплат альбома."""
+        return obj.album.payout_recipient
 
     @admin.display(description='Длительность')
     def formatted_duration(self, obj):
@@ -87,5 +214,27 @@ class TrackAdmin(
         return f'{minutes}:{seconds:02}'
 
     def get_queryset(self, request):
-        """Родительский метод миксина + select_related('album', 'owner')."""
-        return super().get_queryset(request).select_related('album', 'owner')
+        """Возвращает треки с альбомом, владельцем и профилем артиста."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'album',
+                'album__artist',
+                'album__payout_recipient',
+                'created_by',
+            )
+        )
+
+    def save_model(self, request, obj, form, change):
+        """Сохраняет трек и запускает обработку при изменении исходника."""
+        should_schedule = not change or 'audio_file' in form.changed_data
+
+        with transaction.atomic():
+            super().save_model(request, obj, form, change)
+            unpublish_if_empty(obj.album)
+
+            if should_schedule:
+                transaction.on_commit(
+                    lambda: TrackGeneratedAudioScheduler.schedule(obj),
+                )

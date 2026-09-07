@@ -4,6 +4,10 @@ EMAIL_FIELD_MIN_LENGTH = 5
 USERNAME_FIELD_MAX_LENGTH = 150
 USERNAME_FIELD_MIN_LENGTH = 1
 
+EMAIL_VERIFICATION_CODE_LENGTH = 6
+EMAIL_VERIFICATION_CODE_TTL_MINUTES = 15
+EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS = 5
+
 # Константы профиля
 CITY_FIELD_MAX_LENGTH = 254
 CITY_FIELD_MIN_LENGTH = 2
@@ -22,6 +26,7 @@ FULL_NAME_FIELD_MAX_LENGTH = 254
 MAX_USER_CREATE_ATTEMPTS = 30
 MAX_CHAR_LENGTH = 255
 MAX_SLUG_LENGTH = 50
+MAX_CDEK_CODE_LENGTH = 32
 
 # Коды ошибок social auth.
 """Коды и сообщения ошибок social auth."""
@@ -32,6 +37,8 @@ SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED = 'email_not_confirmed'
 SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED = 'username_generation_failed'
 SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED = 'social_save_failed'
 SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED = 'oauth_auth_failed'
+SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED = 'registration_required'
+SOCIAL_AUTH_ERROR_EMAIL_CONFLICT = 'email_conflict'
 
 SOCIAL_AUTH_ERRORS = {
     SOCIAL_AUTH_ERROR_BLOCKED_USER: 'Учетная запись заблокирована.',
@@ -47,6 +54,12 @@ SOCIAL_AUTH_ERRORS = {
     ),
     SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED: (
         'Ошибка аутентификации через OAuth.'
+    ),
+    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED: (
+        'Для входа через соцсеть необходимо создать аккаунт.'
+    ),
+    SOCIAL_AUTH_ERROR_EMAIL_CONFLICT: (
+        'Этот email уже связан с другой учетной записью.'
     ),
 }
 

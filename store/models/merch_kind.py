@@ -1,8 +1,9 @@
 from django.db import models
 from django.utils.text import slugify
 
+from common.models.abstract import ActivatableModel, TimestampModel
+
 from store.constants import MAX_CHAR_LENGTH, MAX_SLUG_LENGTH
-from users.models.abstract import ActivatableModel, TimestampModel
 
 
 class MerchKind(ActivatableModel, TimestampModel):
@@ -16,6 +17,11 @@ class MerchKind(ActivatableModel, TimestampModel):
         'slug',
         max_length=MAX_SLUG_LENGTH,
         unique=True,
+    )
+    is_carrier = models.BooleanField(
+        'Носитель',
+        default=False,
+        help_text='Необходимо установить флаг, если тип является носителем.',
     )
 
     def save(self, *args, **kwargs):
@@ -40,6 +46,7 @@ class MerchKind(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'тип мерча'
         verbose_name_plural = 'типы мерча'
+        ordering = ('-is_carrier', 'name')
 
     def __str__(self):
         return self.name

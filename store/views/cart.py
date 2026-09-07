@@ -6,14 +6,28 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from store.constants import ZERO_MONEY
 from store.models import Cart, CartItem
-from store.schema import cart_schema
+from store.schema import (
+    cart_apply_promocode_schema,
+    cart_remove_promocode_schema,
+    cart_schema,
+)
 from store.serializers import (
+    ApplyPromocodeSerializer,
     CartItemWriteSerializer,
     CartReadSerializer,
     CartWriteSerializer,
 )
-from store.services import CartService
+from store.services import CartCalculationService, CartService
+
+# Возвращается на GET /cart/me/ если корзина ещё не создана
+EMPTY_CART_RESPONSE = {
+    'items': [],
+    'subtotal': ZERO_MONEY,
+    'discount_promocode': ZERO_MONEY,
+    'total': ZERO_MONEY,
+}
 
 
 @cart_schema
@@ -22,14 +36,12 @@ class CartViewSet(viewsets.GenericViewSet):
 
     Управление корзиной:
     - GET: Получить состав корзины.
-    - PUT: Полная синхронизация.
-    - PATCH: Частичное обновление.
-    - POST: Добавить один товар или увеличить количество.
-    - DELETE: Удалить товар полностью.
+    - PATCH: Обновить количество товаров.
+    - DELETE: удаление товара из корзины.
     """
 
     queryset = Cart.objects.all()
-    http_method_names = ('get', 'post', 'put', 'patch', 'delete')
+    http_method_names = ('get', 'post', 'patch', 'delete')
     permission_classes = (AllowAny,)
 
     def get_queryset(self):
@@ -50,17 +62,28 @@ class CartViewSet(viewsets.GenericViewSet):
             Prefetch(
                 'items',
                 # Оптимизируем вложенные айтемы через CartItemQuerySet
-                queryset=CartItem.objects.with_prices().select_related(
-                    'product_variant__product__track',
+                queryset=CartItem.objects
+                .with_prices()
+                .with_target_annotations()
+                .select_related(
+                    'product_variant__product__track__album',
                     'product_variant__product__album',
                     'product_variant__product__merch',
+                )
+                .prefetch_related(
+                    Prefetch(
+                        'product_variant__product__merch__images_merch',
+                        to_attr='prefetched_images',
+                    ),
                 ),
             ),
         )
 
     def get_instance(self):
-        """Используем сервис для получения или создания корзины."""
-        return CartService.get_or_create_cart(self.request)
+        """Возвращает или создает корзину, кэшируя её в рамках запроса."""
+        if not hasattr(self, '_cached_cart'):
+            self._cached_cart = CartService.get_or_create_cart(self.request)
+        return self._cached_cart
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -69,24 +92,46 @@ class CartViewSet(viewsets.GenericViewSet):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        context['cart'] = self.get_instance()
+        cart = getattr(self, 'instance', None) or getattr(
+            self,
+            '_cached_cart',
+            None,
+        )
+        context['cart'] = cart
+
+        if cart:
+            service = CartCalculationService(cart)
+            context.update(service.get_serializer_context())
+
         return context
 
-    @action(detail=False, methods=('get', 'put', 'patch'), url_path='me')
+    @action(detail=False, methods=('get', 'patch'), url_path='me')
     def me(self, request):
         """Получение или обновление корзины текущего пользователя."""
-        cart = self.get_instance()
-        if request.method in ('PUT', 'PATCH'):
+        if request.method == 'GET':
+            cart = self.get_queryset().first()
+            if cart is None:
+                return Response(EMPTY_CART_RESPONSE)
+            if CartService.remove_unavailable_items(cart):
+                cart = self.get_queryset().get(pk=cart.pk)
+            CartService.validate_cart_promocode(cart)
+        else:  # PATCH
+            cart = self.get_instance()
             serializer = self.get_serializer(
                 cart,
                 data=request.data,
-                partial=(request.method == 'PATCH'),
+                partial=True,
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
             cart = self.get_queryset().get(pk=cart.pk)
+        self._cached_cart = cart
+        self.instance = cart
         return Response(
-            CartReadSerializer(cart, context={'request': request}).data,
+            CartReadSerializer(
+                cart,
+                context=self.get_serializer_context(),
+            ).data,
         )
 
     @action(detail=False, methods=['post'], url_path='me/add')
@@ -110,14 +155,19 @@ class CartViewSet(viewsets.GenericViewSet):
                 'price_with_donation',
             ),
             comment=serializer.validated_data.get('comment'),
+            is_artist_subscription=(
+                serializer.validated_data.get('is_artist_subscription')
+            ),
         )
 
         cart = self.get_queryset().get(pk=cart.pk)
+        self._cached_cart = cart
+        self.instance = cart
 
         return Response(
             CartReadSerializer(
                 cart,
-                context={'request': request},
+                context=self.get_serializer_context(),
             ).data,
             status=status.HTTP_201_CREATED,
         )
@@ -138,4 +188,59 @@ class CartViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # Сбрасываем кэш, так как состав корзины изменился
+        if hasattr(self, '_cached_cart'):
+            delattr(self, '_cached_cart')
+
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @cart_apply_promocode_schema
+    @action(detail=False, methods=['post'], url_path='apply-promocode')
+    def apply_promocode(self, request):
+        """Применить промокод."""
+        cart = self.get_instance()
+
+        context = self.get_serializer_context()
+        context['cart'] = cart
+        serializer = ApplyPromocodeSerializer(
+            data=request.data,
+            context=context,
+        )
+        serializer.is_valid(raise_exception=True)
+
+        promocode = serializer.context['promocode']
+
+        cart.promocode = promocode
+        cart.save(update_fields=['promocode'])
+
+        cart = self.get_queryset().get(pk=cart.pk)
+        self._cached_cart = cart
+        self.instance = cart
+
+        return Response(
+            CartReadSerializer(
+                cart,
+                context=self.get_serializer_context(),
+            ).data,
+        )
+
+    @cart_remove_promocode_schema
+    @action(detail=False, methods=['post'], url_path='remove-promocode')
+    def remove_promocode(self, request):
+        """Удалить промокод."""
+        cart = self.get_instance()
+
+        if cart.promocode:
+            cart.promocode = None
+            cart.save()
+
+        cart = self.get_queryset().get(pk=cart.pk)
+        self._cached_cart = cart
+        self.instance = cart
+
+        return Response(
+            CartReadSerializer(
+                cart,
+                context=self.get_serializer_context(),
+            ).data,
+        )

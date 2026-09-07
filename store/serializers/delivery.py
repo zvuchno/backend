@@ -10,4 +10,4 @@ class DeliverySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Delivery
-        fields = ('id', 'name', 'price', 'description')
+        fields = ('id', 'name', 'delivery_type')

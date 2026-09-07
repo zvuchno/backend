@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import F, Q
@@ -12,6 +13,7 @@ from store.constants import (
     MONEY_INTERNAL_PRECISION,
     ZERO_MONEY,
 )
+from store.querysets import OrderItemQuerySet
 
 
 class OrderItem(models.Model):
@@ -66,21 +68,61 @@ class OrderItem(models.Model):
         validators=[MinValueValidator(ZERO_MONEY)],
         help_text='Скидка по промокоду продавца, руб.',
     )
+    platform_commission = models.DecimalField(
+        'Комиссия платформы (руб.)',
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_INTERNAL_PRECISION,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+
+    shipment = models.ForeignKey(
+        'store.Shipment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='items',
+        verbose_name='Посылка (Отправление)',
+    )
 
     # Snapshot {name, variant_name, artist..}
     product_info = models.JSONField('Данные о товаре (snapshot)', default=dict)
 
+    artist = models.ForeignKey(
+        'users.ArtistProfile',
+        on_delete=models.PROTECT,
+        related_name='order_items',
+        verbose_name='Артист на момент покупки',
+    )
+
+    payout_recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='payout_order_items',
+        verbose_name='Получатель выплаты на момент покупки',
+    )
+
+    objects = OrderItemQuerySet.as_manager()
+
     @property
     def donation(self) -> Decimal:
-        """Разница между уплаченным и номиналом."""
+        """Сумма доната сверх номинальной стоимости."""
         return max(
             (self.unit_price - self.price_at_purchase) * self.quantity,
             ZERO_MONEY,
         )
 
     @property
+    def product_total(self) -> Decimal:
+        """Стоимость товаров без учета доната."""
+        return max(
+            (self.price_at_purchase * self.quantity - self.promocode_discount),
+            ZERO_MONEY,
+        )
+
+    @property
     def line_total(self) -> Decimal:
-        """Сумма за всю позицию."""
+        """Итоговая сумма позиции с учетом скидки и доната."""
         return max(
             (self.unit_price * self.quantity - self.promocode_discount),
             ZERO_MONEY,

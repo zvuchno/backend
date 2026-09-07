@@ -4,14 +4,22 @@
 в интерфейсе Django Admin.
 """
 
+from django.contrib import admin
+
 from .album import AlbumAdmin
 from .cart import CartAdmin
 from .delivery import DeliveryAdmin
 from .favorite import FavoriteAdmin
 from .genre import GenreAdmin
+from .maintenance import MaintenanceOperationsAdmin
 from .merch import MerchAdmin
 from .merch_kind import MerchKindAdmin
 from .order import OrderAdmin
+from .payment import PaymentAdmin
+from .payout import PayoutAdmin
+from .promocode import PromocodeAdmin
+from .report import ReportAdmin
+from .shipment import ShipmentAdmin
 from .track import TrackAdmin
 
 __all__ = [
@@ -20,8 +28,19 @@ __all__ = [
     'DeliveryAdmin',
     'FavoriteAdmin',
     'GenreAdmin',
+    'MaintenanceOperationsAdmin',
     'MerchKindAdmin',
     'MerchAdmin',
     'OrderAdmin',
+    'PaymentAdmin',
+    'PayoutAdmin',
+    'PromocodeAdmin',
+    'ReportAdmin',
+    'ShipmentAdmin',
     'TrackAdmin',
 ]
+
+# Заголовок страницы (вкладка браузера)
+admin.site.site_title = 'ZVUCHNO'
+# Заголовок на самой странице
+admin.site.site_header = 'ZVUCHNO Администрирование'

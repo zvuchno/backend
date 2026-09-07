@@ -1,31 +1,30 @@
 """Модели доставки."""
 
-from decimal import Decimal
-
 from django.db import models
 
-from store.constants import (
-    MAX_PRICE_DIGITS,
-    MONEY_INTERNAL_PRECISION,
-)
-from users.models.abstract import ActivatableModel, TimestampModel
+from common.models.abstract import ActivatableModel, TimestampModel
+
+from store.constants import MAX_CHAR_LENGTH
 
 
 class Delivery(ActivatableModel, TimestampModel):
     """Модель вариантов доставки."""
 
-    name = models.CharField('Название', max_length=100)
-    price = models.DecimalField(
-        'Стоимость (руб.)',
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_INTERNAL_PRECISION,
-        default=Decimal('0.0000'),
+    class DeliveryType(models.TextChoices):
+        COURIER = 'courier', 'СДЭК - курьером до двери'
+        PICKPOINT = 'pickpoint', 'СДЭК - в пункт выдачи'
+        ARTIST_PICKUP = 'artist_pickup', 'Самовывоз от артиста'
+
+    delivery_type = models.CharField(
+        'Тип доставки',
+        max_length=20,
+        choices=DeliveryType.choices,
     )
-    description = models.TextField('Описание')
+    name = models.CharField('Название', max_length=MAX_CHAR_LENGTH)
 
     class Meta:
         verbose_name = 'доставка'
         verbose_name_plural = 'доставки'
 
     def __str__(self):
-        return self.name
+        return self.get_delivery_type_display()

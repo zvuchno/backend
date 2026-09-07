@@ -6,9 +6,13 @@
 
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from store.models import Cart, CartItem, ProductVariant
+from store.services import CartCalculationService
 
 
 class CartService:
@@ -22,12 +26,18 @@ class CartService:
         quantity: int,
         price_with_donation: Decimal = None,
         comment: str = '',
+        is_artist_subscription: bool = False,
     ) -> CartItem:
-        """Идемпотентное добавление товара в корзину.
+        """Добавление товара в корзину.
 
-        Если товар уже есть, увеличивает его количество.
-        Если нет — создает новую запись.
+        Если товар данного варианта уже есть в корзине,
+        увеличивает его количество (инкрементальное обновление).
         """
+        if not variant.is_available_for_purchase:
+            raise ValidationError(
+                {'product_variant': 'Товар недоступен для покупки.'},
+            )
+
         item, created = CartItem.objects.get_or_create(
             cart=cart,
             product_variant=variant,
@@ -35,6 +45,7 @@ class CartService:
                 'quantity': quantity,
                 'price_with_donation': price_with_donation,
                 'comment': comment,
+                'is_artist_subscription': is_artist_subscription,
             },
         )
         if not created:
@@ -49,77 +60,46 @@ class CartService:
                 item.comment = comment
                 update_fields.append('comment')
 
+            if is_artist_subscription:
+                item.is_artist_subscription = True
+                update_fields.append('is_artist_subscription')
+
             item.save(update_fields=update_fields)
+
+        CartService._touch(cart)
 
         return item
 
     @staticmethod
     @transaction.atomic
-    def update_cart_items(
-        cart: Cart,
-        items_data: list,
-        partial: bool = False,
-    ) -> Cart:
-        """Синхронизация товаров в корзине.
-
-        Использует bulk_create и оптимизированные запросы для обновления
-        количества товаров и удаления отсутствующих позиций.
-        """
+    def update_cart_items(cart: Cart, items_data: list) -> Cart:
+        """Обновление количества товаров в корзине."""
         current_items = {
             item.product_variant_id: item
             for item in CartItem.objects.filter(cart=cart)
         }
-
-        incoming_variant_ids = [
-            item['product_variant'].id for item in items_data
-        ]
-
-        # Если PUT — удаляем чего нет в запросе
-        if not partial:
-            cart.items.exclude(
-                product_variant_id__in=incoming_variant_ids,
-            ).delete()
-
-        new_items = []
         updated_items = []
-
         for item_data in items_data:
             variant = item_data['product_variant']
             quantity = item_data['quantity']
-            price_with_donation = item_data.get('price_with_donation')
-            comment = item_data.get('comment')
-
-            if variant.id in current_items:
-                item = current_items[variant.id]
-                if (
-                    item.quantity != quantity
-                    or item.price_with_donation != price_with_donation
-                    or item.comment != comment
-                ):
-                    item.quantity = quantity
-                    item.price_with_donation = price_with_donation
-                    item.comment = comment
-                    updated_items.append(item)
-            else:
-                new_items.append(
-                    CartItem(
-                        cart=cart,
-                        product_variant=variant,
-                        quantity=quantity,
-                        price_with_donation=price_with_donation,
-                        comment=comment,
-                    ),
+            if variant.id not in current_items:
+                raise ValidationError(
+                    {
+                        'product_variant': f'Товар с ID={variant.id} '
+                        'не найден в корзине',
+                    },
                 )
-
+            item = current_items[variant.id]
+            if item.quantity != quantity:
+                item.quantity = quantity
+                try:
+                    item.clean()
+                except DjangoValidationError as exc:
+                    raise ValidationError(exc.message_dict) from exc
+                updated_items.append(item)
         if updated_items:
-            CartItem.objects.bulk_update(
-                updated_items,
-                ['quantity', 'price_with_donation', 'comment'],
-            )
-
-        if new_items:
-            CartItem.objects.bulk_create(new_items)
-
+            CartItem.objects.bulk_update(updated_items, ['quantity'])
+            CartService._touch(cart)
         return cart
 
     @staticmethod
@@ -128,6 +108,13 @@ class CartService:
         deleted_count, _ = cart.items.filter(
             product_variant_id=variant_id,
         ).delete()
+
+        if deleted_count > 0:
+            CartService._touch(cart)
+            if cart.promocode:
+                cart.refresh_from_db()
+                CartService.validate_cart_promocode(cart)
+
         return deleted_count > 0
 
     @staticmethod
@@ -170,6 +157,8 @@ class CartService:
         for guest_item in guest_cart.items.all():
             variant = guest_item.product_variant
             product = variant.product
+            if not variant.is_available_for_purchase:
+                continue
 
             user_item, created = CartItem.objects.get_or_create(
                 cart=user_cart,
@@ -178,6 +167,9 @@ class CartService:
                     'quantity': guest_item.quantity,
                     'price_with_donation': guest_item.price_with_donation,
                     'comment': guest_item.comment,
+                    'is_artist_subscription': (
+                        guest_item.is_artist_subscription
+                    ),
                 },
             )
             if not created:
@@ -194,5 +186,64 @@ class CartService:
                 if user_item.quantity != total_qty:
                     user_item.quantity = total_qty
                     user_item.save(update_fields=['quantity'])
+
+                if (
+                    guest_item.is_artist_subscription
+                    and not user_item.is_artist_subscription
+                ):
+                    user_item.is_artist_subscription = True
+                    user_item.save(update_fields=['is_artist_subscription'])
         # Удаляем гостевую корзину после переноса
         guest_cart.delete()
+        user_cart.refresh_from_db()
+        CartService.validate_cart_promocode(user_cart)
+
+    @staticmethod
+    def _touch(cart: Cart) -> None:
+        """Обновляет updated_at корзины при действиях с её товарами."""
+        Cart.objects.filter(pk=cart.pk).update(updated_at=timezone.now())
+
+    @staticmethod
+    def validate_cart_promocode(cart: Cart) -> None:
+        """Проверяет актуальность промокода.
+
+        Если промокод невалиден или нет подходящих товаров — дропает его.
+        """
+        if not cart.promocode:
+            return
+
+        if not cart.promocode.is_available:
+            cart.promocode = None
+            cart.save(update_fields=['promocode'])
+            return
+
+        # Проверяем наличие товаров владельца промокода
+        calculation_service = CartCalculationService(cart)
+        has_applicable_items = any(
+            calculation_service._get_item_artist_id(item)
+            == cart.promocode.artist_id
+            for item in calculation_service.checkout_items
+        )
+        # Если подходящих товаров нет — дропаем промокод
+        if not has_applicable_items:
+            cart.promocode = None
+            cart.save(update_fields=['promocode'])
+
+    @staticmethod
+    def remove_unavailable_items(cart: Cart) -> bool:
+        """Удаляет из корзины товары, ставшие недоступными для покупки."""
+        unavailable_ids = [
+            item.id
+            for item in cart.items.select_related(
+                'product_variant__product__track',
+                'product_variant__product__album',
+                'product_variant__product__merch',
+            )
+            if not item.product_variant.is_available_for_purchase
+        ]
+
+        if not unavailable_ids:
+            return False
+
+        CartItem.objects.filter(id__in=unavailable_ids).delete()
+        return True

@@ -31,6 +31,7 @@ ADMIN_REORDER = (
             'store.Merch',
             'store.Genre',
             'store.MerchKind',
+            'store.Promocode',
         ),
     },
     {
@@ -39,9 +40,15 @@ ADMIN_REORDER = (
         'models': (
             'store.Order',
             'store.Cart',
-            'store.Delivery',
             'store.Favorite',
+            'store.Delivery',
+            'store.Shipment',
         ),
+    },
+    {
+        'app': 'store',
+        'label': 'Финансы',
+        'models': ('store.Payment', 'store.Report', 'store.Payout'),
     },
     # Объединяем пользователей (users) и системные права доступа (auth)
     # в один раздел админки для удобного управления аккаунтами и ролями
@@ -52,6 +59,8 @@ ADMIN_REORDER = (
             'users.CoreUser',
             'users.ListenerProfile',
             'users.ArtistProfile',
+            'users.ArtistLegalProfile',
+            'users.ArtistProfileClaimInvitation',
             'auth.Group',
             'auth.Permission',
         ),
@@ -59,7 +68,15 @@ ADMIN_REORDER = (
     # Sites framework (django.contrib.sites)
     'sites',
     # Социальная авторизация (social accounts + providers)
-    'socialaccount',
+    {
+        'app': 'socialaccount',
+        'label': 'Социальная авторизация',
+        'models': (
+            'socialaccount.SocialAccount',
+            'socialaccount.SocialApp',
+            'account.EmailAddress',
+        ),
+    },
     {
         'app': 'users',
         'label': 'Документы и согласия',
@@ -68,5 +85,15 @@ ADMIN_REORDER = (
             'users.ConsentDocument',
             'users.UserConsent',
         ),
+    },
+    {
+        'app': 'store',
+        'label': 'Обслуживание',
+        'models': ('store.MaintenanceOperations',),
+    },
+    {
+        'app': 'admin',
+        'label': 'Журнал действий',
+        'models': ('admin.LogEntry',),
     },
 )

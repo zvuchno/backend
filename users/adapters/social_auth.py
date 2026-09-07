@@ -1,18 +1,24 @@
 """Адаптеры для интеграции входа с соцсетями."""
 
 import logging
-from urllib.parse import urlencode
 
+from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 
+from common.utils import get_client_ip, get_user_agent
+from common.utils.urls import build_frontend_url
+
 from config import settings
 from users.constants import (
     SOCIAL_AUTH_ERRORS,
+    SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,
+    SOCIAL_AUTH_ERROR_MISSING_EMAIL,
     SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
+    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
 )
 from users.exceptions import SocialAuthException
@@ -30,21 +36,99 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         """Возвращает объект обработчика social auth."""
         return self.service_class()
 
+    def is_auto_signup_allowed(self, request, sociallogin) -> bool:
+        """Разрешает регистрацию только по явному флагу."""
+        create_account = getattr(
+            request,
+            'social_create_account',
+            False,
+        )
+
+        if not create_account:
+            if self._is_api_request(request):
+                raise SocialAuthException(
+                    SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
+                    SOCIAL_AUTH_ERRORS[
+                        SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED
+                    ],
+                )
+
+            return False
+
+        if self._is_api_request(request):
+            email = sociallogin.user.email
+
+            if (
+                email
+                and EmailAddress.objects.filter(
+                    email__iexact=email,
+                ).exists()
+            ):
+                raise SocialAuthException(
+                    SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,
+                    SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_EMAIL_CONFLICT],
+                )
+
+        return True
+
     def pre_social_login(self, request, sociallogin):
-        """Вызывается сразу после аутентификации у провайдера."""
+        """Обрабатывает пользователя до завершения social login."""
         provider = sociallogin.account.provider
         uid = sociallogin.account.uid
+        email = sociallogin.user.email
+        provider_obj = sociallogin.account.get_provider()
+
         service = self.get_service()
         user = service.find_user_by_social_account(
             provider=provider,
             provider_uid=uid,
         )
-        try:
-            service.ensure_user_is_active(user)
-        except SocialAuthException as exc:
+
+        if user is None:
+            user = service.find_user_by_email(email)
+
+        if user is not None:
+            try:
+                service.ensure_user_is_active(user)
+                service.mark_email_verified_from_social_provider(
+                    user=user,
+                    email=email,
+                    is_email_verified=self.is_email_verified(
+                        provider_obj,
+                        email,
+                    ),
+                )
+                service.accept_registration_consents(
+                    user=user,
+                    create_account=getattr(
+                        request,
+                        'social_create_account',
+                        False,
+                    ),
+                    accepted_consents=getattr(
+                        request,
+                        'social_consents',
+                        (),
+                    ),
+                    ip_address=get_client_ip(request),
+                    user_agent=get_user_agent(request),
+                )
+            except SocialAuthException as exc:
+                self._handle_auth_error(
+                    request,
+                    exc.error_code,
+                    provider,
+                )
+
+            if not sociallogin.is_existing:
+                sociallogin.connect(request, user)
+
+            return
+
+        if not email:
             self._handle_auth_error(
                 request,
-                exc.error_code,
+                SOCIAL_AUTH_ERROR_MISSING_EMAIL,
                 provider,
             )
 
@@ -63,6 +147,18 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 provider_uid=uid,
                 email=email,
                 is_email_verified=is_email_verified,
+                create_account=getattr(
+                    request,
+                    'social_create_account',
+                    False,
+                ),
+                accepted_consents=getattr(
+                    request,
+                    'social_consents',
+                    (),
+                ),
+                ip_address=get_client_ip(request),
+                user_agent=get_user_agent(request),
             )
         except SocialAuthException as exc:
             logger.warning(
@@ -121,13 +217,16 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         provider: str = 'unknown',
     ) -> HttpResponseRedirect:
         """Вспомогательный метод для редиректа на фронт с ошибкой."""
-        base_url = getattr(settings, 'FRONTEND_SOCIAL_AUTH_URL', '/')
-        params = urlencode({
-            'status': 'error',
-            'error_code': error_code,
-            'provider': provider,
-        })
-        return redirect(f'{base_url}?{params}')
+        return redirect(
+            build_frontend_url(
+                settings.FRONTEND_SOCIAL_AUTH_PATH,
+                {
+                    'status': 'error',
+                    'error_code': error_code,
+                    'provider': provider,
+                },
+            ),
+        )
 
     def _is_api_request(self, request) -> bool:
         """Проверяет, что запрос относится к API social auth."""

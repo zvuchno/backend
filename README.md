@@ -1,5 +1,5 @@
 [![Main Zvuchno workflow](https://github.com/zvuchno/backend/actions/workflows/main.yml/badge.svg)](https://github.com/zvuchno/backend/actions/workflows/main.yml)
-[![Website](https://img.shields.io/badge/Visit-Live%20Site-brightgreen)](https://zvuchno-dev.duckdns.org/)
+[![Website](https://img.shields.io/badge/Visit-Live%20Site-brightgreen)](https://dev.zvuchno.space/)
 
 # Звучно — Backend
 
@@ -15,8 +15,10 @@ Backend API проекта **Звучно**.
 * Swagger UI / Redoc
 * django-allauth
 * SimpleJWT
-* SQLite (для локальной разработки)
-* PostgreSQL
+* SQLite (для локального запуска без Docker)
+* PostgreSQL 17 (Docker / production)
+* Redis 7
+* Celery
 * Docker / Docker Compose
 * Nginx
 * Gunicorn
@@ -25,16 +27,10 @@ Backend API проекта **Звучно**.
 
 
 
-Основные зависимости:
+Полный список зависимостей находится в:
 
-```
-Django==5.2.12
-djangorestframework==3.16.1
-django-allauth==65.14.3
-djangorestframework_simplejwt==5.5.1
-django-filter==25.2
-ruff==0.15.5
-```
+* `requirements.txt` — локальная разработка и тестирование;
+* `requirements.prod.txt` — production runtime.
 
 ---
 
@@ -86,56 +82,14 @@ pre-commit run --all-files
 
 ---
 
-## 4. .env файл
-Пример - env.example
-## 4. .env файл
+## 4. Настроить окружение
+Создайте `.env` в корне проекта на основе `.env.example`.
+Проект поддерживает два локальных сценария:
 
-Пример: `.env.example`
+- запуск без Docker — Django запускается напрямую из виртуального окружения, по умолчанию можно использовать SQLite;
+- запуск через Docker Compose — используется полное окружение с PostgreSQL, Redis, Celery и Nginx.
+---
 
-```env
-# Общие настройки
-DEBUG=False                 # Режим отладки (True только для локальной разработки)
-USE_SQLITE=False            # Использовать SQLite вместо Postgres
-
-# База данных (PostgreSQL)
-POSTGRES_DB=zvuchno_db      # Имя базы данных
-POSTGRES_USER=admin         # Пользователь БД
-POSTGRES_PASSWORD=12345     # Пароль БД
-POSTGRES_HOST=db            # Хост БД (docker service или localhost)
-POSTGRES_PORT=5432          # Порт БД
-
-# Безопасность
-ALLOWED_HOSTS=127.0.0.1     # Разрешенные хосты
-CSRF_TRUSTED_ORIGINS=http://127.0.0.1
-
-SECRET_KEY=topsecretkey     # Django SECRET_KEY (заменить на проде)
-
-# JWT
-JWT_ACCESS_MINUTES=30       # Время жизни access токена
-JWT_REFRESH_DAYS=7          # Время жизни refresh токена
-
-# Frontend (URL для редиректов)
-FRONTEND_VERIFY_EMAIL_URL=/verify-email
-FRONTEND_RESET_PASSWORD_URL=/reset-password-confirm
-FRONTEND_SOCIAL_AUTH_URL=/
-
-# Мониторинг (GlitchTip / Sentry)
-GLITCHTIP_DSN=              # DSN для мониторинга (опционально)
-GLITCHTIP_TRACES_RATE=0.05  # Доля трассировок (0.0–1.0)
-DJANGO_ENV=local            # Окружение (local / dev / prod)
-
-# Шифрование чувствительных полей
-FIELD_ENCRYPTION_ENABLED=True   # Включить шифрование
-FIELD_ENCRYPTION_KEYS=          # Ключ(и) через запятую: первый — для записи, остальные — для чтения старых данных.
-                                # Сгенерировать: python manage.py generate_encryption_key
-                                # Пример: FIELD_ENCRYPTION_KEYS=key1,key2
-                                # Первый запуск: временно установить FIELD_ENCRYPTION_ENABLED=False, сгенерировать ключ,
-                                # вставить сюда и включить обратно.
-                                # Важно!
-                                # Если ключей несколько - новый должен быть первым, остальные через запятую (ротация).
-                                # Сохраните все ключи в менеджере паролей.
-                                # Потеря ключей = потеря доступа к зашифрованным полям бд.
-```
 ## 5. Применить миграции
 
 ```
@@ -169,26 +123,170 @@ http://127.0.0.1:8000
 ```
 http://127.0.0.1:8000/admin
 ```
-### Запуск через Docker
+## Запуск через Docker
 
-Этот метод запускает полную связку: Django + PostgreSQL + Gunicorn + Nginx.
+Docker Compose запускает полное локальное окружение:
 
-**Подготовьте окружение:**
+* Django;
+* PostgreSQL;
+* Redis;
+* Celery workers;
+* Celery Beat;
+* Flower;
+* Nginx;
+* bot.
 
-Создайте файл .env в корневой папке проекта на основе примера: env.example
+Локальный backend запускается через Django `runserver`.
 
-Соберите и запустите контейнеры:
+Для production используется отдельный `Dockerfile.prod`, в котором backend запускается через Gunicorn.
+
+### Подготовка окружения
+
+Создайте `.env` в корневой папке проекта на основе `.env.example`.
+
+### Через Makefile
+
+Для основных Docker-команд в проекте используется `Makefile`.
+
+Посмотреть доступные команды:
+
+```bash
+make help
 ```
-docker compose up --build
+
+Собрать Docker image и запустить проект:
+
+```bash
+make up
 ```
-Подготовьте базу данных и статику при первом запуске:
+
+Запустить проект в фоне:
+
+```bash
+make up-d
 ```
+
+Если backend image уже собран и пересборка не требуется:
+
+```bash
+make start
+```
+
+или в фоне:
+
+```bash
+make start-d
+```
+
+После изменения `Dockerfile` или `requirements.txt`:
+
+```bash
+make build
+```
+
+Полностью пересобрать backend без Docker build cache и запустить в фоне:
+
+```bash
+make rebuild
+```
+
+Остановить контейнеры:
+
+```bash
+make down
+```
+
+Посмотреть логи:
+
+```bash
+make logs
+```
+
+### Напрямую через Docker Compose
+
+`Makefile` является удобной обёрткой над Docker Compose. Команды можно выполнять и напрямую.
+
+Собрать image:
+
+```bash
+docker compose build
+```
+
+Запустить проект:
+
+```bash
+docker compose up
+```
+
+или в фоне:
+
+```bash
+docker compose up -d
+```
+
+Подготовить базу данных и статику при первом запуске:
+
+```bash
 # Миграции
 docker compose exec backend python manage.py migrate
+
 # Сбор статических файлов
 docker compose exec backend python manage.py collectstatic
 ```
+
 Проект доступен по адресу: [http://localhost:8000](http://localhost:8000)
+
+### Полезные команды Makefile
+
+| Команда | Назначение                                      |
+|---|-------------------------------------------------|
+| `make help` | Показать доступные команды                      |
+| `make up` | Собрать Docker image и запустить проект         |
+| `make up-d` | Собрать Docker image и запустить проект в фоне  |
+| `make start` | Запустить проект без пересборки                 |
+| `make start-d` | Запустить проект без пересборки в фоне          |
+| `make stop` | Остановить контейнеры без удаления |
+| `make build` | Собрать Docker image                            |
+| `make rebuild` | Пересобрать images без cache и запустить в фоне |
+| `make down` | Остановить и удалить контейнеры                 |
+| `make restart` | Перезапустить контейнеры                        |
+| `make logs` | Следить за логами контейнеров                   |
+| `make clean` | Удалить контейнеры и неиспользуемый build cache |
+| `make shell` | Открыть Django shell                            |
+| `make migrations` | Создать миграции                                |
+| `make migrate` | Применить миграции                              |
+| `make test` | Запустить тесты                                 |
+| `make collectstatic` | Собрать статические файлы |
+
+> [!NOTE]
+> `make clean` не удаляет Docker volumes, поэтому локальная PostgreSQL база сохраняется.
+
+### Мониторинг Celery через Flower
+
+Flower используется для просмотра Celery worker и состояния фоновых задач.
+
+Локально:
+
+```text
+http://localhost:5555/internal/flower/
+```
+
+На тестовом сервере:
+
+```text
+https://dev.zvuchno.space/internal/flower/
+```
+
+Доступ выполняется через Google OAuth. Необходимые переменные перечислены в `.env.example`.
+
+После изменения переменных `FLOWER_*` контейнер необходимо пересоздать:
+
+```bash
+docker compose up -d --force-recreate flower
+```
+
+> [!NOTE]
+> Сразу после запуска Flower при первом открытии worker иногда появляется ошибка `Unknown worker`. Обычно достаточно обновить страницу или открыть worker повторно через несколько секунд.
 
 ---
 
@@ -216,27 +314,19 @@ users.CoreUser
 AUTH_USER_MODEL = "users.CoreUser"
 ```
 
-При работе с пользователем используйте:
-
-```python
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-```
-
 ---
 
 # База данных
 
-Для локальной разработки используется **SQLite**.
-
+При локальном запуске без Docker может использоваться **SQLite**.
 Файл базы (`db.sqlite3`) не хранится в репозитории.
 
-После клонирования проекта выполните:
+При запуске через Docker Compose используется **PostgreSQL 17**.
 
-```
-python manage.py migrate
-```
+Данные PostgreSQL хранятся в Docker volume `pg_data` и сохраняются между обычными остановками и пересозданием контейнеров.
+
+> [!WARNING]
+> Команда `docker compose down -v` удаляет volumes, включая локальную PostgreSQL базу.
 
 ---
 
@@ -244,25 +334,43 @@ python manage.py migrate
 
 Создать миграции:
 
-```
+```bash
 python manage.py makemigrations
+```
+
+или в Docker:
+
+```bash
+make migrations
 ```
 
 Применить миграции:
 
-```
+```bash
 python manage.py migrate
+```
+
+или в Docker:
+
+```bash
+make migrate
 ```
 
 Запустить shell:
 
-```
+```bash
 python manage.py shell
 ```
 
-Запустить проверку:
+или в Docker:
 
+```bash
+make shell
 ```
+
+Запустить проверку Django:
+
+```bash
 python manage.py check
 ```
 
@@ -295,6 +403,15 @@ ruff format .
 ```
 cd backend
 pytest
+```
+или многопоточно (указать auto или подобрать количество потоков вручную):
+```
+pytest -n auto
+```
+Запуск внутри Docker:
+
+```bash
+make test
 ```
 
 # Профилирование и оптимизация (Silk)
@@ -352,3 +469,84 @@ SSH_PASSPHRASE  # Пароль от ключа (если он есть)
 - соберёт Docker-образы
 - отправит образы в Docker Hub
 - выполнит деплой на сервер через SSH
+
+## Резервное копирование
+
+Резервные копии PostgreSQL выполняются ежедневно на production VM и загружаются в приватный bucket Yandex Object Storage `zvuchno-backups`
+
+Скрипт `scripts/backup_postgres.sh` создаёт дамп PostgreSQL в custom-формате (`pg_dump -Fc`), проверяет его целостность через `pg_restore --list`, загружает в Yandex Object Storage и удаляет старые копии, оставляя последние 30
+
+Скрипт хранится в репозитории и доставляется на VM автоматически при деплое
+
+### Первоначальная настройка
+
+Выполняется один раз на production VM (в том числе при пересоздании VM)
+
+#### 1. Установка AWS CLI
+
+```bash
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -q /tmp/awscliv2.zip -d /tmp
+sudo /tmp/aws/install
+```
+
+#### 2. Настройка credentials
+
+Создать файл `/etc/zvuchno-backup.env`:
+
+```bash
+sudo nano /etc/zvuchno-backup.env
+```
+
+Содержимое:
+
+```env
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_S3_ENDPOINT_URL=https://storage.yandexcloud.net
+AWS_DEFAULT_REGION=ru-central1
+```
+
+Установить права:
+
+```bash
+sudo chmod 600 /etc/zvuchno-backup.env
+```
+
+#### 3. Настройка cron
+
+Открыть crontab:
+
+```bash
+crontab -e
+```
+
+Добавить:
+
+```cron
+0 3 * * * cd /home/zdocker/zvuchno && set -a && . /etc/zvuchno-backup.env && set +a && ./scripts/backup_postgres.sh >> /home/zdocker/backups/backup.log 2>&1
+```
+
+Backup выполняется ежедневно в 03:00
+
+#### 4. Проверка
+
+Запустить backup вручную:
+
+```bash
+cd /home/zdocker/zvuchno
+set -a && . /etc/zvuchno-backup.env && set +a
+./scripts/backup_postgres.sh
+```
+
+После успешного выполнения в bucket `zvuchno-backups/postgres/` должен появиться новый `.dump`-файл
+
+### Восстановление из бэкапа
+
+```bash
+aws --endpoint-url=https://storage.yandexcloud.net \
+    s3 cp s3://zvuchno-backups/postgres/<имя_файла>.dump ./restore.dump
+
+docker compose -f docker-compose.production.yml exec -T db \
+    pg_restore -U <POSTGRES_USER> -d <POSTGRES_DB> --clean --if-exists < ./restore.dump
+```

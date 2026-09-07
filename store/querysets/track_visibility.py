@@ -6,6 +6,8 @@
 
 from django.db import models
 
+from common.access import managed_artist_q
+
 
 class TrackQuerySet(models.QuerySet):
     """QuerySet для работы с треками.
@@ -36,5 +38,8 @@ class TrackQuerySet(models.QuerySet):
         )
         # Владелец альбома видит свои треки, даже если альбом скрыт
         if user.is_authenticated:
-            return qs.filter(album_visibility_q | models.Q(album__owner=user))
+            return qs.filter(
+                album_visibility_q
+                | managed_artist_q(user, prefix='album__artist'),
+            )
         return qs.filter(album_visibility_q)

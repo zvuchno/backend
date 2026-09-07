@@ -1,0 +1,460 @@
+"""Модуль бизнес-логики создания заказов.
+
+Инкапсулирует сервисы транзакционного создания заказов со снапшотами данных.
+"""
+
+import logging
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
+from django.db import transaction
+
+from .cart_calculation_service import CartCalculationService
+from store.constants import PLATFORM_COMMISSION_RATE, ZERO_MONEY
+from store.models import CartItem, Delivery, Order, OrderItem
+from store.services import CDEKService
+from users.models import ConsentDocument, UserConsent
+
+logger = logging.getLogger(__name__)
+
+
+class OrderService:
+    """Сервис для управления жизненным циклом заказов.
+
+    Отвечает за подготовку данных для оформления заказа (checkout),
+    создание записей заказов и позиций,
+    фиксацию юридически значимых действий (согласия).
+    """
+
+    @staticmethod
+    def checkout_info(user, cart, city, city_code) -> dict:
+        """Сервис формирования данных для оформления заказа.
+
+        Собирает:
+        - дефолтные данные пользователя для предзаполнения формы
+        - итоговую стоимость корзины (с учётом промокодов)
+        - доступные способы доставки (если в корзине есть мерч)
+        """
+        cart = cart or (user.cart if user else None)
+        calc_service = CartCalculationService(cart)
+
+        # Получаем список ID уникальных артистов, чей мерч в корзине
+        cart_artist_ids = calc_service.get_merch_artist_ids()
+
+        if not cart_artist_ids:  # Мерч тут есть?
+            deliveries_qs = Delivery.objects.none()
+            pickup_points_data = []
+        else:
+            deliveries_qs = Delivery.objects.filter(is_active=True)
+            pickup_points_data = calc_service.get_available_pickup_points()
+
+            # Если для текущей корзины нет доступных точек — скрываем самовывоз
+            if not pickup_points_data.exists():
+                deliveries_qs = deliveries_qs.exclude(
+                    delivery_type=Delivery.DeliveryType.ARTIST_PICKUP,
+                )
+
+        profile = getattr(user, 'listener_profile', None)
+
+        return {
+            'user_defaults': {
+                'full_name': getattr(profile, 'full_name', '') or '',
+                'email': user.email if user else '',
+                'phone': str(getattr(user, 'phone', '') or ''),
+                'city': city,
+                'city_code': city_code,
+            },
+            'subtotal': calc_service.get_total(),
+            'deliveries': deliveries_qs,
+            'pickup_points': pickup_points_data,
+        }
+
+    @staticmethod
+    @transaction.atomic
+    def create_order(
+        user,
+        cart,
+        validated_data,
+        ip_address=None,
+        user_agent=None,
+    ) -> Order:
+        """Транзакционный процесс преобразования корзины в оформленный заказ.
+
+        Выполняет следующие шаги:
+        1. Блокирует позиции корзины для предотвращения race condition.
+        2. Инициализирует CartCalculationService для точного расчёта скидок.
+        3. Создает объект Order и OrderItem (со снапшотами данных и скидок).
+        4. Регистрирует согласие пользователя на рассылку и обработку ПДн.
+        5. Очищает корзину (удаляет позиции или объект целиком для анонимов).
+        """
+        logger.info(
+            'Начало оформления заказа: user_id=%s, cart_id=%s',
+            user.id if user else None,
+            cart.id,
+        )
+        calc_service = CartCalculationService(cart)
+        # Блокируем строки корзины
+        cart_items = list(
+            calc_service.checkout_items.select_for_update(of=('self',)),
+        )
+
+        if not cart_items:
+            raise ValidationError('Нельзя оформить заказ с пустой корзиной.')
+
+        # Проверяем актуальную доступность товаров
+        inactive_items = [
+            item
+            for item in cart_items
+            if not item.product_variant.is_available_for_purchase
+        ]
+        if inactive_items:
+            unavailable_names = ', '.join(
+                item.product_variant.variant_name for item in inactive_items
+            )
+            logger.warning(
+                'Попытка оформить заказ с недоступными товарами: '
+                'cart_id=%s, items=%s',
+                cart.id,
+                unavailable_names,
+            )
+            raise ValidationError(
+                'Некоторые товары больше недоступны для покупки: '
+                f'{unavailable_names}.',
+            )
+
+        if cart.promocode_id:
+            # Блокируем запись промокода в БД до конца транзакции
+            promocode = (
+                cart.promocode.__class__.objects
+                .select_for_update()
+                .filter(id=cart.promocode_id)
+                .first()
+            )
+
+            # Проверяем актуальный статус из базы данных
+            if not promocode or not promocode.is_available:
+                logger.warning(
+                    'Попытка оформить заказ с неактивным промокодом: '
+                    'promocode_id=%s, cart_id=%s',
+                    cart.promocode_id,
+                    cart.id,
+                )
+                raise ValidationError(
+                    'Применённый промокод больше не активен.',
+                )
+
+            # Обновляем инстанс в корзине
+            cart.promocode = promocode
+
+        item_discounts = calc_service.get_item_discounts()
+
+        if cart.promocode and calc_service.get_discount_total() == ZERO_MONEY:
+            logger.warning(
+                'Промокод не применим к товарам в корзине: '
+                'promocode_id=%s, cart_id=%s',
+                cart.promocode_id,
+                cart.id,
+            )
+            raise ValidationError(
+                'Этот промокод невозможно применить к товарам в корзине.',
+            )
+
+        personal_data_consent = validated_data.pop(
+            'personal_data_consent',
+            None,
+        )
+        delivery = validated_data.get('delivery')
+        tariffs = validated_data.get('tariffs')
+        cdek_city_code = validated_data.get('cdek_city_code')
+        pickup_point = validated_data.pop('pickup_point', None)
+
+        pickup_point_data = {}
+        if pickup_point:
+            pickup_point_data = {
+                'address': pickup_point.address,
+                'date': pickup_point.pickup_date.isoformat()
+                if pickup_point.pickup_date
+                else None,
+            }
+
+        subtotal = calc_service.get_subtotal()
+        promocode_discount = calc_service.get_discount_total()
+        delivery_price, delivery_calculation = (
+            OrderService._get_delivery_result(
+                cart,
+                calc_service,
+                delivery,
+                cdek_city_code,
+                tariffs,
+            )
+        )
+        total = calc_service.get_total() + delivery_price
+
+        # Создаем заказ с фиксацией промокода и его общей скидки
+        order = Order.objects.create(
+            user=user if user and user.is_authenticated else None,
+            status=Order.Status.CREATED,
+            subtotal=subtotal,
+            promocode=cart.promocode,
+            promocode_discount=promocode_discount,
+            delivery_calculation=delivery_calculation,
+            delivery_price=delivery_price,
+            total=total,
+            pickup_point=pickup_point_data,
+            **validated_data,  # full_name, email, phone, адресные поля
+        )
+
+        artists_to_subscribe = OrderService._create_order_items(
+            order,
+            cart_items,
+            item_discounts,
+            cart.promocode,
+        )
+
+        # TODO заменить новым.
+        OrderService._process_user_consents(
+            user,
+            order,
+            validated_data.get('email'),
+            artists_to_subscribe,
+            personal_data_consent,
+            ip_address,
+            user_agent,
+        )
+
+        OrderService._finalize_cart_and_promocode(
+            cart,
+            order,
+            cart_items,
+        )
+        logger.info(
+            'Заказ создан: order_id=%s, user_id=%s, total=%s',
+            order.id,
+            user.id if user else None,
+            total,
+        )
+        return order
+
+    @staticmethod
+    def _create_order_items(
+        order,
+        cart_items,
+        item_discounts,
+        promocode,
+    ) -> set:
+        """Создает позиции заказа и возвращает наборы артистов для подписки."""
+        order_items = []
+        artists_to_subscribe = set()
+        promocode_code = promocode.code if promocode else ''
+
+        for item in cart_items:
+            variant = item.product_variant
+            product = variant.product
+
+            artist_profile = getattr(product, 'artist', None)
+            payout_recipient = getattr(product, 'payout_recipient', None)
+
+            if artist_profile is None or payout_recipient is None:
+                logger.error(
+                    'Невозможно создать позицию заказа '
+                    'без артиста или получателя выплаты: '
+                    'order_id=%s, product_id=%s, artist_id=%s, '
+                    'payout_recipient_id=%s',
+                    order.id,
+                    product.id,
+                    getattr(artist_profile, 'id', None),
+                    getattr(payout_recipient, 'id', None),
+                )
+                raise ValidationError(
+                    'Не удалось определить продавца для одного из товаров.',
+                )
+
+            item_promocode_discount = item_discounts.get(item.id, ZERO_MONEY)
+            item_line_total = max(
+                item.unit_price * item.quantity - item_promocode_discount,
+                ZERO_MONEY,
+            )
+            item_platform_commission = (
+                item_line_total * PLATFORM_COMMISSION_RATE
+            )
+
+            artist_name = artist_profile.name
+            product_kind = OrderService._get_product_kind(product)
+            property_value = (
+                variant.property_value if product.property_name else ''
+            )
+
+            # Собираем JSON-снапшот
+            product_info_snapshot = {
+                'name': variant.variant_name,
+                'kind': product_kind,
+                'artist_name': artist_name,
+                'product_type': product.product_type,
+                'property_name': product.property_name,
+                'property_value': property_value,
+                'allow_overpay': product.allow_overpay,
+                'promocode': promocode_code,
+                'sku': variant.sku,
+            }
+
+            order_items.append(
+                OrderItem(
+                    order=order,
+                    product_variant=variant,
+                    comment=item.comment or '',
+                    price_at_purchase=product.price,
+                    unit_price=item.unit_price,
+                    quantity=item.quantity,
+                    promocode_discount=item_promocode_discount,
+                    product_info=product_info_snapshot,
+                    artist=artist_profile,
+                    payout_recipient=payout_recipient,
+                    platform_commission=item_platform_commission,
+                ),
+            )
+            if item.is_artist_subscription and artist_profile:
+                artists_to_subscribe.add(artist_profile)
+                logger.info(
+                    'Подписка на артиста добавлена: order_id=%s, artist_id=%s',
+                    order.id,
+                    artist_profile.id,
+                )
+
+        OrderItem.objects.bulk_create(order_items)
+        return artists_to_subscribe
+
+    @staticmethod
+    def _process_user_consents(
+        user,
+        order,
+        email,
+        artists_to_subscribe,
+        personal_data_consent,
+        ip_address,
+        user_agent,
+    ) -> None:
+        """Регистрирует юридические согласия пользователя."""
+        authenticated_user = user if user and user.is_authenticated else None
+        # Согласие на рассылку
+        if artists_to_subscribe:
+            newsletter_doc = ConsentDocument.objects.filter(
+                document_type=ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+                is_active=True,
+            ).first()
+
+            if not newsletter_doc:
+                logger.error(
+                    'Нет активного документа согласия на рассылку '
+                    '(LISTENER_NEWSLETTER). '
+                    'order будет отменён: order_id=%s',
+                    order.id,
+                )
+                raise ValidationError(
+                    'Нет активного документа согласия на рассылку.',
+                )
+
+            UserConsent.objects.bulk_create([
+                UserConsent(
+                    email=email,
+                    user=authenticated_user,
+                    order=order,
+                    artist=artist,
+                    document=newsletter_doc,
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
+                for artist in artists_to_subscribe
+            ])
+
+        # Согласие на обработку ПДн
+        if personal_data_consent:
+            personal_doc = ConsentDocument.objects.filter(
+                document_type=ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+                is_active=True,
+            ).first()
+
+            if not personal_doc:
+                logger.error(
+                    'Нет активного документа согласия на обработку ПДн '
+                    '(LISTENER_PERSONAL_DATA). '
+                    'order будет отменён: order_id=%s',
+                    order.id,
+                )
+                raise ValidationError(
+                    'Нет активного документа согласия для слушателя.',
+                )
+
+            UserConsent.objects.create(
+                email=email,
+                user=authenticated_user,
+                order=order,
+                document=personal_doc,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+
+    @staticmethod
+    def _get_product_kind(product) -> str:
+        """Определяет тип (kind) продукта."""
+        if product.product_type == product.ProductType.ALBUM:
+            return 'Сингл' if product.album.is_single else 'Альбом'
+        if product.product_type == product.ProductType.TRACK:
+            return 'Трек'
+        if product.product_type == product.ProductType.MERCH:
+            return product.merch.kind.name if product.merch.kind else 'Мерч'
+        return ''
+
+    @staticmethod
+    def _get_delivery_result(
+        cart,
+        calc_service,
+        delivery,
+        cdek_city_code,
+        tariffs,
+    ) -> tuple[Decimal, dict]:
+        """Возвращает (delivery_price, delivery_calculation) для заказа.
+
+        Расчёт выполняется только если выбрана доставка СДЭК (курьер/ПВЗ)
+        и в корзине есть мерч — иначе оба поля пустые.
+        """
+        if not delivery or delivery.delivery_type not in (
+            Delivery.DeliveryType.COURIER,
+            Delivery.DeliveryType.PICKPOINT,
+        ):
+            return ZERO_MONEY, {}
+
+        if not calc_service.get_merch_artist_ids():
+            return ZERO_MONEY, {}
+
+        result = CDEKService().calculate(
+            city_code=cdek_city_code,
+            cart=cart,
+            tariffs=tariffs,
+        )
+
+        delivery_sum = result.get('delivery_sum')
+        if delivery_sum is None:
+            logger.error(
+                'CDEK вернул ответ без delivery_sum: '
+                'cart_id=%s, city_code=%s, result=%s',
+                cart.id,
+                cdek_city_code,
+                result,
+            )
+            raise ValidationError('Не удалось рассчитать стоимость доставки.')
+        return Decimal(delivery_sum), result.get('delivery_calculation', {})
+
+    @staticmethod
+    def _finalize_cart_and_promocode(
+        cart,
+        order,
+        checkout_items,
+    ) -> None:
+        """Очищает корзину, промокод, и инкрементирует счетчик."""
+        checkout_item_ids = [item.id for item in checkout_items]
+        CartItem.objects.filter(
+            cart=cart,
+            id__in=checkout_item_ids,
+        ).delete()
+        cart.promocode = None
+        cart.save(update_fields=['promocode'])

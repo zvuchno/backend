@@ -1,0 +1,171 @@
+"""Сервис резервирования и освобождения складских остатков."""
+
+import logging
+
+from django.db import transaction
+from django.db.models import F
+
+from store.exceptions import NotEnoughStock, PromocodeNotAvailable
+from store.models import Order, Product, ProductVariant, Promocode
+
+logger = logging.getLogger(__name__)
+
+
+class ReservationService:
+    """Сервис резервирования товаров."""
+
+    @staticmethod
+    @transaction.atomic
+    def reserve_order(
+        order,
+        status=Order.Status.RESERVED,
+        reserved_until=None,
+    ) -> Order:
+        """Резервирует мерч в заказе."""
+        # Блокируем заказ
+        order = Order.objects.select_for_update().get(pk=order.pk)
+
+        order_items = list(
+            order.items.filter(
+                product_variant__product__product_type=Product.ProductType.MERCH,
+            ),
+        )
+
+        variant_ids = sorted({item.product_variant_id for item in order_items})
+
+        # Блокируем остатки
+        variants = (
+            ProductVariant.objects
+            .select_for_update()
+            .select_related('product')
+            .order_by('id')
+            .in_bulk(variant_ids)
+        )
+        # Блокируем промокод
+        promocode = None
+        if order.promocode_id:
+            promocode = (
+                Promocode.objects
+                .select_for_update()
+                .filter(pk=order.promocode_id)
+                .first()
+            )
+
+        # Проверка наличия
+        for item in order_items:
+            variant = variants[item.product_variant_id]
+
+            if variant.stock < item.quantity:
+                raise NotEnoughStock(
+                    f'Недостаточно товара "{variant.product.name}'
+                    f'({variant.property_value})" на складе.',
+                )
+
+        if promocode and not promocode.is_available:
+            logger.warning(
+                'Заказ id=%s Данный промокод больше не доступен: '
+                'promocode_id=%s',
+                order.id,
+                order.promocode_id,
+            )
+            raise PromocodeNotAvailable('Данный промокод больше не доступен')
+
+        # Списание остатков
+        variants_to_update = []
+        for item in order_items:
+            variant = variants[item.product_variant_id]
+            variant.stock -= item.quantity
+            variants_to_update.append(variant)
+        if variants_to_update:
+            ProductVariant.objects.bulk_update(variants_to_update, ['stock'])
+
+        if promocode:
+            Promocode.objects.filter(pk=promocode.pk).update(
+                used_count=F('used_count') + 1,
+            )
+            logger.info(
+                'Заказ id=%s зарезервирован промокод: promocode_id=%s',
+                order.id,
+                order.promocode_id,
+            )
+
+        order.status = status
+        order.reserved_until = reserved_until
+        order.save(update_fields=['status', 'reserved_until', 'updated_at'])
+
+        logger.info(
+            'Заказ id=%s зарезервирован до %s.',
+            order.id,
+            order.reserved_until,
+        )
+        return order
+
+    @staticmethod
+    @transaction.atomic
+    def release_order_reserve(order, status=Order.Status.CREATED) -> Order:
+        """Снимает резерв с мерча в заказе."""
+        # Блокируем заказ
+        order = Order.objects.select_for_update().get(pk=order.pk)
+
+        order_items = list(
+            order.items.filter(
+                product_variant__product__product_type=Product.ProductType.MERCH,
+            ).select_related('product_variant'),
+        )
+
+        variant_ids = sorted({item.product_variant_id for item in order_items})
+
+        # Блокируем остатки
+        variants = (
+            ProductVariant.objects
+            .select_for_update()
+            .select_related('product')
+            .order_by('id')
+            .in_bulk(variant_ids)
+        )
+        # Блокируем промокод
+        promocode = None
+        if order.promocode_id:
+            promocode = (
+                Promocode.objects
+                .select_for_update()
+                .filter(pk=order.promocode_id)
+                .first()
+            )
+
+        # Возврат остатков
+        variants_to_update = []
+        for item in order_items:
+            variant = variants[item.product_variant_id]
+            variant.stock += item.quantity
+            variants_to_update.append(variant)
+
+        if variants_to_update:
+            ProductVariant.objects.bulk_update(
+                variants_to_update,
+                ['stock'],
+            )
+
+        if promocode:
+            Promocode.objects.filter(
+                pk=promocode.pk,
+                used_count__gt=0,
+            ).update(
+                used_count=F('used_count') - 1,
+            )
+
+        order.status = status
+        order.reserved_until = None
+        order.save(
+            update_fields=[
+                'status',
+                'reserved_until',
+                'updated_at',
+            ],
+        )
+
+        logger.info(
+            'Резерв заказа id=%s снят.',
+            order.id,
+        )
+        return order

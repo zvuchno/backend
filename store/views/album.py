@@ -1,14 +1,17 @@
 """ViewSet для управления альбомами."""
 
+from django.db.models import Prefetch, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.response import Response
 
-from common.permissions import IsStoreObjectOwnerOrReadOnly
+from common.access import managed_artist_q
+from common.permissions import IsArtistOrLabel, IsStoreObjectManager
 
-from .mixins import ProductActionMixin
+from .mixins import ProductActionMixin, SoftDeleteMixin
+from store.constants import CHAR_PRESET_DIGITAL
 from store.filters import AlbumFilter
-from store.models import Album
+from store.models import Album, ProductVariant
 from store.schema import album_schema
 from store.serializers import (
     AlbumReadDetailSerializer,
@@ -18,7 +21,7 @@ from store.serializers import (
 
 
 @album_schema
-class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
+class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     """API для работы с альбомами.
 
     Особенности:
@@ -34,8 +37,8 @@ class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
     """
 
     queryset = Album.objects.all()
+    permission_classes = (IsArtistOrLabel, IsStoreObjectManager)
     http_method_names = ('get', 'post', 'patch', 'delete')
-    permission_classes = (IsStoreObjectOwnerOrReadOnly,)
     filter_backends = (
         DjangoFilterBackend,
         filters.SearchFilter,
@@ -54,21 +57,42 @@ class AlbumViewSet(ProductActionMixin, viewsets.ModelViewSet):
         return AlbumReadSerializer
 
     def get_queryset(self):
-        # Вызываем базовый QS с фильтрацией
-        queryset = (
-            super()
-            .get_queryset()
-            .visible_for(
-                user=self.request.user,
-                action=self.action,
-            )
+        user = self.request.user
+        queryset = super().get_queryset()
+
+        if not user.is_authenticated:
+            return queryset.none()
+
+        queryset = queryset.filter(
+            Q(is_active=True) & managed_artist_q(user),
         )
-        if self.action in ('list', 'retrieve'):
+
+        digital_variants_prefetch = Prefetch(
+            'product__variants',
+            queryset=ProductVariant.objects.filter(
+                is_active=True,
+                property_value=CHAR_PRESET_DIGITAL,
+            ),
+            to_attr='digital_variants',
+        )
+
+        if self.action == 'list':
+            queryset = queryset.select_related(
+                'product',
+                'artist',
+            ).prefetch_related(
+                digital_variants_prefetch,
+            )
+        elif self.action == 'retrieve':
             queryset = queryset.select_related(
                 'product',
                 'genre',
-                'owner__artist_profile',
+                'artist',
+                'artist__label',
+            ).prefetch_related(
+                digital_variants_prefetch,
             )
+
         return queryset
 
     def create(self, request, *args, **kwargs):

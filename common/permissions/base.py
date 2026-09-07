@@ -11,10 +11,12 @@ class _ActiveProfilePermission(BasePermission):
     - пользователь аутентифицирован;
     - в классе задан атрибут `profile_attr`;
     - у пользователя существует связанный профиль;
-    - профиль активен (`is_active=True`).
+    - профиль активен (`is_active=True`);
+    - тип профиля входит в `allowed_profile_types`, если они заданы.
     """
 
     profile_attr = None
+    allowed_profile_types = ()
     message = 'Недостаточно прав.'
 
     def has_permission(self, request, view) -> bool:
@@ -23,7 +25,16 @@ class _ActiveProfilePermission(BasePermission):
             return False
 
         profile = getattr(user, self.profile_attr, None)
-        return bool(profile and profile.is_active)
+        if not (profile and profile.is_active):
+            return False
+
+        if (
+            self.allowed_profile_types
+            and profile.profile_type not in self.allowed_profile_types
+        ):
+            return False
+
+        return True
 
 
 class _IsOwnerByField(BasePermission):

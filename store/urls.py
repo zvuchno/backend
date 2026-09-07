@@ -7,11 +7,37 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AlbumTrackUploadInitiateView,
     AlbumViewSet,
+    ArtistReportViewSet,
+    CDEKWidgetView,
     CartViewSet,
+    CatalogMerchDetailView,
+    CatalogReleaseDetailView,
+    CatalogSearchView,
+    CdekCalculateView,
+    CdekCitiesView,
+    CreatePaymentView,
     DeliveryViewSet,
+    FavoritesViewSet,
     GenreViewSet,
+    MerchKindViewSet,
+    MerchViewSet,
+    OrderViewSet,
+    PlayerAlbumView,
+    PlayerTrackPlayView,
+    ProductCatalogListView,
+    PromocodeViewSet,
+    PurchasedMusicArchiveDownloadLinkView,
+    PurchasedMusicDLDetailView,
+    PurchasedMusicTrackDownloadLinkView,
+    PurchasedMusicView,
+    SalesExportView,
+    TrackFileUploadInitiateView,
+    TrackUploadCompleteView,
+    TrackUploadReceiveFileView,
     TrackViewSet,
+    yookassa_webhook,
 )
 
 app_name = 'store'
@@ -19,11 +45,100 @@ app_name = 'store'
 router = DefaultRouter()
 router.register(r'genres', GenreViewSet, basename='genres')
 router.register(r'albums', AlbumViewSet, basename='albums')
+router.register(r'merch-kinds', MerchKindViewSet, basename='merch-kinds')
+router.register(r'merch', MerchViewSet, basename='merch')
 router.register(r'tracks', TrackViewSet, basename='tracks')
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'deliveries', DeliveryViewSet, basename='deliveries')
-
+router.register(r'me/favorites', FavoritesViewSet, basename='me-favorites')
+router.register(r'orders', OrderViewSet, basename='orders')
+router.register(r'promocodes', PromocodeViewSet, basename='promocodes')
+router.register(r'me/reports', ArtistReportViewSet, basename='me-reports')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('catalog/', ProductCatalogListView.as_view(), name='catalog'),
+    path(
+        'catalog/release/<int:pk>/',
+        CatalogReleaseDetailView.as_view(),
+        name='catalog-release-detail',
+    ),
+    path(
+        'catalog/merch/<int:pk>/',
+        CatalogMerchDetailView.as_view(),
+        name='catalog-merch-detail',
+    ),
+    path(
+        'me/purchased-music/',
+        PurchasedMusicView.as_view(),
+        name='purchased-music',
+    ),
+    path(
+        'me/purchased-music/<int:album_id>/',
+        PurchasedMusicDLDetailView.as_view(),
+        name='purchased-music-download-detail',
+    ),
+    path(
+        'me/purchased-music/download-link/track/<int:track_id>/',
+        PurchasedMusicTrackDownloadLinkView.as_view(),
+        name='purchased-music-track-download-link',
+    ),
+    path(
+        'me/purchased-music/download-link/album-archive/<int:album_id>/',
+        PurchasedMusicArchiveDownloadLinkView.as_view(),
+        name='purchased-music-archive-download-link',
+    ),
+    path('cdek/widget/', CDEKWidgetView.as_view(), name='cdek-widget'),
+    path(
+        'cdek-calculate/',
+        CdekCalculateView.as_view(),
+        name='cdek-calculate',
+    ),
+    path('cdek-cities/', CdekCitiesView.as_view(), name='cdek-cities'),
+    path(
+        'payments/create/',
+        CreatePaymentView.as_view(),
+        name='payment-create',
+    ),
+    path('payments/webhook/', yookassa_webhook, name='payment-webhook'),
+    path(
+        'player/albums/<int:album_id>/',
+        PlayerAlbumView.as_view(),
+        name='player-album',
+    ),
+    path(
+        'player/tracks/<int:track_id>/play/',
+        PlayerTrackPlayView.as_view(),
+        name='player-play-track',
+    ),
+    path(
+        'albums/<int:album_id>/track-uploads/initiate/',
+        AlbumTrackUploadInitiateView.as_view(),
+        name='track-upload-initiate',
+    ),
+    path(
+        'track-uploads/<int:upload_id>/file/',
+        TrackUploadReceiveFileView.as_view(),
+        name='track-upload-receive-file',
+    ),
+    path(
+        'track-uploads/<int:upload_id>/complete/',
+        TrackUploadCompleteView.as_view(),
+        name='track-upload-complete',
+    ),
+    path(
+        'tracks/<int:track_id>/file-upload/initiate/',
+        TrackFileUploadInitiateView.as_view(),
+        name='track-file-upload-initiate',
+    ),
+    path(
+        'artists/me/sales/export/',
+        SalesExportView.as_view(),
+        name='sales-export',
+    ),
+    path(
+        'search/',
+        CatalogSearchView.as_view(),
+        name='catalog-search',
+    ),
 ]

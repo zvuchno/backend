@@ -6,12 +6,14 @@
 from django.urls import path
 
 from users.views import (
+    CookieLoginView,
+    CookieLogoutView,
+    CookieRefreshView,
     CustomLogoutView,
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
     SocialAuthErrorCodesView,
-    SocialSessionExchangeView,
     VKLogin,
     YandexLogin,
 )
@@ -27,16 +29,30 @@ urlpatterns = [
         CustomTokenRefreshView.as_view(),
         name='token_refresh',
     ),
-    path('token/logout/', CustomLogoutView.as_view(), name='token_logout'),
+    path(
+        'token/logout/',
+        CustomLogoutView.as_view(),
+        name='token_logout',
+    ),
     path(
         'token/verify/',
         CustomTokenVerifyView.as_view(),
         name='token_verify',
     ),
     path(
-        'social/get_tokens/',
-        SocialSessionExchangeView.as_view(),
-        name='social_login',
+        'cookie/login/',
+        CookieLoginView.as_view(),
+        name='cookie_login',
+    ),
+    path(
+        'cookie/refresh/',
+        CookieRefreshView.as_view(),
+        name='cookie_refresh',
+    ),
+    path(
+        'cookie/logout/',
+        CookieLogoutView.as_view(),
+        name='cookie_logout',
     ),
     path(
         'social/error-codes/',

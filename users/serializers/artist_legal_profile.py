@@ -1,6 +1,7 @@
 """Сериализаторы юр профиля."""
 
 from django.db import transaction
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from users.models import (
@@ -9,6 +10,7 @@ from users.models import (
     ArtistIdentityData,
     ArtistLegalProfile,
 )
+from users.serializers.mixins import SafePhoneNumberField
 
 
 class ArtistIdentityDataSerializer(serializers.ModelSerializer):
@@ -17,7 +19,6 @@ class ArtistIdentityDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistIdentityData
         fields = (
-            'id',
             'first_name',
             'last_name',
             'middle_name',
@@ -37,7 +38,6 @@ class ArtistBankDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistBankData
         fields = (
-            'id',
             'bank_name',
             'bik',
             'correspondent_account',
@@ -51,7 +51,6 @@ class ArtistCompanyDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArtistCompanyData
         fields = (
-            'id',
             'company_name',
             'company_address',
             'inn',
@@ -62,17 +61,37 @@ class ArtistCompanyDataSerializer(serializers.ModelSerializer):
 class ArtistLegalProfileSerializer(serializers.ModelSerializer):
     """Сериализатор юридического профиля артиста."""
 
+    phone = SafePhoneNumberField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
     is_verified = serializers.BooleanField(read_only=True)
     comment = serializers.CharField(read_only=True)
+
+    is_ready_for_verification = serializers.BooleanField(read_only=True)
+    verification_missing_fields = serializers.SerializerMethodField()
 
     class Meta:
         model = ArtistLegalProfile
         fields = (
-            'id',
+            'email',
+            'phone',
             'recipient_type',
             'is_verified',
+            'is_ready_for_verification',
+            'verification_missing_fields',
             'comment',
         )
+
+    @extend_schema_field(
+        serializers.ListField(
+            child=serializers.CharField(),
+        ),
+    )
+    def get_verification_missing_fields(self, obj):
+        """Возвращает незаполненные поля, необходимые для проверки."""
+        return obj.get_verification_missing_fields()
 
 
 class ArtistLegalSerializer(serializers.Serializer):
@@ -97,10 +116,14 @@ class ArtistLegalSerializer(serializers.Serializer):
     )
 
     @staticmethod
-    def _update_items(instance, data) -> None:
-        """Заполняет значения полей модели."""
+    def _update_items(instance, data) -> bool:
+        """Обновляет поля модели и возвращает признак изменений."""
+        changed = False
         for key, value in data.items():
-            setattr(instance, key, value)
+            if getattr(instance, key) != value:
+                setattr(instance, key, value)
+                changed = True
+        return changed
 
     @transaction.atomic
     def update(self, instance, validated_data):
@@ -109,47 +132,42 @@ class ArtistLegalSerializer(serializers.Serializer):
         bank_data = validated_data.pop('bank_data', None)
         company_data = validated_data.pop('company_data', None)
         legal_profile = validated_data
+        reset_verified = False
 
         if legal_profile:
-            self._update_items(instance, legal_profile)
-            instance.save()
+            changed = self._update_items(instance, legal_profile)
+            reset_verified |= changed
+            if changed:
+                instance.save()
         if identity_data is not None:
             identity_data_instance, _ = (
                 ArtistIdentityData.objects.get_or_create(
                     legal_profile=instance,
                 )
             )
-            self._update_items(identity_data_instance, identity_data)
-            identity_data_instance.save()
+            changed = self._update_items(identity_data_instance, identity_data)
+            reset_verified |= changed
+            if changed:
+                identity_data_instance.save()
         if bank_data is not None:
             bank_data_instance, _ = ArtistBankData.objects.get_or_create(
                 legal_profile=instance,
             )
-            self._update_items(bank_data_instance, bank_data)
-            bank_data_instance.save()
+            changed = self._update_items(bank_data_instance, bank_data)
+            reset_verified |= changed
+            if changed:
+                bank_data_instance.save()
         if company_data is not None:
             company_data_instance, _ = ArtistCompanyData.objects.get_or_create(
                 legal_profile=instance,
             )
-            self._update_items(company_data_instance, company_data)
-            company_data_instance.save()
+            changed = self._update_items(company_data_instance, company_data)
+            reset_verified |= changed
+            if changed:
+                company_data_instance.save()
+
+        if reset_verified and instance.is_verified:
+            instance.is_verified = False
+            instance.save(update_fields=('is_verified',))
 
         return instance
-
-    def validate(self, attrs) -> dict:
-        recipient_type = attrs.get(
-            'recipient_type',
-            getattr(self.instance, 'recipient_type', None),
-        )
-        company_data = attrs.get('company_data')
-        if (
-            recipient_type != ArtistLegalProfile.RecipientType.LEGAL_ENTITY
-            and company_data is not None
-        ):
-            raise serializers.ValidationError({
-                'company_data': (
-                    'Данные юридического лица допустимы только '
-                    'для получателя типа "Юридическое лицо".'
-                ),
-            })
-        return attrs

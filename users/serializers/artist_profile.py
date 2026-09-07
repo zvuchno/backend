@@ -1,10 +1,23 @@
 """Сериализаторы профиля артиста."""
 
 from django.db import IntegrityError, transaction
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from common.services import get_artist_publication_readiness
+from common.utils import get_client_ip, get_user_agent
+
+from users.consents_policy import ConsentScenario
 from users.helpers import ensure_listener_profile
-from users.models import ArtistContact, ArtistProfile, ArtistSocial
+from users.models import (
+    ArtistContact,
+    ArtistProfile,
+    ArtistProfileClaimInvitation,
+    ArtistProfileType,
+    ArtistSocial,
+    ConsentDocument,
+)
+from users.services import ConsentService
 
 
 class ArtistCoverUpdateSerializer(serializers.ModelSerializer):
@@ -35,18 +48,34 @@ class ArtistSocialSerializer(serializers.ModelSerializer):
         fields = ('id', 'label', 'value')
 
 
-class ArtistPublicShortSerializer(serializers.ModelSerializer):
-    """Сериализатор публичного профиля артиста."""
+class ArtistLabelShortSerializer(serializers.ModelSerializer):
+    """Сериализатор лейбла артиста."""
 
     class Meta:
         model = ArtistProfile
         fields = (
+            'id',
+            'name',
+            'slug',
+        )
+
+
+class ArtistPublicShortSerializer(serializers.ModelSerializer):
+    """Сериализатор публичного профиля артиста."""
+
+    label = ArtistLabelShortSerializer(read_only=True)
+
+    class Meta:
+        model = ArtistProfile
+        fields = (
+            'id',
+            'profile_type',
             'name',
             'description',
             'cover',
             'city',
-            'url',
             'slug',
+            'label',
         )
 
 
@@ -63,14 +92,56 @@ class ArtistPublicSerializer(ArtistPublicShortSerializer):
         ) + ArtistPublicShortSerializer.Meta.fields
 
 
+class PublicationReadinessItemSerializer(serializers.Serializer):
+    """Готовность к публикации типа товара."""
+
+    can_publish = serializers.BooleanField()
+    missing_requirements = serializers.ListField(
+        child=serializers.CharField(),
+    )
+
+
+class ArtistPublicationReadinessSerializer(serializers.Serializer):
+    """Готовность артиста к публикации товаров."""
+
+    digital = PublicationReadinessItemSerializer()
+    physical = PublicationReadinessItemSerializer()
+
+
 class ArtistMeSerializer(ArtistPublicSerializer):
     """Сериализатор профиля текущего артиста."""
 
+    publication_readiness = serializers.SerializerMethodField()
+
     class Meta(ArtistPublicSerializer.Meta):
-        fields = ArtistPublicSerializer.Meta.fields
+        fields = ArtistPublicSerializer.Meta.fields + (
+            'publication_readiness',
+        )
+
+    @extend_schema_field(ArtistPublicationReadinessSerializer)
+    def get_publication_readiness(self, obj):
+        """Возвращает готовность артиста к публикации товаров."""
+        readiness = get_artist_publication_readiness(obj)
+
+        return {
+            'digital': {
+                'can_publish': readiness.can_publish_digital,
+                'missing_requirements': [
+                    requirement.value
+                    for requirement in readiness.digital_missing
+                ],
+            },
+            'physical': {
+                'can_publish': readiness.can_publish_physical,
+                'missing_requirements': [
+                    requirement.value
+                    for requirement in readiness.physical_missing
+                ],
+            },
+        }
 
 
-class ArtistMeUpdateSerializer(serializers.ModelSerializer):
+class ArtistProfileUpdateSerializer(serializers.ModelSerializer):
     """Сериализатор обновления профиля артиста."""
 
     contacts = ArtistContactSerializer(many=True, required=False)
@@ -148,40 +219,256 @@ class ArtistMeUpdateSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'city',
-            'url',
+            'slug',
             'socials',
             'contacts',
         )
+        extra_kwargs = {
+            'slug': {
+                'required': False,
+                'allow_blank': False,
+            },
+        }
 
 
-class BecomeArtistSerializer(serializers.ModelSerializer):
-    """Сериализатор для реализации возможности стать артистом слушателю."""
+class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
+    """Сериализатор создания профиля или повышения артиста до лейбла."""
+
+    profile_type = serializers.ChoiceField(
+        choices=ArtistProfileType.choices,
+        default=ArtistProfileType.ARTIST,
+    )
+    name = serializers.CharField(
+        required=False,
+        allow_blank=False,
+    )
+    consents = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=ConsentDocument.DocumentType.choices,
+        ),
+        required=False,
+        write_only=True,
+        label='Принятые согласия',
+    )
 
     class Meta:
         model = ArtistProfile
-        fields = ('name',)
+        fields = ('name', 'profile_type', 'consents')
 
     def validate(self, attrs):
+        """Проверяет создание профиля или повышение артиста до лейбла."""
         user = self.context['request'].user
-        if hasattr(user, 'artist_profile'):
-            raise serializers.ValidationError(
-                {'detail': 'У пользователя уже есть профиль артиста.'},
+        profile = getattr(user, 'artist_profile', None)
+        target_type = attrs.get(
+            'profile_type',
+            ArtistProfileType.ARTIST,
+        )
+
+        if profile is None:
+            if not attrs.get('name'):
+                raise serializers.ValidationError({
+                    'name': 'Это поле обязательно при создании профиля.',
+                })
+            return attrs
+
+        if target_type != ArtistProfileType.LABEL:
+            raise serializers.ValidationError({
+                'profile_type': (
+                    'У пользователя уже есть профиль артиста. '
+                    'Допустим только переход к профилю лейбла.'
+                ),
+            })
+
+        if profile.label_id is not None:
+            raise serializers.ValidationError({
+                'profile_type': (
+                    'Нельзя стать лейблом, находясь под управлением '
+                    'другого лейбла.'
+                ),
+            })
+
+        scenario = self._get_consent_scenario(
+            user,
+            target_type,
+        )
+        if scenario is not None:
+            ConsentService.validate(
+                scenario=scenario,
+                accepted_types=set(attrs.get('consents') or ()),
             )
+
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
-        """Создает профиль артиста для текущего пользователя."""
+        """Создаёт профиль или повышает независимого артиста до лейбла."""
         user = self.context['request'].user
+        profile = getattr(user, 'artist_profile', None)
+
+        if profile is not None:
+            profile.profile_type = ArtistProfileType.LABEL
+            profile.save(update_fields=('profile_type', 'updated_at'))
+            return profile
+
         ensure_listener_profile(user)
         try:
-            return ArtistProfile.objects.create(
-                user=user,
-                **validated_data,
-            )
+            with transaction.atomic():
+                accepted_types = set(
+                    validated_data.pop('consents', None) or (),
+                )
+                profile = ArtistProfile.objects.create(
+                    user=user,
+                    **validated_data,
+                )
+                scenario = (
+                    ConsentScenario.LABEL_ONBOARDING
+                    if profile.profile_type == ArtistProfileType.LABEL
+                    else ConsentScenario.ARTIST_ONBOARDING
+                )
+
+                request = self.context['request']
+
+                ConsentService.accept(
+                    scenario=scenario,
+                    accepted_types=accepted_types,
+                    user=user,
+                    email=user.email,
+                    ip_address=get_client_ip(request),
+                    user_agent=get_user_agent(request),
+                )
+                return profile
+
         except IntegrityError:
             if ArtistProfile.objects.filter(user=user).exists():
                 raise serializers.ValidationError(
-                    {'detail': 'У пользователя уже есть профиль артиста.'},
+                    {
+                        'detail': (
+                            'У пользователя уже есть профиль '
+                            'артиста или лейбла.'
+                        ),
+                    },
                 )
             raise
+
+    def _get_consent_scenario(
+        self,
+        user,
+        profile_type,
+    ) -> ConsentScenario | None:
+        """Возвращает контекст согласий для повышения пользователя."""
+        profile = getattr(user, 'artist_profile', None)
+
+        if profile is not None:
+            return None
+
+        if profile_type == ArtistProfileType.LABEL:
+            return ConsentScenario.LABEL_ONBOARDING
+
+        return ConsentScenario.ARTIST_ONBOARDING
+
+
+class ArtistProfileClaimInvitationShortSerializer(
+    serializers.ModelSerializer,
+):
+    """Краткое состояние приглашения на управление профилем."""
+
+    email = serializers.EmailField(
+        source='invitation.recipient_email',
+    )
+    status = serializers.CharField(
+        source='invitation.status',
+    )
+    expires_at = serializers.DateTimeField(
+        source='invitation.expires_at',
+    )
+    can_resend = serializers.BooleanField(
+        source='invitation.can_resend',
+        read_only=True,
+    )
+    resend_available_at = serializers.DateTimeField(
+        source='invitation.resend_available_at',
+        read_only=True,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = ArtistProfileClaimInvitation
+        fields = (
+            'email',
+            'status',
+            'expires_at',
+            'can_resend',
+            'resend_available_at',
+        )
+
+
+class ManagedArtistProfileSerializer(ArtistPublicShortSerializer):
+    """Профиль, доступный для управления текущему аккаунту."""
+
+    has_account = serializers.SerializerMethodField()
+    is_self = serializers.SerializerMethodField()
+    claim_invitation = serializers.SerializerMethodField()
+
+    class Meta(ArtistPublicShortSerializer.Meta):
+        fields = ArtistPublicShortSerializer.Meta.fields + (
+            'has_account',
+            'is_self',
+            'claim_invitation',
+        )
+
+    def get_has_account(self, obj: ArtistProfile) -> bool:
+        """Определяет наличие аккаунта у профиля."""
+        return obj.user_id is not None
+
+    def get_is_self(self, obj: ArtistProfile) -> bool:
+        """Определяет, принадлежит ли профиль текущему аккаунту."""
+        request = self.context.get('request')
+        return bool(request and obj.user_id == request.user.id)
+
+    @extend_schema_field(
+        ArtistProfileClaimInvitationShortSerializer(
+            allow_null=True,
+        ),
+    )
+    def get_claim_invitation(self, obj: ArtistProfile):
+        """Возвращает приглашение на управление профилем."""
+        try:
+            claim = obj.claim_invitation
+        except ArtistProfileClaimInvitation.DoesNotExist:
+            return None
+
+        return ArtistProfileClaimInvitationShortSerializer(
+            claim,
+        ).data
+
+
+class ManagedArtistProfileCreateSerializer(serializers.ModelSerializer):
+    """Сериализатор создания артиста лейблом."""
+
+    class Meta:
+        model = ArtistProfile
+        fields = (
+            'id',
+            'name',
+            'description',
+            'city',
+            'slug',
+        )
+        read_only_fields = ('id',)
+        extra_kwargs = {
+            'slug': {
+                'required': False,
+                'allow_blank': False,
+            },
+        }
+
+    def create(self, validated_data):
+        """Создает профиль артиста, управляемый текущим лейблом."""
+        label = self.context['request'].user.artist_profile
+
+        return ArtistProfile.objects.create(
+            profile_type=ArtistProfileType.ARTIST,
+            label=label,
+            user=None,
+            **validated_data,
+        )

@@ -2,12 +2,15 @@
 
 from drf_spectacular.utils import extend_schema
 
+from users.serializers import EmailVerificationCodeSerializer
+
 me_schema = extend_schema(
     tags=['Account'],
     summary='Текущая учетная запись',
     description=(
         'Возвращает данные текущего авторизованного пользователя, '
-        'включая контакты, флаги подтверждения и наличие активных профилей.'
+        'включая контакты, флаги подтверждения, наличие активных профилей '
+        'и тип профиля - артист или лейбл.'
     ),
 )
 
@@ -65,6 +68,27 @@ email_verification_schema = extend_schema(
     description='Подтверждает email пользователя по uid и токену.',
 )
 
+email_verification_code_schema = extend_schema(
+    summary='Подтвердить email по коду',
+    description=(
+        'Подтверждает email текущего авторизованного пользователя '
+        'по коду из письма.'
+    ),
+    tags=['Account'],
+    request=EmailVerificationCodeSerializer,
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'detail': {
+                    'type': 'string',
+                    'example': 'Email подтвержден.',
+                },
+            },
+        },
+    },
+)
+
 resend_verification_email_schema = extend_schema(
     tags=['Account'],
     summary='Повторно отправить письмо подтверждения',
@@ -73,17 +97,34 @@ resend_verification_email_schema = extend_schema(
         'текущего пользователя.'
     ),
 )
+
 become_artist_schema = extend_schema(
     tags=['Account'],
-    summary='Стать артистом',
+    summary='Стать артистом или лейблом',
     description=(
-        'Создает профиль артиста для текущего авторизованного '
-        'пользователя. '
-        'Если профиль артиста уже существует, возвращает ошибку.'
+        'Создаёт текущему пользователю профиль артиста или лейбла. '
+        'Для создания нового профиля поле name обязательно. '
+        'Если у пользователя уже есть независимый профиль артиста, '
+        'запрос с profile_type=label повышает его до профиля лейбла. '
+        'При повышении имя существующего профиля не изменяется, даже '
+        'если поле name передано. Артист под управлением другого лейбла '
+        'не может стать лейблом. Для существующего лейбла операция '
+        'недоступна.'
     ),
 )
+
 change_username_schema = extend_schema(
     tags=['Account'],
     summary='Изменить имя пользователя (username)',
     description='Меняет имя пользователя, проверяет уникальность.',
+)
+
+set_password_schema = extend_schema(
+    tags=['Account'],
+    summary='Установить пароль',
+    description=(
+        'Устанавливает пароль текущему авторизованному пользователю, '
+        'если у его учетной записи ещё нет пригодного для входа пароля. '
+        'Например, после регистрации через социальную сеть.'
+    ),
 )

@@ -3,15 +3,27 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.db import IntegrityError
+from django.db.models import F
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from users.serializers.mixins import PhoneRegistrationMixin
+from users.constants import (
+    EMAIL_VERIFICATION_CODE_LENGTH,
+    EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+)
+from users.models import ArtistProfileType, EmailVerificationCode
+from users.serializers.mixins import (
+    SafePhoneNumberField,
+    UniquePhoneValidationMixin,
+)
 from users.services import (
     get_user_from_uid,
     set_user_password,
     verify_email_token,
     verify_password_reset_token,
 )
+from users.services.email_verification import hash_email_verification_code
 
 User = get_user_model()
 
@@ -27,6 +39,8 @@ class MeSerializer(serializers.ModelSerializer):
 
     is_listener = serializers.SerializerMethodField()
     is_artist = serializers.SerializerMethodField()
+    profile_type = serializers.SerializerMethodField()
+    has_usable_password = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -39,6 +53,8 @@ class MeSerializer(serializers.ModelSerializer):
             'is_email_verified',
             'is_listener',
             'is_artist',
+            'profile_type',
+            'has_usable_password',
         )
 
     @staticmethod
@@ -53,14 +69,25 @@ class MeSerializer(serializers.ModelSerializer):
         profile = getattr(obj, 'artist_profile', None)
         return bool(profile and profile.is_active)
 
+    @staticmethod
+    def get_has_usable_password(obj) -> bool:
+        """Определяет, может ли пользователь войти по паролю."""
+        return obj.has_usable_password()
 
-class ChangePasswordSerializer(serializers.Serializer):
-    """Сериализатор смены пароля пользователя."""
-
-    old_password = serializers.CharField(
-        write_only=True,
-        label='Старый пароль',
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=ArtistProfileType.choices,
+            allow_null=True,
+        ),
     )
+    def get_profile_type(self, obj):
+        artist_profile = getattr(obj, 'artist_profile', None)
+        return artist_profile.profile_type if artist_profile else None
+
+
+class NewPasswordSerializer(serializers.Serializer):
+    """Базовый сериализатор установки нового пароля."""
+
     new_password = serializers.CharField(
         write_only=True,
         label='Новый пароль',
@@ -68,6 +95,31 @@ class ChangePasswordSerializer(serializers.Serializer):
     retype_new_password = serializers.CharField(
         write_only=True,
         label='Подтверждение нового пароля',
+    )
+
+    def validate(self, attrs):
+        """Проверяет совпадение и валидность нового пароля."""
+        new_password = attrs['new_password']
+        retype_new_password = attrs['retype_new_password']
+
+        if new_password != retype_new_password:
+            raise serializers.ValidationError({
+                'retype_new_password': 'Новые пароли не совпадают.',
+            })
+
+        validate_password(
+            password=new_password,
+            user=self.context['request'].user,
+        )
+        return attrs
+
+
+class ChangePasswordSerializer(NewPasswordSerializer):
+    """Сериализатор смены уже установленного пароля."""
+
+    old_password = serializers.CharField(
+        write_only=True,
+        label='Старый пароль',
     )
 
     def validate_old_password(self, value):
@@ -79,19 +131,33 @@ class ChangePasswordSerializer(serializers.Serializer):
             )
         return value
 
+    def save(self, **kwargs):
+        """Устанавливает новый пароль пользователю."""
+        user = self.context['request'].user
+        set_user_password(user, self.validated_data['new_password'])
+        return user
+
+
+class SetPasswordSerializer(NewPasswordSerializer):
+    """Устанавливает пароль для аккаунта без пароля."""
+
     def validate(self, attrs):
-        """Проверяет совпадение и валидность нового пароля."""
-        new_password = attrs.get('new_password')
-        retype_new_password = attrs.get('retype_new_password')
-        if new_password != retype_new_password:
+        """Проверяет, что у пользователя ещё нет установленного пароля."""
+        attrs = super().validate(attrs)
+
+        user = self.context['request'].user
+        if user.has_usable_password():
             raise serializers.ValidationError({
-                'retype_new_password': 'Новые пароли не совпадают.',
+                'detail': (
+                    'Пароль уже установлен. '
+                    'Для его изменения используйте change-password.'
+                ),
             })
-        validate_password(new_password, self.context['request'].user)
+
         return attrs
 
     def save(self, **kwargs):
-        """Устанавливает новый пароль пользователю."""
+        """Устанавливает первый пароль пользователю."""
         user = self.context['request'].user
         set_user_password(user, self.validated_data['new_password'])
         return user
@@ -131,14 +197,21 @@ class EmailVerificationSerializer(serializers.Serializer):
         if not user.is_email_verified:
             user.is_email_verified = True
             user.save(update_fields=['is_email_verified'])
+
+        EmailVerificationCode.objects.filter(user=user).delete()
         return user
 
 
 class PhoneChangeSerializer(
-    PhoneRegistrationMixin,
+    UniquePhoneValidationMixin,
     serializers.ModelSerializer,
 ):
     """Сериализатор для изменения телефона аккаунта."""
+
+    phone = SafePhoneNumberField(
+        label='Номер телефона',
+        required=True,
+    )
 
     class Meta:
         model = User
@@ -269,3 +342,71 @@ class UsernameChangeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username',)
+
+
+class EmailVerificationCodeSerializer(serializers.Serializer):
+    """Сериализатор подтверждения email по коду."""
+
+    code = serializers.RegexField(
+        regex=rf'^\d{{{EMAIL_VERIFICATION_CODE_LENGTH}}}$',
+        write_only=True,
+        label='Код подтверждения',
+        error_messages={
+            'invalid': (
+                f'Код должен состоять из '
+                f'{EMAIL_VERIFICATION_CODE_LENGTH} цифр.'
+            ),
+        },
+    )
+
+    def validate_code(self, value):
+        """Проверяет код подтверждения email."""
+        user = self.context['request'].user
+
+        try:
+            verification = user.email_verification_code
+        except EmailVerificationCode.DoesNotExist:
+            raise serializers.ValidationError(
+                'Код подтверждения не найден.',
+            )
+
+        if verification.expires_at <= timezone.now():
+            raise serializers.ValidationError(
+                'Срок действия кода истек.',
+            )
+
+        if verification.attempts >= EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS:
+            raise serializers.ValidationError(
+                'Превышено количество попыток. Запросите новый код.',
+            )
+
+        if verification.code_hash != hash_email_verification_code(value):
+            updated = EmailVerificationCode.objects.filter(
+                pk=verification.pk,
+                attempts__lt=EMAIL_VERIFICATION_CODE_MAX_ATTEMPTS,
+            ).update(
+                attempts=F('attempts') + 1,
+            )
+
+            if not updated:
+                raise serializers.ValidationError(
+                    'Превышено количество попыток. Запросите новый код.',
+                )
+
+            raise serializers.ValidationError(
+                'Неверный код подтверждения.',
+            )
+
+        return value
+
+    def save(self, **kwargs):
+        """Подтверждает email пользователя."""
+        user = self.context['request'].user
+
+        if not user.is_email_verified:
+            user.is_email_verified = True
+            user.save(update_fields=('is_email_verified',))
+
+        EmailVerificationCode.objects.filter(user=user).delete()
+
+        return user

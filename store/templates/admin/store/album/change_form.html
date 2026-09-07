@@ -1,0 +1,74 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+    {{ block.super }}
+
+    {% if original %}
+        <fieldset
+            class="module aligned"
+            data-track-upload
+            data-initiate-url="{% url 'admin:store_album_track_upload_initiate' original.pk %}"
+        >
+            <h2>Загрузка треков</h2>
+
+            <div class="form-row">
+                <div>
+                    <label for="id_track_upload_file">
+                        Оригинальные аудиофайлы:
+                    </label>
+
+                    <input
+                        id="id_track_upload_file"
+                        type="file"
+                        multiple
+                        accept=".mp3,.wav,.flac,audio/mpeg,audio/wav,audio/flac"
+                    >
+
+                    <div class="help">
+                        Поддерживаются MP3, WAV и FLAC.
+                        Максимальный размер одного файла — 500 МБ.
+                    </div>
+                </div>
+            </div>
+
+            <div class="submit-row">
+                <input
+                    type="button"
+                    value="Загрузить треки"
+                    class="default"
+                    data-track-upload-submit
+                >
+
+                <input
+                    type="button"
+                    value="Повторить текущий файл"
+                    hidden
+                    data-track-upload-retry
+                >
+            </div>
+
+            <p
+                class="help"
+                data-track-upload-status
+                aria-live="polite"
+            ></p>
+
+            <ul class="track-upload-list" data-track-upload-list>
+            </ul>
+        </fieldset>
+    {% endif %}
+{% endblock %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+
+    {% if not original %}
+        <div class="submit-row">
+            <input
+                type="submit"
+                value="Сохранить и добавить треки"
+                name="_addtracks"
+            >
+        </div>
+    {% endif %}
+{% endblock %}

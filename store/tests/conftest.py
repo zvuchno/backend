@@ -16,19 +16,32 @@ import pytest
 from django.core.files.base import ContentFile
 from django.urls import reverse
 
-from store.models import Album, Merch, Product, ProductVariant, Track
+from store.models import (
+    Album,
+    Cart,
+    CartItem,
+    Delivery,
+    Merch,
+    Product,
+    ProductVariant,
+    Track,
+)
+from users.models import ConsentDocument
 
 
 # =================================
 # Content fixtures
 # =================================
 @pytest.fixture
-def variant_factory(user):
+def variant_factory(artist_user):
     """Фабрика для создания ProductVariant с разными типами продуктов."""
 
     def create_variant(
         product_type='merch',
         *,
+        artist=None,
+        payout_recipient=None,
+        created_by=None,
         is_active=True,
         is_published=True,
         visibility='public',
@@ -39,8 +52,20 @@ def variant_factory(user):
         **kwargs,
     ) -> ProductVariant:
 
-        common_fields = {
-            'owner': user,
+        content_artist = artist or artist_user.artist_profile
+
+        content_payout_recipient = (
+            payout_recipient or content_artist.default_payout_recipient
+        )
+
+        content_created_by = (
+            created_by or content_artist.user or content_payout_recipient
+        )
+
+        artist_content_fields = {
+            'artist': content_artist,
+            'payout_recipient': content_payout_recipient,
+            'created_by': content_created_by,
             'is_active': is_active,
             'is_published': is_published,
             'visibility': visibility,
@@ -49,7 +74,7 @@ def variant_factory(user):
         if product_type == 'album':
             item = Album.objects.create(
                 name=kwargs.get('name', 'Album'),
-                **common_fields,
+                **artist_content_fields,
             )
             product = Product.objects.create(album=item, price=price or 1000)
             stock_value = None
@@ -57,12 +82,19 @@ def variant_factory(user):
         elif product_type == 'track':
             album = kwargs.get('album') or Album.objects.create(
                 name='Track Album',
-                **common_fields,
+                **artist_content_fields,
             )
+            track_created_by = (
+                created_by
+                or album.created_by
+                or album.artist.user
+                or album.payout_recipient
+            )
+
             item = Track.objects.create(
                 name=kwargs.get('name', 'Track'),
-                owner=user,
                 album=album,
+                created_by=track_created_by,
                 audio_file=ContentFile(
                     b'fake mp3 content',
                     name='test_track.mp3',
@@ -74,7 +106,7 @@ def variant_factory(user):
         elif product_type == 'merch':
             item = Merch.objects.create(
                 name=kwargs.get('name', 'T-Shirt'),
-                **common_fields,
+                **artist_content_fields,
             )
             product = Product.objects.create(
                 merch=item,
@@ -92,6 +124,67 @@ def variant_factory(user):
         )
 
     return create_variant
+
+
+@pytest.fixture
+def cart_with_items(user, variant_factory) -> Cart:
+    """Создает корзину с товарами (мерч и цифра)."""
+    album = variant_factory('album')
+    merch = variant_factory('merch')
+    cart = Cart.objects.create(user=user)
+    CartItem.objects.create(
+        cart=cart,
+        product_variant=album,
+        quantity=1,
+    )
+    CartItem.objects.create(
+        cart=cart,
+        product_variant=merch,
+        quantity=1,
+    )
+    return cart
+
+
+@pytest.fixture
+def consent_doc_pdn():
+    """Создает активный документ согласия на обработку ПДн."""
+    return ConsentDocument.objects.create(
+        document_type=ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
+        version='1.0',
+        content='Текст согласия для тестов...',
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def consent_doc_newsletter():
+    """Создает активный документ cогласия на получение рассылки."""
+    return ConsentDocument.objects.create(
+        document_type=ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
+        version='1.0',
+        content='Текст согласия для тестов...',
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def delivery_courier():
+    """Создает активный способ доставки курьером."""
+    return Delivery.objects.create(
+        name='Курьерская доставка',
+        delivery_type=Delivery.DeliveryType.COURIER,
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def inactive_delivery():
+    """Создает неактивный способ доставки (не должен быть доступен)."""
+    return Delivery.objects.create(
+        name='Старая доставка',
+        delivery_type=Delivery.DeliveryType.COURIER,
+        is_active=False,
+    )
 
 
 # =================================
@@ -119,3 +212,143 @@ def cart_url():
 def cart_add_url():
     """Возвращает URL-адрес эндпоинта для добавления товара в корзину."""
     return reverse('api:store:cart-add-item')
+
+
+@pytest.fixture
+def favorites_url():
+    """Возвращает URL-адрес эндпоинта избранного."""
+    return reverse('api:store:me-favorites-list')
+
+
+@pytest.fixture
+def checkout_url():
+    """Возвращает URL-адрес эндпоинта создания заказа."""
+    return reverse('api:store:orders-checkout')
+
+
+@pytest.fixture
+def apply_promocode_url():
+    """Возвращает URL-адрес эндпоинта применения промокода."""
+    return reverse('api:store:cart-apply-promocode')
+
+
+@pytest.fixture
+def catalog_url():
+    """Возвращает URL-адрес List эндпоинта каталога."""
+    return reverse('api:store:catalog')
+
+
+@pytest.fixture
+def catalog_release_detail_url():
+    """Возвращает URL-адрес эндпоинта детальной карточки релиза."""
+
+    def _url(album) -> str:
+        return reverse('api:store:catalog-release-detail', args=(album.id,))
+
+    return _url
+
+
+@pytest.fixture
+def catalog_merch_detail_url():
+    """Возвращает URL-адрес эндпоинта детальной карточки мерча."""
+
+    def _url(merch) -> str:
+        return reverse('api:store:catalog-merch-detail', args=(merch.id,))
+
+    return _url
+
+
+@pytest.fixture
+def purchased_music_url():
+    """Возвращает URL-адрес эндпоинта купленной музыки."""
+    return reverse('api:store:purchased-music')
+
+
+@pytest.fixture
+def purchased_music_download_detail_url():
+    """Возвращает URL detail-ручки скачивания доступного релиза."""
+
+    def _url(album) -> str:
+        return reverse(
+            'api:store:purchased-music-download-detail',
+            args=(album.id,),
+        )
+
+    return _url
+
+
+@pytest.fixture
+def purchased_music_track_download_link_url():
+    """Возвращает URL ручки выдачи ссылки на трек."""
+
+    def _url(track) -> str:
+        return reverse(
+            'api:store:purchased-music-track-download-link',
+            args=(track.id,),
+        )
+
+    return _url
+
+
+@pytest.fixture
+def purchased_music_archive_download_link_url():
+    """Возвращает URL ручки выдачи ссылки на ZIP-архив."""
+
+    def _url(album) -> str:
+        return reverse(
+            'api:store:purchased-music-archive-download-link',
+            args=(album.id,),
+        )
+
+    return _url
+
+
+@pytest.fixture
+def player_album_url():
+    """Возвращает URL очереди альбома для плеера."""
+
+    def build(album_id: int) -> str:
+        return reverse(
+            'api:store:player-album',
+            kwargs={'album_id': album_id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def player_track_play_url():
+    """Возвращает URL запуска воспроизведения трека."""
+
+    def build(track_id: int) -> str:
+        return reverse(
+            'api:store:player-play-track',
+            kwargs={'track_id': track_id},
+        )
+
+    return build
+
+
+@pytest.fixture
+def merch_list_url():
+    """Возвращает URL-адрес эндпоинта для списка мерча."""
+    return reverse('api:store:merch-list')
+
+
+@pytest.fixture
+def promocode_list_url():
+    """Возвращает URL списка и создания промокодов."""
+    return reverse('api:store:promocodes-list')
+
+
+@pytest.fixture
+def promocode_detail_url():
+    """Возвращает URL конкретного промокода."""
+
+    def build(promocode) -> str:
+        return reverse(
+            'api:store:promocodes-detail',
+            args=(promocode.id,),
+        )
+
+    return build

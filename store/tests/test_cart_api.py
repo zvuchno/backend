@@ -9,6 +9,11 @@ from rest_framework.response import Response
 
 from store.models import Cart, CartItem
 
+pytestmark = [
+    pytest.mark.django_db,
+    pytest.mark.usefixtures('publication_readiness_disabled'),
+]
+
 
 class TestCartAPI:
     """Набор тестов для проверки функциональности корзины покупок."""
@@ -53,73 +58,31 @@ class TestCartAPI:
         variant_factory,
         user,
     ):
-        """Проверяет частичное обновление корзины через PATCH."""
+        """Проверяет обновление количества товара в корзине через PATCH."""
         variant = variant_factory(product_type='merch')
-
         cart = Cart.objects.get_or_create(user=user)[0]
         CartItem.objects.create(
             cart=cart,
             product_variant=variant,
             quantity=1,
+            price_with_donation=Decimal('3000.00'),
+            comment='Thank you!',
         )
         payload = {
             'items': [
                 {
                     'product_variant': variant.id,
                     'quantity': 10,
-                    'price_with_donation': Decimal('3000.00'),
-                    'comment': 'Thank you!',
                 },
             ],
         }
         response = auth_client.patch(cart_url, data=payload, format='json')
         assert response.status_code == status.HTTP_200_OK
-
         item = CartItem.objects.get(cart=cart, product_variant=variant)
         assert item.quantity == 10
         assert item.price_with_donation == Decimal('3000.00')
+        assert item.base_line_total == Decimal('30000.00')
         assert item.comment == 'Thank you!'
-
-    def test_sync_cart_with_put(
-        self,
-        auth_client,
-        cart_url,
-        variant_factory,
-        user,
-    ):
-        """Проверяет полную синхронизацию корзины через PUT."""
-        album = variant_factory(product_type='album')
-        merch = variant_factory(product_type='merch')
-        cart = Cart.objects.get_or_create(user=user)[0]
-        CartItem.objects.create(
-            cart=cart,
-            product_variant=merch,
-            quantity=3,
-        )
-        CartItem.objects.create(
-            cart=cart,
-            product_variant=album,
-            quantity=1,
-        )
-
-        assert CartItem.objects.filter(cart=cart).count() == 2
-
-        payload = {
-            'items': [
-                {
-                    'product_variant': merch.id,
-                    'quantity': 5,
-                },
-            ],
-        }
-        response = auth_client.put(cart_url, data=payload, format='json')
-
-        assert response.status_code == status.HTTP_200_OK
-
-        assert CartItem.objects.filter(cart=cart).count() == 1
-        item = CartItem.objects.get(cart=cart, product_variant=merch)
-        assert item.product_variant.id == merch.id
-        assert item.quantity == 5
 
     def test_remove_item_from_cart(
         self,
@@ -206,6 +169,7 @@ class TestCartAPI:
             'product_variant': variant.id,
             'quantity': 2,
             'comment': 'Test guest comment',
+            'is_artist_subscription': 'true',
         }
         # Делаем запрос, чтобы создалась сессия и корзина
         response = api_client.post(cart_add_url, data=payload, format='json')
@@ -222,6 +186,7 @@ class TestCartAPI:
         assert user_cart.items.filter(
             product_variant=variant,
             quantity=2,
+            is_artist_subscription=True,
         ).exists()
         item = user_cart.items.get(product_variant=variant)
         assert item.comment == 'Test guest comment'
@@ -364,16 +329,16 @@ class TestCartAPI:
             'product_variant': variant.id,
             'quantity': quantity,
             'price_with_donation': price_with_donation,
+            'is_artist_subscription': 'true',
         }
 
         response = api_client.post(cart_add_url, data=payload, format='json')
         assert response.status_code == status.HTTP_201_CREATED
 
         item_data = response.data['items'][0]
-        assert Decimal(item_data['price']) == price_with_donation
         # Сумма строки: 1500 * 2 = 3000
         expected_line_total = price_with_donation * quantity
-        assert Decimal(item_data['line_total']) == expected_line_total
+        assert Decimal(item_data['discount_line_total']) == expected_line_total
         # Сумма корзины (subtotal)
         # Добавим еще один обычный товар без доната для чистоты эксперимента
         other_variant = variant_factory(
@@ -382,7 +347,11 @@ class TestCartAPI:
         )
         api_client.post(
             cart_add_url,
-            data={'product_variant': other_variant.id, 'quantity': 1},
+            data={
+                'product_variant': other_variant.id,
+                'quantity': 1,
+                'is_artist_subscription': 'true',
+            },
             format='json',
         )
         final_response = api_client.get(cart_url)
@@ -390,3 +359,116 @@ class TestCartAPI:
         assert Decimal(final_response.data['subtotal']) == (
             expected_line_total + Decimal('500.00')
         )
+
+    def test_get_cart_removes_inactive_items(
+        self,
+        auth_client,
+        cart_add_url,
+        cart_url,
+        variant_factory,
+        user,
+    ):
+        """Товар, ставший неактивным → исчезает при GET."""
+        variant = variant_factory(product_type='merch')
+        active_variant = variant_factory(product_type='merch')
+
+        for v in (variant, active_variant):
+            response = auth_client.post(
+                cart_add_url,
+                data={'product_variant': v.id, 'quantity': 1},
+                format='json',
+            )
+            assert response.status_code == status.HTTP_201_CREATED
+
+        # Артист снимает товар с продажи уже после добавления в корзину
+        variant.product.merch.is_active = False
+        variant.product.merch.save(update_fields=['is_active'])
+
+        response = auth_client.get(cart_url)
+        assert response.status_code == status.HTTP_200_OK
+
+        remaining_ids = [
+            item['product_variant'] for item in response.data['items']
+        ]
+        assert variant.id not in remaining_ids
+        assert active_variant.id in remaining_ids
+
+        assert not CartItem.objects.filter(
+            cart__user=user,
+            product_variant=variant,
+        ).exists()
+
+    def test_get_cart_removes_inactive_variant(
+        self,
+        auth_client,
+        cart_add_url,
+        cart_url,
+        variant_factory,
+        user,
+    ):
+        """Неактивный вариант товара → исчезает при GET."""
+        variant = variant_factory(product_type='merch')
+        active_variant = variant_factory(product_type='merch')
+
+        for v in (variant, active_variant):
+            response = auth_client.post(
+                cart_add_url,
+                data={'product_variant': v.id, 'quantity': 1},
+                format='json',
+            )
+            assert response.status_code == status.HTTP_201_CREATED
+
+        # Сам вариант товара деактивирован после добавления в корзину
+        variant.is_active = False
+        variant.save(update_fields=['is_active'])
+
+        response = auth_client.get(cart_url)
+        assert response.status_code == status.HTTP_200_OK
+
+        remaining_ids = [
+            item['product_variant'] for item in response.data['items']
+        ]
+        assert variant.id not in remaining_ids
+        assert active_variant.id in remaining_ids
+
+        assert not CartItem.objects.filter(
+            cart__user=user,
+            product_variant=variant,
+        ).exists()
+
+    def test_get_cart_removes_unpublished_items(
+        self,
+        auth_client,
+        cart_add_url,
+        cart_url,
+        variant_factory,
+        user,
+    ):
+        """Снятый с публикации товар → исчезает из корзины при GET."""
+        variant = variant_factory(product_type='merch')
+        active_variant = variant_factory(product_type='merch')
+
+        for v in (variant, active_variant):
+            response = auth_client.post(
+                cart_add_url,
+                data={'product_variant': v.id, 'quantity': 1},
+                format='json',
+            )
+            assert response.status_code == status.HTTP_201_CREATED
+
+        variant.product.merch.is_published = False
+        variant.product.merch.save(update_fields=['is_published'])
+
+        response = auth_client.get(cart_url)
+        assert response.status_code == status.HTTP_200_OK
+
+        remaining_ids = [
+            item['product_variant'] for item in response.data['items']
+        ]
+        assert variant.id not in remaining_ids
+        assert active_variant.id in remaining_ids
+
+        assert not CartItem.objects.filter(
+            cart__user=user,
+            product_variant=variant,
+        ).exists()

@@ -3,18 +3,29 @@
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
+from common.models.abstract import TimestampModel
+from common.storages import get_private_media_storage, get_public_media_storage
+
 from store.constants import (
     ALLOWED_AUDIO_EXTENSIONS,
+    MAX_CHAR_LENGTH,
+    MAX_FILE_STATUS_STR,
     MAX_STR_LENGTH,
 )
 from store.models.abstract import BaseContent
 from store.querysets.track_visibility import TrackQuerySet
+from store.upload_paths import (
+    track_audio_upload_to,
+    track_preview_upload_to,
+    track_stream_upload_to,
+)
+from store.validators import validate_audiofile_size
 
 
 class Track(BaseContent):
     """Музыкальный трек в составе альбома.
 
-    Связан с альбомом и пользователем-владельцем.
+    Артист и получатель выплат определяются связанным альбомом.
     """
 
     album = models.ForeignKey(
@@ -25,13 +36,16 @@ class Track(BaseContent):
     )
     audio_file = models.FileField(
         'Файл трека',
-        upload_to='tracks/',
+        upload_to=track_audio_upload_to,
+        storage=get_private_media_storage,
         validators=[
             FileExtensionValidator(
                 allowed_extensions=ALLOWED_AUDIO_EXTENSIONS,
             ),
+            validate_audiofile_size,
         ],
-        help_text='Аудиофайл',
+        blank=True,
+        help_text='Оригинальный аудиофайл трека.',
     )
     duration = models.PositiveIntegerField(
         'Длительность',
@@ -45,7 +59,16 @@ class Track(BaseContent):
         blank=True,
         help_text='Порядковый номер трека в альбоме',
     )
-    lyrics = models.TextField('Текст трека', blank=True, default='')
+
+    @property
+    def artist(self):
+        """Возвращает артиста связанного альбома."""
+        return self.album.artist
+
+    @property
+    def payout_recipient(self):
+        """Возвращает получателя выплат связанного альбома."""
+        return self.album.payout_recipient
 
     objects = TrackQuerySet.as_manager()
 
@@ -58,3 +81,159 @@ class Track(BaseContent):
         if self.position is not None:
             return f'{self.position}. {self.name[:MAX_STR_LENGTH]}'
         return self.name[:MAX_STR_LENGTH]
+
+
+class TrackUpload(TimestampModel):
+    """Попытка прямой загрузки оригинального файла трека."""
+
+    class Status(models.TextChoices):
+        """Статус попытки загрузки."""
+
+        INITIATED = 'initiated', 'Ожидает загрузки'
+        UPLOADED = 'uploaded', 'Файл загружен'
+        COMPLETED = 'completed', 'Загрузка завершена'
+        FAILED = 'failed', 'Ошибка загрузки'
+        EXPIRED = 'expired', 'Срок загрузки истёк'
+
+    class Purpose(models.TextChoices):
+        """Назначение попытки загрузки."""
+
+        CREATE = 'create', 'Создание трека'
+        REPLACE = 'replace', 'Замена файла'
+
+    track = models.ForeignKey(
+        'store.Track',
+        on_delete=models.CASCADE,
+        related_name='upload_attempts',
+        verbose_name='Трек',
+    )
+    purpose = models.CharField(
+        'Назначение загрузки',
+        max_length=MAX_FILE_STATUS_STR,
+        choices=Purpose.choices,
+        default=Purpose.CREATE,
+    )
+    status = models.CharField(
+        'Статус загрузки',
+        max_length=MAX_FILE_STATUS_STR,
+        choices=Status.choices,
+        default=Status.INITIATED,
+    )
+    staging_key = models.CharField(
+        'Ключ временного файла',
+        max_length=500,
+        unique=True,
+    )
+    original_filename = models.CharField(
+        'Исходное имя файла',
+        max_length=MAX_CHAR_LENGTH,
+    )
+    expected_size = models.PositiveBigIntegerField(
+        'Ожидаемый размер файла',
+    )
+    content_type = models.CharField(
+        'Заявленный MIME-тип',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+    )
+    uploaded_size = models.PositiveBigIntegerField(
+        'Фактический размер файла',
+        null=True,
+        blank=True,
+    )
+    error = models.TextField(
+        'Ошибка загрузки',
+        blank=True,
+    )
+    expires_at = models.DateTimeField(
+        'Срок действия загрузки',
+    )
+    completed_at = models.DateTimeField(
+        'Завершено',
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'загрузка трека'
+        verbose_name_plural = 'загрузки треков'
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f'{self.track}: {self.get_status_display()}'
+
+
+class TrackGeneratedAudio(models.Model):
+    """Результаты подготовки генерируемых аудиофайлов трека."""
+
+    class ProcessingStatus(models.TextChoices):
+        """Статус подготовки производного файла."""
+
+        PENDING = 'pending', 'Ожидает подготовки'
+        BUILDING = 'building', 'Подготавливается'
+        READY = 'ready', 'Готов'
+        FAILED = 'failed', 'Ошибка подготовки'
+
+    track = models.OneToOneField(
+        'store.Track',
+        on_delete=models.CASCADE,
+        related_name='generated',
+        verbose_name='Трек',
+    )
+
+    preview_file = models.FileField(
+        'Файл превью',
+        upload_to=track_preview_upload_to,
+        storage=get_public_media_storage,
+        blank=True,
+    )
+    preview_duration = models.PositiveIntegerField(
+        'Длительность превью',
+        null=True,
+        blank=True,
+        help_text='Длительность подготовленного превью в секундах',
+    )
+    preview_status = models.CharField(
+        'Статус подготовки превью',
+        max_length=MAX_FILE_STATUS_STR,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.PENDING,
+    )
+    preview_error = models.TextField(
+        'Ошибка подготовки превью',
+        blank=True,
+    )
+    preview_started_at = models.DateTimeField(
+        'Начало подготовки превью',
+        null=True,
+        blank=True,
+    )
+
+    stream_file = models.FileField(
+        'Файл для воспроизведения',
+        upload_to=track_stream_upload_to,
+        storage=get_private_media_storage,
+        blank=True,
+    )
+    stream_status = models.CharField(
+        'Статус подготовки файла для воспроизведения',
+        max_length=MAX_FILE_STATUS_STR,
+        choices=ProcessingStatus.choices,
+        default=ProcessingStatus.PENDING,
+    )
+    stream_error = models.TextField(
+        'Ошибка подготовки файла для воспроизведения',
+        blank=True,
+    )
+    stream_started_at = models.DateTimeField(
+        'Начало подготовки файла для воспроизведения',
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'сгенерированные аудиофайлы трека'
+        verbose_name_plural = 'сгенерированные аудиофайлы треков'
+
+    def __str__(self):
+        return f'Обработка: {self.track}'

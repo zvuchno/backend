@@ -1,6 +1,7 @@
 from rest_framework.permissions import BasePermission
 
 from .base import _ActiveProfilePermission
+from users.models.artist import ArtistProfileType
 
 
 class IsListener(_ActiveProfilePermission):
@@ -22,7 +23,45 @@ class IsArtist(_ActiveProfilePermission):
     """
 
     profile_attr = 'artist_profile'
+    allowed_profile_types = (ArtistProfileType.ARTIST,)
     message = 'Требуется профиль артиста.'
+
+
+class IsLabel(_ActiveProfilePermission):
+    """Доступ только пользователю с активным профилем лейбла."""
+
+    profile_attr = 'artist_profile'
+    allowed_profile_types = (ArtistProfileType.LABEL,)
+    message = 'Требуется профиль лейбла.'
+
+
+class IsNotLabel(BasePermission):
+    """Разрешает доступ пользователям без профиля лейбла."""
+
+    message = 'Операция недоступна для профиля лейбла.'
+
+    def has_permission(self, request, view):
+        """Проверяет, что пользователь не является лейблом."""
+        profile = getattr(request.user, 'artist_profile', None)
+
+        return (
+            profile is None or profile.profile_type != ArtistProfileType.LABEL
+        )
+
+
+class IsArtistOrLabel(_ActiveProfilePermission):
+    """Доступ только пользователю с активным профилем артиста или лейбла.
+
+    Проверяет наличие у текущего пользователя связанного
+    `artist_profile` и его активный статус.
+    """
+
+    profile_attr = 'artist_profile'
+    allowed_profile_types = (
+        ArtistProfileType.ARTIST,
+        ArtistProfileType.LABEL,
+    )
+    message = 'Требуется профиль артиста или лейбла.'
 
 
 class IsNotArtist(BasePermission):
@@ -44,4 +83,26 @@ class IsNotArtist(BasePermission):
         return not hasattr(
             user,
             'artist_profile',
+        )
+
+
+class CanCreateArtistContent(BasePermission):
+    """Разрешает создание контента артисту, лейблу или менеджеру."""
+
+    message = 'У вас нет прав на создание контента артиста.'
+
+    def has_permission(self, request, view):
+        """Проверяет наличие профиля артиста или лейбла."""
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        profile = getattr(request.user, 'artist_profile', None)
+
+        return bool(
+            profile
+            and profile.profile_type
+            in (
+                ArtistProfileType.ARTIST,
+                ArtistProfileType.LABEL,
+            ),
         )

@@ -21,3 +21,6 @@ class GenreAdmin(admin.ModelAdmin):
     list_filter = ('is_active',)
     list_editable = ('is_active',)
     ordering = ('name', 'is_active')
+    fieldsets = (
+        ('Основная информация', {'fields': ('name', 'slug', 'is_active')}),
+    )

@@ -8,14 +8,81 @@
 
 from .album import album_schema
 from .cart import cart_schema
+from .cart_promocode import (
+    cart_apply_promocode_schema,
+    cart_remove_promocode_schema,
+)
+from .catalog import catalog_list_schema
+from .catalog_datail import (
+    catalog_merch_detail_schema,
+    catalog_release_detail_schema,
+)
+from .catalog_search_schema import catalog_search_schema
+from .cdek import cdek_cities_suggest_schema, cdek_widget_schema
+from .cdek_calculate import cdek_calculate_schema
+from .checkout import checkout_schema
 from .delivery import delivery_schema
+from .export import sales_export_schema
+from .favorites import favorites_schema
 from .genre import genre_schema
+from .merch import merch_schema
+from .merch_kind import merch_kinds_schema
+from .order import order_schema
+from .payment import payment_schema
+from .player import (
+    player_album_schema,
+    player_track_play_schema,
+)
+from .promocode import promocode_schema
+from .purchased_music import (
+    archive_download_link_schema,
+    purchased_music_download_detail_schema,
+    purchased_music_schema,
+    track_download_link_schema,
+)
+from .report import artist_reports_schema
+from .sale import artist_sale_schema
 from .track import track_schema
+from .track_upload import (
+    track_file_upload_initiate_schema,
+    track_upload_complete_schema,
+    track_upload_initiate_schema,
+    track_upload_receive_file_schema,
+)
 
 __all__ = [
     'album_schema',
+    'archive_download_link_schema',
+    'artist_reports_schema',
+    'artist_sale_schema',
+    'cart_apply_promocode_schema',
+    'cart_remove_promocode_schema',
     'cart_schema',
+    'catalog_list_schema',
+    'catalog_merch_detail_schema',
+    'catalog_search_schema',
+    'catalog_release_detail_schema',
+    'cdek_calculate_schema',
+    'cdek_cities_suggest_schema',
+    'cdek_widget_schema',
+    'checkout_schema',
     'delivery_schema',
+    'sales_export_schema',
+    'favorites_schema',
     'genre_schema',
+    'merch_kinds_schema',
+    'merch_schema',
+    'order_schema',
+    'payment_schema',
+    'player_album_schema',
+    'player_track_play_schema',
+    'promocode_schema',
+    'purchased_music_download_detail_schema',
+    'purchased_music_schema',
+    'track_download_link_schema',
+    'track_file_upload_initiate_schema',
     'track_schema',
+    'track_upload_complete_schema',
+    'track_upload_initiate_schema',
+    'track_upload_receive_file_schema',
 ]

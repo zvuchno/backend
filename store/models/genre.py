@@ -7,8 +7,9 @@
 
 from django.db import models
 
+from common.models.abstract import ActivatableModel
+
 from store.constants import MAX_CHAR_LENGTH, MAX_SLUG_LENGTH, MAX_STR_LENGTH
-from users.models.abstract import ActivatableModel
 
 
 class Genre(ActivatableModel):

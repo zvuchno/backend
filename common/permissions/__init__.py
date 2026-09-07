@@ -7,20 +7,36 @@
 """
 
 from .ownership import (
+    IsSalesOwner,
+    IsStoreObjectManager,
+    IsStoreObjectManagerOrReadOnly,
     IsStoreObjectOwner,
-    IsStoreObjectOwnerOrReadOnly,
     IsUserObjectOwner,
     IsUserObjectOwnerOrReadOnly,
 )
-from .profiles import IsArtist, IsListener, IsNotArtist
+from .profiles import (
+    CanCreateArtistContent,
+    IsArtist,
+    IsArtistOrLabel,
+    IsLabel,
+    IsListener,
+    IsNotArtist,
+    IsNotLabel,
+)
 from .verification import IsUserVerified
 
 __all__ = [
+    'CanCreateArtistContent',
     'IsArtist',
+    'IsArtistOrLabel',
+    'IsLabel',
     'IsListener',
     'IsNotArtist',
+    'IsNotLabel',
+    'IsSalesOwner',
+    'IsStoreObjectManager',
+    'IsStoreObjectManagerOrReadOnly',
     'IsStoreObjectOwner',
-    'IsStoreObjectOwnerOrReadOnly',
     'IsUserObjectOwner',
     'IsUserObjectOwnerOrReadOnly',
     'IsUserVerified',
