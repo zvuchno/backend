@@ -44,6 +44,81 @@ class TestCatalogVisibility:
             products['public_album'].id,
         }
 
+    def test_catalog_hides_album_of_inactive_artist(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог не возвращает альбом выключенного артиста."""
+        product = create_album_product()
+
+        artist = product.album.artist
+        artist.is_active = False
+        artist.save(update_fields=('is_active',))
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert product.id not in get_product_ids(response)
+
+    def test_catalog_hides_merch_of_inactive_artist(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог не возвращает мерч выключенного артиста."""
+        product = create_merch_product()
+
+        artist = product.merch.artist
+        artist.is_active = False
+        artist.save(update_fields=('is_active',))
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert product.id not in get_product_ids(response)
+
+    def test_inactive_label_does_not_hide_managed_artist_content(
+        self,
+        api_client,
+        catalog_url,
+        variant_factory,
+    ):
+        """Выключение лейбла не скрывает контент его активного артиста."""
+        label = LabelProfileFactory()
+        managed_artist = ArtistProfileFactory(
+            label=label,
+        )
+        variant = variant_factory(
+            product_type='album',
+            artist=managed_artist,
+        )
+
+        label.is_active = False
+        label.save(update_fields=('is_active',))
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert variant.product_id in get_product_ids(response)
+
+    def test_catalog_hides_carrier_of_inactive_artist(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог не возвращает носитель выключенного артиста."""
+        product = create_carrier_product()
+
+        artist = product.merch.artist
+        artist.is_active = False
+        artist.save(update_fields=('is_active',))
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert product.id not in get_product_ids(response)
+
 
 class TestCatalogCardValues:
     """Тесты значений карточек каталога."""

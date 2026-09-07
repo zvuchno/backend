@@ -96,6 +96,24 @@ class TestCatalogReleaseDetail:
             vinyl_product.variants.first().id,
         }
 
+    def test_catalog_release_detail_hides_inactive_artist(
+        self,
+        api_client,
+        catalog_release_detail_url,
+    ):
+        """Detail релиза выключенного артиста недоступен."""
+        product = create_album_product()
+        album = product.album
+
+        album.artist.is_active = False
+        album.artist.save(update_fields=('is_active',))
+
+        response = api_client.get(
+            catalog_release_detail_url(album),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 class TestCatalogMerchDetail:
     """Тесты detail-ручки обычного мерча."""
@@ -159,3 +177,21 @@ class TestCatalogMerchDetail:
         merch.save(update_fields=('visibility',))
 
         assert variant.is_available_for_purchase is True
+
+    def test_catalog_merch_detail_hides_inactive_artist(
+        self,
+        api_client,
+        catalog_merch_detail_url,
+    ):
+        """Detail мерча выключенного артиста недоступен."""
+        product = create_merch_product()
+        merch = product.merch
+
+        merch.artist.is_active = False
+        merch.artist.save(update_fields=('is_active',))
+
+        response = api_client.get(
+            catalog_merch_detail_url(merch),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
