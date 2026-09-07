@@ -25,6 +25,7 @@ from common.permissions import (
 )
 from common.services import artist_publication_ready_q
 
+from store.models import Album, Merch
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
 from users.schemas import (
@@ -101,7 +102,7 @@ class ArtistProfileBaseView(ManagedArtistProfileMixin, RetrieveUpdateAPIView):
 
 @artist_me_schema
 class ArtistMeView(ArtistProfileBaseView):
-    """Просмотр и редактирование собственного профиля."""
+    """Просмотр, редактирование и удаление управляемого профиля."""
 
 
 @managed_artist_schema
@@ -133,7 +134,10 @@ class ManagedArtistProfileView(ArtistProfileBaseView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if artist.albums.exists() or artist.merch.exists():
+        if (
+            Album.objects.filter(artist=artist).exists()
+            or Merch.objects.filter(artist=artist).exists()
+        ):
             return Response(
                 {
                     'detail': (
