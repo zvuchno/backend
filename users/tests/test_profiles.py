@@ -527,6 +527,40 @@ class TestArtistPublicApi:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['profile_type'] == ArtistProfileType.LABEL
 
+    def test_inactive_artist_profile_is_not_available(
+        self,
+        api_client,
+        artist_user,
+        artist_public_url,
+    ):
+        """Публичный профиль выключенного артиста недоступен."""
+        artist = artist_user.artist_profile
+        artist.is_active = False
+        artist.save(update_fields=('is_active',))
+
+        response = api_client.get(
+            artist_public_url(artist),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_inactive_label_profile_is_not_available(
+        self,
+        api_client,
+        label_user,
+        artist_public_url,
+    ):
+        """Публичный профиль выключенного лейбла недоступен."""
+        label = label_user.artist_profile
+        label.is_active = False
+        label.save(update_fields=('is_active',))
+
+        response = api_client.get(
+            artist_public_url(label),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 @pytest.mark.usefixtures('publication_readiness_disabled')
 class TestArtistListApi:
@@ -598,6 +632,24 @@ class TestArtistListApi:
         artist_ids = {item['id'] for item in response.data['results']}
 
         assert artist.id in artist_ids
+
+    def test_list_hides_inactive_artist(
+        self,
+        api_client,
+        artist_list_url,
+    ):
+        """Публичный список не содержит выключенного артиста."""
+        artist = ArtistProfileFactory(
+            is_active=False,
+        )
+
+        response = api_client.get(artist_list_url)
+
+        assert response.status_code == HTTPStatus.OK
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id not in artist_ids
 
 
 @pytest.mark.usefixtures('publication_readiness_enabled')

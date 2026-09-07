@@ -57,3 +57,37 @@ class TestMeApi:
         response = api_client.get(account_me_url)
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_account_me_does_not_return_inactive_artist_role(
+        self,
+        artist_client,
+        artist_user,
+        account_me_url,
+    ):
+        """Выключенный профиль не считается активной ролью артиста."""
+        artist = artist_user.artist_profile
+        artist.is_active = False
+        artist.save(update_fields=('is_active',))
+
+        response = artist_client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_artist'] is False
+        assert response.data['profile_type'] is None
+
+    def test_account_me_does_not_return_inactive_label_role(
+        self,
+        label_client,
+        label_user,
+        account_me_url,
+    ):
+        """Выключенный профиль не считается активной ролью лейбла."""
+        label = label_user.artist_profile
+        label.is_active = False
+        label.save(update_fields=('is_active',))
+
+        response = label_client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_artist'] is False
+        assert response.data['profile_type'] is None

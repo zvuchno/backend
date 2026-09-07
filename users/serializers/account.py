@@ -81,8 +81,13 @@ class MeSerializer(serializers.ModelSerializer):
         ),
     )
     def get_profile_type(self, obj):
+        """Возвращает тип активного профиля артиста или лейбла."""
         artist_profile = getattr(obj, 'artist_profile', None)
-        return artist_profile.profile_type if artist_profile else None
+
+        if not artist_profile or not artist_profile.is_active:
+            return None
+
+        return artist_profile.profile_type
 
 
 class NewPasswordSerializer(serializers.Serializer):
