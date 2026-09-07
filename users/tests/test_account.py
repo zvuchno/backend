@@ -91,3 +91,69 @@ class TestMeApi:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['is_artist'] is False
         assert response.data['profile_type'] is None
+        assert response.data['available_profile_upgrades'] == []
+
+    def test_listener_has_artist_and_label_profile_upgrades(
+        self,
+        listener_client,
+        account_me_url,
+    ):
+        response = listener_client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['available_profile_upgrades'] == [
+            ArtistProfileType.ARTIST,
+            ArtistProfileType.LABEL,
+        ]
+
+    def test_independent_artist_can_upgrade_to_label(
+        self,
+        artist_client,
+        account_me_url,
+    ):
+        response = artist_client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['available_profile_upgrades'] == [
+            ArtistProfileType.LABEL,
+        ]
+
+    def test_managed_artist_has_no_profile_upgrades(
+        self,
+        client_factory,
+        signed_artist_user,
+        account_me_url,
+    ):
+        client = client_factory(signed_artist_user)
+
+        response = client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['available_profile_upgrades'] == []
+
+    def test_label_has_no_profile_upgrades(
+        self,
+        label_client,
+        account_me_url,
+    ):
+        response = label_client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['available_profile_upgrades'] == []
+
+    def test_inactive_artist_has_no_profile_upgrades(
+        self,
+        artist_client,
+        artist_user,
+        account_me_url,
+    ):
+        artist = artist_user.artist_profile
+        artist.is_active = False
+        artist.save(update_fields=('is_active',))
+
+        response = artist_client.get(account_me_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['is_artist'] is False
+        assert response.data['profile_type'] is None
+        assert response.data['available_profile_upgrades'] == []
