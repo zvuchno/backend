@@ -49,19 +49,16 @@ class ArtistIdentityData(TimestampModel):
         'Фамилия',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
-        null=True,
     )
     first_name = EncryptedCharField(
         'Имя',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
-        null=True,
     )
     middle_name = EncryptedCharField(
         'Отчество',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
-        null=True,
     )
     birth_date = EncryptedDateField(
         'Дата рождения',
@@ -73,7 +70,6 @@ class ArtistIdentityData(TimestampModel):
         'Адрес регистрации',
         max_length=ADDRESS_FIELD_MAX_LENGTH,
         blank=True,
-        null=True,
     )
 
     passport_series = EncryptedCharField(
@@ -113,7 +109,7 @@ class ArtistIdentityData(TimestampModel):
     def save(self, *args, **kwargs):
         """Сохраняет объект после полной валидации модели."""
         self.full_clean()
-        return super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Проверяет согласованность паспортных данных."""

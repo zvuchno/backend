@@ -33,21 +33,18 @@ class ArtistCompanyData(TimestampModel):
         'Наименование получателя',
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
-        null=True,
     )
 
     company_address = EncryptedCharField(
         'Юридический адрес',
         max_length=ADDRESS_FIELD_MAX_LENGTH,
         blank=True,
-        null=True,
     )
 
     inn = EncryptedCharField(
         'ИНН',
         max_length=INN_COMPANY_MAX_LENGTH,
         blank=True,
-        null=True,
         validators=[validate_company_inn],
     )
 
@@ -55,7 +52,6 @@ class ArtistCompanyData(TimestampModel):
         'ОГРН',
         max_length=OGRN_MAX_LENGTH,
         blank=True,
-        null=True,
         validators=[validate_ogrn],
     )
 
