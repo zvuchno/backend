@@ -318,6 +318,154 @@ class TestLabelManagedProfileList:
         assert other_artist_user.artist_profile.slug == original_slug
 
 
+class TestLabelManagedProfileDelete:
+    """Тесты удаления профиля артиста, управляемого лейблом."""
+
+    def test_label_deletes_empty_managed_artist_without_account(
+        self,
+        label_client,
+        label_created_artist,
+        managed_profile_detail_url,
+    ):
+        """Лейбл удаляет пустой профиль артиста без учётной записи."""
+        artist_id = label_created_artist.id
+
+        response = label_client.delete(
+            managed_profile_detail_url(label_created_artist),
+        )
+
+        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert not ArtistProfile.objects.filter(id=artist_id).exists()
+
+    def test_label_cannot_delete_managed_artist_with_account(
+        self,
+        label_client,
+        label_user,
+        user_factory,
+        artist_profile_factory,
+        managed_profile_detail_url,
+    ):
+        """Профиль артиста с учётной записью удалить нельзя."""
+        artist_user = user_factory(
+            email='managed-artist@test.com',
+            username='managed_artist',
+        )
+        artist = artist_profile_factory(
+            user=artist_user,
+            label=label_user.artist_profile,
+        )
+        response = label_client.delete(
+            managed_profile_detail_url(artist),
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.data == {
+            'detail': 'Нельзя удалить профиль артиста с учётной записью.',
+        }
+        assert ArtistProfile.objects.filter(id=artist.id).exists()
+
+    def test_label_cannot_delete_managed_artist_with_album(
+        self,
+        label_client,
+        label_created_artist,
+        managed_profile_detail_url,
+    ):
+        """Профиль с альбомом удалить нельзя."""
+        AlbumFactory(
+            artist=label_created_artist,
+        )
+
+        response = label_client.delete(
+            managed_profile_detail_url(label_created_artist),
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.data == {
+            'detail': (
+                'Нельзя удалить профиль артиста, пока у него есть контент.'
+            ),
+        }
+        assert ArtistProfile.objects.filter(
+            id=label_created_artist.id,
+        ).exists()
+
+    def test_label_cannot_delete_managed_artist_with_merch(
+        self,
+        label_client,
+        label_created_artist,
+        managed_profile_detail_url,
+    ):
+        """Профиль с мерчем удалить нельзя."""
+        MerchFactory(
+            artist=label_created_artist,
+        )
+
+        response = label_client.delete(
+            managed_profile_detail_url(label_created_artist),
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.data == {
+            'detail': (
+                'Нельзя удалить профиль артиста, пока у него есть контент.'
+            ),
+        }
+        assert ArtistProfile.objects.filter(
+            id=label_created_artist.id,
+        ).exists()
+
+    def test_label_cannot_delete_foreign_artist(
+        self,
+        label_client,
+        other_artist_user,
+        managed_profile_detail_url,
+    ):
+        """Лейбл не может удалить чужой профиль артиста."""
+        artist = other_artist_user.artist_profile
+
+        response = label_client.delete(
+            managed_profile_detail_url(artist),
+        )
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        assert ArtistProfile.objects.filter(id=artist.id).exists()
+
+    def test_label_cannot_delete_own_profile(
+        self,
+        label_client,
+        label_user,
+        managed_profile_detail_url,
+    ):
+        """Лейбл не может удалить собственный профиль через managed API."""
+        label = label_user.artist_profile
+
+        response = label_client.delete(
+            managed_profile_detail_url(label),
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.data == {
+            'detail': 'Можно удалить только управляемого артиста.',
+        }
+        assert ArtistProfile.objects.filter(id=label.id).exists()
+
+    def test_artist_cannot_delete_managed_profile(
+        self,
+        artist_client,
+        label_created_artist,
+        managed_profile_detail_url,
+    ):
+        """Операция удаления доступна только лейблу."""
+        response = artist_client.delete(
+            managed_profile_detail_url(label_created_artist),
+        )
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        assert ArtistProfile.objects.filter(
+            id=label_created_artist.id,
+        ).exists()
+
+
 @pytest.mark.django_db
 class TestArtistLeaveLabel:
     """Тесты самостоятельного выхода артиста из лейбла."""

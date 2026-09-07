@@ -17,6 +17,10 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album
+from store.services.album_publication import (
+    PUBLICATION_ERROR,
+    has_uploaded_track,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +161,19 @@ class AlbumWriteSerializer(
             )
 
         return value
+
+    def validate(self, attrs):
+        """Проверяет возможность публикации релиза."""
+        attrs = super().validate(attrs)
+
+        if attrs.get('is_published') is True and (
+            self.instance is None or not has_uploaded_track(self.instance)
+        ):
+            raise serializers.ValidationError({
+                'is_published': PUBLICATION_ERROR,
+            })
+
+        return attrs
 
     def create(self, validated_data):
         validated_data.pop('price', None)

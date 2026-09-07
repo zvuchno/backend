@@ -1,5 +1,6 @@
 """ViewSet для работы с моделью track."""
 
+from django.db import transaction
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -21,6 +22,7 @@ from store.serializers import (
     TrackReadSerializer,
     TrackWriteSerializer,
 )
+from store.services.album_publication import unpublish_if_empty
 
 
 @track_schema
@@ -94,3 +96,14 @@ class TrackViewSet(
             context=self.get_serializer_context(),
         )
         return Response(read_serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Удаляет трек и снимает пустой альбом с публикации."""
+        track = self.get_object()
+        album = track.album
+
+        with transaction.atomic():
+            response = super().destroy(request, *args, **kwargs)
+            unpublish_if_empty(album)
+
+        return response
