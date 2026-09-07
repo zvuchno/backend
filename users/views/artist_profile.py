@@ -25,6 +25,7 @@ from common.permissions import (
 )
 from common.services import artist_publication_ready_q
 
+from store.models import Album, Merch
 from users.filters import ArtistFilter
 from users.models import ArtistProfile
 from users.schemas import (
@@ -101,12 +102,55 @@ class ArtistProfileBaseView(ManagedArtistProfileMixin, RetrieveUpdateAPIView):
 
 @artist_me_schema
 class ArtistMeView(ArtistProfileBaseView):
-    """Просмотр и редактирование собственного профиля."""
+    """Просмотр, редактирование и удаление управляемого профиля."""
 
 
 @managed_artist_schema
 class ManagedArtistProfileView(ArtistProfileBaseView):
     """Просмотр и редактирование управляемого профиля."""
+
+    http_method_names = ['get', 'patch', 'delete']
+    permission_classes = [IsLabel]
+
+    def delete(self, request, *args, **kwargs):
+        """Удаляет пустой профиль артиста без учётной записи."""
+        artist = self.get_artist_profile()
+
+        if artist.label_id != request.user.artist_profile.id:
+            return Response(
+                {
+                    'detail': 'Можно удалить только управляемого артиста.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if artist.user_id is not None:
+            return Response(
+                {
+                    'detail': (
+                        'Нельзя удалить профиль артиста с учётной записью.'
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if (
+            Album.objects.filter(artist=artist).exists()
+            or Merch.objects.filter(artist=artist).exists()
+        ):
+            return Response(
+                {
+                    'detail': (
+                        'Нельзя удалить профиль артиста, '
+                        'пока у него есть контент.'
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        artist.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @artist_public_schema
