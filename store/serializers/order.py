@@ -189,6 +189,8 @@ class OrderDetailSerializer(OrderSerializer):
             return ', '.join(filter(None, (address, date)))
 
         if obj.delivery.delivery_type == Delivery.DeliveryType.PICKPOINT:
-            return obj.delivery_point_address
+            return ', '.join(
+                filter(None, (obj.city, obj.delivery_point_address)),
+            )
 
         return obj.full_address

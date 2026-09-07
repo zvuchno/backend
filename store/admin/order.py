@@ -208,7 +208,7 @@ class OrderAdmin(admin.ModelAdmin):
         'display_promocode_discount',
         'delivery',
         'display_address',
-        'delivery_point_address',
+        'display_delivery_point_address',
         'cdek_city_code',
         'display_total',
         'promocode',
@@ -259,7 +259,7 @@ class OrderAdmin(admin.ModelAdmin):
                     'delivery',
                     'pickup_point',
                     'display_address',
-                    'delivery_point_address',
+                    'display_delivery_point_address',
                     'cdek_city_code',
                     'delivery_calculation',
                 ),
@@ -300,7 +300,9 @@ class OrderAdmin(admin.ModelAdmin):
             'display_address': bool(self.display_address(obj)),
             'cdek_city_code': bool(obj.cdek_city_code),
             'delivery_calculation': bool(obj.delivery_calculation),
-            'delivery_point_address': bool(obj.delivery_point_address),
+            'display_delivery_point_address': bool(
+                self.display_delivery_point_address(obj),
+            ),
         }
 
         for title, options in fieldsets:
@@ -335,6 +337,12 @@ class OrderAdmin(admin.ModelAdmin):
     @admin.display(description='Адрес доставки')
     def display_address(self, obj):
         return obj.full_address
+
+    @admin.display(description='Адрес ПВЗ / Постамата')
+    def display_delivery_point_address(self, obj):
+        return ', '.join(
+            filter(None, (obj.city, obj.delivery_point_address)),
+        )
 
     @admin.display(description='Оплачен', boolean=True)
     def is_paid(self, obj):
