@@ -107,7 +107,9 @@ class CatalogReleaseDetailView(RetrieveAPIView):
             .prefetch_related(
                 Prefetch(
                     'product__merch__images_merch',
-                    queryset=Image.objects.order_by('id'),
+                    queryset=Image.objects.filter(
+                        is_active=True,
+                    ).order_by('id'),
                     to_attr='prefetched_images',
                 ),
             )
@@ -197,7 +199,9 @@ class CatalogMerchDetailView(RetrieveAPIView):
             .prefetch_related(
                 Prefetch(
                     'images_merch',
-                    queryset=Image.objects.order_by('id'),
+                    queryset=Image.objects.filter(
+                        is_active=True,
+                    ).order_by('id'),
                     to_attr='prefetched_images',
                 ),
                 Prefetch(

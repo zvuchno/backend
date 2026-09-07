@@ -20,7 +20,10 @@ class MerchImageService:
         merch = cls._lock_merch(merch)
 
         requested_is_main = validated_data.get('is_main', False)
-        has_images = Image.objects.filter(merch=merch).exists()
+        has_images = Image.objects.filter(
+            merch=merch,
+            is_active=True,
+        ).exists()
 
         is_main = requested_is_main or not has_images
 
@@ -150,20 +153,22 @@ class MerchImageService:
         """Назначает главное изображение, если у мерча оно отсутствует."""
         merch = cls._lock_merch(merch)
 
-        if Image.objects.filter(
+        images = Image.objects.select_for_update().filter(
             merch=merch,
+        )
+
+        images.filter(
             is_main=True,
+            is_active=False,
+        ).update(is_main=False)
+
+        if images.filter(
+            is_main=True,
+            is_active=True,
         ).exists():
             return
 
-        image = (
-            Image.objects
-            .filter(
-                merch=merch,
-            )
-            .order_by('id')
-            .first()
-        )
+        image = images.filter(is_active=True).order_by('id').first()
 
         if image:
             image.is_main = True
@@ -189,7 +194,10 @@ class MerchImageService:
         exclude_image_id: int | None = None,
     ) -> Image | None:
         """Возвращает следующее изображение мерча по порядку создания."""
-        queryset = Image.objects.filter(merch=merch)
+        queryset = Image.objects.filter(
+            merch=merch,
+            is_active=True,
+        )
 
         if exclude_image_id is not None:
             queryset = queryset.exclude(pk=exclude_image_id)

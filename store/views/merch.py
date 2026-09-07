@@ -81,12 +81,19 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             to_attr='active_variants',
         )
 
+        active_images_prefetch = Prefetch(
+            'images_merch',
+            queryset=Image.objects.filter(
+                is_active=True,
+            ).order_by('id'),
+        )
+
         if self.action == 'list':
             queryset = queryset.select_related(
                 'product',
                 'artist',
             ).prefetch_related(
-                'images_merch',
+                active_images_prefetch,
                 active_variants_prefetch,
             )
         elif self.action == 'retrieve':
@@ -97,7 +104,7 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
                 'artist',
                 'artist__label',
             ).prefetch_related(
-                'images_merch',
+                active_images_prefetch,
                 active_variants_prefetch,
             )
         return queryset
@@ -138,6 +145,7 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             Image,
             id=image_id,
             merch=merch,
+            is_active=True,
         )
 
         if request.method == 'DELETE':

@@ -73,7 +73,7 @@ class PhotoInline(NestedTabularInline):
     model = Image
     formset = MerchImageInlineFormSet
     extra = 1
-    fields = ('image', 'preview', 'is_main')
+    fields = ('image', 'preview', 'is_main', 'is_active')
     readonly_fields = ('preview',)
 
     @admin.display(description='Превью')
@@ -214,7 +214,7 @@ class MerchAdmin(
 
     @admin.display(description='Главное фото')
     def image_preview(self, obj):
-        images = list(obj.images_merch.all())
+        images = [image for image in obj.images_merch.all() if image.is_active]
 
         for image in images:
             if image.is_main:
