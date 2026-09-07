@@ -383,6 +383,48 @@ class TestBecomeArtistOrLabelApi:
         assert 'consents' in response.data
         assert not ArtistProfile.objects.filter(user=listener_user).exists()
 
+    @pytest.mark.parametrize(
+        'profile_type',
+        (
+            ArtistProfileType.ARTIST,
+            ArtistProfileType.LABEL,
+        ),
+    )
+    def test_inactive_artist_cannot_change_profile_type(
+        self,
+        artist_client,
+        artist_user,
+        become_artist_url,
+        profile_type,
+    ):
+        """Деактивированный профиль нельзя создать заново или повысить."""
+        profile = artist_user.artist_profile
+        profile.is_active = False
+        profile.save(update_fields=('is_active',))
+
+        response = artist_client.post(
+            become_artist_url,
+            data={
+                'profile_type': profile_type,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.data == {
+            'profile_type': [
+                (
+                    'Профиль артиста или лейбла деактивирован. '
+                    'Создание нового профиля и изменение его типа недоступны.'
+                ),
+            ],
+        }
+
+        profile.refresh_from_db()
+
+        assert profile.is_active is False
+        assert profile.profile_type == ArtistProfileType.ARTIST
+
 
 class TestArtistMeApi:
     """Тесты профиля текущего артиста или лейбла."""

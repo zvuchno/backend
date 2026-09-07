@@ -271,6 +271,14 @@ class BecomeArtistOrLabelSerializer(serializers.ModelSerializer):
                 })
             return attrs
 
+        if not profile.is_active:
+            raise serializers.ValidationError({
+                'profile_type': (
+                    'Профиль артиста или лейбла деактивирован. '
+                    'Создание нового профиля и изменение его типа недоступны.'
+                ),
+            })
+
         if target_type != ArtistProfileType.LABEL:
             raise serializers.ValidationError({
                 'profile_type': (
