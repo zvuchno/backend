@@ -77,6 +77,20 @@ managed_artist_schema = extend_schema_view(
             'существующие обновляются, а отсутствующие в запросе удаляются.'
         ),
     ),
+    delete=extend_schema(
+        tags=['Label: managed profiles'],
+        summary='Удалить пустой профиль управляемого артиста',
+        description=(
+            'Удаляет профиль артиста без учётной записи, '
+            'если у него отсутствуют альбомы и мерч. '
+            'Профиль самого лейбла и профиль артиста '
+            'с учётной записью удалить нельзя.'
+        ),
+        request=None,
+        responses={
+            204: None,
+        },
+    ),
 )
 
 artist_public_schema = extend_schema(
