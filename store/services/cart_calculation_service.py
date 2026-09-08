@@ -7,7 +7,8 @@
 
 from decimal import Decimal
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
+from django.utils import timezone
 
 from store.constants import ZERO_MONEY
 from store.models import Product, Promocode
@@ -78,6 +79,8 @@ class CartCalculationService:
             return ArtistPickupPoint.objects.none()
 
         return ArtistPickupPoint.objects.filter(
+            Q(pickup_date__isnull=True)
+            | Q(pickup_date__gte=timezone.localdate()),
             is_active=True,
             artist_id=artist_ids[0],
         )
