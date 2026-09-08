@@ -23,12 +23,6 @@ from nested_admin.nested import (
     NestedTabularInline,
 )
 
-from ..services.album_archive import AlbumArchiveScheduler
-from ..services.album_publication import (
-    PUBLICATION_ERROR,
-    has_uploaded_track,
-    unpublish_if_empty,
-)
 from .forms import MoneyForm
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -48,6 +42,12 @@ from store.models import (
     TrackUpload,
 )
 from store.services import ProductService
+from store.services.album_archive import AlbumArchiveScheduler
+from store.services.album_publication import (
+    MISSING_TRACKS_ERROR,
+    has_uploaded_track,
+    unpublish_if_empty,
+)
 from store.services.track_upload import (
     TrackUploadService,
     TrackUploadStorageError,
@@ -315,7 +315,7 @@ class AlbumAdminForm(forms.ModelForm):
         ):
             self.add_error(
                 'is_published',
-                PUBLICATION_ERROR,
+                MISSING_TRACKS_ERROR,
             )
 
         return cleaned_data

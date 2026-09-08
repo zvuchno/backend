@@ -1,6 +1,6 @@
 from store.models import Album
 
-PUBLICATION_ERROR = 'Нельзя опубликовать релиз без загруженных треков.'
+MISSING_TRACKS_ERROR = 'Добавьте хотя бы один загруженный активный трек.'
 
 
 def has_uploaded_track(album: Album) -> bool:

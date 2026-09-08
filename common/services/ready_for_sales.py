@@ -16,7 +16,7 @@ class PublicationRequirement(StrEnum):
 
     @property
     def description(self) -> str:
-        """Возвращает человекочитаемое описание причины."""
+        """Возвращает краткое описание причины."""
         descriptions = {
             self.EMAIL_VERIFICATION: 'не подтверждён email',
             self.LEGAL_PROFILE_VERIFICATION: (
@@ -25,6 +25,24 @@ class PublicationRequirement(StrEnum):
             self.SHIPPING_POINT: 'не настроен ПВЗ / СДЭК',
         }
         return descriptions[self]
+
+    @property
+    def publication_error_message(self) -> str:
+        """Возвращает подсказку для устранения блокировки публикации."""
+        messages = {
+            self.EMAIL_VERIFICATION: (
+                'Подтвердите email для публикации товаров.'
+            ),
+            self.LEGAL_PROFILE_VERIFICATION: (
+                'Заполните раздел «Данные» в личном кабинете '
+                'и дождитесь их подтверждения администратором.'
+            ),
+            self.SHIPPING_POINT: (
+                'Укажите в настройках пункт СДЭК '
+                'для отправки физических товаров.'
+            ),
+        }
+        return messages[self]
 
 
 @dataclass(frozen=True)

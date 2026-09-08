@@ -1,5 +1,10 @@
 """Кастомные исключения, приложения store."""
 
+from rest_framework.exceptions import APIException
+from rest_framework.status import HTTP_400_BAD_REQUEST
+
+PUBLICATION_BLOCKED_DETAIL = 'Невозможно опубликовать товар.'
+
 
 class CDEKIntegrationError(Exception):
     """Ошибка при работе с API СДЭК."""
@@ -35,3 +40,17 @@ class PromocodeNotAvailable(Exception):
 
 class ReceiptValidationError(ValueError):
     """Ошибка формирования или проверки фискального чека."""
+
+
+class PublicationBlocked(APIException):
+    """Ошибка невозможности публикации товара."""
+
+    status_code = HTTP_400_BAD_REQUEST
+    default_code = 'publication_blocked'
+
+    def __init__(self, reasons):
+        """Создаёт ошибку публикации со списком причин блокировки."""
+        super().__init__({
+            'detail': PUBLICATION_BLOCKED_DETAIL,
+            'reasons': reasons,
+        })

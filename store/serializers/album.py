@@ -15,9 +15,10 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
 )
+from store.exceptions import PublicationBlocked
 from store.models import Album
 from store.services.album_publication import (
-    PUBLICATION_ERROR,
+    MISSING_TRACKS_ERROR,
     has_uploaded_track,
 )
 
@@ -157,9 +158,9 @@ class AlbumWriteSerializer(
         if attrs.get('is_published') is True and (
             self.instance is None or not has_uploaded_track(self.instance)
         ):
-            raise serializers.ValidationError({
-                'is_published': PUBLICATION_ERROR,
-            })
+            raise PublicationBlocked([
+                MISSING_TRACKS_ERROR,
+            ])
 
         return attrs
 
