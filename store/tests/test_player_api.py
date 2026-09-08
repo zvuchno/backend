@@ -182,8 +182,7 @@ class TestPlayerAlbumAPI:
 
     def test_staff_does_not_return_inactive_tracks(
         self,
-        api_client,
-        admin_user,
+        staff_client,
         player_album_url,
         variant_factory,
     ):
@@ -204,9 +203,7 @@ class TestPlayerAlbumAPI:
         inactive_track.is_active = False
         inactive_track.save(update_fields=('is_active',))
 
-        api_client.force_authenticate(user=admin_user)
-
-        response = api_client.get(
+        response = staff_client.get(
             player_album_url(album.id),
         )
 
@@ -692,8 +689,7 @@ class TestPlayerTrackPlayAPI:
 
     def test_staff_cannot_play_inactive_track(
         self,
-        api_client,
-        admin_user,
+        staff_client,
         player_track_play_url,
         variant_factory,
     ):
@@ -704,9 +700,7 @@ class TestPlayerTrackPlayAPI:
         track.is_active = False
         track.save(update_fields=('is_active',))
 
-        api_client.force_authenticate(user=admin_user)
-
-        response = api_client.get(
+        response = staff_client.get(
             player_track_play_url(track.id),
         )
 

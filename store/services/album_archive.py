@@ -110,7 +110,10 @@ class AlbumArchiveService:
 
                 current_album = Album.objects.get(pk=album_id)
                 current_tracks = list(
-                    current_album.tracks.order_by('position', 'id'),
+                    current_album.tracks.filter(is_active=True).order_by(
+                        'position',
+                        'id',
+                    ),
                 )
                 current_hash = cls.calculate_content_hash(
                     album=current_album,
