@@ -163,7 +163,7 @@ def test_content_hash_changes_after_track_update(
     album = album_with_tracks
 
     tracks = list(
-        album.tracks.order_by('position', 'id'),
+        album.tracks.filter(is_active=True).order_by('position', 'id'),
     )
 
     old_hash = AlbumArchiveService.calculate_content_hash(

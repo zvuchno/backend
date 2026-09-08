@@ -325,6 +325,7 @@ class AlbumArchiveService:
             return False
 
         old_file_name = archive.file.name or None
+        storage = archive.file.storage
 
         archive.file = ''
         archive.status = AlbumArchive.Status.PENDING
@@ -344,7 +345,7 @@ class AlbumArchiveService:
 
         if old_file_name:
             try:
-                archive.file.storage.delete(old_file_name)
+                storage.delete(old_file_name)
             except Exception:
                 logger.exception(
                     'Не удалось удалить неактуальный архив %s.',
