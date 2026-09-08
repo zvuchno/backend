@@ -2,10 +2,10 @@
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
-from rest_framework.exceptions import ValidationError
 
 from common.services import get_artist_publication_readiness
 
+from store.exceptions import PublicationBlocked
 from store.models import Album, Merch
 from store.services import ProductService
 from store.views.mixins.managed_artist import ManagedArtistActionMixin
@@ -96,6 +96,7 @@ class ProductActionMixin(ManagedArtistActionMixin):
             missing = readiness.digital_missing
 
         if not can_publish:
-            raise ValidationError({
-                'is_published': [requirement.value for requirement in missing],
-            })
+            raise PublicationBlocked([
+                requirement.publication_error_message
+                for requirement in missing
+            ])

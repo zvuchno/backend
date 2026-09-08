@@ -75,8 +75,9 @@ def test_cannot_create_published_album_without_tracks(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.data == {
-        'is_published': [
-            'Нельзя опубликовать релиз без загруженных треков.',
+        'detail': 'Невозможно опубликовать товар.',
+        'reasons': [
+            'Добавьте хотя бы один загруженный активный трек.',
         ],
     }
     assert not Album.objects.filter(name='Тестовый альбом').exists()
@@ -107,8 +108,9 @@ def test_cannot_publish_album_without_tracks(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.data == {
-        'is_published': [
-            'Нельзя опубликовать релиз без загруженных треков.',
+        'detail': 'Невозможно опубликовать товар.',
+        'reasons': [
+            'Добавьте хотя бы один загруженный активный трек.',
         ],
     }
 
@@ -338,7 +340,7 @@ def test_admin_form_rejects_publishing_empty_album(
 
     assert form.is_valid() is False
     assert form.errors['is_published'] == [
-        'Нельзя опубликовать релиз без загруженных треков.',
+        'Добавьте хотя бы один загруженный активный трек.',
     ]
 
 
@@ -514,5 +516,5 @@ def test_admin_form_rejects_creating_published_album_without_tracks(
 
     assert form.is_valid() is False
     assert form.errors['is_published'] == [
-        'Нельзя опубликовать релиз без загруженных треков.',
+        'Добавьте хотя бы один загруженный активный трек.',
     ]

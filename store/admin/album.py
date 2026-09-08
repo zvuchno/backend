@@ -23,7 +23,10 @@ from nested_admin.nested import (
     NestedTabularInline,
 )
 
-from ..services.album_publication import PUBLICATION_ERROR, has_uploaded_track
+from ..services.album_publication import (
+    MISSING_TRACKS_ERROR,
+    has_uploaded_track,
+)
 from .forms import MoneyForm
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -310,7 +313,7 @@ class AlbumAdminForm(forms.ModelForm):
         ):
             self.add_error(
                 'is_published',
-                PUBLICATION_ERROR,
+                MISSING_TRACKS_ERROR,
             )
 
         return cleaned_data
