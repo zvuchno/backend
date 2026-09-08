@@ -1,12 +1,9 @@
 from common.services.email import send_template_email
 
-from users.constants import EMAIL_VERIFICATION_CODE_TTL_MINUTES
-
 
 def send_email_verification_mail(
     to_email: str,
     verification_url: str,
-    verification_code: str,
 ) -> None:
     """Отправляет письмо подтверждения email."""
     send_template_email(
@@ -15,10 +12,6 @@ def send_email_verification_mail(
         template_name='email_verification',
         context={
             'verification_url': verification_url,
-            'verification_code': verification_code,
-            'verification_code_ttl_minutes': (
-                EMAIL_VERIFICATION_CODE_TTL_MINUTES
-            ),
         },
     )
 

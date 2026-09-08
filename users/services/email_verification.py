@@ -53,7 +53,6 @@ def request_email_verification(user) -> dict:
     send_email_verification_mail(
         to_email=user.email,
         verification_url=verification_url,
-        verification_code=verification_code,
     )
 
     return {
