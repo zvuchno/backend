@@ -23,6 +23,7 @@ def merch_variant(variant_factory):
     return variant_factory('merch', stock=10)
 
 
+@pytest.mark.usefixtures('publication_readiness_disabled')
 class TestCartServiceTouch:
     """Тесты на обновление updated_at корзины сервисом CartService."""
 
