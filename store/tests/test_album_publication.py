@@ -9,7 +9,9 @@ from django.urls import reverse
 
 from store.admin import TrackAdmin
 from store.admin.album import AlbumAdmin
+from store.exceptions import PUBLICATION_BLOCKED_DETAIL
 from store.models import Album, Track
+from store.services.album_publication import MISSING_TRACKS_ERROR
 from store.tests.factories import (
     AlbumFactory,
     GenreFactory,
@@ -75,9 +77,9 @@ def test_cannot_create_published_album_without_tracks(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.data == {
-        'detail': 'Невозможно опубликовать товар.',
+        'detail': PUBLICATION_BLOCKED_DETAIL,
         'reasons': [
-            'Добавьте хотя бы один загруженный активный трек.',
+            MISSING_TRACKS_ERROR,
         ],
     }
     assert not Album.objects.filter(name='Тестовый альбом').exists()
@@ -108,9 +110,9 @@ def test_cannot_publish_album_without_tracks(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.data == {
-        'detail': 'Невозможно опубликовать товар.',
+        'detail': PUBLICATION_BLOCKED_DETAIL,
         'reasons': [
-            'Добавьте хотя бы один загруженный активный трек.',
+            MISSING_TRACKS_ERROR,
         ],
     }
 
@@ -340,7 +342,7 @@ def test_admin_form_rejects_publishing_empty_album(
 
     assert form.is_valid() is False
     assert form.errors['is_published'] == [
-        'Добавьте хотя бы один загруженный активный трек.',
+        MISSING_TRACKS_ERROR,
     ]
 
 
@@ -516,5 +518,5 @@ def test_admin_form_rejects_creating_published_album_without_tracks(
 
     assert form.is_valid() is False
     assert form.errors['is_published'] == [
-        'Добавьте хотя бы один загруженный активный трек.',
+        MISSING_TRACKS_ERROR,
     ]
