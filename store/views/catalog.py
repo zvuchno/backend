@@ -1,4 +1,5 @@
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema_view
 from rest_framework import filters
@@ -144,6 +145,10 @@ class CatalogReleaseDetailView(RetrieveAPIView):
                 is_published=True,
                 is_active=True,
                 visibility=Album.Visibility.PUBLIC,
+            )
+            .filter(
+                Q(release_date__isnull=True)
+                | Q(release_date__lte=timezone.localdate()),
             )
             .select_related(
                 'product',

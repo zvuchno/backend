@@ -1,6 +1,8 @@
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 from rest_framework import status
 
 from store.tests.assertions import (
@@ -113,6 +115,42 @@ class TestCatalogReleaseDetail:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_catalog_release_detail_hides_future_release(
+        self,
+        api_client,
+        catalog_release_detail_url,
+    ):
+        """Detail релиза недоступен до даты выхода."""
+        product = create_album_product()
+        album = product.album
+
+        album.release_date = timezone.localdate() + timedelta(days=1)
+        album.save(update_fields=('release_date',))
+
+        response = api_client.get(
+            catalog_release_detail_url(album),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_catalog_release_detail_available_on_release_date(
+        self,
+        api_client,
+        catalog_release_detail_url,
+    ):
+        """Detail релиза доступен в дату выхода."""
+        product = create_album_product()
+        album = product.album
+
+        album.release_date = timezone.localdate()
+        album.save(update_fields=('release_date',))
+
+        response = api_client.get(
+            catalog_release_detail_url(album),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
 
 
 class TestCatalogMerchDetail:
