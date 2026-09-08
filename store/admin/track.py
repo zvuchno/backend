@@ -8,6 +8,7 @@ from django.contrib import admin
 from django.db import transaction
 from django.utils.html import format_html
 
+from ..services.album_archive import AlbumArchiveScheduler
 from ..services.album_publication import unpublish_if_empty
 from .forms import MoneyForm
 from .mixins import (
@@ -228,13 +229,20 @@ class TrackAdmin(
 
     def save_model(self, request, obj, form, change):
         """Сохраняет трек и запускает обработку при изменении исходника."""
-        should_schedule = not change or 'audio_file' in form.changed_data
+        should_schedule_audio = not change or 'audio_file' in form.changed_data
+        should_schedule_archive = change and 'is_active' in form.changed_data
 
         with transaction.atomic():
             super().save_model(request, obj, form, change)
             unpublish_if_empty(obj.album)
 
-            if should_schedule:
+            if should_schedule_audio:
                 transaction.on_commit(
                     lambda: TrackGeneratedAudioScheduler.schedule(obj),
+                )
+
+            if should_schedule_archive:
+                album_id = obj.album_id
+                transaction.on_commit(
+                    lambda: AlbumArchiveScheduler.schedule_by_id(album_id),
                 )

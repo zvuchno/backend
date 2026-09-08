@@ -4,7 +4,10 @@ from unittest.mock import patch
 import pytest
 
 from store.models import AlbumArchive
-from store.services.album_archive import AlbumArchiveService
+from store.services.album_archive import (
+    AlbumArchiveScheduler,
+    AlbumArchiveService,
+)
 from store.tasks.album_archive import build_album_archive
 from store.tests.factories import (
     AlbumFactory,
@@ -59,7 +62,7 @@ def album_with_tracks(local_media):
 def prepare_archive(album):
     """Создает ожидающую запись архива."""
     tracks = list(
-        album.tracks.order_by('position', 'id'),
+        album.tracks.filter(is_active=True).order_by('position', 'id'),
     )
 
     expected_hash = AlbumArchiveService.calculate_content_hash(
@@ -240,3 +243,79 @@ def test_task_calls_service_for_current_pending_hash():
         album_id=album.pk,
         expected_hash='current-hash',
     )
+
+
+def test_build_excludes_inactive_tracks(
+    album_with_tracks,
+):
+    """Неактивный трек не попадает в актуальный ZIP-архив."""
+    album = album_with_tracks
+    inactive_track = album.tracks.get(position=2)
+
+    inactive_track.is_active = False
+    inactive_track.save(update_fields=('is_active',))
+
+    archive, expected_hash = prepare_archive(album)
+
+    result = AlbumArchiveService.build(
+        album_id=album.pk,
+        expected_hash=expected_hash,
+    )
+
+    result.refresh_from_db()
+
+    assert result.status == AlbumArchive.Status.READY
+
+    with result.file.open('rb') as archive_file:
+        with zipfile.ZipFile(archive_file) as zip_file:
+            assert zip_file.namelist() == [
+                'cover.jpg',
+                '01 - Первый - трек.mp3',
+            ]
+
+            assert zip_file.read('01 - Первый - трек.mp3') == b'first-audio'
+
+
+@patch(
+    'store.tasks.album_archive.build_album_archive.apply_async',
+)
+def test_scheduler_rebuilds_archive_after_track_deactivation(
+    mocked_task,
+    album_with_tracks,
+):
+    """Деактивация трека меняет состав актуального архива."""
+    album = album_with_tracks
+
+    active_tracks = list(
+        album.tracks.filter(is_active=True).order_by('position', 'id'),
+    )
+    old_hash = AlbumArchiveService.calculate_content_hash(
+        album=album,
+        tracks=active_tracks,
+    )
+
+    AlbumArchive.objects.create(
+        album=album,
+        status=AlbumArchive.Status.READY,
+        content_hash=old_hash,
+    )
+
+    track = album.tracks.get(position=2)
+    track.is_active = False
+    track.save(update_fields=('is_active',))
+
+    scheduled = AlbumArchiveScheduler.schedule(album)
+
+    archive = AlbumArchive.objects.get(album=album)
+
+    expected_hash = AlbumArchiveService.calculate_content_hash(
+        album=album,
+        tracks=list(
+            album.tracks.filter(is_active=True).order_by('position', 'id'),
+        ),
+    )
+
+    assert scheduled is True
+    assert archive.status == AlbumArchive.Status.PENDING
+    assert archive.pending_hash == expected_hash
+    assert archive.pending_hash != old_hash

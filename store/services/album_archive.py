@@ -71,7 +71,7 @@ class AlbumArchiveService:
         """Собирает и сохраняет актуальный архив альбома."""
         album = Album.objects.get(pk=album_id)
         tracks = list(
-            album.tracks.order_by('position', 'id'),
+            album.tracks.filter(is_active=True).order_by('position', 'id'),
         )
 
         if not tracks:
@@ -336,7 +336,7 @@ class AlbumArchiveScheduler:
             return False
 
         tracks = list(
-            album.tracks.order_by('position', 'id'),
+            album.tracks.filter(is_active=True).order_by('position', 'id'),
         )
 
         if not tracks:

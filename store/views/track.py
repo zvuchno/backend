@@ -22,6 +22,7 @@ from store.serializers import (
     TrackReadSerializer,
     TrackWriteSerializer,
 )
+from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
 
 
@@ -105,5 +106,9 @@ class TrackViewSet(
         with transaction.atomic():
             response = super().destroy(request, *args, **kwargs)
             unpublish_if_empty(album)
+
+            transaction.on_commit(
+                lambda: AlbumArchiveScheduler.schedule_by_id(album.pk),
+            )
 
         return response
