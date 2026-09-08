@@ -280,7 +280,7 @@ def test_build_excludes_inactive_tracks(
     'store.tasks.album_archive.build_album_archive.apply_async',
 )
 def test_scheduler_rebuilds_archive_after_track_deactivation(
-    mocked_task,
+    _mocked_task,
     album_with_tracks,
 ):
     """Деактивация трека меняет состав актуального архива."""
@@ -319,3 +319,32 @@ def test_scheduler_rebuilds_archive_after_track_deactivation(
     assert archive.status == AlbumArchive.Status.PENDING
     assert archive.pending_hash == expected_hash
     assert archive.pending_hash != old_hash
+
+
+def test_scheduler_invalidates_archive_when_last_track_deactivated(
+    album_with_tracks,
+):
+    """Архив недоступен, если в релизе не осталось активных треков."""
+    album = album_with_tracks
+
+    archive = AlbumArchive.objects.create(
+        album=album,
+        status=AlbumArchive.Status.READY,
+        content_hash='old-hash',
+    )
+    archive.file.name = 'test/archives/old.zip'
+    archive.save(update_fields=('file',))
+
+    for track in album.tracks.all():
+        track.is_active = False
+        track.save(update_fields=('is_active',))
+
+    scheduled = AlbumArchiveScheduler.schedule(album)
+
+    archive.refresh_from_db()
+
+    assert scheduled is False
+    assert archive.status == AlbumArchive.Status.PENDING
+    assert archive.content_hash == ''
+    assert archive.pending_hash == ''
+    assert not archive.file

@@ -316,6 +316,43 @@ class AlbumArchiveService:
                 old_file_name,
             )
 
+    @classmethod
+    def invalidate(cls, album: Album) -> bool:
+        """Делает существующий архив альбома недоступным."""
+        archive = AlbumArchive.objects.filter(album=album).first()
+
+        if archive is None:
+            return False
+
+        old_file_name = archive.file.name or None
+
+        archive.file = ''
+        archive.status = AlbumArchive.Status.PENDING
+        archive.content_hash = ''
+        archive.pending_hash = ''
+        archive.error_message = ''
+        archive.save(
+            update_fields=(
+                'file',
+                'status',
+                'content_hash',
+                'pending_hash',
+                'error_message',
+                'updated_at',
+            ),
+        )
+
+        if old_file_name:
+            try:
+                archive.file.storage.delete(old_file_name)
+            except Exception:
+                logger.exception(
+                    'Не удалось удалить неактуальный архив %s.',
+                    old_file_name,
+                )
+
+        return True
+
 
 class AlbumArchiveScheduler:
     """Планирует отложенную пересборку архива."""
@@ -335,14 +372,15 @@ class AlbumArchiveScheduler:
     @classmethod
     def schedule(cls, album: Album) -> bool:
         """Ставит сборку в очередь, если содержимое архива изменилось."""
-        if not album.is_published:
-            return False
-
         tracks = list(
             album.tracks.filter(is_active=True).order_by('position', 'id'),
         )
 
         if not tracks:
+            AlbumArchiveService.invalidate(album)
+            return False
+
+        if not album.is_published:
             return False
 
         expected_hash = AlbumArchiveService.calculate_content_hash(
