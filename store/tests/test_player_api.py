@@ -180,6 +180,38 @@ class TestPlayerAlbumAPI:
             active_track.id,
         ]
 
+    def test_staff_does_not_return_inactive_tracks(
+        self,
+        staff_client,
+        player_album_url,
+        variant_factory,
+    ):
+        """Неактивные треки не попадают в плеер даже для администратора."""
+        active_variant = variant_factory(
+            'track',
+            name='Активный трек',
+        )
+        active_track = active_variant.product.track
+        album = active_track.album
+
+        inactive_variant = variant_factory(
+            'track',
+            album=album,
+            name='Неактивный трек',
+        )
+        inactive_track = inactive_variant.product.track
+        inactive_track.is_active = False
+        inactive_track.save(update_fields=('is_active',))
+
+        response = staff_client.get(
+            player_album_url(album.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert [track['id'] for track in response.data['tracks']] == [
+            active_track.id,
+        ]
+
     def test_returns_favorite_state_for_authenticated_user(
         self,
         api_client,
@@ -654,3 +686,22 @@ class TestPlayerTrackPlayAPI:
 
         assert response.status_code == status.HTTP_302_FOUND
         assert response['Location'] == generated.preview_file.url
+
+    def test_staff_cannot_play_inactive_track(
+        self,
+        staff_client,
+        player_track_play_url,
+        variant_factory,
+    ):
+        """Неактивный трек нельзя запустить даже администратору."""
+        track = self.create_track(variant_factory)
+        self.create_ready_preview(track)
+
+        track.is_active = False
+        track.save(update_fields=('is_active',))
+
+        response = staff_client.get(
+            player_track_play_url(track.id),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND

@@ -43,3 +43,10 @@ class TrackQuerySet(models.QuerySet):
                 | managed_artist_q(user, prefix='album__artist'),
             )
         return qs.filter(album_visibility_q)
+
+    def playable(self):
+        """Возвращает треки, которые разрешено воспроизводить."""
+        return self.filter(
+            is_active=True,
+            album__is_active=True,
+        )

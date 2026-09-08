@@ -23,7 +23,12 @@ from nested_admin.nested import (
     NestedTabularInline,
 )
 
-from ..services.album_publication import PUBLICATION_ERROR, has_uploaded_track
+from ..services.album_archive import AlbumArchiveScheduler
+from ..services.album_publication import (
+    PUBLICATION_ERROR,
+    has_uploaded_track,
+    unpublish_if_empty,
+)
 from .forms import MoneyForm
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -713,4 +718,26 @@ class AlbumAdmin(
                 },
             },
             status=HTTPStatus.OK,
+        )
+
+    def save_formset(self, request, form, formset, change):
+        """Сохраняет inline и актуализирует состояние релиза."""
+        track_formset = formset.model is Track
+
+        super().save_formset(
+            request,
+            form,
+            formset,
+            change,
+        )
+
+        if not track_formset:
+            return
+
+        album = form.instance
+
+        unpublish_if_empty(album)
+
+        transaction.on_commit(
+            lambda: AlbumArchiveScheduler.schedule_by_id(album.pk),
         )
