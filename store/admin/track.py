@@ -5,18 +5,57 @@ TODO: позже перевести замену audio_file в админке н
 """
 
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.utils.html import format_html
 
-from ..services.album_publication import unpublish_if_empty
 from .forms import MoneyForm
 from .mixins import (
     AutoCreatedByAdminMixin,
     CommerceBaseMixin,
     CommerceDisplayMixin,
 )
-from store.models import Product, Track, TrackGeneratedAudio
+from store.models import (
+    Album,
+    Order,
+    OrderItem,
+    Payment,
+    Product,
+    Track,
+    TrackGeneratedAudio,
+)
+from store.services.album_archive import AlbumArchiveScheduler
+from store.services.album_publication import unpublish_if_empty
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
+
+
+def tracks_were_purchased(queryset) -> bool:
+    """Проверяет, есть ли история приобретения у переданных треков."""
+    track_ids = queryset.values_list('id', flat=True)
+    album_ids = queryset.values_list('album_id', flat=True)
+
+    return (
+        OrderItem.objects
+        .filter(
+            Q(order__status=Order.Status.PAID)
+            | Q(
+                order__payments__status=Payment.PaymentStatus.SUCCEEDED,
+            ),
+        )
+        .filter(
+            Q(product_variant__product__track_id__in=track_ids)
+            | Q(product_variant__product__album_id__in=album_ids),
+        )
+        .exists()
+    )
+
+
+def track_was_purchased(track: Track) -> bool:
+    """Проверяет наличие истории приобретения трека."""
+    return tracks_were_purchased(
+        Track.objects.filter(pk=track.pk),
+    )
 
 
 class ProductInline(admin.StackedInline):
@@ -228,13 +267,69 @@ class TrackAdmin(
 
     def save_model(self, request, obj, form, change):
         """Сохраняет трек и запускает обработку при изменении исходника."""
-        should_schedule = not change or 'audio_file' in form.changed_data
+        should_schedule_audio = not change or 'audio_file' in form.changed_data
+        should_schedule_archive = change and 'is_active' in form.changed_data
 
         with transaction.atomic():
             super().save_model(request, obj, form, change)
             unpublish_if_empty(obj.album)
 
-            if should_schedule:
+            if should_schedule_audio:
                 transaction.on_commit(
                     lambda: TrackGeneratedAudioScheduler.schedule(obj),
                 )
+
+            if should_schedule_archive:
+                album_id = obj.album_id
+                transaction.on_commit(
+                    lambda: AlbumArchiveScheduler.schedule_by_id(album_id),
+                )
+
+    def delete_model(self, request, obj):
+        """Удаляет трек и актуализирует состояние альбома."""
+        if track_was_purchased(obj):
+            raise ValidationError(
+                'Нельзя физически удалить ранее приобретённый трек. '
+                'Деактивируйте его.',
+            )
+
+        album_id = obj.album_id
+
+        with transaction.atomic():
+            super().delete_model(request, obj)
+
+            album = Album.objects.get(pk=album_id)
+            unpublish_if_empty(album)
+
+            transaction.on_commit(
+                lambda: AlbumArchiveScheduler.schedule_by_id(album_id),
+            )
+
+    def delete_queryset(self, request, queryset):
+        """Удаляет только треки без истории приобретения."""
+        if tracks_were_purchased(queryset):
+            raise ValidationError(
+                'Нельзя физически удалить ранее приобретённые треки. '
+                'Деактивируйте их.',
+            )
+
+        album_ids = set(queryset.values_list('album_id', flat=True))
+
+        with transaction.atomic():
+            super().delete_queryset(request, queryset)
+
+            for album in Album.objects.filter(pk__in=album_ids):
+                unpublish_if_empty(album)
+                album_id = album.pk
+                transaction.on_commit(
+                    lambda album_id=album_id: (
+                        AlbumArchiveScheduler.schedule_by_id(album_id)
+                    ),
+                )
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает удаление трека с историей приобретения."""
+        if obj is not None and track_was_purchased(obj):
+            return False
+
+        return super().has_delete_permission(request, obj)

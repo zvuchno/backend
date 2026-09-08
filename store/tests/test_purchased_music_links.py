@@ -97,6 +97,46 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         get_link_mock.assert_called_once()
         assert get_link_mock.call_args.kwargs['field_file'] == track.audio_file
 
+    def test_inactive_purchased_track_returns_download_link(
+        self,
+        listener_user,
+    ):
+        """Ранее купленный трек скачивается после деактивации."""
+        track_variant = self.variant_factory(
+            'track',
+            name='Inactive Purchased Track',
+        )
+        track = track_variant.product.track
+
+        track.audio_file = 'tracks/inactive-purchased-track.flac'
+        track.save(update_fields=('audio_file',))
+
+        self.create_paid_order(listener_user, [track_variant])
+
+        track.is_active = False
+        track.save(update_fields=('is_active',))
+
+        link = DownloadLink(
+            url='https://storage.example/signed-track-url',
+            filename='Artist — Album (2026) — Track.flac',
+            expires_in=600,
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        with patch(
+            'store.views.purchased_music.DownloadLinkService.get_link',
+            return_value=link,
+        ) as get_link_mock:
+            response = self.listener_client.post(
+                self.track_download_link_url(track),
+            )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['url'] == link.url
+
+        get_link_mock.assert_called_once()
+        assert get_link_mock.call_args.kwargs['field_file'] == track.audio_file
+
     def test_other_user_cannot_get_track_download_link(
         self,
         listener_user,

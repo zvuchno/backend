@@ -70,6 +70,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
             self
             .get_track_read_queryset(
                 action='retrieve',
+                queryset=Track.objects.playable(),
             )
             .select_related('generated')
             .annotate(
@@ -116,6 +117,7 @@ class PlayerTrackPlayView(APIView):
         """Перенаправляет на доступную версию трека."""
         track = (
             Track.objects
+            .playable()
             .visible_for(request.user, action='retrieve')
             .select_related('generated')
             .filter(pk=track_id)

@@ -1,6 +1,7 @@
 from django.db import models
 from django.db.models import Exists, OuterRef, Prefetch, Subquery
 from django.db.models.functions import ExtractYear
+from django.utils import timezone
 
 from common.services import (
     digital_publication_ready_q,
@@ -59,6 +60,9 @@ class ProductQuerySet(models.QuerySet):
             track__album__artist__is_active=True,
             track__album__is_published=True,
             track__album__visibility='public',
+        ).filter(
+            models.Q(track__album__release_date__isnull=True)
+            | models.Q(track__album__release_date__lte=timezone.localdate()),
         )
 
     def published_albums(self):
@@ -70,12 +74,21 @@ class ProductQuerySet(models.QuerySet):
             album__artist__is_active=True,
             album__is_published=True,
             album__visibility='public',
+        ).filter(
+            models.Q(album__release_date__isnull=True)
+            | models.Q(album__release_date__lte=timezone.localdate()),
         )
 
     def published_merch(self):
         """Возвращает опубликованный мерч каталога."""
+        release_available_q = (
+            models.Q(merch__album__isnull=True)
+            | models.Q(merch__album__release_date__isnull=True)
+            | models.Q(merch__album__release_date__lte=timezone.localdate())
+        )
         return self.with_available_variant().filter(
             physical_publication_ready_q('merch__'),
+            release_available_q,
             merch__isnull=False,
             merch__is_active=True,
             merch__artist__is_active=True,
@@ -90,22 +103,39 @@ class ProductQuerySet(models.QuerySet):
         В основной каталог сейчас входят альбомы и мерч.
         Треки не добавляются, потому что они видимы через альбом.
         """
-        album_q = models.Q(
-            album__isnull=False,
-            album__is_active=True,
-            album__artist__is_active=True,
-            album__is_published=True,
-            album__visibility='public',
-        ) & digital_publication_ready_q('album__')
+        album_q = (
+            models.Q(
+                album__isnull=False,
+                album__is_active=True,
+                album__artist__is_active=True,
+                album__is_published=True,
+                album__visibility='public',
+            )
+            & (
+                models.Q(album__release_date__isnull=True)
+                | models.Q(album__release_date__lte=timezone.localdate())
+            )
+            & digital_publication_ready_q('album__')
+        )
 
-        merch_q = models.Q(
-            merch__isnull=False,
-            merch__is_active=True,
-            merch__artist__is_active=True,
-            merch__is_published=True,
-            merch__visibility='public',
-            has_available_variant=True,
-        ) & physical_publication_ready_q('merch__')
+        release_available_q = (
+            models.Q(merch__album__isnull=True)
+            | models.Q(merch__album__release_date__isnull=True)
+            | models.Q(merch__album__release_date__lte=timezone.localdate())
+        )
+
+        merch_q = (
+            models.Q(
+                merch__isnull=False,
+                merch__is_active=True,
+                merch__artist__is_active=True,
+                merch__is_published=True,
+                merch__visibility='public',
+                has_available_variant=True,
+            )
+            & release_available_q
+            & physical_publication_ready_q('merch__')
+        )
 
         return self.with_available_variant().filter(
             album_q | merch_q,

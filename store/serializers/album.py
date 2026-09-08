@@ -7,7 +7,6 @@
 
 import logging
 
-from django.utils import timezone
 from rest_framework import serializers
 
 from .mixins import ImmutableFieldsSerializerMixin
@@ -151,17 +150,6 @@ class AlbumWriteSerializer(
                 'required': False,
             },
         }
-
-    def validate_release_date(self, value):
-        if value is None:
-            return value
-
-        if value > timezone.now().date():
-            raise serializers.ValidationError(
-                'Дата релиза не может быть в будущем.',
-            )
-
-        return value
 
     def validate(self, attrs):
         """Проверяет возможность публикации релиза."""

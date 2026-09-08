@@ -23,10 +23,6 @@ from nested_admin.nested import (
     NestedTabularInline,
 )
 
-from ..services.album_publication import (
-    MISSING_TRACKS_ERROR,
-    has_uploaded_track,
-)
 from .forms import MoneyForm
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -46,6 +42,12 @@ from store.models import (
     TrackUpload,
 )
 from store.services import ProductService
+from store.services.album_archive import AlbumArchiveScheduler
+from store.services.album_publication import (
+    MISSING_TRACKS_ERROR,
+    has_uploaded_track,
+    unpublish_if_empty,
+)
 from store.services.track_upload import (
     TrackUploadService,
     TrackUploadStorageError,
@@ -716,4 +718,26 @@ class AlbumAdmin(
                 },
             },
             status=HTTPStatus.OK,
+        )
+
+    def save_formset(self, request, form, formset, change):
+        """Сохраняет inline и актуализирует состояние релиза."""
+        track_formset = formset.model is Track
+
+        super().save_formset(
+            request,
+            form,
+            formset,
+            change,
+        )
+
+        if not track_formset:
+            return
+
+        album = form.instance
+
+        unpublish_if_empty(album)
+
+        transaction.on_commit(
+            lambda: AlbumArchiveScheduler.schedule_by_id(album.pk),
         )
