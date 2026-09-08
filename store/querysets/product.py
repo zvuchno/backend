@@ -75,8 +75,8 @@ class ProductQuerySet(models.QuerySet):
             album__is_published=True,
             album__visibility='public',
         ).filter(
-            models.Q(track__album__release_date__isnull=True)
-            | models.Q(track__album__release_date__lte=timezone.localdate()),
+            models.Q(album__release_date__isnull=True)
+            | models.Q(album__release_date__lte=timezone.localdate()),
         )
 
     def published_merch(self):
@@ -124,15 +124,18 @@ class ProductQuerySet(models.QuerySet):
             | models.Q(merch__album__release_date__lte=timezone.localdate())
         )
 
-        merch_q = models.Q(
-            release_available_q,
-            merch__isnull=False,
-            merch__is_active=True,
-            merch__artist__is_active=True,
-            merch__is_published=True,
-            merch__visibility='public',
-            has_available_variant=True,
-        ) & physical_publication_ready_q('merch__')
+        merch_q = (
+            models.Q(
+                merch__isnull=False,
+                merch__is_active=True,
+                merch__artist__is_active=True,
+                merch__is_published=True,
+                merch__visibility='public',
+                has_available_variant=True,
+            )
+            & release_available_q
+            & physical_publication_ready_q('merch__')
+        )
 
         return self.with_available_variant().filter(
             album_q | merch_q,

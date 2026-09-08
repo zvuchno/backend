@@ -1,6 +1,8 @@
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 from rest_framework import status
 
 from store.tests.assertions import assert_public_product_card_contract
@@ -113,6 +115,74 @@ class TestCatalogVisibility:
         artist = product.merch.artist
         artist.is_active = False
         artist.save(update_fields=('is_active',))
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert product.id not in get_product_ids(response)
+
+    def test_catalog_hides_future_release(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог не возвращает релиз до даты выхода."""
+        product = create_album_product()
+        album = product.album
+
+        album.release_date = timezone.localdate() + timedelta(days=1)
+        album.save(update_fields=('release_date',))
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert product.id not in get_product_ids(response)
+
+    def test_catalog_returns_release_on_release_date(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог возвращает релиз в дату выхода."""
+        product = create_album_product()
+        album = product.album
+
+        album.release_date = timezone.localdate()
+        album.save(update_fields=('release_date',))
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert product.id in get_product_ids(response)
+
+    def test_catalog_returns_release_without_release_date(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог возвращает релиз без заданной даты выхода."""
+        product = create_album_product()
+        album = product.album
+
+        album.release_date = None
+        album.save(update_fields=('release_date',))
+
+        response = api_client.get(catalog_url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert product.id in get_product_ids(response)
+
+    def test_catalog_hides_carrier_of_future_release(
+        self,
+        api_client,
+        catalog_url,
+    ):
+        """Каталог не возвращает носитель до даты выхода релиза."""
+        product = create_carrier_product()
+        album = product.merch.album
+
+        album.release_date = timezone.localdate() + timedelta(days=1)
+        album.save(update_fields=('release_date',))
 
         response = api_client.get(catalog_url)
 
