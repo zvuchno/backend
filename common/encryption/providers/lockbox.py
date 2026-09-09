@@ -3,57 +3,31 @@
 import json
 import os
 
-import requests
+import yandexcloud
+from yandex.cloud.lockbox.v1.payload_service_pb2 import (
+    GetPayloadRequest,
+)
+from yandex.cloud.lockbox.v1.payload_service_pb2_grpc import (
+    PayloadServiceStub,
+)
 
 from common.encryption.exceptions import EncryptionConfigurationError
 from common.encryption.keyring import EncryptionKeyring, build_keyring
 
-LOCKBOX_PAYLOAD_URL = (
-    'https://payload.lockbox.api.cloud.yandex.net/'
-    'lockbox/v1/secrets/{secret_id}/payload'
-)
 
-METADATA_TOKEN_URL = (
-    'http://169.254.169.254/'
-    'computeMetadata/v1/instance/'
-    'service-accounts/default/token'
-)
+def _get_sdk() -> yandexcloud.SDK:
+    """Создаёт SDK с доступным способом аутентификации."""
+    iam_token = os.getenv(
+        'YANDEX_IAM_TOKEN',
+        '',
+    ).strip()
 
-REQUEST_TIMEOUT = 5
-
-
-def _get_explicit_iam_token() -> str | None:
-    """Возвращает явно переданный IAM-токен."""
-    return os.getenv('YANDEX_IAM_TOKEN', '').strip() or None
-
-
-def _get_metadata_iam_token() -> str:
-    """Получает IAM-токен сервисного аккаунта VM."""
-    try:
-        response = requests.get(
-            METADATA_TOKEN_URL,
-            headers={
-                'Metadata-Flavor': 'Google',
-            },
-            timeout=REQUEST_TIMEOUT,
+    if iam_token:
+        return yandexcloud.SDK(
+            iam_token=iam_token,
         )
-        response.raise_for_status()
-        token = response.json()['access_token']
-    except (
-        requests.RequestException,
-        KeyError,
-        ValueError,
-    ) as exc:
-        raise EncryptionConfigurationError(
-            'Не удалось получить IAM-токен Yandex Cloud.',
-        ) from exc
 
-    return token
-
-
-def _get_iam_token() -> str:
-    """Возвращает доступный IAM-токен."""
-    return _get_explicit_iam_token() or _get_metadata_iam_token()
+    return yandexcloud.SDK()
 
 
 def load_lockbox_keyring() -> EncryptionKeyring:
@@ -68,43 +42,38 @@ def load_lockbox_keyring() -> EncryptionKeyring:
             'Не указан YANDEX_LOCKBOX_SECRET_ID.',
         )
 
-    token = _get_iam_token()
-
     try:
-        response = requests.get(
-            LOCKBOX_PAYLOAD_URL.format(
+        sdk = _get_sdk()
+
+        client = sdk.client(
+            PayloadServiceStub,
+        )
+
+        payload = client.Get(
+            GetPayloadRequest(
                 secret_id=secret_id,
             ),
-            headers={
-                'Authorization': f'Bearer {token}',
-            },
-            timeout=REQUEST_TIMEOUT,
         )
-        response.raise_for_status()
-        payload = response.json()
-    except (
-        requests.RequestException,
-        ValueError,
-    ) as exc:
+    except Exception as exc:
         raise EncryptionConfigurationError(
             'Не удалось получить keyring из Yandex Lockbox.',
         ) from exc
 
-    entries = payload.get('entries', [])
-
     keyring_entry = next(
-        (entry for entry in entries if entry.get('key') == 'keyring'),
+        (entry for entry in payload.entries if entry.key == 'keyring'),
         None,
     )
 
-    if not keyring_entry:
+    if keyring_entry is None:
         raise EncryptionConfigurationError(
             'В Lockbox отсутствует entry keyring.',
         )
 
     try:
-        data = json.loads(keyring_entry['textValue'])
-    except (KeyError, TypeError, json.JSONDecodeError) as exc:
+        data = json.loads(
+            keyring_entry.text_value,
+        )
+    except (TypeError, json.JSONDecodeError) as exc:
         raise EncryptionConfigurationError(
             'Некорректный keyring в Yandex Lockbox.',
         ) from exc
