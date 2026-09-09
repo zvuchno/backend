@@ -67,7 +67,12 @@ def decrypt_text(
             'Не удалось расшифровать значение.',
         ) from exc
 
-    return plaintext.decode('utf-8')
+    try:
+        return plaintext.decode('utf-8')
+    except UnicodeDecodeError as exc:
+        raise InvalidEncryptedValueError(
+            'Расшифрованное значение имеет некорректный формат.',
+        ) from exc
 
 
 def needs_rotation(
