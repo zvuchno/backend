@@ -36,6 +36,11 @@ class ArtistShippingPoint(TimestampModel):
         max_length=ADDRESS_FIELD_MAX_LENGTH,
     )
 
+    @property
+    def is_configured(self) -> bool:
+        """Проверяет наличие данных, необходимых для доставки СДЭК."""
+        return bool(self.pvz_code and self.city_code)
+
     class Meta:
         verbose_name = 'точка отправки заказов'
         verbose_name_plural = 'точка отправки заказов'

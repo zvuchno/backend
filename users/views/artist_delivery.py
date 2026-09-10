@@ -4,7 +4,11 @@ from rest_framework.response import Response
 
 from common.permissions import IsArtistOrLabel
 
-from users.models import ArtistPickupPoint, ArtistShippingPoint
+from users.models import (
+    ArtistPickupPoint,
+    ArtistShippingPoint,
+    ArtistStoreSettings,
+)
 from users.schemas import (
     artist_pickup_point_schema,
     artist_shipping_point_schema,
@@ -42,6 +46,35 @@ class ArtistPickupPointBaseViewSet(
         """Создаёт точку самовывоза выбранного профиля."""
         serializer.save(
             artist=self.get_artist_profile(),
+        )
+
+    def perform_update(self, serializer):
+        """Обновляет точку и актуализирует состояние самовывоза."""
+        pickup_point = serializer.save()
+
+        self._disable_pickup_if_unavailable(
+            pickup_point.artist,
+        )
+
+    def perform_destroy(self, instance):
+        """Удаляет точку и актуализирует состояние самовывоза."""
+        artist = instance.artist
+
+        instance.delete()
+
+        self._disable_pickup_if_unavailable(artist)
+
+    @staticmethod
+    def _disable_pickup_if_unavailable(artist) -> None:
+        """Выключает самовывоз при отсутствии активных точек."""
+        if artist.pickup_points.filter(is_active=True).exists():
+            return
+
+        ArtistStoreSettings.objects.filter(
+            artist=artist,
+            pickup_enabled=True,
+        ).update(
+            pickup_enabled=False,
         )
 
 
@@ -110,6 +143,15 @@ class ArtistShippingPointBaseView(
     def delete(self, request, *args, **kwargs):
         """Удаляет сохранённый ПВЗ отправления."""
         artist = self.get_artist_profile()
+        store_settings = getattr(artist, 'store_settings', None)
+
+        if store_settings and store_settings.shipping_enabled:
+            return Response(
+                {
+                    'detail': 'Сначала выключите доставку СДЭК.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             shipping_point = artist.shipping_point

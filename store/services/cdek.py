@@ -7,8 +7,6 @@ from typing import NoReturn
 import requests
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import F
-from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 
 from store.constants import (
@@ -365,24 +363,28 @@ class CDEKService:
                 'detail': 'Нет физических товаров для доставки.',
             })
 
-        artist_city_codes = dict(
-            ArtistProfile.objects
-            .filter(id__in=artist_quantities)
-            .annotate(
-                effective_shipping_city_code=Coalesce(
-                    F('shipping_point__city_code'),
-                    F('label__shipping_point__city_code'),
-                ),
-            )
-            .values_list('id', 'effective_shipping_city_code'),
+        artist_profiles = ArtistProfile.objects.filter(
+            id__in=artist_quantities,
+        ).select_related(
+            'shipping_point',
+            'store_settings',
+            'label__shipping_point',
+            'label__store_settings',
         )
 
-        for artist_id in artist_quantities:
-            if not artist_city_codes.get(artist_id):
+        artist_city_codes = {}
+
+        for artist in artist_profiles:
+            shipping_point = artist.effective_shipping_point
+
+            if shipping_point is None:
                 raise ValidationError({
-                    'detail': f'У артиста id={artist_id} не указан код '
-                    'населенного пункта для отгрузки товара.',
+                    'detail': (
+                        f'У артиста id={artist.id} не настроена доставка СДЭК.'
+                    ),
                 })
+
+            artist_city_codes[artist.id] = shipping_point.city_code
 
         total_delivery_sum = ZERO_MONEY
 
@@ -562,7 +564,9 @@ class CDEKService:
             product_variant__product__product_type=Product.ProductType.MERCH,
         ).select_related(
             'artist__shipping_point',
+            'artist__store_settings',
             'artist__label__shipping_point',
+            'artist__label__store_settings',
         )
 
         if not merch_items.exists():

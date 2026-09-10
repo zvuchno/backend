@@ -20,6 +20,14 @@ class ArtistStoreSettings(TimestampModel):
         'Email для возвратов',
         blank=True,
     )
+    shipping_enabled = models.BooleanField(
+        'Доставка СДЭК включена',
+        default=False,
+    )
+    pickup_enabled = models.BooleanField(
+        'Самовывоз включён',
+        default=False,
+    )
 
     class Meta:
         verbose_name = 'настройки магазина'

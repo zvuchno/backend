@@ -39,6 +39,7 @@ class ArtistStoreSettingsBaseView(
         serializer = ArtistStoreSettingsSerializer(
             settings,
             data=request.data,
+            context={'artist': artist},
         )
         serializer.is_valid(raise_exception=True)
 

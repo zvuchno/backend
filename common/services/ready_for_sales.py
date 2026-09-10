@@ -22,7 +22,7 @@ class PublicationRequirement(StrEnum):
             self.LEGAL_PROFILE_VERIFICATION: (
                 'не подтверждены юридические данные'
             ),
-            self.SHIPPING_POINT: 'не настроен ПВЗ / СДЭК',
+            self.SHIPPING_POINT: 'не включена доставка СДЭК',
         }
         return descriptions[self]
 
@@ -38,8 +38,7 @@ class PublicationRequirement(StrEnum):
                 'и дождитесь их подтверждения администратором.'
             ),
             self.SHIPPING_POINT: (
-                'Укажите в настройках пункт СДЭК '
-                'для отправки физических товаров.'
+                'Включите доставку СДЭК для публикации физических товаров.'
             ),
         }
         return messages[self]
@@ -122,14 +121,30 @@ def physical_publication_ready_q(prefix: str = '') -> Q:
 
     artist = f'{prefix}artist'
 
-    shipping_point_q = Q(**{f'{artist}__shipping_point__isnull': False}) | Q(
-        **{
-            f'{artist}__shipping_point__isnull': True,
-            f'{artist}__label__shipping_point__isnull': False,
-        },
+    own_shipping_q = Q(**{
+        f'{artist}__store_settings__shipping_enabled': True,
+    }) & _shipping_point_configured_q(
+        f'{artist}__shipping_point',
     )
 
-    return digital_publication_ready_q(prefix) & shipping_point_q
+    label_shipping_q = (
+        (
+            Q(**{f'{artist}__store_settings__shipping_enabled': False})
+            | Q(**{f'{artist}__store_settings__isnull': True})
+        )
+        & Q(
+            **{
+                f'{artist}__label__store_settings__shipping_enabled': True,
+            },
+        )
+        & _shipping_point_configured_q(
+            f'{artist}__label__shipping_point',
+        )
+    )
+
+    return digital_publication_ready_q(prefix) & (
+        own_shipping_q | label_shipping_q
+    )
 
 
 def artist_publication_ready_q(prefix: str = '') -> Q:
@@ -154,3 +169,13 @@ def artist_publication_ready_q(prefix: str = '') -> Q:
     )
 
     return own_user_q | label_user_q
+
+
+def _shipping_point_configured_q(prefix: str) -> Q:
+    """Проверяет наличие обязательных кодов ПВЗ СДЭК."""
+    return Q(
+        **{
+            f'{prefix}__pvz_code__gt': '',
+            f'{prefix}__city_code__gt': '',
+        },
+    )
