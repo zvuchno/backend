@@ -174,13 +174,21 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         return None
 
     def get_effective_pickup_points(self):
-        """Возвращает queryset точек самовывоза с учётом fallback на лейбл."""
-        pickup_points = self.pickup_points.filter(is_active=True)
+        """Возвращает доступные точки самовывоза с fallback на лейбл."""
+        own_settings = getattr(self, 'store_settings', None)
 
-        if pickup_points.exists() or self.label_id is None:
-            return pickup_points
+        if own_settings and own_settings.pickup_enabled:
+            return self.pickup_points.filter(is_active=True)
 
-        return self.label.pickup_points.filter(is_active=True)
+        if self.label_id is None:
+            return self.pickup_points.none()
+
+        label_settings = getattr(self.label, 'store_settings', None)
+
+        if label_settings and label_settings.pickup_enabled:
+            return self.label.pickup_points.filter(is_active=True)
+
+        return self.pickup_points.none()
 
     def save(self, *args, **kwargs):
         """Сохраняет профиль артиста и при необходимости создает slug.

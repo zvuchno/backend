@@ -16,24 +16,37 @@ class ArtistStoreSettingsSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        """Проверяет возможность включения доставки СДЭК."""
+        """Проверяет возможность включения способов доставки."""
         attrs = super().validate(attrs)
+
+        artist = self.context['artist']
 
         shipping_enabled = attrs.get(
             'shipping_enabled',
             getattr(self.instance, 'shipping_enabled', False),
         )
+        pickup_enabled = attrs.get(
+            'pickup_enabled',
+            getattr(self.instance, 'pickup_enabled', False),
+        )
 
-        if not shipping_enabled:
-            return attrs
+        if shipping_enabled:
+            shipping_point = getattr(artist, 'shipping_point', None)
 
-        artist = self.context['artist']
-        shipping_point = getattr(artist, 'shipping_point', None)
+            if shipping_point is None or not shipping_point.is_configured:
+                raise serializers.ValidationError({
+                    'shipping_enabled': (
+                        'Сначала укажите ПВЗ СДЭК для отправки заказов.'
+                    ),
+                })
 
-        if shipping_point is None or not shipping_point.is_configured:
+        if (
+            pickup_enabled
+            and not artist.pickup_points.filter(is_active=True).exists()
+        ):
             raise serializers.ValidationError({
-                'shipping_enabled': (
-                    'Сначала укажите ПВЗ СДЭК для отправки заказов.'
+                'pickup_enabled': (
+                    'Сначала добавьте активную точку самовывоза.'
                 ),
             })
 
