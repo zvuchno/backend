@@ -110,6 +110,15 @@ class ArtistShippingPointBaseView(
     def delete(self, request, *args, **kwargs):
         """Удаляет сохранённый ПВЗ отправления."""
         artist = self.get_artist_profile()
+        store_settings = getattr(artist, 'store_settings', None)
+
+        if store_settings and store_settings.shipping_enabled:
+            return Response(
+                {
+                    'detail': 'Сначала выключите доставку СДЭК.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             shipping_point = artist.shipping_point

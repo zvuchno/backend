@@ -142,6 +142,11 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         return self._get_effective_store_setting('support_email')
 
     @property
+    def effective_returns_email(self) -> str:
+        """Возвращает существующий email для возвратов."""
+        return self._get_effective_store_setting('returns_email')
+
+    @property
     def effective_shipping_point(self):
         """Возвращает доступный ПВЗ отправки с учётом fallback на лейбл."""
         own_settings = getattr(self, 'store_settings', None)

@@ -22,9 +22,7 @@ class PublicationRequirement(StrEnum):
             self.LEGAL_PROFILE_VERIFICATION: (
                 'не подтверждены юридические данные'
             ),
-            self.SHIPPING_POINT: (
-                'Включите доставку СДЭК для публикации физических товаров.'
-            ),
+            self.SHIPPING_POINT: 'не включена доставка СДЭК',
         }
         return descriptions[self]
 
@@ -40,8 +38,7 @@ class PublicationRequirement(StrEnum):
                 'и дождитесь их подтверждения администратором.'
             ),
             self.SHIPPING_POINT: (
-                'Укажите в настройках пункт СДЭК '
-                'для отправки физических товаров.'
+                'Включите доставку СДЭК для публикации физических товаров.'
             ),
         }
         return messages[self]
