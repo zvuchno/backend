@@ -159,10 +159,6 @@ class OrderService:
                 'Этот промокод невозможно применить к товарам в корзине.',
             )
 
-        personal_data_consent = validated_data.pop(
-            'personal_data_consent',
-            None,
-        )
         delivery = validated_data.get('delivery')
         tariffs = validated_data.get('tariffs')
         cdek_city_code = validated_data.get('cdek_city_code')
@@ -217,7 +213,6 @@ class OrderService:
             order,
             validated_data.get('email'),
             artists_to_subscribe,
-            personal_data_consent,
             ip_address,
             user_agent,
         )
@@ -329,7 +324,6 @@ class OrderService:
         order,
         email,
         artists_to_subscribe,
-        personal_data_consent,
         ip_address,
         user_agent,
     ) -> None:
@@ -365,33 +359,6 @@ class OrderService:
                 )
                 for artist in artists_to_subscribe
             ])
-
-        # Согласие на обработку ПДн
-        if personal_data_consent:
-            personal_doc = ConsentDocument.objects.filter(
-                document_type=ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
-                is_active=True,
-            ).first()
-
-            if not personal_doc:
-                logger.error(
-                    'Нет активного документа согласия на обработку ПДн '
-                    '(LISTENER_PERSONAL_DATA). '
-                    'order будет отменён: order_id=%s',
-                    order.id,
-                )
-                raise ValidationError(
-                    'Нет активного документа согласия для слушателя.',
-                )
-
-            UserConsent.objects.create(
-                email=email,
-                user=authenticated_user,
-                order=order,
-                document=personal_doc,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
 
     @staticmethod
     def _get_product_kind(product) -> str:
