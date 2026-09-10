@@ -142,20 +142,29 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         return self._get_effective_store_setting('support_email')
 
     @property
-    def effective_returns_email(self) -> str:
-        """Возвращает существующий email для возвратов."""
-        return self._get_effective_store_setting('returns_email')
-
-    @property
     def effective_shipping_point(self):
-        """Возвращает ПВЗ отправки с учётом fallback на лейбл."""
-        shipping_point = getattr(self, 'shipping_point', None)
+        """Возвращает доступный ПВЗ отправки с учётом fallback на лейбл."""
+        own_settings = getattr(self, 'store_settings', None)
+        own_point = getattr(self, 'shipping_point', None)
 
-        if shipping_point is not None:
-            return shipping_point
+        if own_settings and own_settings.shipping_enabled:
+            if own_point and own_point.is_configured:
+                return own_point
+            return None
 
-        if self.label_id is not None:
-            return getattr(self.label, 'shipping_point', None)
+        if self.label_id is None:
+            return None
+
+        label_settings = getattr(self.label, 'store_settings', None)
+        label_point = getattr(self.label, 'shipping_point', None)
+
+        if (
+            label_settings
+            and label_settings.shipping_enabled
+            and label_point
+            and label_point.is_configured
+        ):
+            return label_point
 
         return None
 
