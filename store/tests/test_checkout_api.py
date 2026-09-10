@@ -4,7 +4,7 @@ import pytest
 from rest_framework import status
 
 from store.models import CartItem, Order, OrderItem
-from users.models import ConsentDocument, UserConsent
+from users.models import ArtistStoreSettings, ConsentDocument, UserConsent
 from users.tests.factories import ArtistProfileFactory, LabelProfileFactory
 
 pytestmark = [
@@ -27,6 +27,7 @@ class TestCheckoutAPI:
         cart_with_items,
         delivery_courier,
         consent_doc_pdn,
+        artist_user,
     ) -> None:
         """Автоматически прокидывает зависимости в self перед каждым тестом."""
         self.user = user
@@ -36,6 +37,12 @@ class TestCheckoutAPI:
         self.cart_with_items = cart_with_items
         self.delivery = delivery_courier
         self.document = consent_doc_pdn
+        ArtistStoreSettings.objects.update_or_create(
+            artist=artist_user.artist_profile,
+            defaults={
+                'shipping_enabled': True,
+            },
+        )
 
     def get_payload(self, **kwargs):
         """Генератор данных для чекаута."""

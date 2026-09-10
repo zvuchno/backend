@@ -5,7 +5,11 @@ from http import HTTPStatus
 
 import pytest
 
-from users.models import ArtistPickupPoint, ArtistShippingPoint
+from users.models import (
+    ArtistPickupPoint,
+    ArtistShippingPoint,
+    ArtistStoreSettings,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -413,6 +417,76 @@ class TestArtistPickupPointAPI:
         assert first_response.status_code == HTTPStatus.CREATED
         assert second_response.status_code == HTTPStatus.BAD_REQUEST
 
+    def test_deactivating_last_pickup_point_disables_pickup(
+        self,
+        artist_client,
+        artist_user,
+        managed_pickup_point_detail_url,
+    ):
+        """Отключение последней точки выключает самовывоз."""
+        profile = artist_user.artist_profile
+
+        settings = ArtistStoreSettings.objects.create(
+            artist=profile,
+            pickup_enabled=True,
+        )
+        pickup_point = ArtistPickupPoint.objects.create(
+            artist=profile,
+            address='Последняя точка',
+            pickup_date='2026-09-10',
+            is_active=True,
+        )
+
+        response = artist_client.patch(
+            managed_pickup_point_detail_url(
+                profile,
+                pickup_point,
+            ),
+            data={
+                'is_active': False,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.OK
+
+        settings.refresh_from_db()
+
+        assert settings.pickup_enabled is False
+
+    def test_deleting_last_pickup_point_disables_pickup(
+        self,
+        artist_client,
+        artist_user,
+        managed_pickup_point_detail_url,
+    ):
+        """Удаление последней точки выключает самовывоз."""
+        profile = artist_user.artist_profile
+
+        settings = ArtistStoreSettings.objects.create(
+            artist=profile,
+            pickup_enabled=True,
+        )
+        pickup_point = ArtistPickupPoint.objects.create(
+            artist=profile,
+            address='Последняя точка',
+            pickup_date='2026-09-10',
+            is_active=True,
+        )
+
+        response = artist_client.delete(
+            managed_pickup_point_detail_url(
+                profile,
+                pickup_point,
+            ),
+        )
+
+        assert response.status_code == HTTPStatus.NO_CONTENT
+
+        settings.refresh_from_db()
+
+        assert settings.pickup_enabled is False
+
 
 class TestArtistShippingPointAPI:
     """Тесты управления ПВЗ отправления."""
@@ -627,6 +701,36 @@ class TestArtistShippingPointAPI:
             artist=artist_without_shipping_point.artist_profile,
             pvz_code='KGN12',
         ).exists()
+
+    def test_cannot_delete_shipping_point_when_shipping_enabled(
+        self,
+        artist_client,
+        artist_user,
+        managed_shipping_point_url,
+    ):
+        """Нельзя удалить ПВЗ при включённой доставке СДЭК."""
+        profile = artist_user.artist_profile
+        shipping_point_id = profile.shipping_point.id
+
+        settings, _ = ArtistStoreSettings.objects.update_or_create(
+            artist=profile,
+            defaults={
+                'shipping_enabled': True,
+            },
+        )
+
+        response = artist_client.delete(
+            managed_shipping_point_url(profile),
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert ArtistShippingPoint.objects.filter(
+            pk=shipping_point_id,
+        ).exists()
+
+        settings.refresh_from_db()
+
+        assert settings.shipping_enabled is True
 
 
 class TestArtistDeliveryPermissions:

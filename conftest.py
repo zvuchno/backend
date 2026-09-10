@@ -22,6 +22,7 @@ from users.models import (
     ArtistProfile,
     ArtistProfileType,
     ArtistShippingPoint,
+    ArtistStoreSettings,
     ListenerProfile,
 )
 from users.tests.factories import ArtistProfileFactory, LabelUserFactory
@@ -338,6 +339,12 @@ def ready_physical_artist_factory(
                 'address': 'ул. Тестовая, д. 2',
             },
         )
+        ArtistStoreSettings.objects.update_or_create(
+            artist=ready_artist_user.artist_profile,
+            defaults={
+                'shipping_enabled': True,
+            },
+        )
 
         return artist
 
@@ -380,6 +387,12 @@ def ready_physical_label_factory(
                 'city_code': '44',
                 'city': 'Москва',
                 'address': 'ул. Тестовая, д. 2',
+            },
+        )
+        ArtistStoreSettings.objects.update_or_create(
+            artist=ready_label_user.artist_profile,
+            defaults={
+                'shipping_enabled': True,
             },
         )
 
@@ -428,6 +441,12 @@ def ready_physical_artist_user(ready_artist_user):
             'address': 'ул. Тестовая, д. 1',
         },
     )
+    ArtistStoreSettings.objects.update_or_create(
+        artist=ready_artist_user.artist_profile,
+        defaults={
+            'shipping_enabled': True,
+        },
+    )
 
     return ready_artist_user
 
@@ -442,6 +461,12 @@ def ready_physical_label_user(ready_label_user):
             'city_code': '44',
             'city': 'Москва',
             'address': 'ул. Тестовая, д. 2',
+        },
+    )
+    ArtistStoreSettings.objects.update_or_create(
+        artist=ready_label_user.artist_profile,
+        defaults={
+            'shipping_enabled': True,
         },
     )
 

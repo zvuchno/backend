@@ -4,7 +4,7 @@ from http import HTTPStatus
 
 import pytest
 
-from users.models import ArtistStoreSettings
+from users.models import ArtistPickupPoint, ArtistStoreSettings
 
 pytestmark = pytest.mark.django_db
 
@@ -50,7 +50,11 @@ class TestArtistStoreSettingsAPI:
         assert response.data == {
             'support_email': 'support@example.com',
             'returns_email': 'returns@example.com',
+            'shipping_enabled': False,
+            'pickup_enabled': False,
         }
+        assert settings.shipping_enabled is False
+        assert settings.pickup_enabled is False
 
     def test_repeated_put_updates_existing_store_settings(
         self,
@@ -107,6 +111,8 @@ class TestArtistStoreSettingsAPI:
         assert response.data == {
             'support_email': 'support@example.com',
             'returns_email': 'returns@example.com',
+            'shipping_enabled': False,
+            'pickup_enabled': False,
         }
 
     def test_put_allows_clearing_store_settings(
@@ -140,6 +146,8 @@ class TestArtistStoreSettingsAPI:
         assert response.data == {
             'support_email': '',
             'returns_email': '',
+            'shipping_enabled': False,
+            'pickup_enabled': False,
         }
 
     @pytest.mark.parametrize(
@@ -217,6 +225,8 @@ class TestArtistStoreSettingsAPI:
         assert response.data == {
             'support_email': 'artist-support@example.com',
             'returns_email': 'artist-returns@example.com',
+            'shipping_enabled': False,
+            'pickup_enabled': False,
         }
 
     def test_label_cannot_access_unmanaged_artist_store_settings(
@@ -258,6 +268,77 @@ class TestArtistStoreSettingsAPI:
         response = api_client.get(artist_me_store_settings_url)
 
         assert response.status_code == HTTPStatus.UNAUTHORIZED
+
+    @pytest.mark.parametrize(
+        'missing_field',
+        (
+            'pvz_code',
+            'city_code',
+        ),
+    )
+    def test_shipping_can_be_enabled_only_with_configured_point(
+        self,
+        artist_client,
+        artist_user,
+        artist_me_store_settings_url,
+        missing_field,
+    ):
+        """СДЭК включается только при полностью настроенном ПВЗ."""
+        shipping_point = artist_user.artist_profile.shipping_point
+        setattr(shipping_point, missing_field, '')
+        shipping_point.save(update_fields=(missing_field,))
+
+        response = artist_client.put(
+            artist_me_store_settings_url,
+            data={
+                'shipping_enabled': True,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert 'shipping_enabled' in response.data
+
+    def test_pickup_can_be_enabled_only_with_active_point(
+        self,
+        artist_client,
+        artist_user,
+        artist_me_store_settings_url,
+    ):
+        """Самовывоз включается только при наличии активной точки."""
+        profile = artist_user.artist_profile
+
+        response = artist_client.put(
+            artist_me_store_settings_url,
+            data={
+                'pickup_enabled': True,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert 'pickup_enabled' in response.data
+
+        ArtistPickupPoint.objects.create(
+            artist=profile,
+            address='Точка самовывоза',
+            pickup_date='2026-09-10',
+            is_active=True,
+        )
+
+        response = artist_client.put(
+            artist_me_store_settings_url,
+            data={
+                'pickup_enabled': True,
+            },
+            format='json',
+        )
+
+        assert response.status_code == HTTPStatus.CREATED
+
+        settings = ArtistStoreSettings.objects.get(artist=profile)
+
+        assert settings.pickup_enabled is True
 
 
 class TestArtistStoreSettingsFallback:
@@ -352,3 +433,40 @@ class TestArtistStoreSettingsFallback:
 
         assert profile.effective_support_email == ''
         assert profile.effective_returns_email == ''
+
+    def test_artist_uses_label_pickup_when_own_pickup_disabled(
+        self,
+        label_created_artist,
+    ):
+        """При выключенном своём самовывозе используются точки лейбла."""
+        artist = label_created_artist
+        label = artist.label
+
+        own_point = ArtistPickupPoint.objects.create(
+            artist=artist,
+            address='Своя точка',
+            pickup_date='2026-09-10',
+            is_active=True,
+        )
+        label_point = ArtistPickupPoint.objects.create(
+            artist=label,
+            address='Точка лейбла',
+            pickup_date='2026-09-10',
+            is_active=True,
+        )
+
+        ArtistStoreSettings.objects.create(
+            artist=artist,
+            pickup_enabled=False,
+        )
+        ArtistStoreSettings.objects.create(
+            artist=label,
+            pickup_enabled=True,
+        )
+
+        points = list(
+            artist.get_effective_pickup_points(),
+        )
+
+        assert points == [label_point]
+        assert own_point not in points
