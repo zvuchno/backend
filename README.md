@@ -291,6 +291,17 @@ YANDEX_LOCKBOX_SECRET_ID=<secret-id>
 
 При смене Lockbox перенесите в новый secret весь текущий keyring, выдайте приложению доступ, измените `YANDEX_LOCKBOX_SECRET_ID` и перезапустите backend/Celery. Старый Lockbox отключайте только после проверки чтения существующих данных.
 
+### Ротация ключей
+
+При смене `primary` старые ключи оставьте в keyring до завершения ротации.
+
+```bash
+python manage.py rotate_legal_encryption --dry-run
+python manage.py rotate_legal_encryption
+```
+
+После ротации повторный `--dry-run` должен показать `0` значений, требующих ротации. После этого перезапустите backend/Celery и только затем удаляйте старый ключ.
+
 
 
 ### Мониторинг Celery через Flower
