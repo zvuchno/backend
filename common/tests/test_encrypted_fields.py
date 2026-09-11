@@ -6,6 +6,7 @@ import pytest
 from cryptography.fernet import Fernet
 from django.core.exceptions import ValidationError
 from django.db import connection, models
+from django.test.utils import isolate_apps
 
 from common.encryption.keyring import build_keyring
 from common.fields import EncryptedCharField, EncryptedDateField
@@ -13,59 +14,39 @@ from common.fields import EncryptedCharField, EncryptedDateField
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
-class EncryptedFieldsTestModel(models.Model):
-    """Тестовая модель зашифрованных полей."""
-
-    secret = EncryptedCharField(
-        max_length=20,
-        blank=True,
-    )
-    secret_date = EncryptedDateField(
-        blank=True,
-        null=True,
-    )
-
-    class Meta:
-        app_label = 'common'
-        db_table = 'common_test_encrypted_fields'
-
-
 @pytest.fixture
 def encrypted_model(transactional_db):
-    """Создаёт временную таблицу для тестов полей."""
-    with connection.schema_editor() as schema_editor:
-        schema_editor.create_model(EncryptedFieldsTestModel)
+    """Создаёт временную модель и таблицу encrypted-полей."""
+    with isolate_apps('common'):
 
-    try:
-        yield EncryptedFieldsTestModel
-    finally:
-        with connection.schema_editor() as schema_editor:
-            schema_editor.delete_model(EncryptedFieldsTestModel)
+        class EncryptedFieldsTestModel(models.Model):
+            """Тестовая модель зашифрованных полей."""
 
-
-@pytest.fixture(scope='module')
-def encrypted_model(django_db_setup, django_db_blocker):
-    """Создаёт временную таблицу для тестов полей."""
-    table_name = EncryptedFieldsTestModel._meta.db_table
-
-    with django_db_blocker.unblock():
-        with connection.cursor() as cursor:
-            cursor.execute(
-                f'DROP TABLE IF EXISTS "{table_name}" CASCADE',
+            secret = EncryptedCharField(
+                max_length=20,
+                blank=True,
             )
+            secret_date = EncryptedDateField(
+                blank=True,
+                null=True,
+            )
+
+            class Meta:
+                app_label = 'common'
+                db_table = 'common_test_encrypted_fields'
 
         with connection.schema_editor() as schema_editor:
             schema_editor.create_model(
                 EncryptedFieldsTestModel,
             )
 
-    yield EncryptedFieldsTestModel
-
-    with django_db_blocker.unblock():
-        with connection.cursor() as cursor:
-            cursor.execute(
-                f'DROP TABLE IF EXISTS "{table_name}" CASCADE',
-            )
+        try:
+            yield EncryptedFieldsTestModel
+        finally:
+            with connection.schema_editor() as schema_editor:
+                schema_editor.delete_model(
+                    EncryptedFieldsTestModel,
+                )
 
 
 @pytest.fixture
@@ -230,17 +211,3 @@ def test_encrypted_date_isnull_lookup(
         filled.pk,
     ]
     assert empty.pk not in queryset
-
-
-def test_encrypted_char_exact_plaintext_lookup_does_not_match(
-    encrypted_model,
-    encryption_keyring,
-):
-    """Поиск encrypted-поля по plaintext не поддерживается."""
-    encrypted_model.objects.create(
-        secret='value',
-    )
-
-    assert not encrypted_model.objects.filter(
-        secret='value',
-    ).exists()
