@@ -32,10 +32,6 @@ from .artist_profile import (
     ManagedArtistProfileView,
 )
 from .artist_registration import ArtistRegistrationView
-from .artist_store_settings import (
-    ArtistStoreSettingsView,
-    ManagedArtistStoreSettingsView,
-)
 from .base_registration import BaseRegistrationView
 from .consent_documents import (
     ConsentDocumentViewSet,
@@ -89,7 +85,6 @@ __all__ = [
     'ArtistPublicView',
     'ArtistRegistrationView',
     'ArtistShippingPointView',
-    'ArtistStoreSettingsView',
     'BaseRegistrationView',
     'BecomeArtistOrLabelView',
     'ConsentDocumentViewSet',
@@ -112,7 +107,6 @@ __all__ = [
     'ManagedArtistPickupPointViewSet',
     'ManagedArtistProfileView',
     'ManagedArtistShippingPointView',
-    'ManagedArtistStoreSettingsView',
     'MeView',
     'PasswordResetConfirmView',
     'PasswordResetRequestView',

@@ -4,7 +4,6 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from users.serializers import (
-    ArtistPickupPointManageSerializer,
     ArtistPickupSettingsSerializer,
     ArtistShippingSettingsSerializer,
 )
@@ -33,35 +32,6 @@ artist_pickup_point_schema = extend_schema_view(
             200: ArtistPickupSettingsSerializer,
         },
     ),
-    retrieve=extend_schema(
-        tags=['Artist: delivery'],
-        summary='Получить свою точку самовывоза',
-        description=(
-            'Возвращает конкретную точку самовывоза профиля текущего '
-            'артиста или лейбла.'
-        ),
-        responses=ArtistPickupPointManageSerializer,
-    ),
-    partial_update=extend_schema(
-        tags=['Artist: delivery'],
-        summary='Изменить свою точку самовывоза',
-        description=(
-            'Частично обновляет точку самовывоза профиля текущего '
-            'артиста или лейбла.'
-        ),
-        request=ArtistPickupPointManageSerializer,
-        responses=ArtistPickupPointManageSerializer,
-    ),
-    destroy=extend_schema(
-        tags=['Artist: delivery'],
-        summary='Удалить свою точку самовывоза',
-        description=(
-            'Удаляет точку самовывоза профиля текущего артиста или лейбла.'
-        ),
-        responses={
-            204: OpenApiTypes.NONE,
-        },
-    ),
 )
 
 
@@ -86,36 +56,6 @@ managed_artist_pickup_point_schema = extend_schema_view(
         request=ArtistPickupSettingsSerializer,
         responses={
             200: ArtistPickupSettingsSerializer,
-        },
-    ),
-    retrieve=extend_schema(
-        tags=['Artist: delivery'],
-        summary='Получить точку самовывоза управляемого профиля',
-        description=(
-            'Возвращает конкретную точку самовывоза выбранного '
-            'управляемого профиля артиста или лейбла.'
-        ),
-        responses=ArtistPickupPointManageSerializer,
-    ),
-    partial_update=extend_schema(
-        tags=['Artist: delivery'],
-        summary='Изменить точку самовывоза управляемого профиля',
-        description=(
-            'Частично обновляет точку самовывоза выбранного '
-            'управляемого профиля артиста или лейбла.'
-        ),
-        request=ArtistPickupPointManageSerializer,
-        responses=ArtistPickupPointManageSerializer,
-    ),
-    destroy=extend_schema(
-        tags=['Artist: delivery'],
-        summary='Удалить точку самовывоза управляемого профиля',
-        description=(
-            'Удаляет точку самовывоза выбранного управляемого '
-            'профиля артиста или лейбла.'
-        ),
-        responses={
-            204: OpenApiTypes.NONE,
         },
     ),
 )

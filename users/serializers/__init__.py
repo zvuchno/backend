@@ -12,9 +12,7 @@ from .account import (
     UsernameChangeSerializer,
 )
 from .artist_delivery import (
-    ArtistPickupPointManageSerializer,
     ArtistPickupSettingsSerializer,
-    ArtistShippingPointSerializer,
     ArtistShippingSettingsSerializer,
 )
 from .artist_legal_profile import (
@@ -32,7 +30,6 @@ from .artist_profile import (
     ManagedArtistProfileSerializer,
 )
 from .artist_registration import ArtistRegistrationSerializer
-from .artist_store_settings import ArtistStoreSettingsSerializer
 from .base_registration import BaseRegistrationSerializer
 from .consent_documents import (
     ConsentDocumentDetailSerializer,
@@ -73,13 +70,10 @@ __all__ = [
     'ArtistProfileClaimInvitationSerializer',
     'ArtistProfileClaimInvitationTokenSerializer',
     'ArtistProfileUpdateSerializer',
-    'ArtistPickupPointManageSerializer',
     'ArtistPickupSettingsSerializer',
     'ArtistPublicSerializer',
     'ArtistRegistrationSerializer',
-    'ArtistShippingPointSerializer',
     'ArtistShippingSettingsSerializer',
-    'ArtistStoreSettingsSerializer',
     'BaseRegistrationSerializer',
     'BecomeArtistOrLabelSerializer',
     'ChangePasswordSerializer',

@@ -12,14 +12,6 @@ class ArtistStoreSettings(TimestampModel):
         related_name='store_settings',
         verbose_name='Профиль',
     )
-    support_email = models.EmailField(
-        'Email поддержки',
-        blank=True,
-    )
-    returns_email = models.EmailField(
-        'Email для возвратов',
-        blank=True,
-    )
     shipping_enabled = models.BooleanField(
         'Доставка СДЭК включена',
         default=False,

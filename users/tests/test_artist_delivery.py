@@ -98,66 +98,6 @@ class TestArtistPickupPointAPI:
         ]
         assert results[1]['is_active'] is False
 
-    def test_artist_updates_pickup_point(
-        self,
-        artist_client,
-        artist_user,
-        managed_pickup_point_detail_url,
-    ):
-        """Артист изменяет точку самовывоза собственного профиля."""
-        profile = artist_user.artist_profile
-        pickup_point = ArtistPickupPoint.objects.create(
-            artist=profile,
-            address='Старый адрес',
-            pickup_date='2026-08-15',
-        )
-
-        response = artist_client.patch(
-            managed_pickup_point_detail_url(
-                profile,
-                pickup_point,
-            ),
-            data={
-                'address': 'Новый адрес',
-                'is_active': False,
-            },
-            format='json',
-        )
-
-        assert response.status_code == HTTPStatus.OK
-
-        pickup_point.refresh_from_db()
-
-        assert pickup_point.address == 'Новый адрес'
-        assert pickup_point.is_active is False
-        assert pickup_point.pickup_date == date(2026, 8, 15)
-
-    def test_artist_deletes_pickup_point(
-        self,
-        artist_client,
-        artist_user,
-        managed_pickup_point_detail_url,
-    ):
-        """Артист удаляет точку самовывоза собственного профиля."""
-        profile = artist_user.artist_profile
-        pickup_point = ArtistPickupPoint.objects.create(
-            artist=profile,
-            address='Точка для удаления',
-            pickup_date='2026-08-15',
-        )
-
-        response = artist_client.delete(
-            managed_pickup_point_detail_url(
-                profile,
-                pickup_point,
-            ),
-        )
-
-        assert response.status_code == HTTPStatus.NO_CONTENT
-        assert not ArtistPickupPoint.objects.filter(
-            pk=pickup_point.pk,
-        ).exists()
-
     def test_artist_cannot_access_foreign_profile_pickup_points(
         self,
         artist_client,
@@ -173,31 +113,41 @@ class TestArtistPickupPointAPI:
 
         assert response.status_code == HTTPStatus.NOT_FOUND
 
-    def test_pickup_point_detail_is_scoped_by_profile(
+    def test_artist_cannot_update_foreign_pickup_point(
         self,
         artist_client,
         artist_user,
         other_artist_user,
-        managed_pickup_point_detail_url,
+        managed_pickup_point_list_url,
     ):
-        """Точку нельзя получить через URL другого профиля."""
-        own_profile = artist_user.artist_profile
-        foreign_profile = other_artist_user.artist_profile
-
-        pickup_point = ArtistPickupPoint.objects.create(
-            artist=own_profile,
-            address='Своя точка',
+        """Нельзя изменить точку другого профиля через общий запрос."""
+        foreign_point = ArtistPickupPoint.objects.create(
+            artist=other_artist_user.artist_profile,
+            address='Чужая точка',
             pickup_date='2026-08-15',
+            is_active=True,
         )
 
-        response = artist_client.get(
-            managed_pickup_point_detail_url(
-                foreign_profile,
-                pickup_point,
+        response = artist_client.post(
+            managed_pickup_point_list_url(
+                artist_user.artist_profile,
             ),
+            data={
+                'points': [
+                    {
+                        'id': foreign_point.id,
+                        'is_active': False,
+                    },
+                ],
+            },
+            format='json',
         )
 
-        assert response.status_code == HTTPStatus.NOT_FOUND
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert 'points' in response.data
+
+        foreign_point.refresh_from_db()
+        assert foreign_point.is_active is True
 
     def test_label_creates_pickup_point_for_managed_artist(
         self,
@@ -380,25 +330,6 @@ class TestArtistPickupPointAPI:
             address='Точка через me',
         ).exists()
 
-    def test_me_alias_does_not_access_foreign_pickup_point(
-        self,
-        artist_client,
-        other_artist_user,
-        artist_me_pickup_point_detail_url,
-    ):
-        """Алиас me не получает точку чужого профиля."""
-        pickup_point = ArtistPickupPoint.objects.create(
-            artist=other_artist_user.artist_profile,
-            address='Чужая точка',
-            pickup_date='2026-08-15',
-        )
-
-        response = artist_client.get(
-            artist_me_pickup_point_detail_url(pickup_point),
-        )
-
-        assert response.status_code == HTTPStatus.NOT_FOUND
-
     def test_label_me_alias_uses_label_own_profile(
         self,
         label_client,
@@ -578,76 +509,6 @@ class TestArtistPickupPointAPI:
         settings.refresh_from_db()
 
         assert pickup_point.is_active is False
-        assert settings.pickup_enabled is False
-
-    def test_deactivating_last_pickup_point_disables_pickup(
-        self,
-        artist_client,
-        artist_user,
-        managed_pickup_point_detail_url,
-    ):
-        """Отключение последней точки выключает самовывоз."""
-        profile = artist_user.artist_profile
-
-        settings = ArtistStoreSettings.objects.create(
-            artist=profile,
-            pickup_enabled=True,
-        )
-        pickup_point = ArtistPickupPoint.objects.create(
-            artist=profile,
-            address='Последняя точка',
-            pickup_date='2026-09-10',
-            is_active=True,
-        )
-
-        response = artist_client.patch(
-            managed_pickup_point_detail_url(
-                profile,
-                pickup_point,
-            ),
-            data={
-                'is_active': False,
-            },
-            format='json',
-        )
-
-        assert response.status_code == HTTPStatus.OK
-
-        settings.refresh_from_db()
-
-        assert settings.pickup_enabled is False
-
-    def test_deleting_last_pickup_point_disables_pickup(
-        self,
-        artist_client,
-        artist_user,
-        managed_pickup_point_detail_url,
-    ):
-        """Удаление последней точки выключает самовывоз."""
-        profile = artist_user.artist_profile
-
-        settings = ArtistStoreSettings.objects.create(
-            artist=profile,
-            pickup_enabled=True,
-        )
-        pickup_point = ArtistPickupPoint.objects.create(
-            artist=profile,
-            address='Последняя точка',
-            pickup_date='2026-09-10',
-            is_active=True,
-        )
-
-        response = artist_client.delete(
-            managed_pickup_point_detail_url(
-                profile,
-                pickup_point,
-            ),
-        )
-
-        assert response.status_code == HTTPStatus.NO_CONTENT
-
-        settings.refresh_from_db()
-
         assert settings.pickup_enabled is False
 
 
@@ -945,6 +806,78 @@ class TestArtistShippingPointAPI:
 
         assert response.status_code == HTTPStatus.BAD_REQUEST
         assert 'enabled' in response.data
+
+
+class TestArtistDeliveryFallback:
+    """Тесты fallback доставки на настройки лейбла."""
+
+    def test_artist_uses_label_pickup_when_own_pickup_disabled(
+        self,
+        label_created_artist,
+    ):
+        """При выключенном своём самовывозе используются точки лейбла."""
+        artist = label_created_artist
+        label = artist.label
+
+        own_point = ArtistPickupPoint.objects.create(
+            artist=artist,
+            address='Своя точка',
+            pickup_date='2026-09-10',
+            is_active=True,
+        )
+        label_point = ArtistPickupPoint.objects.create(
+            artist=label,
+            address='Точка лейбла',
+            pickup_date='2026-09-10',
+            is_active=True,
+        )
+
+        ArtistStoreSettings.objects.create(
+            artist=artist,
+            pickup_enabled=False,
+        )
+        ArtistStoreSettings.objects.create(
+            artist=label,
+            pickup_enabled=True,
+        )
+
+        points = list(artist.get_effective_pickup_points())
+
+        assert points == [label_point]
+        assert own_point not in points
+
+    def test_artist_uses_label_shipping_when_own_shipping_disabled(
+        self,
+        label_created_artist,
+    ):
+        """При выключенном своём СДЭК используется ПВЗ лейбла."""
+        artist = label_created_artist
+        label = artist.label
+
+        label_point, _ = ArtistShippingPoint.objects.update_or_create(
+            artist=label,
+            defaults={
+                'pvz_code': 'LABEL1',
+                'city_code': '44',
+                'city': 'Москва',
+                'address': 'ПВЗ лейбла',
+            },
+        )
+
+        ArtistStoreSettings.objects.update_or_create(
+            artist=artist,
+            defaults={
+                'shipping_enabled': False,
+            },
+        )
+        ArtistStoreSettings.objects.update_or_create(
+            artist=label,
+            defaults={
+                'shipping_enabled': True,
+            },
+        )
+
+        assert artist.effective_shipping_point == label_point
 
 
 class TestArtistDeliveryPermissions:

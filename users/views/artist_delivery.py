@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from common.permissions import IsArtistOrLabel
 
 from users.models import (
-    ArtistPickupPoint,
     ArtistShippingPoint,
     ArtistStoreSettings,
 )
@@ -18,7 +17,6 @@ from users.schemas.artist_delivery import (
     managed_artist_shipping_point_schema,
 )
 from users.serializers import (
-    ArtistPickupPointManageSerializer,
     ArtistPickupSettingsSerializer,
     ArtistShippingSettingsSerializer,
 )
@@ -28,20 +26,12 @@ from users.views.mixins import ManagedArtistProfileMixin
 @artist_pickup_point_schema
 class ArtistPickupPointBaseViewSet(
     ManagedArtistProfileMixin,
-    viewsets.ModelViewSet,
+    viewsets.ViewSet,
 ):
-    """Управление точками самовывоза доступного профиля."""
+    """Управление настройками самовывоза доступного профиля."""
 
     permission_classes = (IsArtistOrLabel,)
-    serializer_class = ArtistPickupPointManageSerializer
-    http_method_names = ('get', 'post', 'patch', 'delete')
-    pagination_class = None
-
-    def get_queryset(self):
-        """Возвращает точки самовывоза выбранного профиля."""
-        return ArtistPickupPoint.objects.filter(
-            artist=self.get_artist_profile(),
-        ).order_by('id')
+    http_method_names = ('get', 'post')
 
     def list(self, request, *args, **kwargs):
         """Возвращает точки и общее состояние самовывоза."""
@@ -69,52 +59,17 @@ class ArtistPickupPointBaseViewSet(
             status=status.HTTP_200_OK,
         )
 
-    def perform_create(self, serializer):
-        """Создаёт точку самовывоза выбранного профиля."""
-        serializer.save(
-            artist=self.get_artist_profile(),
-        )
-
-    def perform_update(self, serializer):
-        """Обновляет точку и актуализирует состояние самовывоза."""
-        pickup_point = serializer.save()
-
-        self._disable_pickup_if_unavailable(
-            pickup_point.artist,
-        )
-
-    def perform_destroy(self, instance):
-        """Удаляет точку и актуализирует состояние самовывоза."""
-        artist = instance.artist
-
-        instance.delete()
-
-        self._disable_pickup_if_unavailable(artist)
-
-    @staticmethod
-    def _disable_pickup_if_unavailable(artist) -> None:
-        """Выключает самовывоз при отсутствии активных точек."""
-        if artist.pickup_points.filter(is_active=True).exists():
-            return
-
-        ArtistStoreSettings.objects.filter(
-            artist=artist,
-            pickup_enabled=True,
-        ).update(
-            pickup_enabled=False,
-        )
-
 
 @artist_pickup_point_schema
 class ArtistPickupPointViewSet(ArtistPickupPointBaseViewSet):
-    """Управление своими точками самовывоза."""
+    """Управление своим самовывозом."""
 
 
 @managed_artist_pickup_point_schema
 class ManagedArtistPickupPointViewSet(
     ArtistPickupPointBaseViewSet,
 ):
-    """Управление точками самовывоза управляемого профиля."""
+    """Управление самовывозом управляемого профиля."""
 
 
 @artist_shipping_point_schema
