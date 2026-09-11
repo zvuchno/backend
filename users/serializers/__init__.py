@@ -108,5 +108,4 @@ __all__ = [
     'SocialAuthInputSerializer',
     'TokenPairSerializer',
     'UsernameChangeSerializer',
-    'ArtistShippingSettingsSerializer',
 ]
