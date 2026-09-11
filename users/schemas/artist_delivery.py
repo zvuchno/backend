@@ -13,8 +13,9 @@ artist_pickup_point_schema = extend_schema_view(
         tags=['Artist: delivery'],
         summary='Получить настройки самовывоза',
         description=(
-            'Возвращает общее состояние самовывоза и точки '
-            'профиля текущего артиста или лейбла.'
+            'Возвращает состояние самовывоза и активные точки. '
+            'Передача существующей точки с is_active=false скрывает её '
+            'из дальнейших ответов API'
         ),
         responses=ArtistPickupSettingsSerializer,
     ),
@@ -40,8 +41,9 @@ managed_artist_pickup_point_schema = extend_schema_view(
         tags=['Artist: delivery'],
         summary='Получить настройки самовывоза управляемого профиля',
         description=(
-            'Возвращает общее состояние самовывоза и точки '
-            'выбранного управляемого профиля.'
+            'Возвращает состояние самовывоза и активные точки. '
+            'Передача существующей точки с is_active=false скрывает её '
+            'из дальнейших ответов API'
         ),
         responses=ArtistPickupSettingsSerializer,
     ),

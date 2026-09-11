@@ -291,9 +291,11 @@ class ArtistPickupSettingsSerializer(serializers.Serializer):
         return artist
 
     def to_representation(self, artist):
-        """Возвращает точки и состояние самовывоза."""
+        """Возвращает активные точки и состояние самовывоза."""
         settings = getattr(artist, 'store_settings', None)
-        points = artist.pickup_points.order_by('id')
+        points = artist.pickup_points.filter(
+            is_active=True,
+        ).order_by('id')
 
         return {
             'enabled': bool(settings and settings.pickup_enabled),

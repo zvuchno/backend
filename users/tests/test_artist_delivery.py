@@ -94,9 +94,8 @@ class TestArtistPickupPointAPI:
 
         assert [item['id'] for item in results] == [
             first_point.id,
-            second_point.id,
         ]
-        assert results[1]['is_active'] is False
+        assert second_point.id not in {item['id'] for item in results}
 
     def test_artist_cannot_access_foreign_profile_pickup_points(
         self,
