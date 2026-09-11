@@ -13,7 +13,9 @@ from .account import (
 )
 from .artist_delivery import (
     ArtistPickupPointManageSerializer,
+    ArtistPickupSettingsSerializer,
     ArtistShippingPointSerializer,
+    ArtistShippingSettingsSerializer,
 )
 from .artist_legal_profile import (
     ArtistBankDataSerializer,
@@ -72,9 +74,11 @@ __all__ = [
     'ArtistProfileClaimInvitationTokenSerializer',
     'ArtistProfileUpdateSerializer',
     'ArtistPickupPointManageSerializer',
+    'ArtistPickupSettingsSerializer',
     'ArtistPublicSerializer',
     'ArtistRegistrationSerializer',
     'ArtistShippingPointSerializer',
+    'ArtistShippingSettingsSerializer',
     'ArtistStoreSettingsSerializer',
     'BaseRegistrationSerializer',
     'BecomeArtistOrLabelSerializer',
@@ -104,4 +108,5 @@ __all__ = [
     'SocialAuthInputSerializer',
     'TokenPairSerializer',
     'UsernameChangeSerializer',
+    'ArtistShippingSettingsSerializer',
 ]

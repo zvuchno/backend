@@ -5,27 +5,32 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 
 from users.serializers import (
     ArtistPickupPointManageSerializer,
-    ArtistShippingPointSerializer,
+    ArtistPickupSettingsSerializer,
+    ArtistShippingSettingsSerializer,
 )
 
 artist_pickup_point_schema = extend_schema_view(
     list=extend_schema(
         tags=['Artist: delivery'],
-        summary='Получить свои точки самовывоза',
+        summary='Получить настройки самовывоза',
         description=(
-            'Возвращает точки самовывоза профиля текущего артиста или лейбла.'
+            'Возвращает общее состояние самовывоза и точки '
+            'профиля текущего артиста или лейбла.'
         ),
-        responses=ArtistPickupPointManageSerializer(many=True),
+        responses=ArtistPickupSettingsSerializer,
     ),
     create=extend_schema(
         tags=['Artist: delivery'],
-        summary='Добавить свою точку самовывоза',
+        summary='Сохранить настройки самовывоза',
         description=(
-            'Создаёт точку самовывоза для профиля текущего артиста или лейбла.'
+            'Одним запросом сохраняет состояние самовывоза '
+            'и переданные изменения точек профиля текущего '
+            'артиста или лейбла. В points можно передавать '
+            'новые точки и изменённые поля существующих точек.'
         ),
-        request=ArtistPickupPointManageSerializer,
+        request=ArtistPickupSettingsSerializer,
         responses={
-            201: ArtistPickupPointManageSerializer,
+            200: ArtistPickupSettingsSerializer,
         },
     ),
     retrieve=extend_schema(
@@ -63,23 +68,24 @@ artist_pickup_point_schema = extend_schema_view(
 managed_artist_pickup_point_schema = extend_schema_view(
     list=extend_schema(
         tags=['Artist: delivery'],
-        summary='Получить точки самовывоза управляемого профиля',
+        summary='Получить настройки самовывоза управляемого профиля',
         description=(
-            'Возвращает точки самовывоза выбранного управляемого '
-            'профиля артиста или лейбла.'
+            'Возвращает общее состояние самовывоза и точки '
+            'выбранного управляемого профиля.'
         ),
-        responses=ArtistPickupPointManageSerializer(many=True),
+        responses=ArtistPickupSettingsSerializer,
     ),
     create=extend_schema(
         tags=['Artist: delivery'],
-        summary='Добавить точку самовывоза управляемому профилю',
+        summary='Сохранить настройки самовывоза управляемого профиля',
         description=(
-            'Создаёт точку самовывоза для выбранного управляемого '
-            'профиля артиста или лейбла.'
+            'Одним запросом сохраняет состояние самовывоза '
+            'и переданные изменения точек выбранного '
+            'управляемого профиля.'
         ),
-        request=ArtistPickupPointManageSerializer,
+        request=ArtistPickupSettingsSerializer,
         responses={
-            201: ArtistPickupPointManageSerializer,
+            200: ArtistPickupSettingsSerializer,
         },
     ),
     retrieve=extend_schema(
@@ -118,36 +124,35 @@ managed_artist_pickup_point_schema = extend_schema_view(
 artist_shipping_point_schema = extend_schema_view(
     get=extend_schema(
         tags=['Artist: delivery'],
-        summary='Получить свой ПВЗ отправления',
+        summary='Получить настройки доставки СДЭК',
         description=(
-            'Возвращает текущий ПВЗ СДЭК профиля текущего артиста '
-            'или лейбла. Если ПВЗ не настроен, возвращает null.'
+            'Возвращает состояние доставки СДЭК и сохранённый ПВЗ '
+            'профиля текущего артиста или лейбла.'
         ),
         responses={
-            200: ArtistShippingPointSerializer(allow_null=True),
+            200: ArtistShippingSettingsSerializer,
         },
     ),
     put=extend_schema(
         tags=['Artist: delivery'],
-        summary='Настроить свой ПВЗ отправления',
+        summary='Сохранить настройки доставки СДЭК',
         description=(
-            'Создаёт или полностью заменяет ПВЗ СДЭК профиля текущего '
-            'артиста или лейбла. При создании возвращает 201, при '
-            'обновлении существующего ПВЗ — 200.'
+            'Одним запросом сохраняет состояние доставки СДЭК '
+            'и, если передан point, создаёт или обновляет ПВЗ '
+            'профиля текущего артиста или лейбла.'
         ),
-        request=ArtistShippingPointSerializer,
+        request=ArtistShippingSettingsSerializer,
         responses={
-            200: ArtistShippingPointSerializer,
-            201: ArtistShippingPointSerializer,
+            200: ArtistShippingSettingsSerializer,
         },
     ),
     delete=extend_schema(
         tags=['Artist: delivery'],
         summary='Удалить свой ПВЗ отправления',
         description=(
-            'Удаляет текущий ПВЗ отправления профиля текущего артиста '
-            'или лейбла. Если ПВЗ отсутствует, операция также '
-            'завершается успешно.'
+            'Удаляет ПВЗ СДЭК профиля текущего артиста или лейбла '
+            'и автоматически выключает собственную доставку СДЭК. '
+            'Если ПВЗ отсутствует, операция также завершается успешно.'
         ),
         responses={
             204: OpenApiTypes.NONE,
@@ -159,37 +164,35 @@ artist_shipping_point_schema = extend_schema_view(
 managed_artist_shipping_point_schema = extend_schema_view(
     get=extend_schema(
         tags=['Artist: delivery'],
-        summary='Получить ПВЗ отправления управляемого профиля',
+        summary='Получить настройки СДЭК управляемого профиля',
         description=(
-            'Возвращает текущий ПВЗ СДЭК выбранного управляемого '
-            'профиля артиста или лейбла. Если ПВЗ не настроен, '
-            'возвращает null.'
+            'Возвращает состояние доставки СДЭК и сохранённый ПВЗ '
+            'выбранного управляемого профиля.'
         ),
         responses={
-            200: ArtistShippingPointSerializer(allow_null=True),
+            200: ArtistShippingSettingsSerializer,
         },
     ),
     put=extend_schema(
         tags=['Artist: delivery'],
-        summary='Настроить ПВЗ отправления управляемого профиля',
+        summary='Сохранить настройки СДЭК управляемого профиля',
         description=(
-            'Создаёт или полностью заменяет ПВЗ СДЭК выбранного '
-            'управляемого профиля артиста или лейбла. При создании '
-            'возвращает 201, при обновлении существующего ПВЗ — 200.'
+            'Одним запросом сохраняет состояние доставки СДЭК '
+            'и, если передан point, создаёт или обновляет ПВЗ '
+            'выбранного управляемого профиля.'
         ),
-        request=ArtistShippingPointSerializer,
+        request=ArtistShippingSettingsSerializer,
         responses={
-            200: ArtistShippingPointSerializer,
-            201: ArtistShippingPointSerializer,
+            200: ArtistShippingSettingsSerializer,
         },
     ),
     delete=extend_schema(
         tags=['Artist: delivery'],
-        summary='Удалить ПВЗ отправления управляемого профиля',
+        summary='Удалить ПВЗ СДЭК управляемого профиля',
         description=(
-            'Удаляет текущий ПВЗ отправления выбранного управляемого '
-            'профиля артиста или лейбла. Если ПВЗ отсутствует, '
-            'операция также завершается успешно.'
+            'Удаляет ПВЗ выбранного управляемого профиля '
+            'и автоматически выключает его собственную доставку СДЭК. '
+            'Если ПВЗ отсутствует, операция также завершается успешно.'
         ),
         responses={
             204: OpenApiTypes.NONE,

@@ -19,7 +19,8 @@ from users.schemas.artist_delivery import (
 )
 from users.serializers import (
     ArtistPickupPointManageSerializer,
-    ArtistShippingPointSerializer,
+    ArtistPickupSettingsSerializer,
+    ArtistShippingSettingsSerializer,
 )
 from users.views.mixins import ManagedArtistProfileMixin
 
@@ -41,6 +42,32 @@ class ArtistPickupPointBaseViewSet(
         return ArtistPickupPoint.objects.filter(
             artist=self.get_artist_profile(),
         ).order_by('id')
+
+    def list(self, request, *args, **kwargs):
+        """Возвращает точки и общее состояние самовывоза."""
+        artist = self.get_artist_profile()
+
+        serializer = ArtistPickupSettingsSerializer(
+            artist,
+        )
+
+        return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        """Сохраняет изменения точек и состояние самовывоза."""
+        artist = self.get_artist_profile()
+
+        serializer = ArtistPickupSettingsSerializer(
+            artist,
+            data=request.data,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
 
     def perform_create(self, serializer):
         """Создаёт точку самовывоза выбранного профиля."""
@@ -98,67 +125,48 @@ class ArtistShippingPointBaseView(
     """Управление ПВЗ отправления доступного профиля."""
 
     permission_classes = (IsArtistOrLabel,)
-    serializer_class = ArtistShippingPointSerializer
+    serializer_class = ArtistShippingSettingsSerializer
     http_method_names = ('get', 'put', 'delete')
     pagination_class = None
 
     def get(self, request, *args, **kwargs):
-        """Возвращает сохранённый ПВЗ отправления."""
+        """Возвращает ПВЗ и состояние доставки СДЭК."""
         artist = self.get_artist_profile()
 
-        try:
-            shipping_point = artist.shipping_point
-        except ArtistShippingPoint.DoesNotExist:
-            return Response(None, status=status.HTTP_200_OK)
+        serializer = self.get_serializer(artist)
 
-        serializer = self.get_serializer(shipping_point)
         return Response(serializer.data)
 
     def put(self, request, *args, **kwargs):
-        """Создаёт или заменяет ПВЗ отправления."""
+        """Сохраняет ПВЗ и состояние доставки СДЭК."""
         artist = self.get_artist_profile()
 
-        try:
-            shipping_point = artist.shipping_point
-        except ArtistShippingPoint.DoesNotExist:
-            shipping_point = None
-
-        # True если объекта не было, ответить 201
-        created = shipping_point is None
-
         serializer = self.get_serializer(
-            shipping_point,
+            artist,
             data=request.data,
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save(artist=artist)
+        serializer.save()
 
         return Response(
             serializer.data,
-            status=(
-                status.HTTP_201_CREATED if created else status.HTTP_200_OK
-            ),
+            status=status.HTTP_200_OK,
         )
 
     def delete(self, request, *args, **kwargs):
-        """Удаляет сохранённый ПВЗ отправления."""
+        """Удаляет ПВЗ и выключает доставку СДЭК."""
         artist = self.get_artist_profile()
-        store_settings = getattr(artist, 'store_settings', None)
 
-        if store_settings and store_settings.shipping_enabled:
-            return Response(
-                {
-                    'detail': 'Сначала выключите доставку СДЭК.',
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        ArtistShippingPoint.objects.filter(
+            artist=artist,
+        ).delete()
 
-        try:
-            shipping_point = artist.shipping_point
-        except ArtistShippingPoint.DoesNotExist:
-            pass
-        else:
-            shipping_point.delete()
+        ArtistStoreSettings.objects.filter(
+            artist=artist,
+            shipping_enabled=True,
+        ).update(
+            shipping_enabled=False,
+        )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
