@@ -3,6 +3,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from common.fields import EncryptedCharField, EncryptedDateField
 from common.models.abstract import TimestampModel
 
 from users.constants import (
@@ -56,43 +57,43 @@ class ArtistIdentityData(TimestampModel):
         max_length=NAME_FIELD_MAX_LENGTH,
         blank=True,
     )
-    birth_date = models.DateField(
+    birth_date = EncryptedDateField(
         'Дата рождения',
         blank=True,
         null=True,
         validators=[validate_birth_date],
     )
-    registration_address = models.CharField(
+    registration_address = EncryptedCharField(
         'Адрес регистрации',
         max_length=ADDRESS_FIELD_MAX_LENGTH,
         blank=True,
     )
 
-    passport_series = models.CharField(
+    passport_series = EncryptedCharField(
         'Серия паспорта',
         max_length=PASSPORT_SERIES_MAX_LENGTH,
         blank=True,
         validators=[validate_passport_series],
     )
-    passport_number = models.CharField(
+    passport_number = EncryptedCharField(
         'Номер паспорта',
         max_length=PASSPORT_NUMBER_MAX_LENGTH,
         blank=True,
         validators=[validate_passport_number],
     )
-    passport_issued_by = models.CharField(
+    passport_issued_by = EncryptedCharField(
         'Кем выдан паспорт',
         max_length=PASSPORT_ISSUED_BY_MAX_LENGTH,
         blank=True,
     )
-    passport_issue_date = models.DateField(
+    passport_issue_date = EncryptedDateField(
         'Дата выдачи паспорта',
         blank=True,
         null=True,
         validators=[validate_passport_issue_date],
     )
 
-    inn = models.CharField(
+    inn = EncryptedCharField(
         'ИНН',
         max_length=INN_PERSON_MAX_LENGTH,
         blank=True,
