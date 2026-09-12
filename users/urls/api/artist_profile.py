@@ -15,13 +15,11 @@ from users.views import (
     ArtistProfileClaimInvitationRevokeView,
     ArtistPublicView,
     ArtistShippingPointView,
-    ArtistStoreSettingsView,
     LabelManagedProfileListView,
     ManagedArtistCoverUpdateView,
     ManagedArtistPickupPointViewSet,
     ManagedArtistProfileView,
     ManagedArtistShippingPointView,
-    ManagedArtistStoreSettingsView,
     RecipientTypeListView,
     TelegramConnectView,
 )
@@ -31,22 +29,12 @@ me_pickup_point_list = ArtistPickupPointViewSet.as_view({
     'post': 'create',
 })
 
-me_pickup_point_detail = ArtistPickupPointViewSet.as_view({
-    'get': 'retrieve',
-    'patch': 'partial_update',
-    'delete': 'destroy',
-})
 
 managed_pickup_point_list = ManagedArtistPickupPointViewSet.as_view({
     'get': 'list',
     'post': 'create',
 })
 
-managed_pickup_point_detail = ManagedArtistPickupPointViewSet.as_view({
-    'get': 'retrieve',
-    'patch': 'partial_update',
-    'delete': 'destroy',
-})
 
 urlpatterns = [
     path(
@@ -63,11 +51,6 @@ urlpatterns = [
         'me/pickup-points/',
         me_pickup_point_list,
         name='artist_me_pickup_point_list',
-    ),
-    path(
-        'me/pickup-points/<int:pk>/',
-        me_pickup_point_detail,
-        name='artist_me_pickup_point_detail',
     ),
     path(
         'me/shipping-point/',
@@ -105,24 +88,9 @@ urlpatterns = [
         name='managed_profile_pickup_point_list',
     ),
     path(
-        'me/managed-profiles/<int:profile_id>/pickup-points/<int:pk>/',
-        managed_pickup_point_detail,
-        name='managed_profile_pickup_point_detail',
-    ),
-    path(
         'me/managed-profiles/<int:profile_id>/shipping-point/',
         ManagedArtistShippingPointView.as_view(),
         name='managed_profile_shipping_point',
-    ),
-    path(
-        'me/store-settings/',
-        ArtistStoreSettingsView.as_view(),
-        name='artist_store_settings',
-    ),
-    path(
-        'me/managed-profiles/<int:profile_id>/store-settings/',
-        ManagedArtistStoreSettingsView.as_view(),
-        name='managed_artist_store_settings',
     ),
     path(
         'me/legal/',
