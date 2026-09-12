@@ -21,11 +21,11 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 MIGRATE_FROM = (
     'users',
-    '0030_alter_artistcontact_label_alter_artistsocial_label',
+    '0032_remove_artiststoresettings_returns_email_and_more',
 )
 MIGRATE_TO = (
     'users',
-    '0031_encrypt_legal_data',
+    '0033_encrypt_legal_data',
 )
 
 
@@ -89,7 +89,7 @@ def migration_keyring(monkeypatch):
     )
 
     migration_module = import_module(
-        'users.migrations.0031_encrypt_legal_data',
+        'users.migrations.0033_encrypt_legal_data',
     )
 
     monkeypatch.setattr(

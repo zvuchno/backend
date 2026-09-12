@@ -273,7 +273,7 @@ class Migration(migrations.Migration):
     dependencies = [
         (
             'users',
-            '0030_alter_artistcontact_label_alter_artistsocial_label',
+            '0032_remove_artiststoresettings_returns_email_and_more',
         ),
     ]
 
