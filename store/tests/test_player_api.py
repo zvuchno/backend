@@ -408,6 +408,65 @@ class TestPlayerAlbumAPI:
             'url': player_track_play_url(track.id),
         }
 
+    def test_returns_full_playback_for_authenticated_user_when_enabled(
+        self,
+        api_client,
+        listener_user,
+        player_album_url,
+        player_track_play_url,
+        variant_factory,
+        settings,
+    ):
+        """Авторизованный пользователь получает полный трек в нужном режиме."""
+        settings.PLAYER_STREAM_MODE = 'authenticated'
+
+        variant = variant_factory('track')
+        track = variant.product.track
+
+        self.create_ready_stream(track)
+
+        api_client.force_authenticate(user=listener_user)
+
+        response = api_client.get(
+            player_album_url(track.album.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['tracks'][0]['playback'] == {
+            'status': TrackGeneratedAudio.ProcessingStatus.READY,
+            'kind': 'full',
+            'duration': track.duration,
+            'url': player_track_play_url(track.id),
+        }
+
+    def test_returns_full_playback_for_guest_when_public(
+        self,
+        api_client,
+        player_album_url,
+        player_track_play_url,
+        variant_factory,
+        settings,
+    ):
+        """Гость получает полный трек в публичном режиме."""
+        settings.PLAYER_STREAM_MODE = 'public'
+
+        variant = variant_factory('track')
+        track = variant.product.track
+
+        self.create_ready_stream(track)
+
+        response = api_client.get(
+            player_album_url(track.album.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['tracks'][0]['playback'] == {
+            'status': TrackGeneratedAudio.ProcessingStatus.READY,
+            'kind': 'full',
+            'duration': track.duration,
+            'url': player_track_play_url(track.id),
+        }
+
 
 class TestPlayerTrackPlayAPI:
     """Тесты запуска воспроизведения трека."""
@@ -484,7 +543,7 @@ class TestPlayerTrackPlayAPI:
 
         assert response.status_code == status.HTTP_409_CONFLICT
         assert response.data == {
-            'detail': 'Превью трека ещё готовится.',
+            'detail': 'Трек ещё готовится.',
             'status': TrackGeneratedAudio.ProcessingStatus.PENDING,
         }
 
@@ -705,3 +764,60 @@ class TestPlayerTrackPlayAPI:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_authenticated_user_redirects_to_stream_when_enabled(
+        self,
+        api_client,
+        listener_user,
+        monkeypatch,
+        player_track_play_url,
+        variant_factory,
+        settings,
+    ):
+        """Авторизованный пользователь получает stream без покупки."""
+        settings.PLAYER_STREAM_MODE = 'authenticated'
+
+        track = self.create_track(variant_factory)
+        generated = self.create_ready_stream(track)
+
+        monkeypatch.setattr(
+            generated.stream_file.storage,
+            'exists',
+            lambda name: True,
+        )
+
+        api_client.force_authenticate(user=listener_user)
+
+        response = api_client.get(
+            player_track_play_url(track.id),
+        )
+
+        assert response.status_code == status.HTTP_302_FOUND
+        assert response['Location'] == generated.stream_file.url
+
+    def test_guest_redirects_to_stream_when_public(
+        self,
+        api_client,
+        monkeypatch,
+        player_track_play_url,
+        variant_factory,
+        settings,
+    ):
+        """Гость получает stream в публичном режиме."""
+        settings.PLAYER_STREAM_MODE = 'public'
+
+        track = self.create_track(variant_factory)
+        generated = self.create_ready_stream(track)
+
+        monkeypatch.setattr(
+            generated.stream_file.storage,
+            'exists',
+            lambda name: True,
+        )
+
+        response = api_client.get(
+            player_track_play_url(track.id),
+        )
+
+        assert response.status_code == status.HTTP_302_FOUND
+        assert response['Location'] == generated.stream_file.url

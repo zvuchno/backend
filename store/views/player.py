@@ -1,8 +1,15 @@
-"""API плеера для публичного preview и будущего stream."""
+"""API плеера для воспроизведения preview и полной версии трека."""
 
 import logging
 
-from django.db.models import Exists, OuterRef, Prefetch, Subquery
+from django.db.models import (
+    BooleanField,
+    Exists,
+    OuterRef,
+    Prefetch,
+    Subquery,
+    Value,
+)
 from django.http import Http404
 from django.shortcuts import redirect
 from rest_framework import status
@@ -23,6 +30,7 @@ from store.schema import (
     player_track_play_schema,
 )
 from store.serializers import PlayerAlbumSerializer
+from store.services.audio import playback_mode_allows_full_access
 from store.views.mixins import TrackReadQuerysetMixin
 
 logger = logging.getLogger(__name__)
@@ -58,13 +66,23 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
             .values('pk')[:1],
         )
 
-        if self.request.user.is_authenticated:
-            full_access_subquery = ListenerTrackAccess.objects.filter(
-                user=self.request.user,
-                track_id=OuterRef('pk'),
+        if playback_mode_allows_full_access(self.request.user):
+            full_access_expression = Value(
+                True,
+                output_field=BooleanField(),
+            )
+        elif self.request.user.is_authenticated:
+            full_access_expression = Exists(
+                ListenerTrackAccess.objects.filter(
+                    user=self.request.user,
+                    track_id=OuterRef('pk'),
+                ),
             )
         else:
-            full_access_subquery = ListenerTrackAccess.objects.none()
+            full_access_expression = Value(
+                False,
+                output_field=BooleanField(),
+            )
 
         tracks_queryset = (
             self
@@ -76,7 +94,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
             .annotate(
                 favorite_variant_id=favorite_variant_id_subquery,
                 purchase_variant_id=purchase_variant_id_subquery,
-                has_full_access=Exists(full_access_subquery),
+                has_full_access=full_access_expression,
             )
             .order_by('position', 'id')
         )
@@ -127,13 +145,13 @@ class PlayerTrackPlayView(APIView):
         if track is None:
             raise Http404
 
-        has_full_access = (
-            request.user.is_authenticated
-            and ListenerTrackAccess.objects.filter(
+        has_full_access = playback_mode_allows_full_access(request.user)
+
+        if not has_full_access and request.user.is_authenticated:
+            has_full_access = ListenerTrackAccess.objects.filter(
                 user=request.user,
                 track_id=track.pk,
             ).exists()
-        )
 
         generated = getattr(track, 'generated', None)
 
