@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 
 from store.models import Cart, CartItem
 from store.services.cdek import CDEKService
+from users.models import ArtistShippingPoint, ArtistStoreSettings
 
 pytestmark = pytest.mark.django_db
 
@@ -30,6 +31,13 @@ class TestCDEKServiceCalculateParallel:
         """Мерч от двух артистов → сумма и сроки доставки агрегируются."""
         buyer = user_factory(email='buyer@test.com', username='buyer')
         cart = Cart.objects.create(user=buyer)
+        for user in (artist_user, other_artist_user):
+            ArtistStoreSettings.objects.update_or_create(
+                artist=user.artist_profile,
+                defaults={
+                    'shipping_enabled': True,
+                },
+            )
 
         merch_1 = variant_factory('merch', artist=artist_user.artist_profile)
         merch_2 = variant_factory(
@@ -174,3 +182,78 @@ class TestCDEKServiceCalculateParallel:
                 cdek_service.calculate(city_code='270', cart=cart)
 
         mocked.assert_not_called()
+
+    def test_calculate_uses_label_shipping_point_when_artist_shipping_disabled(
+        self,
+        cdek_service,
+        user_factory,
+        label_created_artist,
+        variant_factory,
+    ):
+        """При выключенном своём СДЭК используется ПВЗ лейбла."""
+        artist = label_created_artist
+        label = artist.label
+
+        ArtistShippingPoint.objects.update_or_create(
+            artist=artist,
+            defaults={
+                'pvz_code': 'OWN1',
+                'city_code': '111',
+                'city': 'Курган',
+                'address': 'Своя точка',
+            },
+        )
+        ArtistShippingPoint.objects.update_or_create(
+            artist=label,
+            defaults={
+                'pvz_code': 'LABEL1',
+                'city_code': '222',
+                'city': 'Москва',
+                'address': 'Точка лейбла',
+            },
+        )
+
+        ArtistStoreSettings.objects.update_or_create(
+            artist=artist,
+            defaults={
+                'shipping_enabled': False,
+            },
+        )
+        ArtistStoreSettings.objects.update_or_create(
+            artist=label,
+            defaults={
+                'shipping_enabled': True,
+            },
+        )
+
+        buyer = user_factory(
+            email='fallback-buyer@test.com',
+            username='fallback_buyer',
+        )
+        cart = Cart.objects.create(user=buyer)
+
+        merch = variant_factory(
+            'merch',
+            artist=artist,
+        )
+        CartItem.objects.create(
+            cart=cart,
+            product_variant=merch,
+            quantity=1,
+        )
+
+        with patch.object(
+            cdek_service,
+            '_calculate_for_artist',
+            return_value={
+                'total_sum': Decimal('100.00'),
+                'period_min': 1,
+                'period_max': 2,
+            },
+        ) as mocked:
+            cdek_service.calculate(
+                city_code='270',
+                cart=cart,
+            )
+
+        assert mocked.call_args.kwargs['from_location'] == '222'

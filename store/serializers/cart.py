@@ -68,6 +68,7 @@ class CartItemReadSerializer(BaseVariantTargetImageSerializer):
             'discount_line_total',
             'quantity',
             'stock',
+            'comment',
         ) + BaseVariantTargetImageSerializer.Meta.fields
 
     def get_discount_line_total(self, obj) -> str:

@@ -2,6 +2,7 @@
 
 from urllib.parse import urlencode
 
+from django import forms
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
@@ -19,6 +20,39 @@ from users.models import (
     ArtistStoreSettings,
 )
 from users.services import ArtistMembershipService
+
+
+class ArtistStoreSettingsAdminForm(forms.ModelForm):
+    """Форма настроек магазина в админке."""
+
+    class Meta:
+        model = ArtistStoreSettings
+        fields = '__all__'
+
+    def clean(self):
+        """Проверяет возможность включения способов доставки."""
+        cleaned_data = super().clean()
+        artist = self.instance.artist
+
+        if cleaned_data.get('shipping_enabled'):
+            shipping_point = getattr(artist, 'shipping_point', None)
+
+            if shipping_point is None or not shipping_point.is_configured:
+                self.add_error(
+                    'shipping_enabled',
+                    'Сначала укажите ПВЗ СДЭК для отправки заказов.',
+                )
+
+        if (
+            cleaned_data.get('pickup_enabled')
+            and not artist.pickup_points.filter(is_active=True).exists()
+        ):
+            self.add_error(
+                'pickup_enabled',
+                'Сначала добавьте активную точку самовывоза.',
+            )
+
+        return cleaned_data
 
 
 class ArtistContactInline(admin.TabularInline):
@@ -52,18 +86,20 @@ class ArtistShippingPointInline(admin.TabularInline):
     """Связанный ShippingPoint."""
 
     model = ArtistShippingPoint
-    can_delete = True
+    can_delete = False
     fk_name = 'artist'
     extra = 0
 
 
 class ArtistStoreSettingsInline(admin.TabularInline):
-    """Настройки возвратов."""
+    """Настройки магазина."""
 
     model = ArtistStoreSettings
-    can_delete = True
+    form = ArtistStoreSettingsAdminForm
+    can_delete = False
     fk_name = 'artist'
-    extra = 0
+    extra = 1
+    max_num = 1
 
 
 @admin.register(ArtistProfile)
@@ -210,7 +246,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             for requirement in readiness.physical_missing
         )
 
-    @admin.display(description='ПВЗ / СДЭК настроен', boolean=True)
+    @admin.display(description='Доставка СДЭК доступна', boolean=True)
     def shipping_point_ready(self, obj):
         return obj.effective_shipping_point is not None
 
@@ -405,8 +441,26 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             .select_related(
                 'user__legal_profile',
                 'label__user__legal_profile',
+                'store_settings',
+                'shipping_point',
+                'label__store_settings',
+                'label__shipping_point',
             )
         )
+
+    def save_related(self, request, form, formsets, change):
+        """Сохраняет связанные данные и актуализирует самовывоз."""
+        super().save_related(request, form, formsets, change)
+
+        artist = form.instance
+
+        if not artist.pickup_points.filter(is_active=True).exists():
+            ArtistStoreSettings.objects.filter(
+                artist=artist,
+                pickup_enabled=True,
+            ).update(
+                pickup_enabled=False,
+            )
 
     def save_model(self, request, obj, form, change):
         """Сохраняет профиль и синхронизирует получателя выплат."""

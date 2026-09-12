@@ -4,7 +4,7 @@ import pytest
 from rest_framework import status
 
 from store.models import CartItem, Order, OrderItem
-from users.models import ConsentDocument, UserConsent
+from users.models import ArtistStoreSettings, ConsentDocument, UserConsent
 from users.tests.factories import ArtistProfileFactory, LabelProfileFactory
 
 pytestmark = [
@@ -27,6 +27,7 @@ class TestCheckoutAPI:
         cart_with_items,
         delivery_courier,
         consent_doc_pdn,
+        artist_user,
     ) -> None:
         """Автоматически прокидывает зависимости в self перед каждым тестом."""
         self.user = user
@@ -36,6 +37,12 @@ class TestCheckoutAPI:
         self.cart_with_items = cart_with_items
         self.delivery = delivery_courier
         self.document = consent_doc_pdn
+        ArtistStoreSettings.objects.update_or_create(
+            artist=artist_user.artist_profile,
+            defaults={
+                'shipping_enabled': True,
+            },
+        )
 
     def get_payload(self, **kwargs):
         """Генератор данных для чекаута."""
@@ -43,7 +50,6 @@ class TestCheckoutAPI:
             'full_name': 'Звучно Тестер',
             'email': 'test@test.ru',
             'phone': '+79991112233',
-            'personal_data_consent': True,
             'delivery': self.delivery.id,
             'city': 'Москва',
             'street': 'Ленина',
@@ -65,7 +71,6 @@ class TestCheckoutAPI:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert Order.objects.count() == 1
-        assert UserConsent.objects.filter(user=user).exists()
         assert self.cart_with_items.items.count() == 0
 
     def test_listener_checkout_flow(
@@ -79,12 +84,11 @@ class TestCheckoutAPI:
     ):
         """Сквозной тест оформления заказа.
 
-        Фанат + успешный заказ + очистка корзины + согласия.
+        Фанат + успешный заказ + очистка корзины.
         """
         response = self.auth_client.get(cart_url)
         variant = variant_factory(product_type='merch', owner=artist_user)
         types = [
-            ConsentDocument.DocumentType.LISTENER_PERSONAL_DATA,
             ConsentDocument.DocumentType.LISTENER_NEWSLETTER,
         ]
         payload = {
@@ -110,7 +114,7 @@ class TestCheckoutAPI:
                 user=user,
                 document__document_type__in=types,
             ).count()
-            == 2
+            == 1
         )
 
     def test_checkout_integrity_snapshots(self):
@@ -255,25 +259,6 @@ class TestCheckoutAPI:
         assert 'Корзина пуста' in response.data['cart'][0]
         assert Order.objects.count() == 0
 
-    def test_checkout_requires_consent(self):
-        """Нет согласия (personal_data_consent=False) → ValidationError."""
-        payload = self.get_payload(personal_data_consent=False)
-
-        response = self.auth_client.post(
-            self.checkout_url,
-            data=payload,
-            format='json',
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-        assert 'personal_data_consent' in response.data
-        assert response.data['personal_data_consent'][0].code in ([
-            'invalid',
-            'required',
-        ])
-        assert Order.objects.count() == 0
-
     def test_checkout_merch_requires_address(self, delivery_courier):
         """Заказ с мерчем без адреса → 400 Bad Request."""
         # Payload с курьерской доставкой, но пустым адресом
@@ -315,22 +300,6 @@ class TestCheckoutAPI:
         order = Order.objects.get(id=response.data['id'])
         assert order.street == ''
 
-    def test_checkout_fails_with_inactive_document(self):
-        """Неактивный документ согласия → 400 Bad Request."""
-        # Деактивируем текущий активный документ
-        self.document.is_active = False
-        self.document.save()
-
-        response = self.auth_client.post(
-            self.checkout_url,
-            data=self.get_payload(),
-            format='json',
-        )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'detail' in response.data
-        assert 'Нет активного документа' in response.data['detail'][0]
-        assert Order.objects.count() == 0
-
     def test_checkout_fails_with_inactive_delivery(self, inactive_delivery):
         """Выбор неактивного способа доставки → 400 Bad Request."""
         payload = self.get_payload(delivery=inactive_delivery.id)
@@ -344,24 +313,6 @@ class TestCheckoutAPI:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert 'delivery' in response.data
         assert response.data['delivery'][0].code in ['does_not_exist']
-
-    def test_checkout_consent_linking(self, user):
-        """Чекаут → корректная привязка UserConsent к заказу и документу."""
-        pyload = self.get_payload()
-        response = self.auth_client.post(
-            self.checkout_url,
-            data=pyload,
-            format='json',
-        )
-
-        assert response.status_code == status.HTTP_201_CREATED
-        order = Order.objects.get(id=response.data['id'])
-
-        assert order.consents.exists()
-        consent = order.consents.first()
-        assert consent.order == order
-        assert consent.email == pyload['email']
-        assert consent.document == self.document
 
     def test_checkout_delivery_methods_only_for_merch(self, variant_factory):
         """Список доставок → только при наличии мерча в корзине."""

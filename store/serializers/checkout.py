@@ -47,12 +47,6 @@ class CheckoutSerializer(serializers.Serializer):
     )
     email = serializers.EmailField()
     phone = PhoneNumberField()
-
-    personal_data_consent = serializers.BooleanField(
-        write_only=True,
-        label='Согласие на обработку персональных данных',
-    )
-
     city = serializers.CharField(
         max_length=MAX_CHAR_LENGTH,
         required=False,
@@ -108,15 +102,6 @@ class CheckoutSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
-
-    def validate_personal_data_consent(self, value):
-        """Проверяет согласие на обработку персональных данных."""
-        if not value:
-            raise serializers.ValidationError(
-                'Необходимо согласие на обработку персональных данных.',
-            )
-
-        return value
 
     def validate_email(self, value):
         """Нормализует email."""

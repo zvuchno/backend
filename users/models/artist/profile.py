@@ -122,51 +122,49 @@ class ArtistProfile(ActivatableModel, TimestampModel):
 
         return payout_recipient
 
-    def _get_effective_store_setting(self, field_name: str) -> str:
-        """Возвращает настройку магазина с учётом fallback на лейбл."""
-        own_settings = getattr(self, 'store_settings', None)
-        own_value = getattr(own_settings, field_name, None)
-
-        if own_value:
-            return own_value
-
-        if self.label_id is None:
-            return ''
-
-        label_settings = getattr(self.label, 'store_settings', None)
-        return getattr(label_settings, field_name, '') or ''
-
-    @property
-    def effective_support_email(self) -> str:
-        """Возвращает существующий email поддержки."""
-        return self._get_effective_store_setting('support_email')
-
-    @property
-    def effective_returns_email(self) -> str:
-        """Возвращает существующий email для возвратов."""
-        return self._get_effective_store_setting('returns_email')
-
     @property
     def effective_shipping_point(self):
-        """Возвращает ПВЗ отправки с учётом fallback на лейбл."""
-        shipping_point = getattr(self, 'shipping_point', None)
+        """Возвращает доступный ПВЗ отправки с учётом fallback на лейбл."""
+        own_settings = getattr(self, 'store_settings', None)
+        own_point = getattr(self, 'shipping_point', None)
 
-        if shipping_point is not None:
-            return shipping_point
+        if own_settings and own_settings.shipping_enabled:
+            if own_point and own_point.is_configured:
+                return own_point
+            return None
 
-        if self.label_id is not None:
-            return getattr(self.label, 'shipping_point', None)
+        if self.label_id is None:
+            return None
+
+        label_settings = getattr(self.label, 'store_settings', None)
+        label_point = getattr(self.label, 'shipping_point', None)
+
+        if (
+            label_settings
+            and label_settings.shipping_enabled
+            and label_point
+            and label_point.is_configured
+        ):
+            return label_point
 
         return None
 
     def get_effective_pickup_points(self):
-        """Возвращает queryset точек самовывоза с учётом fallback на лейбл."""
-        pickup_points = self.pickup_points.filter(is_active=True)
+        """Возвращает доступные точки самовывоза с fallback на лейбл."""
+        own_settings = getattr(self, 'store_settings', None)
 
-        if pickup_points.exists() or self.label_id is None:
-            return pickup_points
+        if own_settings and own_settings.pickup_enabled:
+            return self.pickup_points.filter(is_active=True)
 
-        return self.label.pickup_points.filter(is_active=True)
+        if self.label_id is None:
+            return self.pickup_points.none()
+
+        label_settings = getattr(self.label, 'store_settings', None)
+
+        if label_settings and label_settings.pickup_enabled:
+            return self.label.pickup_points.filter(is_active=True)
+
+        return self.pickup_points.none()
 
     def save(self, *args, **kwargs):
         """Сохраняет профиль артиста и при необходимости создает slug.
