@@ -69,7 +69,7 @@ class TrackPlaybackSerializer(serializers.Serializer):
         }
 
     def _full_representation(self, instance, generated) -> dict:
-        """Возвращает лучший доступный источник для купленного трека."""
+        """Возвращает лучший доступный полный источник трека."""
         if (
             generated.stream_status
             == TrackGeneratedAudio.ProcessingStatus.READY
