@@ -590,6 +590,22 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
 FFMPEG_BINARY = os.getenv('FFMPEG_BINARY') or 'ffmpeg'
 FFPROBE_BINARY = os.getenv('FFPROBE_BINARY') or 'ffprobe'
 
+# Режим доступа к полной версии трека в плеере.
+PLAYER_STREAM_MODE = os.getenv(
+    'PLAYER_STREAM_MODE',
+    'purchased',
+).lower()
+
+PLAYER_STREAM_MODES = {
+    'purchased',
+    'authenticated',
+    'public',
+}
+if PLAYER_STREAM_MODE not in PLAYER_STREAM_MODES:
+    raise ImproperlyConfigured(
+        'PLAYER_STREAM_MODE должен быть одним из: ' + ', '.join(PLAYER_STREAM_MODES)
+    )
+
 # Проверять готовность артиста к публикации
 PUBLICATION_READINESS_ENABLED = os.getenv(
     'PUBLICATION_READINESS_ENABLED',
