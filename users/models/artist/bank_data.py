@@ -2,6 +2,7 @@
 
 from django.db import models
 
+from common.fields import EncryptedCharField
 from common.models.abstract import TimestampModel
 
 from users.constants import (
@@ -34,24 +35,24 @@ class ArtistBankData(TimestampModel):
         verbose_name='Юридический профиль',
     )
 
-    bank_name = models.CharField(
+    bank_name = EncryptedCharField(
         'Название банка',
         max_length=BANK_NAME_MAX_LENGTH,
         blank=True,
     )
-    bik = models.CharField(
+    bik = EncryptedCharField(
         'БИК',
         max_length=BIK_MAX_LENGTH,
         blank=True,
         validators=[validate_bik],
     )
-    correspondent_account = models.CharField(
+    correspondent_account = EncryptedCharField(
         'Корреспондентский счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,
         validators=[validate_correspondent_account],
     )
-    checking_account = models.CharField(
+    checking_account = EncryptedCharField(
         'Расчетный счет',
         max_length=ACCOUNT_NUMBER_MAX_LENGTH,
         blank=True,

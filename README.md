@@ -261,6 +261,54 @@ docker compose exec backend python manage.py collectstatic
 > [!NOTE]
 > `make clean` не удаляет Docker volumes, поэтому локальная PostgreSQL база сохраняется.
 
+
+## Шифрование чувствительных данных
+
+Чувствительные юридические и банковские данные хранятся в БД в зашифрованном виде.
+
+Локально используется local keyring:
+
+```env
+FIELD_ENCRYPTION_KEY_SOURCE=local
+FIELD_ENCRYPTION_PRIMARY_KEY_ID=local-v1
+FIELD_ENCRYPTION_KEYS=local-v1:<fernet-key>
+```
+
+Ключ можно сгенерировать:
+
+```bash
+python manage.py generate_encryption_key
+```
+
+В production keyring хранится в Yandex Lockbox:
+
+```env
+FIELD_ENCRYPTION_KEY_SOURCE=lockbox
+YANDEX_LOCKBOX_SECRET_ID=<secret-id>
+```
+
+Старые ключи нельзя удалять, пока существуют данные, зашифрованные ими.
+
+При смене Lockbox перенесите в новый secret весь текущий keyring, выдайте приложению доступ, измените `YANDEX_LOCKBOX_SECRET_ID` и перезапустите backend/Celery. Старый Lockbox отключайте только после проверки чтения существующих данных.
+
+### Ротация ключей
+
+При смене `primary` старые ключи оставьте в keyring до завершения ротации.
+
+```bash
+python manage.py rotate_legal_encryption --dry-run
+python manage.py rotate_legal_encryption
+```
+
+После `dry-run == 0` старый ключ больше не требуется для текущей БД.
+
+> [!WARNING]
+> Удалять старый ключ окончательно можно только после истечения всех
+> резервных копий, содержащих данные, зашифрованные этим ключом.
+> На MVP старые ключи лучше вообще не удалять.
+
+
+
 ### Мониторинг Celery через Flower
 
 Flower используется для просмотра Celery worker и состояния фоновых задач.
