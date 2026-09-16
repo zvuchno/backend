@@ -38,6 +38,15 @@ class Merch(ArtistContent, VisibilityModel):
         verbose_name = 'мерч'
         verbose_name_plural = 'мерч'
         ordering = ('name',)
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(is_published=False)
+                    | models.Q(payout_recipient__isnull=False)
+                ),
+                name='merch_published_requires_payout_recipient',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.kind} {self.name[:MAX_STR_LENGTH]} [ id: {self.id} ]'

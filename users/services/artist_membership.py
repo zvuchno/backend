@@ -36,15 +36,25 @@ class ArtistMembershipService:
         """Обновляет получателя выплат существующего контента."""
         payout_recipient = artist.default_payout_recipient
 
-        Album.objects.filter(
-            artist=artist,
-        ).update(
+        if payout_recipient is None:
+            has_published_content = (
+                Album.objects.filter(artist=artist, is_published=True).exists()
+                or Merch.objects.filter(
+                    artist=artist,
+                    is_published=True,
+                ).exists()
+            )
+
+            if has_published_content:
+                raise ValidationError(
+                    'Нельзя оставить опубликованный контент '
+                    'без получателя выплат.',
+                )
+
+        Album.objects.filter(artist=artist).update(
             payout_recipient=payout_recipient,
         )
-
-        Merch.objects.filter(
-            artist=artist,
-        ).update(
+        Merch.objects.filter(artist=artist).update(
             payout_recipient=payout_recipient,
         )
 

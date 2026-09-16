@@ -43,6 +43,15 @@ class Album(ArtistContent, VisibilityModel):
         verbose_name = 'альбом'
         verbose_name_plural = 'альбомы'
         ordering = ('-created_at',)
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(is_published=False)
+                    | models.Q(payout_recipient__isnull=False)
+                ),
+                name='album_published_requires_payout_recipient',
+            ),
+        ]
 
     def __str__(self):
         return self.name[:MAX_STR_LENGTH]

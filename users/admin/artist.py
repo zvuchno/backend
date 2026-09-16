@@ -9,6 +9,7 @@ from django.utils.html import format_html, format_html_join
 
 from common.services import get_artist_publication_readiness
 
+from store.models import Album, Merch
 from users.admin.mixins import ImagePreviewMixin
 from users.models import (
     ArtistContact,
@@ -20,6 +21,53 @@ from users.models import (
     ArtistStoreSettings,
 )
 from users.services import ArtistMembershipService
+
+
+class ArtistProfileAdminForm(forms.ModelForm):
+    """Форма профиля артиста в админке."""
+
+    class Meta:
+        model = ArtistProfile
+        fields = '__all__'
+
+    def clean(self):
+        """Не допускает опубликованный контент без получателя выплат."""
+        cleaned_data = super().clean()
+
+        if (
+            self.instance.pk is None
+            or 'label' not in self.changed_data
+            or 'label' not in cleaned_data
+        ):
+            return cleaned_data
+
+        label = cleaned_data['label']
+        recipient_id = (
+            label.user_id if label is not None else self.instance.user_id
+        )
+
+        if recipient_id is not None:
+            return cleaned_data
+
+        has_published_content = (
+            Album.objects.filter(
+                artist=self.instance,
+                is_published=True,
+            ).exists()
+            or Merch.objects.filter(
+                artist=self.instance,
+                is_published=True,
+            ).exists()
+        )
+
+        if has_published_content:
+            self.add_error(
+                'label',
+                'Нельзя оставить опубликованный контент '
+                'без получателя выплат.',
+            )
+
+        return cleaned_data
 
 
 class ArtistStoreSettingsAdminForm(forms.ModelForm):
@@ -105,6 +153,8 @@ class ArtistStoreSettingsInline(admin.TabularInline):
 @admin.register(ArtistProfile)
 class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
     """Админка профиля артиста."""
+
+    form = ArtistProfileAdminForm
 
     inlines = (
         ArtistContactInline,
@@ -252,6 +302,11 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
 
     @admin.display(description='Юр. данные подтверждены', boolean=True)
     def payout_legal_profile_verified(self, obj):
+        recipient_user_id = obj.label.user_id if obj.label_id else obj.user_id
+
+        if recipient_user_id is None:
+            return False
+
         payout_recipient = obj.default_payout_recipient
         legal_profile = getattr(payout_recipient, 'legal_profile', None)
 

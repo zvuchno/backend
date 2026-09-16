@@ -45,6 +45,8 @@ class ArtistContent(BaseContent):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='payout%(class)s_items',
+        null=True,
+        blank=True,
         verbose_name='Получатель выплат',
     )
 
