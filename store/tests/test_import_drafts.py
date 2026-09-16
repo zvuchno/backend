@@ -37,8 +37,12 @@ def test_unclaimed_artist_can_have_draft_content():
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('factory', [AlbumFactory, MerchFactory])
-def test_database_rejects_publication_without_payout_recipient(factory):
+def test_database_rejects_publication_without_payout_recipient(
+    factory,
+    monkeypatch,
+):
     """База запрещает публикацию без получателя выплат."""
+    monkeypatch.setattr('silk.sql._should_wrap', lambda _query: False)
     content = factory(
         is_published=False,
         payout_recipient=None,
