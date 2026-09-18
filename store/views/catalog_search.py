@@ -7,6 +7,8 @@ from store.serializers import CatalogSearchSerializer
 from store.services.catalog_search import CatalogSearchService
 
 
+# Глобальный поиск отключен, т.к. не реализован на стороне фронтенда
+# Не учитывает обновленную логику видимости контента
 @catalog_search_schema
 class CatalogSearchView(ListAPIView):
     """Глобальный поиск по каталогу."""
