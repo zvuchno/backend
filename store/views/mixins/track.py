@@ -11,6 +11,7 @@ class TrackReadQuerysetMixin:
         *,
         action: str,
         queryset=None,
+        player_preview: bool | None = None,
     ):
         """Возвращает доступные треки с данными read-контракта."""
         user = self.request.user
@@ -18,10 +19,18 @@ class TrackReadQuerysetMixin:
         if queryset is None:
             queryset = Track.objects.all()
 
-        queryset = queryset.visible_for(
-            user=user,
-            action=action,
-        ).select_related(
+        if player_preview is None:
+            queryset = queryset.visible_for(
+                user=user,
+                action=action,
+            )
+        else:
+            queryset = queryset.for_player(
+                user,
+                preview=player_preview,
+            )
+
+        queryset = queryset.select_related(
             'album',
             'album__artist',
             'product',
