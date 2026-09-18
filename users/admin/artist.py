@@ -38,12 +38,18 @@ class ArtistProfileAdminForm(forms.ModelForm):
             self.instance.pk is None
             or 'label' not in self.changed_data
             or 'label' not in cleaned_data
+            or 'user' not in cleaned_data
         ):
             return cleaned_data
 
         label = cleaned_data['label']
+        user = cleaned_data['user']
         recipient_id = (
-            label.user_id if label is not None else self.instance.user_id
+            label.user_id
+            if label is not None
+            else user.pk
+            if user is not None
+            else None
         )
 
         if recipient_id is not None:
@@ -68,6 +74,30 @@ class ArtistProfileAdminForm(forms.ModelForm):
             )
 
         return cleaned_data
+
+    def clean_user(self):
+        user = self.cleaned_data['user']
+
+        if self.instance.pk and self.instance.user_id is not None:
+            if user is None or user.pk != self.instance.user_id:
+                raise forms.ValidationError(
+                    'Уже назначенный аккаунт нельзя менять через эту форму.',
+                )
+
+        if (
+            user is not None
+            and ArtistProfile.objects
+            .filter(
+                user=user,
+            )
+            .exclude(pk=self.instance.pk)
+            .exists()
+        ):
+            raise forms.ValidationError(
+                'У этой учётной записи уже есть профиль артиста или лейбла.',
+            )
+
+        return user
 
 
 class ArtistStoreSettingsAdminForm(forms.ModelForm):
@@ -440,6 +470,7 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             management_fields = [
                 'profile_type',
                 'label',
+                'user',
                 'user_link',
                 'account_username',
                 'account_phone',
@@ -518,12 +549,15 @@ class ArtistProfileAdmin(ImagePreviewMixin, admin.ModelAdmin):
             )
 
     def save_model(self, request, obj, form, change):
-        """Сохраняет профиль и синхронизирует получателя выплат."""
+        """Сохраняет профиль и синхронизирует получателей выплат."""
         label_changed = change and 'label' in form.changed_data
+        user_changed = change and 'user' in form.changed_data
 
         super().save_model(request, obj, form, change)
 
-        if label_changed:
-            ArtistMembershipService.sync_payout_recipient(
-                artist=obj,
-            )
+        if label_changed or user_changed:
+            ArtistMembershipService.sync_payout_recipient(artist=obj)
+
+        if user_changed and obj.profile_type == ArtistProfileType.LABEL:
+            for artist in obj.artists.all():
+                ArtistMembershipService.sync_payout_recipient(artist=artist)
