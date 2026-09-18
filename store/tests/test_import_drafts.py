@@ -1,6 +1,7 @@
 import pytest
 from django.db import IntegrityError, transaction
 
+from config import settings
 from store.models import Album, Merch
 from store.tests.factories import AlbumFactory, MerchFactory
 from users.models import ArtistProfile
@@ -42,7 +43,11 @@ def test_database_rejects_publication_without_payout_recipient(
     monkeypatch,
 ):
     """База запрещает публикацию без получателя выплат."""
-    monkeypatch.setattr('silk.sql._should_wrap', lambda _query: False)
+    if 'silk' in settings.INSTALLED_APPS:
+        monkeypatch.setattr(
+            'silk.sql._should_wrap',
+            lambda _query: False,
+        )
     content = factory(
         is_published=False,
         payout_recipient=None,

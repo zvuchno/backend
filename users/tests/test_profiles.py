@@ -759,12 +759,12 @@ class TestArtistListReadiness:
         assert artist.id in artist_ids
 
     @pytest.mark.usefixtures('publication_readiness_enabled')
-    def test_public_profile_remains_available_without_readiness(
+    def test_public_profile_hides_artist_without_readiness(
         self,
         api_client,
         artist_public_url,
     ):
-        """Публичный профиль доступен по прямой ссылке без readiness."""
+        """Публичный профиль не доступен без readiness."""
         artist = ArtistProfileFactory(
             user__is_email_verified=False,
         )
@@ -773,4 +773,4 @@ class TestArtistListReadiness:
             artist_public_url(artist),
         )
 
-        assert response.status_code == HTTPStatus.OK
+        assert response.status_code == HTTPStatus.NOT_FOUND
