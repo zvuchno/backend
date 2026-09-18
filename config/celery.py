@@ -3,7 +3,7 @@ import os
 from celery import Celery
 from celery.schedules import crontab
 
-from store.constants import CATALOG_SEARCH_REFRESH_INTERVAL
+# from store.constants import CATALOG_SEARCH_REFRESH_INTERVAL
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
@@ -38,10 +38,11 @@ CELERY_BEAT_SCHEDULE = {
         '.delete_stale_anonymous_carts',
         'schedule': crontab(hour=4, minute=0),
     },
-    'refresh-catalog-search': {
-        'task': 'store.tasks.catalog_search.refresh_catalog_search',
-        'schedule': CATALOG_SEARCH_REFRESH_INTERVAL,
-    },
+    # Глобальный поиск отключен, т.к. не реализован на стороне фронтенда
+    #'refresh-catalog-search': {
+    #    'task': 'store.tasks.catalog_search.refresh_catalog_search',
+    #    'schedule': CATALOG_SEARCH_REFRESH_INTERVAL,
+    # },
 }
 
 app.conf.beat_schedule = CELERY_BEAT_SCHEDULE
