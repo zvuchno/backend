@@ -13,6 +13,7 @@ class PublicationRequirement(StrEnum):
     EMAIL_VERIFICATION = 'email_verification'
     LEGAL_PROFILE_VERIFICATION = 'legal_profile_verification'
     SHIPPING_POINT = 'shipping_point'
+    PAYOUT_RECIPIENT = 'payout_recipient'
 
     @property
     def description(self) -> str:
@@ -23,6 +24,7 @@ class PublicationRequirement(StrEnum):
                 'не подтверждены юридические данные'
             ),
             self.SHIPPING_POINT: 'не включена доставка СДЭК',
+            self.PAYOUT_RECIPIENT: 'не определен получатель выплаты.',
         }
         return descriptions[self]
 
@@ -71,6 +73,17 @@ def get_artist_publication_readiness(
             digital_missing=(),
             physical_missing=(),
         )
+
+    if (artist.label_id is not None and artist.label.user_id is None) or (
+        artist.label_id is None and artist.user_id is None
+    ):
+        missing = (PublicationRequirement.PAYOUT_RECIPIENT,)
+
+        return ArtistPublicationReadiness(
+            digital_missing=missing,
+            physical_missing=missing,
+        )
+
     payout_recipient = artist.default_payout_recipient
 
     digital_missing = []

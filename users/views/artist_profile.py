@@ -170,6 +170,15 @@ class ArtistPublicView(RetrieveAPIView):
     serializer_class = ArtistPublicSerializer
     lookup_field = 'slug'
 
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                artist_publication_ready_q(),
+            )
+        )
+
 
 @artist_list_schema
 class ArtistListView(ListAPIView):

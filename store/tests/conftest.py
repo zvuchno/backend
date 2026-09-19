@@ -187,6 +187,12 @@ def inactive_delivery():
     )
 
 
+@pytest.fixture(autouse=True)
+def catalog_preview_off_by_default(settings):
+    """Тесты магазина не зависят от локального режима предпросмотра."""
+    settings.CATALOG_DRAFT_PREVIEW_MODE = 'off'
+
+
 # =================================
 # URL fixtures
 # =================================

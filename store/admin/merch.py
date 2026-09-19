@@ -15,6 +15,7 @@ from nested_admin import (
 from .forms import (
     MerchImageInlineFormSet,
     MoneyForm,
+    PublicationRecipientFormMixin,
 )
 from store.admin.mixins import (
     AutoCreatedByAdminMixin,
@@ -86,6 +87,14 @@ class PhotoInline(NestedTabularInline):
         return '-'
 
 
+class MerchAdminForm(PublicationRecipientFormMixin, forms.ModelForm):
+    """Форма мерча с проверкой получателя выплат."""
+
+    class Meta:
+        model = Merch
+        fields = '__all__'
+
+
 @admin.register(Merch)
 class MerchAdmin(
     AutoCreatedByAdminMixin,
@@ -94,6 +103,8 @@ class MerchAdmin(
     NestedModelAdmin,
 ):
     """Админка мерча."""
+
+    form = MerchAdminForm
 
     inlines = (PhotoInline, ProductInline)
     list_display = (
@@ -207,7 +218,9 @@ class MerchAdmin(
 
     def save_model(self, request, obj, form, change):
         """Сохраняет мерч и назначает получателя выплат."""
-        if not change and obj.payout_recipient_id is None:
+        if obj.payout_recipient_id is None and (
+            not change or obj.is_published
+        ):
             obj.payout_recipient = obj.artist.default_payout_recipient
 
         super().save_model(request, obj, form, change)
@@ -238,3 +251,8 @@ class MerchAdmin(
         MerchImageService.ensure_main_image(
             merch=form.instance,
         )
+
+    def get_changelist_form(self, request, **kwargs):
+        """Использует проверки публикации при редактировании списка."""
+        kwargs['form'] = self.form
+        return super().get_changelist_form(request, **kwargs)

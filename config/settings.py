@@ -612,6 +612,13 @@ PUBLICATION_READINESS_ENABLED = os.getenv(
     'True',
 ).lower() == 'true'
 
+# Предпросмотр черновиков каталога: off, staff, all.
+# Для staff фронту надо передавать в каталог аутентификацию.
+CATALOG_DRAFT_PREVIEW_MODE = os.getenv(
+    'CATALOG_DRAFT_PREVIEW_MODE',
+    'off',
+).strip().lower()
+
 # требовать обязательные согласия пользователя.
 CONSENT_ENFORCE_REQUIRED = os.getenv(
     'CONSENT_ENFORCE_REQUIRED',

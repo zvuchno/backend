@@ -1,6 +1,7 @@
 from http import HTTPStatus
 
 import pytest
+from rest_framework.exceptions import ValidationError
 
 from store.tests.factories import AlbumFactory, MerchFactory
 from users.models import (
@@ -772,3 +773,100 @@ class TestArtistMembershipPayoutRecipient:
         album.refresh_from_db()
 
         assert album.payout_recipient == second_label_user
+
+    @pytest.mark.parametrize('is_published', [False, True])
+    def test_sync_to_label_without_account(
+        self,
+        artist_user,
+        is_published,
+    ):
+        """Черновики допускают NULL, опубликованный контент — нет."""
+        artist = artist_user.artist_profile
+        label = ArtistProfile.objects.create(
+            name='Лейбл без аккаунта',
+            profile_type=ArtistProfileType.LABEL,
+        )
+        album = AlbumFactory(
+            artist=artist,
+            is_published=is_published,
+        )
+        merch = MerchFactory(
+            artist=artist,
+            is_published=is_published,
+        )
+
+        artist.label = label
+        artist.save(update_fields=('label',))
+
+        if is_published:
+            with pytest.raises(ValidationError):
+                ArtistMembershipService.sync_payout_recipient(artist=artist)
+            expected_recipient = artist_user
+        else:
+            ArtistMembershipService.sync_payout_recipient(artist=artist)
+            expected_recipient = None
+
+        album.refresh_from_db()
+        merch.refresh_from_db()
+
+        assert album.payout_recipient == expected_recipient
+        assert merch.payout_recipient == expected_recipient
+
+
+@pytest.mark.parametrize(
+    'profile_type',
+    [
+        ArtistProfileType.ARTIST,
+        ArtistProfileType.LABEL,
+    ],
+)
+def test_profile_can_exist_without_user_and_label(profile_type):
+    """Артист и лейбл могут существовать без учётной записи."""
+    profile = ArtistProfile.objects.create(
+        name='Импортированный профиль',
+        profile_type=profile_type,
+    )
+
+    profile.full_clean()
+
+    assert profile.user is None
+    assert profile.label is None
+
+
+@pytest.mark.parametrize('content_factory', [AlbumFactory, MerchFactory])
+@pytest.mark.parametrize('is_published', [False, True])
+def test_admin_form_prevents_removing_payout_recipient(
+    artist_user,
+    content_factory,
+    is_published,
+):
+    """Админка не переводит опубликованный контент на лейбл без аккаунта."""
+    from users.admin.artist import ArtistProfileAdminForm
+
+    artist = artist_user.artist_profile
+    label = ArtistProfile.objects.create(
+        name='Лейбл без аккаунта',
+        profile_type=ArtistProfileType.LABEL,
+    )
+    content_factory(artist=artist, is_published=is_published)
+
+    form = ArtistProfileAdminForm(
+        instance=artist,
+        data={
+            'name': artist.name,
+            'slug': artist.slug,
+            'profile_type': artist.profile_type,
+            'user': artist.user_id,
+            'label': label.pk,
+            'is_active': 'on',
+        },
+    )
+
+    if is_published:
+        assert not form.is_valid()
+        assert 'label' in form.errors
+    else:
+        assert form.is_valid(), form.errors
+
+    artist.refresh_from_db()
+    assert artist.label_id is None

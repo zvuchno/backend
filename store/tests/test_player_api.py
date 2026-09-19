@@ -821,3 +821,99 @@ class TestPlayerTrackPlayAPI:
 
         assert response.status_code == status.HTTP_302_FOUND
         assert response['Location'] == generated.stream_file.url
+
+
+class TestPlayerDraftPreview:
+    """Предпросмотр опубликованных и неопубликованных треков."""
+
+    @pytest.mark.parametrize(
+        ('mode', 'role', 'draft_visible'),
+        [
+            ('off', 'anonymous', False),
+            ('off', 'staff', False),
+            ('staff', 'anonymous', False),
+            ('staff', 'staff', True),
+            ('all', 'anonymous', True),
+            ('all', 'user', True),
+        ],
+    )
+    def test_player_preview_includes_published_and_drafts(
+        self,
+        api_client,
+        staff_user,
+        listener_user,
+        variant_factory,
+        player_album_url,
+        player_track_play_url,
+        monkeypatch,
+        settings,
+        mode,
+        role,
+        draft_visible,
+    ):
+        """Предпросмотр дополняет обычную выдачу, а не заменяет её."""
+        settings.CATALOG_DRAFT_PREVIEW_MODE = mode
+        settings.PLAYER_STREAM_MODE = 'purchased'
+
+        published_track = variant_factory('track').product.track
+        draft_track = variant_factory('track').product.track
+
+        draft_track.album.is_published = False
+        draft_track.album.save(update_fields=('is_published',))
+
+        generated = {}
+        for track in (published_track, draft_track):
+            audio = TrackGeneratedAudio.objects.create(
+                track=track,
+                preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
+                preview_duration=PREVIEW_DURATION,
+            )
+            audio.preview_file.name = f'test/previews/{track.pk}.mp3'
+            audio.save(update_fields=('preview_file',))
+            generated[track.pk] = audio
+
+        monkeypatch.setattr(
+            generated[draft_track.pk].preview_file.storage,
+            'exists',
+            lambda name: True,
+        )
+
+        if role == 'staff':
+            api_client.force_authenticate(user=staff_user)
+        elif role == 'user':
+            api_client.force_authenticate(user=listener_user)
+
+        published_queue = api_client.get(
+            player_album_url(published_track.album_id),
+        )
+        published_play = api_client.get(
+            player_track_play_url(published_track.pk),
+        )
+
+        assert published_queue.status_code == status.HTTP_200_OK
+        assert published_play.status_code == status.HTTP_302_FOUND
+
+        draft_queue = api_client.get(
+            player_album_url(draft_track.album_id),
+        )
+        draft_play = api_client.get(
+            player_track_play_url(draft_track.pk),
+        )
+
+        if draft_visible:
+            assert draft_queue.status_code == status.HTTP_200_OK
+            assert [item['id'] for item in draft_queue.data['tracks']] == [
+                draft_track.pk,
+            ]
+            assert (
+                draft_queue.data['tracks'][0]['playback']['kind'] == 'preview'
+            )
+            assert draft_queue.data['tracks'][0]['purchase'] is None
+
+            assert draft_play.status_code == status.HTTP_302_FOUND
+            assert draft_play['Location'] == (
+                generated[draft_track.pk].preview_file.url
+            )
+        else:
+            assert draft_queue.status_code == status.HTTP_404_NOT_FOUND
+            assert draft_play.status_code == status.HTTP_404_NOT_FOUND
