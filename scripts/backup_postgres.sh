@@ -25,7 +25,7 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.production.yml}"
 DB_SERVICE="db"
 
 BACKUP_BUCKET="zvuchno-backups"
-BACKUP_PREFIX="postgres"
+BACKUP_PREFIX="${BACKUP_PREFIX:-postgres}"
 RETENTION_COUNT="${RETENTION_COUNT:-30}"
 
 TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"

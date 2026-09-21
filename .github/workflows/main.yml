@@ -1,7 +1,7 @@
 name: Main Zvuchno workflow
 
 concurrency:
-  group: deploy
+  group: deploy-${{ github.ref_name }}
   cancel-in-progress: true
 
 on:
@@ -10,7 +10,11 @@ on:
     branches:
       - main
       - develop
-      - fix/docker-compose-backend-timeoput
+
+env:
+  IMAGE_TAG: ${{ github.ref_name == 'main' && 'latest' || 'dev' }}
+  COMPOSE_FILE: ${{ github.ref_name == 'main' && 'docker-compose.production.yml' || 'docker-compose.dev.yml' }}
+  SSH_HOST: ${{ github.ref_name == 'main' && secrets.SSH_HOST_PROD || secrets.SSH_HOST_DEV }}
 
 jobs:
 
@@ -33,7 +37,7 @@ jobs:
           context: ./
           file: ./Dockerfile.prod
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_backend:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_backend:${{ env.IMAGE_TAG }}
 
   build_gateway_and_push_to_docker_hub:
     name: Push gateway Docker image to DockerHub
@@ -53,7 +57,7 @@ jobs:
         with:
           context: ./nginx/
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_gateway:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_gateway:${{ env.IMAGE_TAG }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -63,18 +67,20 @@ jobs:
     steps:
     - name: Checkout repo
       uses: actions/checkout@v4
-    - name: Copy docker-compose.production.yml via ssh
+    - name: Rename compose file to standard name
+      run: cp ${{ env.COMPOSE_FILE }} docker-compose.yml
+    - name: Copy docker-compose.yml via ssh
       uses: appleboy/scp-action@master
       with:
-        host: ${{ secrets.SSH_HOST }}
+        host: ${{ env.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
-        source: "docker-compose.production.yml"
+        source: "docker-compose.yml"
         target: "zvuchno"
     - name: Copy backup script via ssh
       uses: appleboy/scp-action@master
       with:
-        host: ${{ secrets.SSH_HOST }}
+        host: ${{ env.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
         source: "scripts/backup_postgres.sh"
@@ -83,7 +89,7 @@ jobs:
     - name: Executing remote ssh commands to deploy
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ secrets.SSH_HOST }}
+        host: ${{ env.SSH_HOST }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
         script: |
@@ -106,9 +112,9 @@ jobs:
           echo "=== BEFORE ==="
           docker images --digests | grep zvuchno || true
 
-          docker compose -f docker-compose.production.yml pull
+          docker compose pull
 
-          docker compose -f docker-compose.production.yml stop \
+          docker compose stop \
             backend \
             celery_worker \
             celery_archives \
@@ -116,18 +122,18 @@ jobs:
             celery_beat \
             bot
 
-          docker compose -f docker-compose.production.yml up -d --wait \
+          docker compose up -d --wait \
             db \
             redis
 
-          docker compose -f docker-compose.production.yml run --rm --no-deps \
+          docker compose run --rm --no-deps \
             backend \
             python manage.py migrate --noinput
 
           echo "=== AFTER ==="
           docker images --digests | grep zvuchno || true
 
-          docker compose -f docker-compose.production.yml up -d --wait
+          docker compose up -d --wait
 
           docker image prune -f
 
@@ -139,4 +145,4 @@ jobs:
             -v zvuchno_flower_data:/fix_flower \
             alpine chown -R $CUR_UID:$CUR_GID /fix_static /fix_media /fix_beat /fix_flower
 
-          docker compose -f docker-compose.production.yml exec backend python manage.py collectstatic --noinput
+          docker compose exec backend python manage.py collectstatic --noinput
