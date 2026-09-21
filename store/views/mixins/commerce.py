@@ -69,6 +69,20 @@ class ProductActionMixin(ManagedArtistActionMixin):
                 validated_data=serializer.validated_data,
             )
 
+            if (
+                type(instance) in (Album, Merch)
+                and serializer.validated_data.get('is_published') is True
+                and instance.payout_recipient_id is None
+            ):
+                recipient = instance.artist.default_payout_recipient
+
+                if recipient is None:
+                    raise PublicationBlocked([
+                        'Не назначен получатель выплат.',
+                    ])
+
+                instance.payout_recipient = recipient
+
             instance = serializer.save()
             self._update_product_data(instance, serializer.validated_data)
 

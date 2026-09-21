@@ -7,6 +7,8 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
+from common.access.store import can_preview_catalog_drafts
+
 from store.filters import ProductCatalogFilter
 from store.models import (
     Album,
@@ -51,9 +53,14 @@ class ProductCatalogListView(ListAPIView):
         """Возвращает товары каталога."""
         catalog_type = self.request.query_params.get('type')
         kind = self.request.query_params.get('kind')
+
         if kind:
-            return Product.objects.for_merch_cards()
-        return Product.objects.for_catalog_type(catalog_type)
+            catalog_type = 'merch'
+
+        return Product.objects.for_catalog_type(
+            catalog_type,
+            preview=can_preview_catalog_drafts(self.request.user),
+        )
 
     def get_serializer_context(self):
         """Возвращает контекст сериализатора."""
@@ -85,6 +92,18 @@ class CatalogReleaseDetailView(RetrieveAPIView):
 
     def get_queryset(self):
         """Возвращает публичные релизы с вариантами покупки."""
+        preview = can_preview_catalog_drafts(self.request.user)
+
+        published_q = Q() if preview else Q(is_published=True)
+        release_date_q = (
+            Q()
+            if preview
+            else (
+                Q(release_date__isnull=True)
+                | Q(release_date__lte=timezone.localdate())
+            )
+        )
+
         digital_active_variants = (
             ProductVariant.objects
             .filter(is_active=True)
@@ -118,9 +137,10 @@ class CatalogReleaseDetailView(RetrieveAPIView):
         carrier_qs = (
             Merch.objects
             .filter(
+                published_q,
                 kind__is_carrier=True,
                 is_active=True,
-                is_published=True,
+                artist__is_active=True,
                 visibility=Merch.Visibility.PUBLIC,
             )
             .select_related(
@@ -141,14 +161,11 @@ class CatalogReleaseDetailView(RetrieveAPIView):
         return (
             Album.objects
             .filter(
+                published_q,
+                release_date_q,
                 artist__is_active=True,
-                is_published=True,
                 is_active=True,
                 visibility=Album.Visibility.PUBLIC,
-            )
-            .filter(
-                Q(release_date__isnull=True)
-                | Q(release_date__lte=timezone.localdate()),
             )
             .select_related(
                 'product',
@@ -179,6 +196,9 @@ class CatalogMerchDetailView(RetrieveAPIView):
 
     def get_queryset(self):
         """Возвращает публичный обычный мерч."""
+        preview = can_preview_catalog_drafts(self.request.user)
+        published_q = Q() if preview else Q(is_published=True)
+
         active_variants = ProductVariant.objects.filter(
             is_active=True,
         ).order_by('id')
@@ -186,9 +206,9 @@ class CatalogMerchDetailView(RetrieveAPIView):
         return (
             Merch.objects
             .filter(
+                published_q,
                 artist__is_active=True,
                 is_active=True,
-                is_published=True,
                 visibility=Merch.Visibility.PUBLIC,
             )
             .exclude(

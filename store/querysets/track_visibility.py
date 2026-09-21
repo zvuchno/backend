@@ -50,3 +50,22 @@ class TrackQuerySet(models.QuerySet):
             is_active=True,
             album__is_active=True,
         )
+
+    def for_player(self, user, *, preview: bool = False):
+        """Треки для плеера, включая черновики при предпросмотре."""
+        regular = (
+            self
+            .playable()
+            .visible_for(user, action='retrieve')
+            .filter(album__is_published=True)
+        )
+
+        if not preview:
+            return regular
+
+        preview_public = self.playable().filter(
+            album__artist__is_active=True,
+            album__visibility='public',
+        )
+
+        return regular | preview_public
