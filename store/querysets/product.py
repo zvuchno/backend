@@ -141,6 +141,41 @@ class ProductQuerySet(models.QuerySet):
             album_q | merch_q,
         )
 
+    def preview_albums(self):
+        """Возвращает активные публичные альбомы, включая черновики."""
+        return self.filter(
+            album__isnull=False,
+            album__is_active=True,
+            album__artist__is_active=True,
+            album__visibility='public',
+        )
+
+    def preview_merch(self):
+        """Возвращает активный публичный мерч, включая черновики."""
+        return self.filter(
+            merch__isnull=False,
+            merch__is_active=True,
+            merch__artist__is_active=True,
+            merch__visibility='public',
+        )
+
+    def preview_catalog_content(self):
+        """Возвращает альбомы и мерч для предпросмотра каталога."""
+        album_q = models.Q(
+            album__isnull=False,
+            album__is_active=True,
+            album__artist__is_active=True,
+            album__visibility='public',
+        )
+        merch_q = models.Q(
+            merch__isnull=False,
+            merch__is_active=True,
+            merch__artist__is_active=True,
+            merch__visibility='public',
+        )
+
+        return self.filter(album_q | merch_q)
+
     def with_selected_variant_id(self):
         """Добавляет ID варианта для предвыбора в детальной карточке."""
         from store.models.product_variant import ProductVariant
@@ -375,22 +410,24 @@ class ProductQuerySet(models.QuerySet):
             ),
         )
 
-    def for_album_cards(self):
+    def for_album_cards(self, *, preview=False):
         """Готовит queryset для карточек альбомов."""
+        qs = self.preview_albums() if preview else self.published_albums()
+
         return (
-            self
-            .published_albums()
+            qs
             .with_album_card_data()
             .with_album_card_annotations()
             .with_selected_variant_id()
             .with_favorite_variant_id()
         )
 
-    def for_merch_cards(self):
+    def for_merch_cards(self, *, preview=False):
         """Готовит queryset для карточек мерча."""
+        qs = self.preview_merch() if preview else self.published_merch()
+
         return (
-            self
-            .published_merch()
+            qs
             .with_merch_card_data()
             .with_merch_card_annotations()
             .with_selected_variant_id()
@@ -407,15 +444,16 @@ class ProductQuerySet(models.QuerySet):
             .with_favorite_variant_id()
         )
 
-    def for_catalog_cards(self):
-        """Готовит queryset для карточек основного каталога.
+    def for_catalog_cards(self, *, preview=False):
+        """Готовит queryset для карточек альбомов и мерча."""
+        qs = (
+            self.preview_catalog_content()
+            if preview
+            else self.published_catalog_content()
+        )
 
-        Основной каталог сейчас содержит альбомы и мерч.
-        Треки в него не входят.
-        """
         return (
-            self
-            .published_catalog_content()
+            qs
             .with_album_card_data()
             .with_merch_card_data()
             .with_catalog_card_annotations()
@@ -423,12 +461,12 @@ class ProductQuerySet(models.QuerySet):
             .with_favorite_variant_id()
         )
 
-    def for_catalog_type(self, catalog_type):
+    def for_catalog_type(self, catalog_type, *, preview=False):
         """Готовит queryset каталога под выбранный тип витрины."""
         if catalog_type == self.CATALOG_TYPE_ALBUM:
-            return self.for_album_cards()
+            return self.for_album_cards(preview=preview)
 
         if catalog_type == self.CATALOG_TYPE_MERCH:
-            return self.for_merch_cards()
+            return self.for_merch_cards(preview=preview)
 
-        return self.for_catalog_cards()
+        return self.for_catalog_cards(preview=preview)

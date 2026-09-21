@@ -7,16 +7,18 @@ import pytest
 from django.contrib.admin import AdminSite
 from django.urls import reverse
 
-from store.admin import TrackAdmin
+from store.admin import MerchAdmin, TrackAdmin
 from store.admin.album import AlbumAdmin
 from store.exceptions import PUBLICATION_BLOCKED_DETAIL
-from store.models import Album, Track
+from store.models import Album, Merch, Track
 from store.services.album_publication import MISSING_TRACKS_ERROR
 from store.tests.factories import (
     AlbumFactory,
     GenreFactory,
+    MerchFactory,
     make_audio_file,
 )
+from users.models import ArtistProfile, ArtistProfileType
 
 pytestmark = pytest.mark.django_db
 
@@ -520,3 +522,109 @@ def test_admin_form_rejects_creating_published_album_without_tracks(
     assert form.errors['is_published'] == [
         MISSING_TRACKS_ERROR,
     ]
+
+
+def test_publishing_imported_draft_assigns_payout_recipient(
+    artist_client,
+    ready_artist_user,
+):
+    """При публикации черновик получает получателя выплат."""
+    album = AlbumFactory(
+        artist=ready_artist_user.artist_profile,
+        payout_recipient=None,
+        is_published=False,
+    )
+    Track.objects.create(
+        album=album,
+        created_by=ready_artist_user,
+        name='Загруженный трек',
+        position=1,
+        audio_file=make_audio_file(),
+        is_active=True,
+    )
+
+    response = artist_client.patch(
+        reverse('api:store:albums-detail', args=(album.pk,)),
+        {'is_published': True},
+        format='json',
+    )
+
+    assert response.status_code == HTTPStatus.OK
+
+    album.refresh_from_db()
+    assert album.is_published is True
+    assert album.payout_recipient == ready_artist_user
+
+
+@pytest.mark.parametrize(
+    ('factory', 'admin_class', 'model'),
+    [
+        (AlbumFactory, AlbumAdmin, Album),
+        (MerchFactory, MerchAdmin, Merch),
+    ],
+)
+@pytest.mark.parametrize('has_recipient', [False, True])
+def test_admin_changelist_publication(
+    factory,
+    admin_class,
+    model,
+    has_recipient,
+    ready_artist_user,
+):
+    """Публикация из списка требует получателя выплат."""
+    if has_recipient:
+        artist = ready_artist_user.artist_profile
+    else:
+        artist = ArtistProfile.objects.create(
+            name='Артист без аккаунта',
+            profile_type=ArtistProfileType.ARTIST,
+        )
+
+    content = factory(
+        artist=artist,
+        payout_recipient=None,
+        created_by=None,
+        is_published=False,
+    )
+
+    if model is Album:
+        Track.objects.create(
+            album=content,
+            name='Загруженный трек',
+            position=1,
+            audio_file=make_audio_file(),
+            is_active=True,
+        )
+
+    model_admin = admin_class(model, AdminSite())
+    form_class = model_admin.get_changelist_form(
+        Mock(),
+        fields=model_admin.list_editable,
+    )
+    form = form_class(
+        instance=content,
+        data={
+            'is_published': True,
+            'is_active': True,
+            'visibility': content.visibility,
+        },
+    )
+
+    if has_recipient:
+        assert form.is_valid(), form.errors
+        model_admin.save_model(
+            request=Mock(user=ready_artist_user),
+            obj=form.save(commit=False),
+            form=form,
+            change=True,
+        )
+    else:
+        assert not form.is_valid()
+        assert 'is_published' in form.errors
+
+    content.refresh_from_db()
+
+    assert content.is_published is has_recipient
+    assert content.payout_recipient == (
+        ready_artist_user if has_recipient else None
+    )

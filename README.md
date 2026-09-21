@@ -595,6 +595,6 @@ set -a && . /etc/zvuchno-backup.env && set +a
 aws --endpoint-url=https://storage.yandexcloud.net \
     s3 cp s3://zvuchno-backups/postgres/<имя_файла>.dump ./restore.dump
 
-docker compose -f docker-compose.production.yml exec -T db \
+docker compose exec -T db \
     pg_restore -U <POSTGRES_USER> -d <POSTGRES_DB> --clean --if-exists < ./restore.dump
 ```

@@ -18,6 +18,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.access.store import can_preview_catalog_drafts
+
 from store.models import (
     Album,
     ListenerTrackAccess,
@@ -46,6 +48,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
 
     def get_queryset(self):
         """Возвращает альбом с доступными треками для плеера."""
+        preview = can_preview_catalog_drafts(self.request.user)
         favorite_variant_id_subquery = Subquery(
             ProductVariant.objects
             .filter(
@@ -61,6 +64,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
                 product__track_id=OuterRef('pk'),
                 product__price__gt=0,
                 is_active=True,
+                product__track__album__is_published=True,
             )
             .order_by('id')
             .values('pk')[:1],
@@ -88,7 +92,8 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
             self
             .get_track_read_queryset(
                 action='retrieve',
-                queryset=Track.objects.playable(),
+                queryset=Track.objects.all(),
+                player_preview=preview,
             )
             .select_related('generated')
             .annotate(
@@ -99,21 +104,27 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
             .order_by('position', 'id')
         )
 
-        return (
-            Album.objects
-            .visible_for(
-                self.request.user,
-                action='retrieve',
+        albums = Album.objects.visible_for(
+            self.request.user,
+            action='retrieve',
+        ).filter(
+            is_published=True,
+            is_active=True,
+        )
+
+        if preview:
+            preview_public = Album.objects.filter(
+                is_active=True,
+                artist__is_active=True,
+                visibility=Album.Visibility.PUBLIC,
             )
-            .select_related(
-                'artist',
-            )
-            .prefetch_related(
-                Prefetch(
-                    'tracks',
-                    queryset=tracks_queryset,
-                ),
-            )
+            albums = albums | preview_public
+
+        return albums.select_related('artist').prefetch_related(
+            Prefetch(
+                'tracks',
+                queryset=tracks_queryset,
+            ),
         )
 
     def get(self, request, *args, **kwargs):
@@ -135,8 +146,10 @@ class PlayerTrackPlayView(APIView):
         """Перенаправляет на доступную версию трека."""
         track = (
             Track.objects
-            .playable()
-            .visible_for(request.user, action='retrieve')
+            .for_player(
+                request.user,
+                preview=can_preview_catalog_drafts(request.user),
+            )
             .select_related('generated')
             .filter(pk=track_id)
             .first()

@@ -8,6 +8,7 @@ from common.services import (
     get_artist_publication_readiness,
 )
 
+from users.models import ArtistProfile, ArtistProfileType
 from users.tests.factories import ArtistProfileFactory
 
 pytestmark = pytest.mark.django_db
@@ -102,6 +103,32 @@ class TestArtistPublicationReadiness:
                 'missing_requirements': ['shipping_point'],
             },
         }
+
+    @pytest.mark.parametrize(
+        'profile_type',
+        [
+            ArtistProfileType.ARTIST,
+            ArtistProfileType.LABEL,
+        ],
+    )
+    def test_profile_without_user_cannot_publish(self, profile_type):
+        """Профиль без получателя выплат не готов к публикации."""
+        artist = ArtistProfile.objects.create(
+            name='Импортированный профиль',
+            profile_type=profile_type,
+        )
+
+        readiness = get_artist_publication_readiness(artist)
+
+        assert readiness.can_publish_digital is False
+        assert readiness.can_publish_physical is False
+
+        assert readiness.digital_missing == (
+            PublicationRequirement.PAYOUT_RECIPIENT,
+        )
+        assert readiness.physical_missing == (
+            PublicationRequirement.PAYOUT_RECIPIENT,
+        )
 
 
 def test_publication_readiness_can_be_disabled(

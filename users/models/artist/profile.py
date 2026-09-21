@@ -32,9 +32,8 @@ class ArtistProfileType(models.TextChoices):
 class ArtistProfile(ActivatableModel, TimestampModel):
     """Публичный профиль артиста или лейбла.
 
-    Профиль артиста может существовать без собственной учётной записи,
-    если он создан и управляется лейблом. Профиль лейбла всегда связан
-    с учётной записью.
+    Профиль может существовать без учётной записи.
+    Артист может находиться под управлением лейбла.
     TODO: название модели уже не отражает смысл.
     """
 
@@ -110,17 +109,11 @@ class ArtistProfile(ActivatableModel, TimestampModel):
 
     @property
     def default_payout_recipient(self):
-        """Возвращает аккаунт получателя выплат по умолчанию."""
-        payout_recipient = (
-            self.label.user if self.label_id is not None else self.user
-        )
+        """Возвращает получателя выплат или None, если он не назначен."""
+        if self.label_id is not None:
+            return self.label.user
 
-        if payout_recipient is None:
-            raise ValueError(
-                'Для публичного профиля не настроен получатель выплат.',
-            )
-
-        return payout_recipient
+        return self.user
 
     @property
     def effective_shipping_point(self):
@@ -195,20 +188,6 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         constraints = (
             models.CheckConstraint(
                 condition=(
-                    models.Q(user__isnull=False)
-                    | models.Q(label__isnull=False)
-                ),
-                name='artist_profile_has_user_or_label',
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(profile_type=ArtistProfileType.ARTIST)
-                    | models.Q(user__isnull=False)
-                ),
-                name='label_profile_has_user',
-            ),
-            models.CheckConstraint(
-                condition=(
                     models.Q(profile_type=ArtistProfileType.ARTIST)
                     | models.Q(label__isnull=True)
                 ),
@@ -228,27 +207,12 @@ class ArtistProfile(ActivatableModel, TimestampModel):
         super().clean()
 
         if self.profile_type == ArtistProfileType.LABEL:
-            if self.user_id is None:
-                raise ValidationError({
-                    'profile_type': (
-                        'Профиль лейбла должен быть связан с учётной записью.'
-                    ),
-                })
-
             if self.label_id is not None:
                 raise ValidationError({
                     'label': 'Профиль лейбла не может состоять в лейбле.',
                 })
 
             return
-
-        if self.user_id is None and self.label_id is None:
-            raise ValidationError({
-                'label': (
-                    'Артист без собственной учётной записи '
-                    'должен быть связан с лейблом.'
-                ),
-            })
 
         if self.label_id is None:
             return
