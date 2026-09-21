@@ -1,20 +1,14 @@
-name: Main Zvuchno workflow
+name: Zvuchno deploy (dev)
 
 concurrency:
-  group: deploy-${{ github.ref_name }}
-  cancel-in-progress: true
+  group: deploy-dev
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - main
       - develop
-
-env:
-  IMAGE_TAG: ${{ github.ref_name == 'main' && 'latest' || 'dev' }}
-  COMPOSE_FILE: ${{ github.ref_name == 'main' && 'docker-compose.production.yml' || 'docker-compose.dev.yml' }}
-  SSH_HOST: ${{ github.ref_name == 'main' && secrets.SSH_HOST_PROD || secrets.SSH_HOST_DEV }}
 
 jobs:
 
@@ -37,7 +31,7 @@ jobs:
           context: ./
           file: ./Dockerfile.prod
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_backend:${{ env.IMAGE_TAG }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_backend:dev
 
   build_gateway_and_push_to_docker_hub:
     name: Push gateway Docker image to DockerHub
@@ -57,7 +51,7 @@ jobs:
         with:
           context: ./nginx/
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_gateway:${{ env.IMAGE_TAG }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/zvuchno_gateway:dev
 
   deploy:
     runs-on: ubuntu-latest
@@ -68,11 +62,11 @@ jobs:
     - name: Checkout repo
       uses: actions/checkout@v4
     - name: Rename compose file to standard name
-      run: cp ${{ env.COMPOSE_FILE }} docker-compose.yml
+      run: cp docker-compose.dev.yml docker-compose.yml
     - name: Copy docker-compose.yml via ssh
       uses: appleboy/scp-action@master
       with:
-        host: ${{ env.SSH_HOST }}
+        host: ${{ secrets.SSH_HOST_DEV }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
         source: "docker-compose.yml"
@@ -80,7 +74,7 @@ jobs:
     - name: Copy backup script via ssh
       uses: appleboy/scp-action@master
       with:
-        host: ${{ env.SSH_HOST }}
+        host: ${{ secrets.SSH_HOST_DEV }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
         source: "scripts/backup_postgres.sh"
@@ -89,7 +83,7 @@ jobs:
     - name: Executing remote ssh commands to deploy
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ env.SSH_HOST }}
+        host: ${{ secrets.SSH_HOST_DEV }}
         username: ${{ secrets.SSH_USER }}
         key: ${{ secrets.SSH_KEY }}
         script: |
