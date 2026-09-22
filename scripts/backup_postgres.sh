@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Создаёт резервную копию PostgreSQL из production Docker Compose
+# Создаёт резервную копию PostgreSQL из Docker Compose
 # и загружает её в Yandex Object Storage.
 #
 # Скрипт запускается по расписанию через cron на VM.
@@ -21,11 +21,11 @@
 
 set -euo pipefail
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.production.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 DB_SERVICE="db"
 
 BACKUP_BUCKET="zvuchno-backups"
-BACKUP_PREFIX="postgres"
+BACKUP_PREFIX="${BACKUP_PREFIX:-postgres}"
 RETENTION_COUNT="${RETENTION_COUNT:-30}"
 
 TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
