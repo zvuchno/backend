@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from store.exceptions import AudioProcessingError
 from store.models import TrackGeneratedAudio
 from store.services.audio import (
     AudioProcessingService,
@@ -138,3 +139,111 @@ def test_failed_stream_upload_keeps_old_file(
 
     assert generated.stream_file.name == old_name
     delete_mock.assert_not_called()
+
+
+def test_preview_failure_marks_preview_not_stream_failed(tmp_path):
+    """Ошибка preview изменяет только соответствующий статус."""
+    track = TrackFactory()
+    generated = TrackGeneratedAudio.objects.create(track=track)
+    generated.preview_status = TrackGeneratedAudio.ProcessingStatus.BUILDING
+    generated.stream_status = TrackGeneratedAudio.ProcessingStatus.READY
+    generated.save(update_fields=('preview_status', 'stream_status'))
+
+    with (
+        patch.object(
+            AudioProcessingService,
+            'create_preview',
+            side_effect=AudioProcessingError('preview failed'),
+        ),
+        pytest.raises(AudioProcessingError),
+    ):
+        TrackAudioPreparationService._prepare_preview(
+            generated=generated,
+            source_path=tmp_path / 'source.wav',
+            target_path=tmp_path / 'preview.mp3',
+            source_duration=120,
+        )
+
+    generated.refresh_from_db()
+    assert generated.preview_status == (
+        TrackGeneratedAudio.ProcessingStatus.FAILED
+    )
+    assert generated.stream_status == (
+        TrackGeneratedAudio.ProcessingStatus.READY
+    )
+
+
+@pytest.mark.parametrize(
+    ('method_name', 'field_name', 'target_filename'),
+    [
+        ('_prepare_stream', 'stream_file', 'stream.mp3'),
+        ('_prepare_preview', 'preview_file', 'preview.mp3'),
+    ],
+)
+def test_generated_file_is_saved_once(
+    tmp_path,
+    method_name,
+    field_name,
+    target_filename,
+):
+    """Подготовка не загружает один generated-файл дважды."""
+    track = TrackFactory()
+    generated = TrackGeneratedAudio.objects.create(track=track)
+    target_path = tmp_path / target_filename
+    target_path.write_bytes(b'generated audio')
+    field = getattr(generated, field_name)
+
+    with (
+        patch.object(
+            AudioProcessingService,
+            'create_stream',
+            return_value=None,
+        ),
+        patch.object(
+            AudioProcessingService,
+            'create_preview',
+            return_value=30,
+        ),
+        patch.object(
+            field.storage,
+            'save',
+            wraps=field.storage.save,
+        ) as save_mock,
+    ):
+        kwargs = {
+            'generated': generated,
+            'source_path': tmp_path / 'source.wav',
+            'target_path': target_path,
+        }
+        if method_name == '_prepare_preview':
+            kwargs['source_duration'] = 120
+        getattr(TrackAudioPreparationService, method_name)(**kwargs)
+
+    assert save_mock.call_count == 1
+
+
+def test_ready_generated_audio_task_is_noop():
+    """Повторная задача не пересобирает готовое аудио текущего original."""
+    track = TrackFactory(duration=120)
+    TrackGeneratedAudio.objects.create(
+        track=track,
+        preview_file='tracks/preview/ready.mp3',
+        preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
+        stream_file='tracks/stream/ready.mp3',
+        stream_status=TrackGeneratedAudio.ProcessingStatus.READY,
+    )
+
+    with (
+        patch.object(
+            TrackAudioPreparationService,
+            '_mark_processing_started',
+        ) as mark_started,
+        patch.object(
+            TrackAudioPreparationService,
+            '_download_source_file',
+        ) as download,
+    ):
+        TrackAudioPreparationService.prepare(track.pk)
+
+    mark_started.assert_not_called()
+    download.assert_not_called()

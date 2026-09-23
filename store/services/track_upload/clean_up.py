@@ -27,6 +27,7 @@ class TrackUploadCleanupService:
             .filter(
                 completed_at__isnull=True,
                 expires_at__lt=cleanup_before,
+                purpose=TrackUpload.Purpose.CREATE,
                 track__audio_file='',
             )
             .exclude(

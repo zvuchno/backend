@@ -33,6 +33,9 @@ class TrackAudioPreparationService:
             track=track,
         )
 
+        if cls._is_ready(generated):
+            return
+
         cls._mark_processing_started(generated)
 
         try:
@@ -88,6 +91,18 @@ class TrackAudioPreparationService:
         if errors:
             raise errors[0]
 
+    @staticmethod
+    def _is_ready(generated: TrackGeneratedAudio) -> bool:
+        """Проверяет наличие обеих готовых производных версий."""
+        return bool(
+            generated.preview_status
+            == TrackGeneratedAudio.ProcessingStatus.READY
+            and generated.stream_status
+            == TrackGeneratedAudio.ProcessingStatus.READY
+            and generated.preview_file.name
+            and generated.stream_file.name,
+        )
+
     @classmethod
     def _download_source_file(
         cls,
@@ -122,13 +137,6 @@ class TrackAudioPreparationService:
                 source_path=source_path,
                 target_path=target_path,
             )
-
-            with target_path.open('rb') as stream_file:
-                generated.stream_file.save(
-                    'stream.mp3',
-                    File(stream_file),
-                    save=False,
-                )
 
             generated.stream_status = (
                 TrackGeneratedAudio.ProcessingStatus.READY
@@ -178,13 +186,6 @@ class TrackAudioPreparationService:
                 source_duration=source_duration,
             )
 
-            with target_path.open('rb') as preview_file:
-                generated.preview_file.save(
-                    'preview.mp3',
-                    File(preview_file),
-                    save=False,
-                )
-
             generated.preview_duration = preview_duration
             generated.preview_status = (
                 TrackGeneratedAudio.ProcessingStatus.READY
@@ -206,14 +207,14 @@ class TrackAudioPreparationService:
         except TemporaryAudioStorageError:
             raise
         except Exception as error:
-            generated.stream_status = (
+            generated.preview_status = (
                 TrackGeneratedAudio.ProcessingStatus.FAILED
             )
-            generated.stream_error = str(error)[:2000]
+            generated.preview_error = str(error)[:2000]
             generated.save(
                 update_fields=(
-                    'stream_status',
-                    'stream_error',
+                    'preview_status',
+                    'preview_error',
                 ),
             )
             raise

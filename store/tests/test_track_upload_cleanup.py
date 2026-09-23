@@ -13,7 +13,7 @@ from store.services.track_upload import (
     TrackUploadCleanupService,
     TrackUploadService,
 )
-from store.tests.factories import AlbumFactory
+from store.tests.factories import AlbumFactory, TrackFactory
 
 
 @pytest.mark.django_db
@@ -111,6 +111,31 @@ class TestTrackUploadCleanupService:
             filename='recent.flac',
             size=10,
             content_type='audio/flac',
+        )
+
+        result = TrackUploadCleanupService.cleanup_expired()
+
+        assert result == {
+            'deleted': 0,
+            'skipped': 0,
+            'storage_errors': 0,
+        }
+        assert Track.objects.filter(pk=track.pk).exists()
+        assert TrackUpload.objects.filter(pk=upload.pk).exists()
+
+    def test_does_not_delete_empty_imported_track_for_replacement_upload(
+        self,
+    ):
+        """Cleanup не принимает существующий Track за upload-черновик."""
+        track = TrackFactory(audio_file='', position=7)
+        upload = TrackUploadService.create_replacement_upload(
+            track=track,
+            filename='migration-original.wav',
+            size=10,
+            content_type='audio/wav',
+        )
+        TrackUpload.objects.filter(pk=upload.pk).update(
+            expires_at=timezone.now() - timedelta(days=2),
         )
 
         result = TrackUploadCleanupService.cleanup_expired()

@@ -23,12 +23,17 @@ class TrackGeneratedAudioScheduler:
     def _enqueue_safely(track_id: int) -> None:
         """Ставит задачу в очередь, не ломая успешный upload."""
         try:
-            from store.tasks.audio import prepare_track_audio
-
-            prepare_track_audio.delay(track_id)
+            TrackGeneratedAudioScheduler.enqueue(track_id)
         except Exception:
             logger.exception(
                 'Не удалось поставить подготовку аудио в очередь '
                 'для трека %s.',
                 track_id,
             )
+
+    @staticmethod
+    def enqueue(track_id: int) -> None:
+        """Ставит задачу сейчас и сообщает вызывающему об ошибке broker."""
+        from store.tasks.audio import prepare_track_audio
+
+        prepare_track_audio.delay(track_id)

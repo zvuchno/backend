@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'common.apps.CommonConfig',
     'users.apps.UsersConfig',
     'store.apps.StoreConfig',
+    'catalog_migration.apps.CatalogMigrationConfig',
     'storages',
 ]
 
