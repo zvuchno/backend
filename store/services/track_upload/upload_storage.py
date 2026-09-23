@@ -1,5 +1,7 @@
 """Завершение загрузки оригинальных файлов треков."""
 
+import base64
+import hashlib
 import logging
 from pathlib import Path
 from shutil import copyfile
@@ -7,18 +9,19 @@ from shutil import copyfile
 import boto3
 from botocore.client import BaseClient
 from botocore.config import Config
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ResponseStreamingError
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from store.models import Album, Track, TrackUpload
+from store.models import Album, Track, TrackGeneratedAudio, TrackUpload
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.audio import TrackGeneratedAudioScheduler
 from store.upload_paths import track_audio_upload_to
 
 logger = logging.getLogger(__name__)
+S3_CHECKSUM_RANGE_SIZE = 8 * 1024 * 1024
 
 
 class TrackUploadStorageError(RuntimeError):
@@ -30,7 +33,14 @@ class TrackUploadStorageService:
 
     @classmethod
     @transaction.atomic
-    def complete(cls, *, upload: TrackUpload) -> TrackUpload:
+    def complete(
+        cls,
+        *,
+        upload: TrackUpload,
+        final_key: str | None = None,
+        schedule_audio: bool = True,
+        schedule_archive: bool = True,
+    ) -> TrackUpload:
         """Завершает загрузку файла.
 
         Подтверждает файл,
@@ -54,7 +64,7 @@ class TrackUploadStorageService:
                 'Эту попытку загрузки нельзя завершить.',
             )
 
-        final_key = track_audio_upload_to(
+        final_key = final_key or track_audio_upload_to(
             upload.track,
             upload.original_filename,
         )
@@ -102,8 +112,10 @@ class TrackUploadStorageService:
             ),
         )
 
-        TrackGeneratedAudioScheduler.schedule(track)
-        AlbumArchiveScheduler.schedule(track.album)
+        if schedule_audio:
+            TrackGeneratedAudioScheduler.schedule(track)
+        if schedule_archive:
+            AlbumArchiveScheduler.schedule(track.album)
 
         transaction.on_commit(
             lambda upload=upload: cls._delete_staging_safely(
@@ -112,6 +124,152 @@ class TrackUploadStorageService:
         )
 
         return upload
+
+    @classmethod
+    def copy_s3_source_to_staging(
+        cls,
+        *,
+        upload: TrackUpload,
+        source_key: str,
+        expected_sha256: str,
+    ) -> TrackUpload:
+        """Копирует неизменяемый source в staging, не удаляя source."""
+        client = cls._get_s3_client()
+        bucket_name = settings.AWS_PRIVATE_STORAGE_BUCKET_NAME
+
+        try:
+            head = client.head_object(
+                Bucket=bucket_name,
+                Key=source_key,
+                ChecksumMode='ENABLED',
+            )
+        except ClientError as exc:
+            if cls._is_not_found_error(exc):
+                raise TrackUploadStorageError(
+                    'Исходный аудиофайл пакета не найден.',
+                ) from exc
+            try:
+                # Не все S3-compatible хранилища поддерживают ChecksumMode.
+                # В таком случае ниже будет вычислен настоящий SHA-256.
+                head = client.head_object(
+                    Bucket=bucket_name,
+                    Key=source_key,
+                )
+            except ClientError as fallback_exc:
+                if cls._is_not_found_error(fallback_exc):
+                    raise TrackUploadStorageError(
+                        'Исходный аудиофайл пакета не найден.',
+                    ) from fallback_exc
+                raise TrackUploadStorageError(
+                    'Не удалось проверить исходный аудиофайл пакета.',
+                ) from fallback_exc
+
+        if head.get('ContentLength') != upload.expected_size:
+            raise TrackUploadStorageError(
+                'Размер исходного аудиофайла не совпадает с manifest.',
+            )
+
+        actual_sha256 = cls._read_sha256(head)
+        if actual_sha256 is None:
+            actual_sha256 = cls._calculate_s3_sha256(
+                client=client,
+                bucket_name=bucket_name,
+                source_key=source_key,
+                expected_size=upload.expected_size,
+            )
+        if actual_sha256.lower() != expected_sha256.lower():
+            raise TrackUploadStorageError(
+                'SHA-256 исходного аудиофайла не совпадает с manifest.',
+            )
+
+        try:
+            client.copy_object(
+                Bucket=bucket_name,
+                Key=cls._get_bucket_key(upload.staging_key),
+                CopySource={
+                    'Bucket': bucket_name,
+                    'Key': source_key,
+                },
+            )
+        except ClientError as exc:
+            raise TrackUploadStorageError(
+                'Не удалось скопировать исходный аудиофайл в staging.',
+            ) from exc
+
+        upload.status = TrackUpload.Status.UPLOADED
+        upload.uploaded_size = upload.expected_size
+        upload.error = ''
+        upload.save(
+            update_fields=('status', 'uploaded_size', 'error', 'updated_at'),
+        )
+        return upload
+
+    @staticmethod
+    def _calculate_s3_sha256(
+        *,
+        client: BaseClient,
+        bucket_name: str,
+        source_key: str,
+        expected_size: int,
+    ) -> str:
+        """Вычисляет SHA-256 короткими range-запросами к S3."""
+        digest = hashlib.sha256()
+        offset = 0
+        try:
+            while offset < expected_size:
+                end = (
+                    min(
+                        offset + S3_CHECKSUM_RANGE_SIZE,
+                        expected_size,
+                    )
+                    - 1
+                )
+                response = client.get_object(
+                    Bucket=bucket_name,
+                    Key=source_key,
+                    Range=f'bytes={offset}-{end}',
+                )
+                body = response['Body']
+                range_size = 0
+                try:
+                    while chunk := body.read(1024 * 1024):
+                        digest.update(chunk)
+                        range_size += len(chunk)
+                finally:
+                    body.close()
+                if range_size != end - offset + 1:
+                    raise TrackUploadStorageError(
+                        'Размер части исходного аудиофайла не совпадает.',
+                    )
+                offset = end + 1
+            return digest.hexdigest()
+        except TrackUploadStorageError:
+            raise
+        except (ClientError, KeyError, OSError, ResponseStreamingError) as exc:
+            raise TrackUploadStorageError(
+                'Не удалось вычислить SHA-256 исходного аудиофайла.',
+            ) from exc
+
+    @staticmethod
+    def _read_sha256(head: dict) -> str | None:
+        """Читает настоящий SHA-256, но никогда не использует ETag."""
+        checksum = head.get('ChecksumSHA256')
+        if checksum:
+            try:
+                return base64.b64decode(checksum, validate=True).hex()
+            except (ValueError, TypeError):
+                return None
+
+        metadata_checksum = head.get('Metadata', {}).get('sha256')
+        if (
+            isinstance(metadata_checksum, str)
+            and len(metadata_checksum) == 64
+            and all(
+                char in '0123456789abcdefABCDEF' for char in metadata_checksum
+            )
+        ):
+            return metadata_checksum
+        return None
 
     @classmethod
     def _finalize_new_track(
@@ -164,6 +322,14 @@ class TrackUploadStorageService:
                 'audio_file',
                 'updated_at',
             ),
+        )
+        TrackGeneratedAudio.objects.filter(track=track).update(
+            preview_status=TrackGeneratedAudio.ProcessingStatus.PENDING,
+            preview_error='',
+            preview_started_at=None,
+            stream_status=TrackGeneratedAudio.ProcessingStatus.PENDING,
+            stream_error='',
+            stream_started_at=None,
         )
 
     @classmethod

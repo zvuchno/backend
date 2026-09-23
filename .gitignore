@@ -146,4 +146,10 @@ dump.json
 logs/
 tmp/
 
+# Local catalog-migration workbench artifacts
+/.agents/
+/.codex/
+/migration-logs/
+/migration-trial/import_config*.json
+
 *:Zone.Identifier

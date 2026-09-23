@@ -1,13 +1,14 @@
 """Тесты завершения загрузки оригинальных файлов треков."""
 
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
+from botocore.exceptions import ResponseStreamingError
 from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from store.models import Track, TrackUpload
+from store.models import Track, TrackGeneratedAudio, TrackUpload
 from store.services import ProductService
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.track_upload import (
@@ -21,6 +22,28 @@ from store.tests.factories import AlbumFactory, TrackFactory, make_audio_file
 @pytest.mark.django_db
 class TestTrackUploadStorageService:
     """Тесты переноса staging-файлов в постоянное хранилище."""
+
+    def test_wraps_interrupted_s3_checksum_stream(self):
+        """Обрыв чтения S3 становится возобновляемой ошибкой storage."""
+        body = Mock()
+        body.read.side_effect = ResponseStreamingError(
+            error=OSError('connection interrupted'),
+        )
+        client = Mock()
+        client.get_object.return_value = {'Body': body}
+
+        with pytest.raises(
+            TrackUploadStorageError,
+            match='Не удалось вычислить SHA-256',
+        ):
+            TrackUploadStorageService._calculate_s3_sha256(
+                client=client,
+                bucket_name='private-test',
+                source_key='immutable/source.wav',
+                expected_size=10,
+            )
+
+        body.close.assert_called_once_with()
 
     def test_completes_local_upload_and_removes_staging_file(
         self,
@@ -193,6 +216,13 @@ class TestTrackUploadStorageService:
         old_position = track.position
         old_audio_name = track.audio_file.name
         old_product_id = track.product.id
+        generated = TrackGeneratedAudio.objects.create(
+            track=track,
+            preview_file='tracks/preview/old.mp3',
+            preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
+            stream_file='tracks/stream/old.mp3',
+            stream_status=TrackGeneratedAudio.ProcessingStatus.READY,
+        )
 
         new_content = b'new audio content'
 
@@ -228,6 +258,7 @@ class TestTrackUploadStorageService:
                     )
 
         track.refresh_from_db()
+        generated.refresh_from_db()
         completed_upload.refresh_from_db()
 
         assert completed_upload.status == TrackUpload.Status.COMPLETED
@@ -250,6 +281,12 @@ class TestTrackUploadStorageService:
         assert storage.exists(track.audio_file.name)
         assert storage.exists(old_audio_name)
         assert not storage.exists(upload.staging_key)
+        assert generated.preview_status == (
+            TrackGeneratedAudio.ProcessingStatus.PENDING
+        )
+        assert generated.stream_status == (
+            TrackGeneratedAudio.ProcessingStatus.PENDING
+        )
 
         with storage.open(track.audio_file.name, 'rb') as audio_file:
             assert audio_file.read() == new_content

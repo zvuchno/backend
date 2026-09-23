@@ -4,6 +4,8 @@ from .album import (
 )
 from .cart import Cart
 from .cart_item import CartItem
+from .catalog_migration_audio import CatalogMigrationAudioState
+from .catalog_migration_mapping import CatalogMigrationMapping
 from .catalog_search import CatalogSearch
 from .delivery import Delivery
 from .favorite import Favorite
@@ -36,6 +38,8 @@ __all__ = [
     'AlbumArchive',
     'Cart',
     'CartItem',
+    'CatalogMigrationMapping',
+    'CatalogMigrationAudioState',
     'CatalogSearch',
     'Delivery',
     'Favorite',

@@ -6,6 +6,7 @@
 Backend API проекта **Звучно**.
 
 
+
 ## Стек
 
 * Python 3.12
@@ -595,6 +596,13 @@ set -a && . /etc/zvuchno-backup.env && set +a
 aws --endpoint-url=https://storage.yandexcloud.net \
     s3 cp s3://zvuchno-backups/postgres/<имя_файла>.dump ./restore.dump
 
-docker compose exec -T db \
+docker compose -f docker-compose.production.yml exec -T db \
     pg_restore -U <POSTGRES_USER> -d <POSTGRES_DB> --clean --if-exists < ./restore.dump
 ```
+
+
+### Разовый перенос каталога
+
+Для разового переноса каталога существует временный служебный механизм
+`catalog_migration`. Инструкции по пакету, проверкам, запуску и завершению
+миграции находятся в [catalog_migration/README.md](catalog_migration/README.md).

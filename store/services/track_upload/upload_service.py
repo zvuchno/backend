@@ -33,6 +33,7 @@ class TrackUploadService:
         filename: str,
         size: int,
         content_type: str = '',
+        staging_key: str | None = None,
     ) -> TrackUpload:
         """Создаёт попытку замены оригинального файла существующего трека."""
         filename = Path(filename).name
@@ -52,9 +53,9 @@ class TrackUploadService:
         return TrackUpload.objects.create(
             track=track,
             purpose=TrackUpload.Purpose.REPLACE,
-            staging_key=track_upload_staging_key(
-                track.album_id,
-                filename,
+            staging_key=(
+                staging_key
+                or track_upload_staging_key(track.album_id, filename)
             ),
             original_filename=filename,
             expected_size=size,
