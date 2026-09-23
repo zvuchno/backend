@@ -24,7 +24,7 @@ set -euo pipefail
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 DB_SERVICE="db"
 
-BACKUP_BUCKET="zvuchno-backups"
+BACKUP_BUCKET="${BACKUP_BUCKET:-zvuchno-prod-backups}"
 BACKUP_PREFIX="${BACKUP_PREFIX:-postgres}"
 RETENTION_COUNT="${RETENTION_COUNT:-30}"
 
