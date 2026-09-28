@@ -426,10 +426,7 @@ class ReportFileBuilder:
         for item in items:
             product_info = item.product_info or {}
 
-            product_name = (
-                f'{product_info.get("kind", "")} '
-                f'{product_info.get("name", "")}'
-            ).strip()
+            product_name = product_info.get('name', '').strip()
 
             group_key = (
                 item.product_variant_id,
