@@ -79,9 +79,8 @@ def send_shipment_registered_notification(shipment) -> None:
     for item in shipment_items:
         info = item.product_info or {}
         sku = info.get('sku', '—')
-        kind = info.get('kind', '')
         name = info.get('name', 'Товар')
-        item_lines.append(f'• {sku} | {kind} {name} — {item.quantity} шт.')
+        item_lines.append(f'• {sku} | {name} — {item.quantity} шт.')
 
     goods_list = '\n'.join(item_lines)
 

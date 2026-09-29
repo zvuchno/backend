@@ -154,7 +154,7 @@ class SalesExportService:
                 info.get('artist_name', ''),
                 payout_recipient_name,
                 product_type,
-                f'{info.get("kind", "")} {info.get("name", "")}',
+                info.get('name', ''),
                 info.get('sku', ''),
                 item.quantity,
                 format_document_money(item.price_at_purchase),
