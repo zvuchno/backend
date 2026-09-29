@@ -4,6 +4,7 @@
 """
 
 import logging
+import sys
 
 from django.conf import settings
 from telebot import TeleBot, apihelper
@@ -24,8 +25,11 @@ def get_bot() -> TeleBot:
         token = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
 
         if not token:
-            logger.error('TELEGRAM_BOT_TOKEN не задан в настройках!')
-            raise ValueError('TELEGRAM_BOT_TOKEN is missing')
+            logger.warning(
+                'TELEGRAM_BOT_TOKEN не задан в настройках!'
+                'Выполнение завершается.',
+            )
+            sys.exit(0)
 
         # Если в .env задан TELEGRAM_PROXY_URL, настраиваем прокси
         proxy_url = getattr(settings, 'TELEGRAM_PROXY_URL', None)

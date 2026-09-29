@@ -195,7 +195,7 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    restart: always
+    restart: on-failure
   gateway:
     image: inswty/zvuchno_gateway:latest
     env_file: .env
