@@ -3,6 +3,7 @@
 from django.db import IntegrityError, transaction
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from common.services import get_artist_publication_readiness
 from common.utils import get_client_ip, get_user_agent
@@ -227,6 +228,12 @@ class ArtistProfileUpdateSerializer(serializers.ModelSerializer):
             'slug': {
                 'required': False,
                 'allow_blank': False,
+                'validators': [
+                    UniqueValidator(
+                        queryset=ArtistProfile.objects.all(),
+                        message='Этот адрес страницы уже занят.',
+                    ),
+                ],
             },
         }
 
@@ -467,6 +474,12 @@ class ManagedArtistProfileCreateSerializer(serializers.ModelSerializer):
             'slug': {
                 'required': False,
                 'allow_blank': False,
+                'validators': [
+                    UniqueValidator(
+                        queryset=ArtistProfile.objects.all(),
+                        message='Этот адрес страницы уже занят.',
+                    ),
+                ],
             },
         }
 

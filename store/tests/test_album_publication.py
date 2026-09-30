@@ -1,5 +1,6 @@
 """Тесты правил публикации альбомов."""
 
+from decimal import Decimal
 from http import HTTPStatus
 from unittest.mock import Mock, patch
 
@@ -18,6 +19,7 @@ from store.tests.factories import (
     MerchFactory,
     make_audio_file,
 )
+from store.tests.scenarios import create_album_product
 from users.models import ArtistProfile, ArtistProfileType
 
 pytestmark = pytest.mark.django_db
@@ -223,7 +225,10 @@ def test_can_publish_album_with_uploaded_active_track(
 
     response = artist_client.patch(
         url,
-        {'is_published': True},
+        {
+            'is_published': True,
+            'price': '100.00',
+        },
         format='json',
     )
 
@@ -545,7 +550,10 @@ def test_publishing_imported_draft_assigns_payout_recipient(
 
     response = artist_client.patch(
         reverse('api:store:albums-detail', args=(album.pk,)),
-        {'is_published': True},
+        {
+            'is_published': True,
+            'price': '100.00',
+        },
         format='json',
     )
 
@@ -628,3 +636,105 @@ def test_admin_changelist_publication(
     assert content.payout_recipient == (
         ready_artist_user if has_recipient else None
     )
+
+
+def test_cannot_publish_album_with_zero_price(
+    artist_client,
+    ready_artist_user,
+):
+    """Нельзя опубликовать релиз с нулевой ценой."""
+    album = AlbumFactory(
+        artist=ready_artist_user.artist_profile,
+        payout_recipient=ready_artist_user,
+        created_by=ready_artist_user,
+        is_published=False,
+    )
+    Track.objects.create(
+        album=album,
+        created_by=ready_artist_user,
+        name='Тестовый трек',
+        position=1,
+        audio_file=make_audio_file(),
+        is_active=True,
+    )
+
+    response = artist_client.patch(
+        reverse('api:store:albums-detail', args=(album.pk,)),
+        {
+            'price': '0.00',
+            'is_published': True,
+        },
+        format='json',
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    album.refresh_from_db()
+    assert album.is_published is False
+
+
+def test_cannot_set_zero_price_for_published_album(
+    artist_client,
+    ready_artist_user,
+):
+    """Нельзя обнулить цену опубликованного релиза."""
+    product = create_album_product(
+        artist=ready_artist_user.artist_profile,
+        payout_recipient=ready_artist_user,
+        created_by=ready_artist_user,
+        is_published=True,
+        price=Decimal('100.00'),
+    )
+    album = product.album
+
+    response = artist_client.patch(
+        reverse('api:store:albums-detail', args=(album.pk,)),
+        {'price': '0.00'},
+        format='json',
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.data == {
+        'detail': PUBLICATION_BLOCKED_DETAIL,
+        'reasons': [
+            'Для опубликованного товара цена должна быть больше нуля.',
+        ],
+    }
+
+    album.refresh_from_db()
+    product.refresh_from_db()
+
+    assert album.is_published is True
+    assert product.price == Decimal('100.00')
+
+
+def test_can_set_zero_price_when_unpublishing_album(
+    artist_client,
+    ready_artist_user,
+):
+    """Цену можно обнулить одновременно со снятием релиза с публикации."""
+    product = create_album_product(
+        artist=ready_artist_user.artist_profile,
+        payout_recipient=ready_artist_user,
+        created_by=ready_artist_user,
+        is_published=True,
+        price=Decimal('100.00'),
+    )
+    album = product.album
+
+    response = artist_client.patch(
+        reverse('api:store:albums-detail', args=(album.pk,)),
+        {
+            'price': '0.00',
+            'is_published': False,
+        },
+        format='json',
+    )
+
+    assert response.status_code == HTTPStatus.OK
+
+    album.refresh_from_db()
+    product.refresh_from_db()
+
+    assert album.is_published is False
+    assert product.price == Decimal('0.00')

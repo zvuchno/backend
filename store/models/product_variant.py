@@ -134,6 +134,9 @@ class ProductVariant(ActivatableModel, TimestampModel):
         ):
             return False
 
+        if product.price <= ZERO_MONEY:
+            return False
+
         readiness = get_artist_publication_readiness(product.artist)
 
         if product.product_type == product.ProductType.MERCH:
@@ -143,12 +146,6 @@ class ProductVariant(ActivatableModel, TimestampModel):
             return self.stock is None or self.stock > 0
 
         if not readiness.can_publish_digital:
-            return False
-
-        if (
-            product.product_type == product.ProductType.TRACK
-            and product.price == ZERO_MONEY
-        ):
             return False
 
         return True
