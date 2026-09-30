@@ -634,3 +634,38 @@ def test_admin_changelist_publication(
     assert content.payout_recipient == (
         ready_artist_user if has_recipient else None
     )
+
+
+def test_cannot_publish_album_with_zero_price(
+    artist_client,
+    ready_artist_user,
+):
+    """Нельзя опубликовать релиз с нулевой ценой."""
+    album = AlbumFactory(
+        artist=ready_artist_user.artist_profile,
+        payout_recipient=ready_artist_user,
+        created_by=ready_artist_user,
+        is_published=False,
+    )
+    Track.objects.create(
+        album=album,
+        created_by=ready_artist_user,
+        name='Тестовый трек',
+        position=1,
+        audio_file=make_audio_file(),
+        is_active=True,
+    )
+
+    response = artist_client.patch(
+        reverse('api:store:albums-detail', args=(album.pk,)),
+        {
+            'price': '0.00',
+            'is_published': True,
+        },
+        format='json',
+    )
+
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+
+    album.refresh_from_db()
+    assert album.is_published is False

@@ -202,3 +202,45 @@ def test_draft_preview_catalog_filters(
         album_product.id if expected_type == 'album' else merch_product.id
     )
     assert set(get_product_ids(response)) == {expected_id}
+
+
+def test_zero_price_products_are_hidden_in_preview(
+    api_client,
+    catalog_url,
+    catalog_release_detail_url,
+    catalog_merch_detail_url,
+):
+    """Каталог не отображает товары с нулевой ценой."""
+    album_product = create_album_product(
+        is_published=False,
+        price=Decimal('0.00'),
+    )
+    merch_product = create_merch_product(
+        is_published=False,
+        price=Decimal('0.00'),
+    )
+
+    with override_settings(CATALOG_DRAFT_PREVIEW_MODE='all'):
+        catalog_response = api_client.get(catalog_url)
+        album_response = api_client.get(
+            catalog_release_detail_url(album_product.album),
+        )
+        merch_response = api_client.get(
+            catalog_merch_detail_url(merch_product.merch),
+        )
+
+    product_ids = set(get_product_ids(catalog_response))
+
+    assert album_product.id not in product_ids
+    assert merch_product.id not in product_ids
+    assert album_response.status_code == status.HTTP_404_NOT_FOUND
+    assert merch_response.status_code == status.HTTP_404_NOT_FOUND
+
+
+def test_zero_price_merch_variant_is_not_available_for_purchase():
+    """Нельзя заказать товар с нулевой ценой."""
+    product = create_merch_product(
+        price=Decimal('0.00'),
+    )
+
+    assert product.variants.first().is_available_for_purchase is False
