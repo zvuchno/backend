@@ -41,6 +41,14 @@ class ProductService:
         if not created:
             cls._update_product_base_fields(product, validated_data)
 
+        if (
+            model_name in ('album', 'merch')
+            and product.price <= ZERO_MONEY
+            and content_instance.is_published
+        ):
+            content_instance.is_published = False
+            content_instance.save(update_fields=('is_published',))
+
         # Для альбомов и треков гарантируем наличие цифрового варианта
         if model_name in ['album', 'track']:
             cls._ensure_digital_variant(product)

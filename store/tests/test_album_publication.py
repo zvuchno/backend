@@ -223,7 +223,10 @@ def test_can_publish_album_with_uploaded_active_track(
 
     response = artist_client.patch(
         url,
-        {'is_published': True},
+        {
+            'is_published': True,
+            'price': '100.00',
+        },
         format='json',
     )
 
@@ -545,7 +548,10 @@ def test_publishing_imported_draft_assigns_payout_recipient(
 
     response = artist_client.patch(
         reverse('api:store:albums-detail', args=(album.pk,)),
-        {'is_published': True},
+        {
+            'is_published': True,
+            'price': '100.00',
+        },
         format='json',
     )
 

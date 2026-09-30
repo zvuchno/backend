@@ -9,6 +9,7 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from common.access.store import can_preview_catalog_drafts
 
+from store.constants import ZERO_MONEY
 from store.filters import ProductCatalogFilter
 from store.models import (
     Album,
@@ -138,6 +139,7 @@ class CatalogReleaseDetailView(RetrieveAPIView):
             Merch.objects
             .filter(
                 published_q,
+                product__price__gt=ZERO_MONEY,
                 kind__is_carrier=True,
                 is_active=True,
                 artist__is_active=True,
@@ -163,6 +165,7 @@ class CatalogReleaseDetailView(RetrieveAPIView):
             .filter(
                 published_q,
                 release_date_q,
+                product__price__gt=ZERO_MONEY,
                 artist__is_active=True,
                 is_active=True,
                 visibility=Album.Visibility.PUBLIC,
@@ -207,6 +210,7 @@ class CatalogMerchDetailView(RetrieveAPIView):
             Merch.objects
             .filter(
                 published_q,
+                product__price__gt=ZERO_MONEY,
                 artist__is_active=True,
                 is_active=True,
                 visibility=Merch.Visibility.PUBLIC,

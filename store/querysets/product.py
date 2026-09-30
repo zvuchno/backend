@@ -8,7 +8,7 @@ from common.services import (
     physical_publication_ready_q,
 )
 
-from store.constants import CHAR_PRESET_SIMPLE
+from store.constants import CHAR_PRESET_SIMPLE, ZERO_MONEY
 
 
 class ProductQuerySet(models.QuerySet):
@@ -69,6 +69,7 @@ class ProductQuerySet(models.QuerySet):
         """Возвращает опубликованные альбомы каталога."""
         return self.filter(
             digital_publication_ready_q('album__'),
+            price__gt=ZERO_MONEY,
             album__isnull=False,
             album__is_active=True,
             album__artist__is_active=True,
@@ -89,6 +90,7 @@ class ProductQuerySet(models.QuerySet):
         return self.with_available_variant().filter(
             physical_publication_ready_q('merch__'),
             release_available_q,
+            price__gt=ZERO_MONEY,
             merch__isnull=False,
             merch__is_active=True,
             merch__artist__is_active=True,
@@ -109,6 +111,7 @@ class ProductQuerySet(models.QuerySet):
                 album__is_active=True,
                 album__artist__is_active=True,
                 album__is_published=True,
+                price__gt=ZERO_MONEY,
                 album__visibility='public',
             )
             & (
@@ -130,6 +133,7 @@ class ProductQuerySet(models.QuerySet):
                 merch__is_active=True,
                 merch__artist__is_active=True,
                 merch__is_published=True,
+                price__gt=ZERO_MONEY,
                 merch__visibility='public',
                 has_available_variant=True,
             )
@@ -144,6 +148,7 @@ class ProductQuerySet(models.QuerySet):
     def preview_albums(self):
         """Возвращает активные публичные альбомы, включая черновики."""
         return self.filter(
+            price__gt=ZERO_MONEY,
             album__isnull=False,
             album__is_active=True,
             album__artist__is_active=True,
@@ -153,6 +158,7 @@ class ProductQuerySet(models.QuerySet):
     def preview_merch(self):
         """Возвращает активный публичный мерч, включая черновики."""
         return self.filter(
+            price__gt=ZERO_MONEY,
             merch__isnull=False,
             merch__is_active=True,
             merch__artist__is_active=True,
@@ -162,12 +168,14 @@ class ProductQuerySet(models.QuerySet):
     def preview_catalog_content(self):
         """Возвращает альбомы и мерч для предпросмотра каталога."""
         album_q = models.Q(
+            price__gt=ZERO_MONEY,
             album__isnull=False,
             album__is_active=True,
             album__artist__is_active=True,
             album__visibility='public',
         )
         merch_q = models.Q(
+            price__gt=ZERO_MONEY,
             merch__isnull=False,
             merch__is_active=True,
             merch__artist__is_active=True,

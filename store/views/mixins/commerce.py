@@ -5,6 +5,7 @@ from django.db import transaction
 
 from common.services import get_artist_publication_readiness
 
+from store.constants import ZERO_MONEY
 from store.exceptions import PublicationBlocked
 from store.models import Album, Merch
 from store.services import ProductService
@@ -32,6 +33,11 @@ class ProductActionMixin(ManagedArtistActionMixin):
         self._validate_publication_readiness(
             model=model,
             artist=artist,
+            validated_data=serializer.validated_data,
+        )
+
+        self._validate_publication_price(
+            model=model,
             validated_data=serializer.validated_data,
         )
 
@@ -83,6 +89,12 @@ class ProductActionMixin(ManagedArtistActionMixin):
 
                 instance.payout_recipient = recipient
 
+            self._validate_publication_price(
+                model=type(instance),
+                instance=instance,
+                validated_data=serializer.validated_data,
+            )
+
             instance = serializer.save()
             self._update_product_data(instance, serializer.validated_data)
 
@@ -113,4 +125,29 @@ class ProductActionMixin(ManagedArtistActionMixin):
             raise PublicationBlocked([
                 requirement.publication_error_message
                 for requirement in missing
+            ])
+
+    def _validate_publication_price(
+        self,
+        *,
+        model,
+        validated_data,
+        instance=None,
+    ) -> None:
+        """Запрещает публикацию альбома или мерча с нулевой ценой."""
+        if model not in (Album, Merch):
+            return
+
+        if validated_data.get('is_published') is not True:
+            return
+
+        price = validated_data.get('price')
+
+        if price is None and instance is not None:
+            product = getattr(instance, 'product', None)
+            price = product.price if product is not None else ZERO_MONEY
+
+        if price is None or price <= ZERO_MONEY:
+            raise PublicationBlocked([
+                'Для публикации необходимо указать цену больше нуля.',
             ])

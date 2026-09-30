@@ -48,12 +48,12 @@ def test_draft_preview_in_catalog_and_details(
     album_product = create_album_product(
         artist=artist,
         is_published=False,
-        price=Decimal('0.00'),
+        price=Decimal('100.00'),
     )
     merch_product = create_merch_product(
         artist=artist,
         is_published=False,
-        price=Decimal('0.00'),
+        price=Decimal('500.00'),
     )
 
     album = album_product.album
