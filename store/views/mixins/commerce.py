@@ -138,7 +138,12 @@ class ProductActionMixin(ManagedArtistActionMixin):
         if model not in (Album, Merch):
             return
 
-        if validated_data.get('is_published') is not True:
+        is_published = validated_data.get(
+            'is_published',
+            instance.is_published if instance is not None else False,
+        )
+
+        if not is_published:
             return
 
         price = validated_data.get('price')
@@ -149,5 +154,5 @@ class ProductActionMixin(ManagedArtistActionMixin):
 
         if price is None or price <= ZERO_MONEY:
             raise PublicationBlocked([
-                'Для публикации необходимо указать цену больше нуля.',
+                'Для опубликованного товара цена должна быть больше нуля.',
             ])

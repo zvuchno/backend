@@ -8,7 +8,6 @@ from rest_framework.exceptions import ValidationError
 from store.constants import CHAR_PRESET_DIGITAL, CHAR_PRESET_SIMPLE
 from store.models import Album, Merch, Product
 from store.services import ProductService
-from store.tests.scenarios import create_album_product, create_merch_product
 
 
 @pytest.mark.django_db
@@ -129,32 +128,6 @@ class TestProductService:
         assert active.count() == 2
         assert active.get(property_value='S').stock == 10
         assert active.get(property_value='L').stock == 5
-
-    @pytest.mark.parametrize(
-        'create_product',
-        [
-            create_album_product,
-            create_merch_product,
-        ],
-    )
-    def test_zero_price_unpublishes_product(self, create_product):
-        """Нулевая цена снимает товар с публикации."""
-        product = create_product(
-            is_published=True,
-            price=Decimal('100.00'),
-        )
-        content = product.content
-
-        ProductService.ensure_commerce(
-            content,
-            validated_data={'price': Decimal('0.00')},
-        )
-
-        product.refresh_from_db()
-        content.refresh_from_db()
-
-        assert product.price == Decimal('0.00')
-        assert content.is_published is False
 
 
 @pytest.mark.django_db
