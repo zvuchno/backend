@@ -102,7 +102,7 @@ class ReservationService:
 
     @staticmethod
     @transaction.atomic
-    def release_order_reserve(order, status=Order.Status.CREATED) -> Order:
+    def release_order_reserve(order, status=Order.Status.CANCELED) -> Order:
         """Снимает резерв с мерча в заказе."""
         # Блокируем заказ
         order = Order.objects.select_for_update().get(pk=order.pk)
