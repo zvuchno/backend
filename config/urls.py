@@ -26,21 +26,6 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
-# Маршруты для документации API (OpenAPI 3.0)
-docs_urlpatterns = [
-    path('schema/', SpectacularAPIView.as_view(), name='schema'),
-    path(
-        'swagger/',
-        SpectacularSwaggerView.as_view(url_name='api-docs:schema'),
-        name='swagger-ui',
-    ),
-    path(
-        'redoc/',
-        SpectacularRedocView.as_view(url_name='api-docs:schema'),
-        name='redoc',
-    ),
-]
-
 # Список эндпоинтов бизнес-логики (Store, Users и т.д.)
 api_v1_urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
@@ -49,7 +34,6 @@ api_v1_urlpatterns = [
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/docs/', include((docs_urlpatterns, 'api-docs'))),
     path('api/v1/', include((api_v1_urlpatterns, 'api'))),
     path(
         'accounts/',
@@ -57,9 +41,30 @@ urlpatterns = [
     ),
 ]
 
+# Маршруты для документации API (OpenAPI 3.0)
+if settings.ENABLE_API_DOCS:
+    docs_urlpatterns = [
+        path('schema/', SpectacularAPIView.as_view(), name='schema'),
+        path(
+            'swagger/',
+            SpectacularSwaggerView.as_view(url_name='api-docs:schema'),
+            name='swagger-ui',
+        ),
+        path(
+            'redoc/',
+            SpectacularRedocView.as_view(url_name='api-docs:schema'),
+            name='redoc',
+        ),
+    ]
+    urlpatterns += [
+        path('api/docs/', include((docs_urlpatterns, 'api-docs'))),
+    ]
+
 if settings.DEBUG:
     urlpatterns += static(
         settings.MEDIA_URL,
         document_root=settings.MEDIA_ROOT,
     )
-    urlpatterns += (path('silk/', include('silk.urls', namespace='silk')),)
+    urlpatterns += [
+        path('silk/', include('silk.urls', namespace='silk')),
+    ]
