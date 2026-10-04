@@ -170,6 +170,7 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
 ]
 
+ENABLE_API_DOCS = os.getenv('ENABLE_API_DOCS', 'False') == 'True'
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Zvuchno API',
     'DESCRIPTION': 'Документация API проекта',
