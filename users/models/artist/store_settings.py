@@ -21,6 +21,9 @@ class ArtistStoreSettings(TimestampModel):
         default=False,
     )
 
+    def __str__(self):
+        return f'Настройки магазина: {self.artist.name}'
+
     class Meta:
         verbose_name = 'настройки магазина'
         verbose_name_plural = 'настройки магазинов'
