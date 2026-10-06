@@ -259,7 +259,7 @@ def test_shipment_email_sent_to_label_when_artist_has_no_account(
             'order_number': order.order_number,
             'cdek_number': 'CDEK-123456',
             'goods_list': (
-                f'• {product_variant.sku or "sku-1"} | Мерч Футболка — 1 шт.'
+                f'• {product_variant.sku or "sku-1"} | Футболка — 1 шт.'
             ),
         },
     )
