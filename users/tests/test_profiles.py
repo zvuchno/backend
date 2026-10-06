@@ -538,6 +538,7 @@ class TestArtistMeApi:
         assert artist_user.artist_profile.slug == original_slug
 
 
+@pytest.mark.usefixtures('publication_readiness_disabled')
 class TestArtistPublicApi:
     """Тесты публичного профиля артиста или лейбла."""
 
