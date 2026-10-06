@@ -23,7 +23,11 @@ from nested_admin.nested import (
     NestedTabularInline,
 )
 
-from .forms import MoneyForm, PublicationRecipientFormMixin
+from .forms import (
+    MoneyForm,
+    PublicationRecipientFormMixin,
+    TrackDeactivationProtectionMixin,
+)
 from .mixins import (
     AutoCreatedByAdminMixin,
     CommerceBaseMixin,
@@ -57,7 +61,7 @@ from store.services.track_upload import (
 )
 
 
-class TrackInlineForm(MoneyForm):
+class TrackInlineForm(TrackDeactivationProtectionMixin, MoneyForm):
     """Форма для TrackInline с редактированием цены из связанного Product.
 
     Особенности:
@@ -161,6 +165,7 @@ class TrackInline(NestedTabularInline):
     show_change_link = True
     ordering = ('position',)
     sortable_field_name = 'position'
+    can_delete = False
 
     def get_queryset(self, request):
         """Возвращает только финализированные треки альбома."""

@@ -22,6 +22,7 @@ from store.serializers import (
     TrackReadSerializer,
     TrackWriteSerializer,
 )
+from store.services import get_track_sales_stats
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
 
@@ -102,6 +103,21 @@ class TrackViewSet(
         """Удаляет трек и снимает пустой альбом с публикации."""
         track = self.get_object()
         album = track.album
+        sales = get_track_sales_stats(track)
+
+        if sales.total_sales:
+            return Response(
+                {
+                    'detail': (
+                        'Нельзя удалить трек с историей приобретения. '
+                        f'Трек куплен отдельно: {sales.direct_sales} раз; '
+                        f'в составе релиза: {sales.release_sales} раз. '
+                        'Снимите текущий релиз с продажи и создайте новый '
+                        'без этого трека.'
+                    ),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
         with transaction.atomic():
             response = super().destroy(request, *args, **kwargs)
