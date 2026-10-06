@@ -105,3 +105,16 @@ def tracks_have_sales(queryset: QuerySet[Track]) -> bool:
         )
         .exists()
     )
+
+
+def releases_have_direct_sales(queryset: QuerySet[Album]) -> bool:
+    """Проверяет наличие прямых продаж у переданных релизов."""
+    release_ids = queryset.values('pk')
+
+    return (
+        _paid_order_items()
+        .filter(
+            product_variant__product__album_id__in=release_ids,
+        )
+        .exists()
+    )

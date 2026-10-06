@@ -18,6 +18,7 @@ from .report_file_builder import ReportFileBuilder
 from .sales_statistics import (
     get_release_sales_stats,
     get_track_sales_stats,
+    releases_have_direct_sales,
     tracks_have_sales,
 )
 
@@ -37,6 +38,7 @@ __all__ = [
     'PayoutService',
     'process_yookassa_webhook',
     'ProductService',
+    'releases_have_direct_sales',
     'ReportService',
     'ReportFileBuilder',
     'ReservationService',

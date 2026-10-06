@@ -45,7 +45,11 @@ from store.models import (
     TrackGeneratedAudio,
     TrackUpload,
 )
-from store.services import ProductService
+from store.services import (
+    ProductService,
+    get_release_sales_stats,
+    releases_have_direct_sales,
+)
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import (
     MISSING_TRACKS_ERROR,
@@ -753,3 +757,35 @@ class AlbumAdmin(
         """Использует проверки публикации при редактировании списка."""
         kwargs['form'] = self.form
         return super().get_changelist_form(request, **kwargs)
+
+    def delete_model(self, request, obj):
+        """Удаляет только релиз без истории прямых продаж."""
+        sales = get_release_sales_stats(obj)
+
+        if sales.direct_sales:
+            raise ValidationError(
+                (
+                    'Нельзя физически удалить релиз с историей приобретения. '
+                    f'Релиз приобретён: {sales.direct_sales} раз. '
+                    'Снимите его с продажи, деактивировав релиз.'
+                ),
+            )
+
+        super().delete_model(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает удаление проданного релиза."""
+        if obj is not None and get_release_sales_stats(obj).direct_sales:
+            return False
+
+        return super().has_delete_permission(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        """Удаляет только релизы без истории прямых продаж."""
+        if releases_have_direct_sales(queryset):
+            raise ValidationError(
+                'Среди выбранных релизов есть релизы с историей приобретения. '
+                'Их нельзя физически удалить.',
+            )
+
+        super().delete_queryset(request, queryset)

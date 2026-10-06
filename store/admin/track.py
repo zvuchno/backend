@@ -10,7 +10,6 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.html import format_html
 
-from ..services import get_track_sales_stats, tracks_have_sales
 from .forms import MoneyForm, TrackDeactivationProtectionMixin
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -23,6 +22,7 @@ from store.models import (
     Track,
     TrackGeneratedAudio,
 )
+from store.services import get_track_sales_stats, tracks_have_sales
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
