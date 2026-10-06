@@ -241,18 +241,26 @@ class TestPlayerAlbumAPI:
         assert response.data['tracks'][0]['id'] == track.id
         assert response.data['tracks'][0]['is_favorite'] is True
 
-    def test_returns_404_for_unpublished_album(
+    @pytest.mark.parametrize(
+        'withdrawn_field',
+        (
+            'is_active',
+            'is_published',
+        ),
+    )
+    def test_returns_404_for_withdrawn_album(
         self,
         api_client,
         player_album_url,
         variant_factory,
+        withdrawn_field,
     ):
-        """Неопубликованный альбом недоступен анонимному пользователю."""
+        """Снятый релиз недоступен пользователю без приобретения."""
         variant = variant_factory('track')
         album = variant.product.track.album
 
-        album.is_published = False
-        album.save(update_fields=('is_published',))
+        setattr(album, withdrawn_field, False)
+        album.save(update_fields=(withdrawn_field,))
 
         response = api_client.get(
             player_album_url(album.id),
@@ -467,6 +475,63 @@ class TestPlayerAlbumAPI:
             'url': player_track_play_url(track.id),
         }
 
+    @pytest.mark.parametrize(
+        'withdrawn_field',
+        (
+            'is_active',
+            'is_published',
+        ),
+    )
+    def test_purchased_release_remains_available_after_withdrawal(
+        self,
+        api_client,
+        listener_user,
+        player_album_url,
+        player_track_play_url,
+        variant_factory,
+        withdrawn_field,
+    ):
+        """Покупатель продолжает видеть снятый релиз в плеере."""
+        album_variant = variant_factory(
+            'album',
+            name='Купленный релиз',
+        )
+        album = album_variant.product.album
+
+        track_variant = variant_factory(
+            'track',
+            album=album,
+            name='Трек релиза',
+        )
+        track = track_variant.product.track
+
+        self.create_ready_stream(track)
+        create_paid_order(listener_user, album_variant)
+
+        setattr(album, withdrawn_field, False)
+        album.save(update_fields=(withdrawn_field,))
+
+        api_client.force_authenticate(user=listener_user)
+
+        response = api_client.get(
+            player_album_url(album.id),
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        assert len(response.data['tracks']) == 1
+
+        player_track = response.data['tracks'][0]
+
+        assert player_track['id'] == track.id
+        assert player_track['purchase'] is None
+        assert player_track['playback'] == {
+            'status': TrackGeneratedAudio.ProcessingStatus.READY,
+            'kind': 'full',
+            'duration': track.duration,
+            'url': player_track_play_url(track.id),
+        }
+
 
 class TestPlayerTrackPlayAPI:
     """Тесты запуска воспроизведения трека."""
@@ -658,17 +723,26 @@ class TestPlayerTrackPlayAPI:
             'code': 'preview_duration_missing',
         }
 
-    def test_returns_404_for_inaccessible_track(
+    @pytest.mark.parametrize(
+        'withdrawn_field',
+        (
+            'is_active',
+            'is_published',
+        ),
+    )
+    def test_returns_404_for_track_from_withdrawn_release(
         self,
         api_client,
         player_track_play_url,
         variant_factory,
+        withdrawn_field,
     ):
-        """Трек неопубликованного альбома нельзя запустить."""
+        """Трек снятого релиза недоступен без приобретения."""
         track = self.create_track(variant_factory)
 
-        track.album.is_published = False
-        track.album.save(update_fields=('is_published',))
+        album = track.album
+        setattr(album, withdrawn_field, False)
+        album.save(update_fields=(withdrawn_field,))
 
         response = api_client.get(
             player_track_play_url(track.id),
@@ -814,6 +888,51 @@ class TestPlayerTrackPlayAPI:
             'exists',
             lambda name: True,
         )
+
+        response = api_client.get(
+            player_track_play_url(track.id),
+        )
+
+        assert response.status_code == status.HTTP_302_FOUND
+        assert response['Location'] == generated.stream_file.url
+
+    @pytest.mark.parametrize(
+        'withdrawn_field',
+        (
+            'is_active',
+            'is_published',
+        ),
+    )
+    def test_purchased_track_plays_after_release_withdrawal(
+        self,
+        api_client,
+        listener_user,
+        monkeypatch,
+        player_track_play_url,
+        variant_factory,
+        withdrawn_field,
+    ):
+        """Купленный трек играет после снятия родительского релиза."""
+        variant = variant_factory(
+            'track',
+            name='Купленный трек',
+        )
+        track = variant.product.track
+
+        generated = self.create_ready_stream(track)
+        create_paid_order(listener_user, variant)
+
+        album = track.album
+        setattr(album, withdrawn_field, False)
+        album.save(update_fields=(withdrawn_field,))
+
+        monkeypatch.setattr(
+            generated.stream_file.storage,
+            'exists',
+            lambda name: True,
+        )
+
+        api_client.force_authenticate(user=listener_user)
 
         response = api_client.get(
             player_track_play_url(track.id),
