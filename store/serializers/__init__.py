@@ -58,6 +58,7 @@ from .sale import ArtistSaleDetailSerializer, ArtistSaleSerializer
 from .track import (
     TrackReadDetailSerializer,
     TrackReadSerializer,
+    TrackReorderSerializer,
     TrackWriteSerializer,
 )
 from .track_upload import (
@@ -113,6 +114,7 @@ __all__ = [
     'PurchasedMusicDLItemSerializer',
     'TrackReadDetailSerializer',
     'TrackReadSerializer',
+    'TrackReorderSerializer',
     'TrackWriteSerializer',
     'TrackUploadFileInitiateSerializer',
     'TrackUploadInitiateSerializer',

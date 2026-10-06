@@ -10,6 +10,7 @@ from drf_spectacular.utils import (
 from store.serializers import (
     TrackReadDetailSerializer,
     TrackReadSerializer,
+    TrackReorderSerializer,
     TrackWriteSerializer,
 )
 
@@ -108,3 +109,22 @@ track_schema = extend_schema_view(
         description='Удаляет запись трека.',
     ),
 )
+
+
+def track_reorder_schema(view_func):
+    """Декоратор для документирования экшена изменения порядка треков."""
+    return extend_schema(
+        methods=['PATCH'],
+        summary='Изменить порядок треков',
+        description=(
+            'Изменяет порядок всех активных треков указанного альбома. '
+            'Необходимо передать ID альбома и полный список ID его '
+            'треков в требуемом порядке.'
+        ),
+        request=TrackReorderSerializer,
+        responses={
+            200: TrackReadSerializer(many=True),
+        },
+        tags=TRACKS_TAGS,
+        filters=False,
+    )(view_func)

@@ -10,7 +10,7 @@ from common.access import can_manage_artist
 
 from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
-from store.models import Track
+from store.models import Album, Track
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
 
 
@@ -90,7 +90,6 @@ class TrackWriteSerializer(
             'name',
             'album',
             'audio_file',
-            'position',
             'price',
             'allow_overpay',
             'description',
@@ -122,3 +121,28 @@ class TrackWriteSerializer(
             )
 
         return album
+
+
+class TrackReorderSerializer(serializers.Serializer):
+    """Порядок треков альбома."""
+
+    album = serializers.PrimaryKeyRelatedField(queryset=Album.objects.all())
+    track_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=False,
+    )
+
+    def validate_album(self, album):
+        request = self.context['request']
+        if not can_manage_artist(request.user, album.artist):
+            raise serializers.ValidationError(
+                'Нельзя менять порядок треков в чужом альбоме.',
+            )
+        return album
+
+    def validate_track_ids(self, track_ids):
+        if len(track_ids) != len(set(track_ids)):
+            raise serializers.ValidationError(
+                'Треки в списке не должны повторяться.',
+            )
+        return track_ids

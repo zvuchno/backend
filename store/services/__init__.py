@@ -15,6 +15,7 @@ from .payment import create_yookassa_payment, process_yookassa_webhook
 from .payout import PayoutService
 from .report import ReportService
 from .report_file_builder import ReportFileBuilder
+from .track import reorder_tracks
 
 __all__ = [
     'CartCalculationService',
@@ -33,4 +34,5 @@ __all__ = [
     'ReportService',
     'ReportFileBuilder',
     'ReservationService',
+    'reorder_tracks',
 ]
