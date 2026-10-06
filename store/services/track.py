@@ -28,4 +28,4 @@ def reorder_tracks(album, track_ids):
             by_id[track_id].position = position
 
         Track.objects.bulk_update(by_id.values(), ['position'])
-        lambda: AlbumArchiveScheduler.schedule_by_id(album.pk)
+        AlbumArchiveScheduler.schedule_by_id(album.pk)

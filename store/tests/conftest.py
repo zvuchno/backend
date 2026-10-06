@@ -358,3 +358,9 @@ def promocode_detail_url():
         )
 
     return build
+
+
+@pytest.fixture
+def track_reorder_url():
+    """Возвращает URL-адрес эндпоинта изменения порядка треков."""
+    return reverse('api:store:tracks-reorder')
