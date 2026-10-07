@@ -4,13 +4,13 @@
 TODO: позже перевести замену audio_file в админке на direct upload.
 """
 
+from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Q
 from django.utils.html import format_html
 
-from .forms import MoneyForm
+from .forms import MoneyForm, TrackDeactivationProtectionMixin
 from .mixins import (
     AutoCreatedByAdminMixin,
     CommerceBaseMixin,
@@ -18,44 +18,14 @@ from .mixins import (
 )
 from store.models import (
     Album,
-    Order,
-    OrderItem,
-    Payment,
     Product,
     Track,
     TrackGeneratedAudio,
 )
+from store.services import get_track_sales_stats, tracks_have_sales
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
-
-
-def tracks_were_purchased(queryset) -> bool:
-    """Проверяет, есть ли история приобретения у переданных треков."""
-    track_ids = queryset.values_list('id', flat=True)
-    album_ids = queryset.values_list('album_id', flat=True)
-
-    return (
-        OrderItem.objects
-        .filter(
-            Q(order__status=Order.Status.PAID)
-            | Q(
-                order__payments__status=Payment.PaymentStatus.SUCCEEDED,
-            ),
-        )
-        .filter(
-            Q(product_variant__product__track_id__in=track_ids)
-            | Q(product_variant__product__album_id__in=album_ids),
-        )
-        .exists()
-    )
-
-
-def track_was_purchased(track: Track) -> bool:
-    """Проверяет наличие истории приобретения трека."""
-    return tracks_were_purchased(
-        Track.objects.filter(pk=track.pk),
-    )
 
 
 class ProductInline(admin.StackedInline):
@@ -152,6 +122,17 @@ class TrackGeneratedAudioInline(admin.StackedInline):
         return False
 
 
+class TrackAdminForm(
+    TrackDeactivationProtectionMixin,
+    forms.ModelForm,
+):
+    """Форма трека с защитой приобретённого контента."""
+
+    class Meta:
+        model = Track
+        fields = '__all__'
+
+
 @admin.register(Track)
 class TrackAdmin(
     AutoCreatedByAdminMixin,
@@ -160,6 +141,8 @@ class TrackAdmin(
     admin.ModelAdmin,
 ):
     """Админка для модели Track."""
+
+    form = TrackAdminForm
 
     list_display = (
         'name',
@@ -287,10 +270,17 @@ class TrackAdmin(
 
     def delete_model(self, request, obj):
         """Удаляет трек и актуализирует состояние альбома."""
-        if track_was_purchased(obj):
+        sales = get_track_sales_stats(obj)
+
+        if sales.total_sales:
             raise ValidationError(
-                'Нельзя физически удалить ранее приобретённый трек. '
-                'Деактивируйте его.',
+                (
+                    'Нельзя физически удалить трек с историей приобретения. '
+                    f'Трек куплен отдельно: {sales.direct_sales} раз; '
+                    f'в составе релиза: {sales.release_sales} раз. '
+                    'Чтобы изменить состав, снимите текущий релиз с продажи '
+                    'и создайте новый без этого трека.'
+                ),
             )
 
         album_id = obj.album_id
@@ -307,10 +297,10 @@ class TrackAdmin(
 
     def delete_queryset(self, request, queryset):
         """Удаляет только треки без истории приобретения."""
-        if tracks_were_purchased(queryset):
+        if tracks_have_sales(queryset):
             raise ValidationError(
-                'Нельзя физически удалить ранее приобретённые треки. '
-                'Деактивируйте их.',
+                'Среди выбранных треков есть треки с историей приобретения. '
+                'Их нельзя физически удалить.',
             )
 
         album_ids = set(queryset.values_list('album_id', flat=True))
@@ -329,7 +319,12 @@ class TrackAdmin(
 
     def has_delete_permission(self, request, obj=None):
         """Запрещает удаление трека с историей приобретения."""
-        if obj is not None and track_was_purchased(obj):
+        if obj is not None and get_track_sales_stats(obj).total_sales:
             return False
 
         return super().has_delete_permission(request, obj)
+
+    def get_changelist_form(self, request, **kwargs):
+        """Использует проверки формы при редактировании списка."""
+        kwargs['form'] = self.form
+        return super().get_changelist_form(request, **kwargs)
