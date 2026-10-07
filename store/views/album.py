@@ -18,6 +18,7 @@ from store.serializers import (
     AlbumReadSerializer,
     AlbumWriteSerializer,
 )
+from store.services import get_release_sales_stats
 
 
 @album_schema
@@ -122,3 +123,22 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             context=self.get_serializer_context(),
         )
         return Response(read_serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        """Запрещает удаление релиза с историей приобретения."""
+        album = self.get_object()
+        sales = get_release_sales_stats(album)
+
+        if sales.direct_sales:
+            return Response(
+                {
+                    'detail': (
+                        'Нельзя удалить релиз с историей приобретения. '
+                        f'Релиз приобретён: {sales.direct_sales} раз. '
+                        'Снимите релиз с публикации.'
+                    ),
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return super().destroy(request, *args, **kwargs)

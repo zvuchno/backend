@@ -15,6 +15,12 @@ from .payment import create_yookassa_payment, process_yookassa_webhook
 from .payout import PayoutService
 from .report import ReportService
 from .report_file_builder import ReportFileBuilder
+from .sales_statistics import (
+    get_release_sales_stats,
+    get_track_sales_stats,
+    releases_have_direct_sales,
+    tracks_have_sales,
+)
 from .track import reorder_tracks
 
 __all__ = [
@@ -25,14 +31,18 @@ __all__ = [
     'DownloadFilenameService',
     'DownloadLink',
     'DownloadLinkService',
+    'get_release_sales_stats',
+    'get_track_sales_stats',
     'LocationService',
     'MerchImageService',
     'OrderService',
     'PayoutService',
     'process_yookassa_webhook',
     'ProductService',
+    'releases_have_direct_sales',
+    'reorder_tracks',
     'ReportService',
     'ReportFileBuilder',
     'ReservationService',
-    'reorder_tracks',
+    'tracks_have_sales',
 ]

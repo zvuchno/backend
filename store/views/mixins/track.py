@@ -1,6 +1,6 @@
 from django.db.models import BooleanField, Exists, OuterRef, Value
 
-from store.models import Favorite, Track
+from store.models import Favorite, ListenerTrackAccess, Track
 
 
 class TrackReadQuerysetMixin:
@@ -29,6 +29,15 @@ class TrackReadQuerysetMixin:
                 user,
                 preview=player_preview,
             )
+
+            if user.is_authenticated:
+                accessible_track_ids = ListenerTrackAccess.objects.filter(
+                    user=user,
+                ).values('track_id')
+
+                queryset = queryset | Track.objects.filter(
+                    pk__in=accessible_track_ids,
+                )
 
         queryset = queryset.select_related(
             'album',

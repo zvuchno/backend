@@ -65,6 +65,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
                 product__price__gt=0,
                 is_active=True,
                 product__track__album__is_published=True,
+                product__track__album__is_active=True,
             )
             .order_by('id')
             .values('pk')[:1],
@@ -120,6 +121,17 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
             )
             albums = albums | preview_public
 
+        if self.request.user.is_authenticated:
+            accessible_album_ids = ListenerTrackAccess.objects.filter(
+                user=self.request.user,
+            ).values('track__album_id')
+
+            purchased_albums = Album.objects.filter(
+                pk__in=accessible_album_ids,
+            )
+
+            albums = albums | purchased_albums
+
         return albums.select_related('artist').prefetch_related(
             Prefetch(
                 'tracks',
@@ -144,16 +156,21 @@ class PlayerTrackPlayView(APIView):
 
     def get(self, request, track_id: int):
         """Перенаправляет на доступную версию трека."""
-        track = (
-            Track.objects
-            .for_player(
-                request.user,
-                preview=can_preview_catalog_drafts(request.user),
-            )
-            .select_related('generated')
-            .filter(pk=track_id)
-            .first()
+        tracks = Track.objects.for_player(
+            request.user,
+            preview=can_preview_catalog_drafts(request.user),
         )
+
+        if request.user.is_authenticated:
+            accessible_track_ids = ListenerTrackAccess.objects.filter(
+                user=request.user,
+            ).values('track_id')
+
+            tracks = tracks | Track.objects.filter(
+                pk__in=accessible_track_ids,
+            )
+
+        track = tracks.select_related('generated').filter(pk=track_id).first()
 
         if track is None:
             raise Http404
