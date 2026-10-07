@@ -1,4 +1,5 @@
 from .album import AlbumViewSet
+from .bonus import BonusViewSet
 from .cart import CartViewSet
 from .catalog import (
     CatalogMerchDetailView,
@@ -41,6 +42,7 @@ __all__ = [
     'AlbumViewSet',
     'ArtistReportViewSet',
     'ArtistSaleViewSet',
+    'BonusViewSet',
     'CartViewSet',
     'CatalogMerchDetailView',
     'CatalogReleaseDetailView',

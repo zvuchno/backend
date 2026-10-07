@@ -3,6 +3,11 @@ from .album import (
     AlbumReadSerializer,
     AlbumWriteSerializer,
 )
+from .bonus import (
+    BonusReadDetailSerializer,
+    BonusReadSerializer,
+    BonusWriteSerializer,
+)
 from .cart import (
     ApplyPromocodeSerializer,
     CartItemWriteSerializer,
@@ -79,6 +84,9 @@ __all__ = [
     'ArtistSaleDetailSerializer',
     'ArtistSaleSerializer',
     'BaseCardSerializer',
+    'BonusReadDetailSerializer',
+    'BonusReadSerializer',
+    'BonusWriteSerializer',
     'CartItemWriteSerializer',
     'CatalogCardSerializer',
     'CatalogCardTargetSerializer',

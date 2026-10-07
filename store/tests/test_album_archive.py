@@ -64,10 +64,14 @@ def prepare_archive(album):
     tracks = list(
         album.tracks.filter(is_active=True).order_by('position', 'id'),
     )
+    bonuses = list(
+        album.bonuses.filter(is_active=True).order_by('name', 'id'),
+    )
 
     expected_hash = AlbumArchiveService.calculate_content_hash(
         album=album,
         tracks=tracks,
+        bonuses=bonuses,
     )
 
     archive = AlbumArchive.objects.create(
@@ -165,10 +169,14 @@ def test_content_hash_changes_after_track_update(
     tracks = list(
         album.tracks.filter(is_active=True).order_by('position', 'id'),
     )
+    bonuses = list(
+        album.bonuses.filter(is_active=True).order_by('name', 'id'),
+    )
 
     old_hash = AlbumArchiveService.calculate_content_hash(
         album=album,
         tracks=tracks,
+        bonuses=bonuses,
     )
 
     track = tracks[0]
@@ -180,6 +188,7 @@ def test_content_hash_changes_after_track_update(
         tracks=list(
             album.tracks.order_by('position', 'id'),
         ),
+        bonuses=bonuses,
     )
 
     assert new_hash != old_hash
@@ -289,9 +298,14 @@ def test_scheduler_rebuilds_archive_after_track_deactivation(
     active_tracks = list(
         album.tracks.filter(is_active=True).order_by('position', 'id'),
     )
+    bonuses = list(
+        album.bonuses.filter(is_active=True).order_by('name', 'id'),
+    )
+
     old_hash = AlbumArchiveService.calculate_content_hash(
         album=album,
         tracks=active_tracks,
+        bonuses=bonuses,
     )
 
     AlbumArchive.objects.create(
@@ -313,6 +327,7 @@ def test_scheduler_rebuilds_archive_after_track_deactivation(
         tracks=list(
             album.tracks.filter(is_active=True).order_by('position', 'id'),
         ),
+        bonuses=bonuses,
     )
 
     assert scheduled is True

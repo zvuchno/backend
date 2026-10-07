@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from store.models import Album
+from store.models import Album, Bonus
 from store.services.album_archive import AlbumArchiveScheduler
 
 
@@ -24,6 +24,28 @@ def schedule_album_archive_after_save(
         return
 
     album_id = instance.pk
+
+    transaction.on_commit(
+        lambda: AlbumArchiveScheduler.schedule_by_id(album_id),
+    )
+
+
+@receiver(
+    post_save,
+    sender=Bonus,
+    dispatch_uid='store.schedule_album_archive_after_bonus_save',
+)
+def schedule_album_archive_after_bonus_save(
+    sender,
+    instance: Bonus,
+    raw: bool,
+    **kwargs,
+) -> None:
+    """Планирует пересборку архива после сохранения бонуса."""
+    if raw:
+        return
+
+    album_id = instance.album_id
 
     transaction.on_commit(
         lambda: AlbumArchiveScheduler.schedule_by_id(album_id),

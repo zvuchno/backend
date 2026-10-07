@@ -7,6 +7,7 @@
 """
 
 from .album import album_schema
+from .bonus import bonus_schema
 from .cart import cart_schema
 from .cart_promocode import (
     cart_apply_promocode_schema,
@@ -55,6 +56,7 @@ __all__ = [
     'archive_download_link_schema',
     'artist_reports_schema',
     'artist_sale_schema',
+    'bonus_schema',
     'cart_apply_promocode_schema',
     'cart_remove_promocode_schema',
     'cart_schema',
