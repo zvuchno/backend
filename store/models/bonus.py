@@ -48,4 +48,4 @@ class Bonus(ActivatableModel, TimestampModel):
         ordering = ('name',)
 
     def __str__(self):
-        return self.name[:MAX_STR_LENGTH]
+        return f'{self.name[:MAX_STR_LENGTH]} [ id: {self.id} ]'
