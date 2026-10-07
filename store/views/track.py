@@ -4,6 +4,7 @@ from django.db import transaction
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from common.access import managed_artist_q
@@ -16,15 +17,17 @@ from .mixins import (
 )
 from store.filters import TrackFilter
 from store.models import Track
-from store.schema import track_schema
+from store.schema import track_reorder_schema, track_schema
 from store.serializers import (
     TrackReadDetailSerializer,
     TrackReadSerializer,
+    TrackReorderSerializer,
     TrackWriteSerializer,
 )
 from store.services import get_track_sales_stats
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
+from store.services.track import reorder_tracks
 
 
 @track_schema
@@ -128,3 +131,40 @@ class TrackViewSet(
             )
 
         return response
+
+    @track_reorder_schema
+    @action(
+        detail=False,
+        methods=['patch'],
+        url_path='reorder',
+        pagination_class=None,
+    )
+    def reorder(self, request):
+        """Задаёт порядок треков альбома за один запрос."""
+        serializer = TrackReorderSerializer(
+            data=request.data,
+            context=self.get_serializer_context(),
+        )
+        serializer.is_valid(raise_exception=True)
+        album = serializer.validated_data['album']
+        reorder_tracks(
+            album,
+            serializer.validated_data['track_ids'],
+        )
+
+        tracks = (
+            self
+            .get_queryset()
+            .filter(
+                album=album,
+            )
+            .order_by('position')
+        )
+
+        return Response(
+            TrackReadSerializer(
+                tracks,
+                many=True,
+                context=self.get_serializer_context(),
+            ).data,
+        )

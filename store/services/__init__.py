@@ -21,6 +21,7 @@ from .sales_statistics import (
     releases_have_direct_sales,
     tracks_have_sales,
 )
+from .track import reorder_tracks
 
 __all__ = [
     'CartCalculationService',
@@ -39,6 +40,7 @@ __all__ = [
     'process_yookassa_webhook',
     'ProductService',
     'releases_have_direct_sales',
+    'reorder_tracks',
     'ReportService',
     'ReportFileBuilder',
     'ReservationService',
