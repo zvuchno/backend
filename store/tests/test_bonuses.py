@@ -316,9 +316,12 @@ class TestBonusArchive:
     def test_adding_bonus_changes_archive_hash(
         self,
         album,
-        track,
     ):
         """Добавление бонуса меняет hash содержимого архива."""
+        TrackFactory(
+            album=album,
+            position=1,
+        )
         assert AlbumArchiveScheduler.schedule(album) is True
 
         archive = AlbumArchive.objects.get(album=album)

@@ -16,10 +16,10 @@ from collections.abc import Callable
 from datetime import timedelta
 
 import pytest
+from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
-from config import settings
 from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.models import (
     ArtistProfile,
