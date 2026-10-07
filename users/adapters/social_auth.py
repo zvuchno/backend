@@ -5,6 +5,7 @@ import logging
 from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
@@ -12,7 +13,6 @@ from django.shortcuts import redirect
 from common.utils import get_client_ip, get_user_agent
 from common.utils.urls import build_frontend_url
 
-from config import settings
 from users.constants import (
     SOCIAL_AUTH_ERRORS,
     SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,

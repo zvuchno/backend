@@ -1,7 +1,7 @@
 import pytest
+from django.conf import settings
 from django.db import IntegrityError, transaction
 
-from config import settings
 from store.models import Album, Merch
 from store.tests.factories import AlbumFactory, MerchFactory
 from users.models import ArtistProfile
