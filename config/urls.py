@@ -25,6 +25,7 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
+from rest_framework.permissions import AllowAny
 
 # Список эндпоинтов бизнес-логики (Store, Users и т.д.)
 api_v1_urlpatterns = [
@@ -44,15 +45,27 @@ urlpatterns = [
 # Маршруты для документации API (OpenAPI 3.0)
 if settings.ENABLE_API_DOCS:
     docs_urlpatterns = [
-        path('schema/', SpectacularAPIView.as_view(), name='schema'),
+        path(
+            'schema/',
+            SpectacularAPIView.as_view(
+                permission_classes=(AllowAny,),
+            ),
+            name='schema',
+        ),
         path(
             'swagger/',
-            SpectacularSwaggerView.as_view(url_name='api-docs:schema'),
+            SpectacularSwaggerView.as_view(
+                permission_classes=(AllowAny,),
+                url_name='api-docs:schema',
+            ),
             name='swagger-ui',
         ),
         path(
             'redoc/',
-            SpectacularRedocView.as_view(url_name='api-docs:schema'),
+            SpectacularRedocView.as_view(
+                permission_classes=(AllowAny,),
+                url_name='api-docs:schema',
+            ),
             name='redoc',
         ),
     ]
