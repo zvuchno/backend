@@ -1,12 +1,12 @@
 """Сервис восстановления пароля."""
 
+from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
 from common.utils.urls import build_frontend_url
 
-from config import settings
 from users.services import send_password_reset_email
 
 

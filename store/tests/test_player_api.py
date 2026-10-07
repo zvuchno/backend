@@ -137,6 +137,11 @@ class TestPlayerAlbumAPI:
             'duration': None,
             'url': None,
         }
+        assert (
+            response.data['artist_slug']
+            == first_variant.product.track.album.artist.slug
+        )
+        assert tracks[0]['artist_slug'] == album.artist.slug
 
     def test_does_not_return_inactive_tracks(
         self,
@@ -593,13 +598,15 @@ class TestPlayerTrackPlayAPI:
         assert response.status_code == status.HTTP_302_FOUND
         assert response['Location'] == generated.preview_file.url
 
-    def test_missing_generated_audio_returns_pending_status(
+    def test_missing_generated_audio_returns_pending_status_in_public_mode(
         self,
         api_client,
         player_track_play_url,
         variant_factory,
+        settings,
     ):
         """Трек без производного аудио считается ожидающим обработки."""
+        settings.PLAYER_STREAM_MODE = 'public'
         track = self.create_track(variant_factory)
 
         response = api_client.get(

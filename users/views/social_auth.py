@@ -1,5 +1,6 @@
 """Представления для входа через сторонние сервисы."""
 
+from django.conf import settings
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from rest_framework.permissions import (
@@ -10,7 +11,6 @@ from rest_framework.views import APIView
 
 from common.utils.urls import build_frontend_url
 
-from config import settings
 from users.constants import SOCIAL_AUTH_ERRORS
 from users.schemas import (
     social_error_codes_schema,

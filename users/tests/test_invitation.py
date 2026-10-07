@@ -4,12 +4,12 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework import status
 
-from config import settings
 from users.models import (
     ArtistProfileClaimInvitation,
     TokenInvitation,

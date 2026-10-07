@@ -105,6 +105,10 @@ class PlayerAlbumTrackSerializer(TrackReadSerializer):
         allow_null=True,
         read_only=True,
     )
+    artist_slug = serializers.CharField(
+        source='album.artist.slug',
+        read_only=True,
+    )
     playback = TrackPlaybackSerializer(
         source='*',
         read_only=True,
@@ -112,6 +116,7 @@ class PlayerAlbumTrackSerializer(TrackReadSerializer):
 
     class Meta(TrackReadSerializer.Meta):
         fields = TrackReadSerializer.Meta.fields + (
+            'artist_slug',
             'favorite_variant_id',
             'playback',
         )
@@ -143,6 +148,10 @@ class PlayerAlbumSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     artist_name = serializers.SerializerMethodField()
+    artist_slug = serializers.CharField(
+        source='artist.slug',
+        read_only=True,
+    )
 
     class Meta:
         model = Album
@@ -150,6 +159,7 @@ class PlayerAlbumSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'artist_name',
+            'artist_slug',
             'cover_image',
             'tracks',
         )

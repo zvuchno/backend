@@ -78,3 +78,7 @@ class EncryptedDateField(models.DateField):
         )
 
         return super().to_python(plaintext)
+
+    def get_internal_type(self):
+        """Возвращает фактический тип хранения значения в БД."""
+        return 'TextField'

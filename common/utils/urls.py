@@ -1,6 +1,6 @@
 from urllib.parse import urlencode, urljoin
 
-from config import settings
+from django.conf import settings
 
 
 def build_frontend_url(path: str, params: dict[str, str]) -> str:
