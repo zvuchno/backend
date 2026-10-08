@@ -1,5 +1,5 @@
 [![Zvuchno deploy (production)](https://github.com/zvuchno/backend/actions/workflows/deploy-prod.yml/badge.svg)](https://github.com/zvuchno/backend/actions/workflows/deploy-prod.yml)
-[![Website](https://img.shields.io/badge/Visit-Live%20Site-brightgreen)](https://dev.zvuchno.space/)
+[![Website](https://img.shields.io/badge/Visit-Live%20Site-brightgreen)](https://zvuchno.space/)
 
 # Звучно — Backend
 
