@@ -76,7 +76,7 @@ validate_file_size = FileSizeValidator(
 validate_audiofile_size = FileSizeValidator(
     MAX_AUDIOFILE_SIZE_MB,
 )
-validate_bonusfile_size = FileSizeValidator(
+validate_bonus_file_size = FileSizeValidator(
     MAX_BONUSFILE_SIZE_MB,
 )
 

@@ -7,7 +7,6 @@
 from django.contrib import admin
 
 from .album import AlbumAdmin
-from .bonus import BonusAdmin
 from .cart import CartAdmin
 from .delivery import DeliveryAdmin
 from .favorite import FavoriteAdmin
@@ -25,7 +24,6 @@ from .track import TrackAdmin
 
 __all__ = [
     'AlbumAdmin',
-    'BonusAdmin',
     'CartAdmin',
     'DeliveryAdmin',
     'FavoriteAdmin',

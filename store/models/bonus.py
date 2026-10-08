@@ -12,8 +12,8 @@ from store.constants import (
     MAX_STR_LENGTH,
 )
 from store.models import Album
-from store.upload_paths import bonus_audio_upload_to
-from store.validators import validate_bonusfile_size
+from store.upload_paths import bonus_upload_to
+from store.validators import validate_bonus_file_size
 
 
 class Bonus(ActivatableModel, TimestampModel):
@@ -31,13 +31,13 @@ class Bonus(ActivatableModel, TimestampModel):
     )
     bonus_file = models.FileField(
         'Файл бонуса',
-        upload_to=bonus_audio_upload_to,
+        upload_to=bonus_upload_to,
         storage=get_public_media_storage,
         validators=(
             FileExtensionValidator(
                 allowed_extensions=ALLOWED_BONUS_EXTENSIONS,
             ),
-            validate_bonusfile_size,
+            validate_bonus_file_size,
         ),
     )
     description = models.TextField('Описание', blank=True, default='')

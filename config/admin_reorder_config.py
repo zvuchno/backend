@@ -32,7 +32,6 @@ ADMIN_REORDER = (
             'store.Genre',
             'store.MerchKind',
             'store.Promocode',
-            'store.Bonus',
         ),
     },
     {
