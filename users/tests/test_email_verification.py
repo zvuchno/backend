@@ -202,7 +202,13 @@ class TestEmailVerificationCode:
 
         verification = EmailVerificationCode.objects.get(user=user)
         verification.attempts = 3
-        verification.save(update_fields=('attempts',))
+        verification.expires_at -= timedelta(minutes=1)
+        verification.save(
+            update_fields=(
+                'attempts',
+                'expires_at',
+            ),
+        )
 
         old_hash = verification.code_hash
         old_expires_at = verification.expires_at
