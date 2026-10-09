@@ -1,6 +1,7 @@
 """ViewSet для работы с моделью бонусов."""
 
 from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 
 from common.access import managed_artist_q
@@ -27,8 +28,8 @@ class BonusViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     queryset = Bonus.objects.all()
     permission_classes = (IsArtistOrLabel, IsStoreObjectManager)
     http_method_names = ('get', 'post', 'patch', 'delete')
+    filter_backends = (DjangoFilterBackend,)
     filterset_class = BonusFilter
-    ordering = ('name',)
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
@@ -45,7 +46,6 @@ class BonusViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
             .get_queryset()
             .select_related(
                 'album',
-                'album__artist',
             )
         )
 

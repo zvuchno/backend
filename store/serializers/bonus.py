@@ -12,7 +12,7 @@ class BonusReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bonus
-        fields = ('name',)
+        fields = ('id', 'name')
 
 
 class BonusReadDetailSerializer(serializers.ModelSerializer):
@@ -31,17 +31,32 @@ class BonusWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bonus
         fields = (
+            'id',
             'album',
             'name',
             'bonus_file',
             'description',
         )
+        read_only_fields = ('id',)
+
+    def __init__(self, *args, **kwargs):
+        """Если вызван для обновления существующего объекта."""
+        super().__init__(*args, **kwargs)
+        if self.instance is not None:
+            self.fields['album'].read_only = True
 
     def validate_album(self, album):
         """Проверяет, что артист работает только со своим альбомом."""
-        request = self.context['request']
+        request = self.context.get('request')
 
-        if not can_manage_artist(request.user, album.artist):
+        if (
+            request
+            and request.user
+            and not can_manage_artist(
+                request.user,
+                album.artist,
+            )
+        ):
             raise serializers.ValidationError(
                 'Нельзя добавить бонус в чужой альбом.',
             )

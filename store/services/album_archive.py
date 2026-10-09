@@ -5,7 +5,7 @@ import re
 import shutil
 import tempfile
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from django.core.files import File
 from django.db import transaction
@@ -268,6 +268,8 @@ class AlbumArchiveService:
                     field_file=track.audio_file,
                     entry_name=cls._get_track_filename(track),
                 )
+
+            used_bonus_names: set[str] = set()
             for bonus in bonuses:
                 if not bonus.bonus_file:
                     raise ValueError(
@@ -277,7 +279,10 @@ class AlbumArchiveService:
                 cls._write_storage_file(
                     zip_file=zip_file,
                     field_file=bonus.bonus_file,
-                    entry_name=cls._get_bonus_filename(bonus),
+                    entry_name=cls._make_unique_entry_name(
+                        cls._get_bonus_filename(bonus),
+                        used_bonus_names,
+                    ),
                 )
 
     @classmethod
@@ -320,6 +325,22 @@ class AlbumArchiveService:
         safe_name = cls._sanitize_filename(bonus.name)
 
         return f'bonuses/{safe_name}{suffix}'
+
+    @staticmethod
+    def _make_unique_entry_name(entry_name: str, used_names: set[str]) -> str:
+        """Возвращает уникальное имя записи без учёта регистра."""
+        path = PurePosixPath(entry_name)
+        candidate = entry_name
+        counter = 1
+
+        while candidate.casefold() in used_names:
+            counter += 1
+            candidate = str(
+                path.with_name(f'{path.stem} ({counter}){path.suffix}'),
+            )
+
+        used_names.add(candidate.casefold())
+        return candidate
 
     @staticmethod
     def _sanitize_filename(value: str) -> str:

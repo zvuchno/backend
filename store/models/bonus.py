@@ -4,7 +4,7 @@ from django.core.validators import FileExtensionValidator
 from django.db import models
 
 from common.models.abstract import ActivatableModel, TimestampModel
-from common.storages import get_public_media_storage
+from common.storages import get_private_media_storage
 
 from store.constants import (
     ALLOWED_BONUS_EXTENSIONS,
@@ -32,7 +32,7 @@ class Bonus(ActivatableModel, TimestampModel):
     bonus_file = models.FileField(
         'Файл бонуса',
         upload_to=bonus_upload_to,
-        storage=get_public_media_storage,
+        storage=get_private_media_storage,
         validators=(
             FileExtensionValidator(
                 allowed_extensions=ALLOWED_BONUS_EXTENSIONS,

@@ -1,6 +1,7 @@
 """Тесты бонусов релиза."""
 
 from io import BytesIO
+from unittest import mock
 from zipfile import ZipFile
 
 import pytest
@@ -15,6 +16,8 @@ from store.services.album_archive import (
 )
 from store.tests.factories import AlbumFactory, BonusFactory, TrackFactory
 from store.validators import FileSizeValidator
+
+TASK_PATH = 'store.tasks.album_archive.build_album_archive.apply_async'
 
 
 @pytest.fixture
@@ -360,3 +363,49 @@ class TestBonusArchive:
             BonusFactory(album=album)
 
         assert scheduled_album_ids == [album.id]
+
+    def test_bonus_soft_delete_schedules_archive_rebuild(
+        self,
+        django_capture_on_commit_callbacks,
+        bonus,
+    ):
+        """Мягкое удаление бонуса ставит пересборку архива альбома."""
+        album = bonus.album
+        TrackFactory(album=album, position=1)
+
+        AlbumArchive.objects.create(
+            album=album,
+            status=AlbumArchive.Status.READY,
+            content_hash=AlbumArchiveService.calculate_content_hash(
+                album=album,
+                tracks=list(
+                    album.tracks.filter(is_active=True).order_by(
+                        'position',
+                        'id',
+                    ),
+                ),
+                bonuses=list(
+                    album.bonuses.filter(is_active=True).order_by('id'),
+                ),
+            ),
+        )
+
+        with mock.patch(TASK_PATH) as apply_async:
+            with django_capture_on_commit_callbacks(execute=True):
+                bonus.is_active = False
+                bonus.save()
+
+        apply_async.assert_called_once()
+
+    def test_duplicate_entry_names_are_made_unique(self, album):
+        """Одинаковые имена файлов в архиве получают уникальные суффиксы."""
+        used = set()
+        first = AlbumArchiveService._make_unique_entry_name('bonus.pdf', used)
+        second = AlbumArchiveService._make_unique_entry_name('Bonus.pdf', used)
+        third = AlbumArchiveService._make_unique_entry_name('bonus.pdf', used)
+
+        assert [first, second, third] == [
+            'bonus.pdf',
+            'Bonus (2).pdf',
+            'bonus (3).pdf',
+        ]
