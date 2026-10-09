@@ -364,3 +364,22 @@ def promocode_detail_url():
 def track_reorder_url():
     """Возвращает URL-адрес эндпоинта изменения порядка треков."""
     return reverse('api:store:tracks-reorder')
+
+
+@pytest.fixture
+def bonus_list_url():
+    """Возвращает URL списка и создания бонусов."""
+    return reverse('api:store:bonuses-list')
+
+
+@pytest.fixture
+def bonus_detail_url():
+    """Возвращает URL конкретного бонуса."""
+
+    def build(bonus) -> str:
+        return reverse(
+            'api:store:bonuses-detail',
+            args=(bonus.id,),
+        )
+
+    return build

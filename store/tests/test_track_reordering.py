@@ -198,12 +198,17 @@ class TestTrackReorderArchive:
     ):
         """Изменение порядка ставит архив альбома на пересборку."""
         a, b, c = tracks
+        bonuses = list(
+            album.bonuses.filter(is_active=True).order_by('name', 'id'),
+        )
+
         AlbumArchive.objects.create(
             album=album,
             status=AlbumArchive.Status.READY,
             content_hash=AlbumArchiveService.calculate_content_hash(
                 album=album,
                 tracks=tracks,
+                bonuses=bonuses,
             ),
         )
 
@@ -221,6 +226,7 @@ class TestTrackReorderArchive:
         expected_hash = AlbumArchiveService.calculate_content_hash(
             album=album,
             tracks=new_tracks,
+            bonuses=bonuses,
         )
         assert archive.status == AlbumArchive.Status.PENDING
         assert archive.pending_hash == expected_hash
@@ -239,12 +245,17 @@ class TestTrackReorderArchive:
         tracks,
     ):
         """Неизменившийся порядок не запускает пересборку архива."""
+        bonuses = list(
+            album.bonuses.filter(is_active=True).order_by('name', 'id'),
+        )
+
         AlbumArchive.objects.create(
             album=album,
             status=AlbumArchive.Status.READY,
             content_hash=AlbumArchiveService.calculate_content_hash(
                 album=album,
                 tracks=tracks,
+                bonuses=bonuses,
             ),
         )
 

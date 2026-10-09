@@ -18,6 +18,13 @@ def track_audio_upload_to(instance, filename):
     )
 
 
+def bonus_upload_to(instance, filename):
+    """Формирует путь для загрузки бонуса."""
+    return (
+        f'albums/{instance.album_id}/bonuses/{build_unique_filename(filename)}'
+    )
+
+
 def merch_image_upload_to(instance, filename: str) -> str:
     """Формирует путь для изображения мерча."""
     return (

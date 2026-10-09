@@ -10,6 +10,7 @@ from .views import (
     AlbumTrackUploadInitiateView,
     AlbumViewSet,
     ArtistReportViewSet,
+    BonusViewSet,
     CDEKWidgetView,
     CartViewSet,
     CatalogMerchDetailView,
@@ -54,6 +55,7 @@ router.register(r'me/favorites', FavoritesViewSet, basename='me-favorites')
 router.register(r'orders', OrderViewSet, basename='orders')
 router.register(r'promocodes', PromocodeViewSet, basename='promocodes')
 router.register(r'me/reports', ArtistReportViewSet, basename='me-reports')
+router.register(r'bonuses', BonusViewSet, basename='bonuses')
 
 urlpatterns = [
     path('', include(router.urls)),

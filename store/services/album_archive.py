@@ -5,21 +5,21 @@ import re
 import shutil
 import tempfile
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from django.core.files import File
 from django.db import transaction
 from django.utils import timezone
 
-from store.models import Album, AlbumArchive, Track
+from store.models import Album, AlbumArchive, Bonus, Track
 
 logger = logging.getLogger(__name__)
 
 
 class AlbumArchiveService:
-    """Собирает ZIP-архив из оригинальных файлов треков альбома."""
+    """Собирает ZIP-архив из оригинальных файлов треков и бонусов."""
 
-    HASH_VERSION = 1
+    HASH_VERSION = 2
     COPY_BUFFER_SIZE = 1024 * 1024
     MAX_ERROR_MESSAGE_LENGTH = 1000
 
@@ -29,6 +29,7 @@ class AlbumArchiveService:
         *,
         album: Album,
         tracks: list[Track],
+        bonuses: list[Bonus],
     ) -> str:
         """Возвращает отпечаток содержимого будущего архива."""
         payload = {
@@ -47,6 +48,16 @@ class AlbumArchiveService:
                     ),
                 }
                 for track in tracks
+            ],
+            'bonuses': [
+                {
+                    'id': bonus.id,
+                    'name': bonus.name,
+                    'bonus_file': (
+                        bonus.bonus_file.name if bonus.bonus_file else None
+                    ),
+                }
+                for bonus in bonuses
             ],
         }
 
@@ -73,6 +84,9 @@ class AlbumArchiveService:
         tracks = list(
             album.tracks.filter(is_active=True).order_by('position', 'id'),
         )
+        bonuses = list(
+            album.bonuses.filter(is_active=True).order_by('name', 'id'),
+        )
 
         if not tracks:
             raise ValueError(
@@ -83,6 +97,7 @@ class AlbumArchiveService:
         current_hash = cls.calculate_content_hash(
             album=album,
             tracks=tracks,
+            bonuses=bonuses,
         )
 
         archive = AlbumArchive.objects.get(album=album)
@@ -105,6 +120,7 @@ class AlbumArchiveService:
                 cls._write_zip(
                     album=album,
                     tracks=tracks,
+                    bonuses=bonuses,
                     target_path=temp_zip_path,
                 )
 
@@ -115,9 +131,16 @@ class AlbumArchiveService:
                         'id',
                     ),
                 )
+                current_bonuses = list(
+                    current_album.bonuses.filter(is_active=True).order_by(
+                        'name',
+                        'id',
+                    ),
+                )
                 current_hash = cls.calculate_content_hash(
                     album=current_album,
                     tracks=current_tracks,
+                    bonuses=current_bonuses,
                 )
 
                 archive.refresh_from_db(
@@ -217,9 +240,10 @@ class AlbumArchiveService:
         *,
         album: Album,
         tracks: list[Track],
+        bonuses: list[Bonus],
         target_path: Path,
     ) -> None:
-        """Создаёт ZIP с обложкой и оригинальными файлами треков."""
+        """Создаёт ZIP с обложкой, треками и бонусами."""
         with zipfile.ZipFile(
             target_path,
             mode='w',
@@ -243,6 +267,22 @@ class AlbumArchiveService:
                     zip_file=zip_file,
                     field_file=track.audio_file,
                     entry_name=cls._get_track_filename(track),
+                )
+
+            used_bonus_names: set[str] = set()
+            for bonus in bonuses:
+                if not bonus.bonus_file:
+                    raise ValueError(
+                        f'У бонуса {bonus.pk} отсутствует файл.',
+                    )
+
+                cls._write_storage_file(
+                    zip_file=zip_file,
+                    field_file=bonus.bonus_file,
+                    entry_name=cls._make_unique_entry_name(
+                        cls._get_bonus_filename(bonus),
+                        used_bonus_names,
+                    ),
                 )
 
     @classmethod
@@ -277,6 +317,30 @@ class AlbumArchiveService:
         safe_name = cls._sanitize_filename(track.name)
 
         return f'{position} - {safe_name}{suffix}'
+
+    @classmethod
+    def _get_bonus_filename(cls, bonus: Bonus) -> str:
+        """Возвращает безопасное имя бонуса внутри архива."""
+        suffix = Path(bonus.bonus_file.name).suffix.lower()
+        safe_name = cls._sanitize_filename(bonus.name)
+
+        return f'bonuses/{safe_name}{suffix}'
+
+    @staticmethod
+    def _make_unique_entry_name(entry_name: str, used_names: set[str]) -> str:
+        """Возвращает уникальное имя записи без учёта регистра."""
+        path = PurePosixPath(entry_name)
+        candidate = entry_name
+        counter = 1
+
+        while candidate.casefold() in used_names:
+            counter += 1
+            candidate = str(
+                path.with_name(f'{path.stem} ({counter}){path.suffix}'),
+            )
+
+        used_names.add(candidate.casefold())
+        return candidate
 
     @staticmethod
     def _sanitize_filename(value: str) -> str:
@@ -376,6 +440,9 @@ class AlbumArchiveScheduler:
         tracks = list(
             album.tracks.filter(is_active=True).order_by('position', 'id'),
         )
+        bonuses = list(
+            album.bonuses.filter(is_active=True).order_by('name', 'id'),
+        )
 
         if not tracks:
             AlbumArchiveService.invalidate(album)
@@ -387,6 +454,7 @@ class AlbumArchiveScheduler:
         expected_hash = AlbumArchiveService.calculate_content_hash(
             album=album,
             tracks=tracks,
+            bonuses=bonuses,
         )
 
         archive, _ = AlbumArchive.objects.get_or_create(

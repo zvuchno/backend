@@ -11,6 +11,7 @@ from rest_framework.exceptions import ValidationError
 
 from .constants import (
     MAX_AUDIOFILE_SIZE_MB,
+    MAX_BONUSFILE_SIZE_MB,
     MAX_IMAGE_SIZE_MB,
     MAX_PRICE_DIGITS,
     MIN_PROMOCODE_LENGTH,
@@ -74,6 +75,9 @@ validate_file_size = FileSizeValidator(
 )
 validate_audiofile_size = FileSizeValidator(
     MAX_AUDIOFILE_SIZE_MB,
+)
+validate_bonus_file_size = FileSizeValidator(
+    MAX_BONUSFILE_SIZE_MB,
 )
 
 

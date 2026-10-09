@@ -12,7 +12,8 @@ from django.conf import settings
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
-from django.db import transaction
+from django.db import models, transaction
+from django.forms import Textarea
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.middleware.csrf import get_token
 from django.urls import path, reverse
@@ -40,6 +41,7 @@ from store.constants import (
 from store.models import (
     Album,
     AlbumArchive,
+    Bonus,
     Product,
     Track,
     TrackGeneratedAudio,
@@ -330,6 +332,26 @@ class AlbumAdminForm(PublicationRecipientFormMixin, forms.ModelForm):
         return cleaned_data
 
 
+class BonusInline(NestedTabularInline):
+    """Связанные с альбомом бонусы артиста."""
+
+    model = Bonus
+    can_delete = False
+    extra = 0
+    fields = (
+        'name',
+        'bonus_file',
+        'description',
+        'updated_at',
+        'is_active',
+    )
+    readonly_fields = ('updated_at',)
+
+    formfield_overrides = {
+        models.TextField: {'widget': Textarea(attrs={'rows': 2, 'cols': 40})},
+    }
+
+
 @admin.register(Album)
 class AlbumAdmin(
     AutoCreatedByAdminMixin,
@@ -497,6 +519,7 @@ class AlbumAdmin(
         return (
             ProductInline,
             AlbumArchiveInline,
+            BonusInline,
             TrackInline,
         )
 

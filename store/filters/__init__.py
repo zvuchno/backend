@@ -4,6 +4,7 @@
 """
 
 from .album import AlbumFilter
+from .bonus import BonusFilter
 from .catalog import ProductCatalogFilter
 from .merch import MerchFilter
 from .promocode import PromoCodeFilter
@@ -13,6 +14,7 @@ from .track import TrackFilter
 __all__ = [
     'AlbumFilter',
     'ArtistReportFilter',
+    'BonusFilter',
     'MerchFilter',
     'ProductCatalogFilter',
     'PromoCodeFilter',

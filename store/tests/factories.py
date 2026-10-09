@@ -8,6 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from store.models import (
     Album,
+    Bonus,
     Genre,
     Image,
     Merch,
@@ -188,3 +189,22 @@ class MerchImageFactory(factory.django.DjangoModelFactory):
         lambda n: test_image_file(name=f'merch-image-{n}.jpg'),
     )
     is_main = True
+
+
+class BonusFactory(factory.django.DjangoModelFactory):
+    """Фабрика бонуса альбома."""
+
+    class Meta:
+        model = Bonus
+
+    album = factory.SubFactory(AlbumFactory)
+    name = factory.Sequence(lambda n: f'Бонус {n}')
+    bonus_file = factory.Sequence(
+        lambda n: SimpleUploadedFile(
+            f'bonus-{n}.pdf',
+            f'bonus-content-{n}'.encode(),
+            content_type='application/pdf',
+        ),
+    )
+    description = 'Тестовое описание бонуса.'
+    is_active = True
