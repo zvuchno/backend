@@ -8,7 +8,6 @@ from store.constants import (
     CHAR_PRESET_SIMPLE,
     DEFAULT_QUANTITY,
     MAX_PRICE_DIGITS,
-    MISSING_DESCRIPTION_ERROR,
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Merch, ProductVariant
@@ -272,20 +271,6 @@ class MerchWriteSerializer(
         variants = attrs.get('variants')
         if variants is not None and not variants:
             attrs['property_name'] = ''
-
-        is_published = attrs.get(
-            'is_published',
-            self.instance.is_published if self.instance else False,
-        )
-        description = attrs.get(
-            'description',
-            self.instance.description if self.instance else '',
-        )
-
-        if is_published and not description.strip():
-            raise serializers.ValidationError({
-                'description': MISSING_DESCRIPTION_ERROR,
-            })
 
         return attrs
 

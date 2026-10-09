@@ -12,7 +12,6 @@ from nested_admin import (
     NestedTabularInline,  # noqa
 )
 
-from ..constants import MISSING_DESCRIPTION_ERROR
 from .forms import (
     MerchImageInlineFormSet,
     MoneyForm,
@@ -94,32 +93,6 @@ class MerchAdminForm(PublicationRecipientFormMixin, forms.ModelForm):
     class Meta:
         model = Merch
         fields = '__all__'
-
-    def clean(self):
-        """Требует описание для опубликованного товара."""
-        cleaned_data = super().clean()
-
-        is_published = cleaned_data.get(
-            'is_published',
-            self.instance.is_published,
-        )
-        description = cleaned_data.get(
-            'description',
-            self.instance.description,
-        )
-
-        if is_published and not (description or '').strip():
-            error_field = (
-                'description'
-                if 'description' in self.fields
-                else 'is_published'
-            )
-            self.add_error(
-                error_field,
-                MISSING_DESCRIPTION_ERROR,
-            )
-
-        return cleaned_data
 
 
 @admin.register(Merch)
