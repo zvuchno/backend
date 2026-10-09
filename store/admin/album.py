@@ -52,6 +52,7 @@ from store.services import (
 )
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import (
+    MISSING_GENRE_ERROR,
     MISSING_TRACKS_ERROR,
     has_uploaded_track,
     unpublish_if_empty,
@@ -325,6 +326,23 @@ class AlbumAdminForm(PublicationRecipientFormMixin, forms.ModelForm):
             self.add_error(
                 'is_published',
                 MISSING_TRACKS_ERROR,
+            )
+
+        is_published = cleaned_data.get(
+            'is_published',
+            self.instance.is_published,
+        )
+        genre = cleaned_data.get(
+            'genre',
+            self.instance.genre,
+        )
+
+        if is_published and genre is None:
+            error_field = 'genre' if 'genre' in self.fields else 'is_published'
+
+            self.add_error(
+                error_field,
+                MISSING_GENRE_ERROR,
             )
 
         return cleaned_data
