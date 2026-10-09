@@ -35,6 +35,8 @@ from .mixins import (
 )
 from store.constants import (
     MAX_PRICE_DIGITS,
+    MISSING_GENRE_ERROR,
+    MISSING_TRACKS_ERROR,
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import (
@@ -52,8 +54,6 @@ from store.services import (
 )
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import (
-    MISSING_GENRE_ERROR,
-    MISSING_TRACKS_ERROR,
     has_uploaded_track,
     unpublish_if_empty,
 )

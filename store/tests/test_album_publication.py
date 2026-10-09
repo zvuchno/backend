@@ -10,9 +10,9 @@ from django.urls import reverse
 
 from store.admin import MerchAdmin, TrackAdmin
 from store.admin.album import AlbumAdmin
+from store.constants import MISSING_TRACKS_ERROR
 from store.exceptions import PUBLICATION_BLOCKED_DETAIL
 from store.models import Album, Merch, Track
-from store.services.album_publication import MISSING_TRACKS_ERROR
 from store.tests.factories import (
     AlbumFactory,
     GenreFactory,

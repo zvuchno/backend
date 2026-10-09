@@ -13,14 +13,12 @@ from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     MAX_PRICE_DIGITS,
+    MISSING_GENRE_ERROR,
+    MISSING_TRACKS_ERROR,
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album
-from store.services.album_publication import (
-    MISSING_GENRE_ERROR,
-    MISSING_TRACKS_ERROR,
-    has_uploaded_track,
-)
+from store.services.album_publication import has_uploaded_track
 
 logger = logging.getLogger(__name__)
 

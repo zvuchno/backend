@@ -51,3 +51,6 @@ PREVIEW_BITRATE = '256k'
 AUDIO_PROCESSING_TIMEOUT = 20 * 60
 
 CATALOG_SEARCH_REFRESH_INTERVAL = 1800
+
+MISSING_TRACKS_ERROR = 'Добавьте хотя бы один загруженный активный трек.'
+MISSING_GENRE_ERROR = 'Укажите жанр релиза.'
