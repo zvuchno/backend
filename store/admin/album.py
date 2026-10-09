@@ -35,6 +35,7 @@ from .mixins import (
 )
 from store.constants import (
     MAX_PRICE_DIGITS,
+    MISSING_DESCRIPTION_ERROR,
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import (
@@ -338,9 +339,27 @@ class AlbumAdminForm(PublicationRecipientFormMixin, forms.ModelForm):
         )
 
         if is_published and genre is None:
+            error_field = 'genre' if 'genre' in self.fields else 'is_published'
+
             self.add_error(
-                'is_published',
+                error_field,
                 MISSING_GENRE_ERROR,
+            )
+
+        description = cleaned_data.get(
+            'description',
+            self.instance.description,
+        )
+
+        if is_published and not description.strip():
+            error_field = (
+                'description'
+                if 'description' in self.fields
+                else 'is_published'
+            )
+            self.add_error(
+                error_field,
+                MISSING_DESCRIPTION_ERROR,
             )
 
         return cleaned_data

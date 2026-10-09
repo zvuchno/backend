@@ -13,6 +13,7 @@ from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     MAX_PRICE_DIGITS,
+    MISSING_DESCRIPTION_ERROR,
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import Album
@@ -173,6 +174,14 @@ class AlbumWriteSerializer(
 
         if is_published and genre is None:
             errors['genre'] = MISSING_GENRE_ERROR
+
+        description = attrs.get(
+            'description',
+            self.instance.description if self.instance else '',
+        )
+
+        if is_published and not description.strip():
+            errors['description'] = MISSING_DESCRIPTION_ERROR
 
         if errors:
             raise serializers.ValidationError(errors)
