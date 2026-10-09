@@ -694,6 +694,74 @@ class TestArtistListApi:
 
         assert artist.id not in artist_ids
 
+    def test_list_hides_artist_without_published_content(
+        self,
+        api_client,
+        artist_list_url,
+    ):
+        artist = ArtistProfileFactory()
+
+        response = api_client.get(artist_list_url)
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id not in artist_ids
+
+    def test_list_returns_artist_with_published_album(
+        self,
+        api_client,
+        artist_list_url,
+    ):
+        artist = ArtistProfileFactory()
+        AlbumFactory(artist=artist)
+
+        response = api_client.get(artist_list_url)
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert artist.id in artist_ids
+
+    def test_list_returns_label_with_own_published_content(
+        self,
+        api_client,
+        artist_list_url,
+    ):
+        label = ArtistProfileFactory(
+            profile_type=ArtistProfileType.LABEL,
+        )
+        AlbumFactory(artist=label)
+
+        response = api_client.get(artist_list_url)
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert label.id in artist_ids
+
+    def test_list_returns_label_with_managed_artist_published_content(
+        self,
+        api_client,
+        artist_list_url,
+    ):
+        label = ArtistProfileFactory(
+            profile_type=ArtistProfileType.LABEL,
+        )
+        artist = ArtistProfileFactory(
+            user=None,
+            label=label,
+        )
+        AlbumFactory(
+            artist=artist,
+            created_by=label.user,
+            payout_recipient=label.user,
+        )
+
+        response = api_client.get(artist_list_url)
+
+        artist_ids = {item['id'] for item in response.data['results']}
+
+        assert label.id in artist_ids
+        assert artist.id in artist_ids
+
 
 @pytest.mark.usefixtures('publication_readiness_enabled')
 class TestArtistListReadiness:
@@ -714,6 +782,10 @@ class TestArtistListReadiness:
             user__is_email_verified=False,
         )
 
+        AlbumFactory(
+            artist=artist,
+        )
+
         response = api_client.get(artist_list_url)
 
         assert response.status_code == HTTPStatus.OK
@@ -730,6 +802,10 @@ class TestArtistListReadiness:
     ):
         """Готовый артист отображается в публичном списке."""
         artist = ready_artist_factory()
+
+        AlbumFactory(
+            artist=artist,
+        )
 
         response = api_client.get(artist_list_url)
 
@@ -749,6 +825,12 @@ class TestArtistListReadiness:
         artist = ArtistProfileFactory(
             user=None,
             label=label_user.artist_profile,
+        )
+
+        AlbumFactory(
+            artist=artist,
+            created_by=label_user,
+            payout_recipient=label_user,
         )
 
         response = api_client.get(artist_list_url)

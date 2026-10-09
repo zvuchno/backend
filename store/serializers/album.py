@@ -13,14 +13,12 @@ from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     MAX_PRICE_DIGITS,
+    MISSING_GENRE_ERROR,
+    MISSING_TRACKS_ERROR,
     MONEY_DISPLAY_PRECISION,
 )
-from store.exceptions import PublicationBlocked
 from store.models import Album
-from store.services.album_publication import (
-    MISSING_TRACKS_ERROR,
-    has_uploaded_track,
-)
+from store.services.album_publication import has_uploaded_track
 
 logger = logging.getLogger(__name__)
 
@@ -152,15 +150,30 @@ class AlbumWriteSerializer(
         }
 
     def validate(self, attrs):
-        """Проверяет возможность публикации релиза."""
+        """Проверяет возможность сохранения и публикации релиза."""
         attrs = super().validate(attrs)
+
+        errors = {}
 
         if attrs.get('is_published') is True and (
             self.instance is None or not has_uploaded_track(self.instance)
         ):
-            raise PublicationBlocked([
-                MISSING_TRACKS_ERROR,
-            ])
+            errors['tracks'] = MISSING_TRACKS_ERROR
+
+        is_published = attrs.get(
+            'is_published',
+            self.instance.is_published if self.instance else False,
+        )
+        genre = attrs.get(
+            'genre',
+            self.instance.genre if self.instance else None,
+        )
+
+        if is_published and genre is None:
+            errors['genre'] = MISSING_GENRE_ERROR
+
+        if errors:
+            raise serializers.ValidationError(errors)
 
         return attrs
 

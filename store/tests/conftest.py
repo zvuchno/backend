@@ -26,6 +26,7 @@ from store.models import (
     ProductVariant,
     Track,
 )
+from store.tests.factories import GenreFactory
 from users.models import ConsentDocument
 
 
@@ -66,6 +67,10 @@ def variant_factory(artist_user):
             'artist': content_artist,
             'payout_recipient': content_payout_recipient,
             'created_by': content_created_by,
+            'description': kwargs.get(
+                'description',
+                'Тестовое описание.',
+            ),
             'is_active': is_active,
             'is_published': is_published,
             'visibility': visibility,
@@ -74,6 +79,7 @@ def variant_factory(artist_user):
         if product_type == 'album':
             item = Album.objects.create(
                 name=kwargs.get('name', 'Album'),
+                genre=kwargs.get('genre') or GenreFactory(),
                 **artist_content_fields,
             )
             product = Product.objects.create(album=item, price=price or 1000)
@@ -82,6 +88,7 @@ def variant_factory(artist_user):
         elif product_type == 'track':
             album = kwargs.get('album') or Album.objects.create(
                 name='Track Album',
+                genre=GenreFactory(),
                 **artist_content_fields,
             )
             track_created_by = (

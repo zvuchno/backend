@@ -56,6 +56,7 @@ class AlbumFactory(factory.django.DjangoModelFactory):
     )
     genre = factory.SubFactory(GenreFactory)
     name = factory.Sequence(lambda n: f'Альбом {n}')
+    description = 'Тестовое описание альбома.'
     release_date = date(2026, 1, 1)
     is_single = False
     is_published = True

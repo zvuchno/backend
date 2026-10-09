@@ -1,7 +1,5 @@
 from store.models import Album
 
-MISSING_TRACKS_ERROR = 'Добавьте хотя бы один загруженный активный трек.'
-
 
 def has_uploaded_track(album: Album) -> bool:
     """Проверяет наличие активного трека с загруженным аудиофайлом."""
