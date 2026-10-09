@@ -27,7 +27,7 @@ from common.services import artist_publication_ready_q
 
 from store.models import Album, Merch
 from users.filters import ArtistFilter
-from users.models import ArtistProfile
+from users.models import ArtistProfile, ArtistProfileType
 from users.schemas import (
     artist_cover_update_schema,
     artist_leave_label_schema,
@@ -199,6 +199,19 @@ class ArtistListView(ListAPIView):
 
     def get_queryset(self):
         """Возвращает артистов, доступных в публичном списке."""
+        own_published_content = Q(album_items__is_published=True) | Q(
+            merch_items__is_published=True,
+        )
+
+        managed_artist_published_content = Q(
+            profile_type=ArtistProfileType.LABEL,
+            artists__profile_type=ArtistProfileType.ARTIST,
+            artists__is_active=True,
+        ) & (
+            Q(artists__album_items__is_published=True)
+            | Q(artists__merch_items__is_published=True)
+        )
+
         return (
             super()
             .get_queryset()
@@ -206,11 +219,15 @@ class ArtistListView(ListAPIView):
                 artist_publication_ready_q(),
                 is_active=True,
             )
+            .filter(
+                own_published_content | managed_artist_published_content,
+            )
             .select_related(
                 'user',
                 'label',
                 'label__user',
             )
+            .distinct()
         )
 
 

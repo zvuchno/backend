@@ -1,6 +1,7 @@
 from store.models import Album
 
 MISSING_TRACKS_ERROR = 'Добавьте хотя бы один загруженный активный трек.'
+MISSING_GENRE_ERROR = 'Укажите жанр релиза.'
 
 
 def has_uploaded_track(album: Album) -> bool:
