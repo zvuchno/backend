@@ -81,8 +81,7 @@ def test_cannot_create_published_album_without_tracks(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.data == {
-        'detail': PUBLICATION_BLOCKED_DETAIL,
-        'reasons': [
+        'tracks': [
             MISSING_TRACKS_ERROR,
         ],
     }
@@ -114,8 +113,7 @@ def test_cannot_publish_album_without_tracks(
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.data == {
-        'detail': PUBLICATION_BLOCKED_DETAIL,
-        'reasons': [
+        'tracks': [
             MISSING_TRACKS_ERROR,
         ],
     }
@@ -516,7 +514,7 @@ def test_admin_form_rejects_creating_published_album_without_tracks(
             'is_single': False,
             'release_date': '2026-01-01',
             'genre': genre.id,
-            'description': '',
+            'description': 'Описание альбома.',
             'visibility': 'public',
             'is_published': True,
             'is_active': True,
