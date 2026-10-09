@@ -3,7 +3,7 @@
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
-from common.models.abstract import TimestampModel
+from common.models.abstract import ActivatableModel, TimestampModel
 from common.storages import get_private_media_storage, get_public_media_storage
 
 from store.constants import (
@@ -81,6 +81,39 @@ class Track(BaseContent):
         if self.position is not None:
             return f'{self.position}. {self.name[:MAX_STR_LENGTH]}'
         return self.name[:MAX_STR_LENGTH]
+
+
+class ReleaseTrack(ActivatableModel, TimestampModel):
+    """Связь музыкального трека с релизом."""
+
+    release = models.ForeignKey(
+        'store.Album',
+        on_delete=models.CASCADE,
+        related_name='release_tracks',
+        verbose_name='Релиз',
+    )
+    track = models.ForeignKey(
+        'store.Track',
+        on_delete=models.PROTECT,
+        related_name='release_tracks',
+        verbose_name='Трек',
+    )
+    position = models.PositiveIntegerField(
+        'Порядок',
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'трек релиза'
+        verbose_name_plural = 'треки релиза'
+        ordering = ('release', 'position', 'id')
+        constraints = [
+            models.UniqueConstraint(
+                fields=('release', 'track'),
+                name='unique_release_track',
+            ),
+        ]
 
 
 class TrackUpload(TimestampModel):
