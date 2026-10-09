@@ -68,3 +68,13 @@ class FavoriteAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ('user', 'product_variant')
     ordering = ('-created_at',)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        formfield = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if formfield and db_field.name == 'product_variant':
+            widget = formfield.widget
+            widget.can_add_related = False
+            widget.can_change_related = False
+            widget.can_delete_related = False
+            widget.can_view_related = False
+        return formfield
