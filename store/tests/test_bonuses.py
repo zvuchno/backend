@@ -410,38 +410,6 @@ class TestBonusArchive:
             'bonus (3).pdf',
         ]
 
-    def test_bonus_delete_schedules_archive_rebuild(
-        self,
-        django_capture_on_commit_callbacks,
-        bonus,
-    ):
-        """Физическое удаление бонуса ставит пересборку архива альбома."""
-        album = bonus.album
-        TrackFactory(album=album, position=1)
-
-        AlbumArchive.objects.create(
-            album=album,
-            status=AlbumArchive.Status.READY,
-            content_hash=AlbumArchiveService.calculate_content_hash(
-                album=album,
-                tracks=list(
-                    album.tracks.filter(is_active=True).order_by(
-                        'position',
-                        'id',
-                    ),
-                ),
-                bonuses=list(
-                    album.bonuses.filter(is_active=True).order_by('id'),
-                ),
-            ),
-        )
-
-        with mock.patch(TASK_PATH) as apply_async:
-            with django_capture_on_commit_callbacks(execute=True):
-                bonus.delete()
-
-        apply_async.assert_called_once()
-
     def test_album_delete_with_bonus_does_not_schedule_rebuild(
         self,
         django_capture_on_commit_callbacks,

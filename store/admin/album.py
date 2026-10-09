@@ -336,7 +336,7 @@ class BonusInline(NestedTabularInline):
     """Связанные с альбомом бонусы артиста."""
 
     model = Bonus
-    can_delete = True
+    can_delete = False
     extra = 0
     fields = (
         'name',
