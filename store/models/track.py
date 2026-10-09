@@ -19,7 +19,7 @@ from store.upload_paths import (
     track_preview_upload_to,
     track_stream_upload_to,
 )
-from store.validators import validate_audiofile_size
+from store.validators import validate_audiofile_size, validate_isrc_format
 
 
 class Track(BaseContent):
@@ -58,6 +58,30 @@ class Track(BaseContent):
         null=True,
         blank=True,
         help_text='Порядковый номер трека в альбоме',
+    )
+    owner = models.ForeignKey(
+        'users.ArtistProfile',
+        on_delete=models.PROTECT,
+        related_name='owned_tracks',
+        verbose_name='Владелец трека',
+        help_text='Профиль, управляющий треком.',
+    )
+    isrc = models.CharField(
+        'ISRC',
+        max_length=12,
+        blank=True,
+        default='',
+        validators=(validate_isrc_format,),
+        help_text='ISRC без дефисов, 12 символов.',
+    )
+    file_hash = models.CharField(
+        'SHA-256 аудиофайла',
+        max_length=64,
+        blank=True,
+        default='',
+        db_index=True,
+        editable=False,
+        help_text='SHA-256 оригинального аудиофайла.',
     )
 
     @property
@@ -103,6 +127,18 @@ class ReleaseTrack(ActivatableModel, TimestampModel):
         null=True,
         blank=True,
     )
+
+    @property
+    def name(self):
+        return self.track.name
+
+    @property
+    def artist(self):
+        return self.release.artist
+
+    @property
+    def payout_recipient(self):
+        return self.release.payout_recipient
 
     class Meta:
         verbose_name = 'трек релиза'

@@ -73,11 +73,22 @@ validate_file_size = FileSizeValidator(
     MAX_IMAGE_SIZE_MB,
     optional=True,
 )
+
 validate_audiofile_size = FileSizeValidator(
     MAX_AUDIOFILE_SIZE_MB,
 )
+
 validate_bonus_file_size = FileSizeValidator(
     MAX_BONUSFILE_SIZE_MB,
+)
+
+validate_isrc_format = RegexValidator(
+    regex=r'^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$',
+    message=(
+        'ISRC должен содержать 12 символов без дефисов: '
+        '2 буквы страны, 3 символа регистратора и 7 цифр.'
+    ),
+    code='invalid_isrc_format',
 )
 
 
