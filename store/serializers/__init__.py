@@ -6,6 +6,7 @@ from .album import (
 from .bonus import (
     BonusReadDetailSerializer,
     BonusReadSerializer,
+    BonusReorderSerializer,
     BonusWriteSerializer,
 )
 from .cart import (
@@ -86,6 +87,7 @@ __all__ = [
     'BaseCardSerializer',
     'BonusReadDetailSerializer',
     'BonusReadSerializer',
+    'BonusReorderSerializer',
     'BonusWriteSerializer',
     'CartItemWriteSerializer',
     'CatalogCardSerializer',

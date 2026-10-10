@@ -41,11 +41,17 @@ class Bonus(ActivatableModel, TimestampModel):
         ),
     )
     description = models.TextField('Описание', blank=True, default='')
+    position = models.PositiveIntegerField(
+        'Порядок',
+        null=True,
+        blank=True,
+        help_text='Порядковый номер бонуса в списке',
+    )
 
     class Meta:
         verbose_name = 'бонус'
         verbose_name_plural = 'бонусы'
-        ordering = ('name',)
+        ordering = ('position', 'name')
 
     def __str__(self):
         return f'{self.name[:MAX_STR_LENGTH]} [ id: {self.id} ]'
