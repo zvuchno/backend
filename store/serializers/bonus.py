@@ -62,3 +62,28 @@ class BonusWriteSerializer(serializers.ModelSerializer):
             )
 
         return album
+
+
+class BonusReorderSerializer(serializers.Serializer):
+    """Порядок бонусов альбома."""
+
+    album = serializers.PrimaryKeyRelatedField(queryset=Bonus.objects.all())
+    bonus_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=False,
+    )
+
+    def validate_album(self, album):
+        request = self.context['request']
+        if not can_manage_artist(request.user, album.artist):
+            raise serializers.ValidationError(
+                'Нельзя менять порядок бонусов в чужом альбоме.',
+            )
+        return album
+
+    def validate_bonus_ids(self, bonus_ids):
+        if len(bonus_ids) != len(set(bonus_ids)):
+            raise serializers.ValidationError(
+                'Бонусы в списке не должны повторяться.',
+            )
+        return bonus_ids

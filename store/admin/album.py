@@ -357,6 +357,7 @@ class BonusInline(NestedTabularInline):
     can_delete = False
     extra = 0
     fields = (
+        'position',
         'name',
         'bonus_file',
         'description',
@@ -364,7 +365,8 @@ class BonusInline(NestedTabularInline):
         'is_active',
     )
     readonly_fields = ('updated_at',)
-
+    ordering = ('position',)
+    sortable_field_name = 'position'
     formfield_overrides = {
         models.TextField: {'widget': Textarea(attrs={'rows': 2, 'cols': 40})},
     }

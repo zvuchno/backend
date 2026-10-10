@@ -41,6 +41,12 @@ class Bonus(ActivatableModel, TimestampModel):
         ),
     )
     description = models.TextField('Описание', blank=True, default='')
+    position = models.PositiveIntegerField(
+        'Порядок',
+        null=True,
+        blank=True,
+        help_text='Порядковый номер бонуса в списке',
+    )
 
     class Meta:
         verbose_name = 'бонус'
