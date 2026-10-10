@@ -51,7 +51,7 @@ class Bonus(ActivatableModel, TimestampModel):
     class Meta:
         verbose_name = 'бонус'
         verbose_name_plural = 'бонусы'
-        ordering = ('name',)
+        ordering = ('position', 'name')
 
     def __str__(self):
         return f'{self.name[:MAX_STR_LENGTH]} [ id: {self.id} ]'

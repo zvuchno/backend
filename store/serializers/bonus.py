@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from common.access import can_manage_artist
 
-from store.models import Bonus
+from store.models import Album, Bonus
 
 
 class BonusReadSerializer(serializers.ModelSerializer):
@@ -67,7 +67,7 @@ class BonusWriteSerializer(serializers.ModelSerializer):
 class BonusReorderSerializer(serializers.Serializer):
     """Порядок бонусов альбома."""
 
-    album = serializers.PrimaryKeyRelatedField(queryset=Bonus.objects.all())
+    album = serializers.PrimaryKeyRelatedField(queryset=Album.objects.all())
     bonus_ids = serializers.ListField(
         child=serializers.IntegerField(min_value=1),
         allow_empty=False,
