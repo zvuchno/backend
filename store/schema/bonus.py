@@ -11,6 +11,8 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
+from store.serializers import BonusReadSerializer, BonusReorderSerializer
+
 BONUSES_TAGS = ['Bonuses']
 
 bonus_schema = extend_schema_view(
@@ -47,3 +49,22 @@ bonus_schema = extend_schema_view(
         tags=BONUSES_TAGS,
     ),
 )
+
+
+def bonus_reorder_schema(view_func):
+    """Декоратор для документирования экшена изменения порядка бонусов."""
+    return extend_schema(
+        methods=['PATCH'],
+        summary='Изменить порядок бонусов',
+        description=(
+            'Изменяет порядок всех активных бонусов указанного альбома. '
+            'Необходимо передать ID альбома и полный список ID его '
+            'бонусов в требуемом порядке.'
+        ),
+        request=BonusReorderSerializer,
+        responses={
+            200: BonusReadSerializer(many=True),
+        },
+        tags=BONUSES_TAGS,
+        filters=False,
+    )(view_func)
