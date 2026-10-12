@@ -87,6 +87,10 @@ LOGGING = {
             'level': LOG_LEVEL,
             'propagate': True,
         },
+        'common.exceptions.expired_access': {
+            'level': os.getenv('EXPIRED_ACCESS_LOG_LEVEL', 'INFO').upper(),
+            'propagate': True,
+        },
         'django.request': {
             'level': 'ERROR',
             'propagate': True,
