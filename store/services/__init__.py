@@ -1,3 +1,4 @@
+from .bonus import reorder_bonuses
 from .cart_calculation_service import CartCalculationService
 from .cart_service import CartService
 from .cdek import CDEKService
@@ -40,6 +41,7 @@ __all__ = [
     'process_yookassa_webhook',
     'ProductService',
     'releases_have_direct_sales',
+    'reorder_bonuses',
     'reorder_tracks',
     'ReportService',
     'ReportFileBuilder',
