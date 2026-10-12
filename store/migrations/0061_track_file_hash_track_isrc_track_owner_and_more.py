@@ -31,7 +31,7 @@ def backfill_track_owners(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0059_releasetrack'),
+        ('store', '0060_releasetrack'),
         ('users', '0034_remove_artistprofile_artist_profile_has_user_or_label_and_more'),
     ]
 

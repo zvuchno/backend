@@ -52,7 +52,7 @@ def backfill_release_tracks(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0058_bonus'),
+        ('store', '0059_alter_bonus_options_bonus_position'),
     ]
 
     operations = [
