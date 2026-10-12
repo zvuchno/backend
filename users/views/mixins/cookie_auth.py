@@ -11,9 +11,14 @@ class CookieResponseMixin:
     def get_response(self) -> Response:
         response = super().get_response()
 
+        auth_actions_kwargs = {}
+        if hasattr(self, 'pre_auth_session_key'):
+            auth_actions_kwargs['session_key'] = self.pre_auth_session_key
+
         run_actions_after_authentication(
             self.user,
             self.request,
+            **auth_actions_kwargs,
         )
 
         get_token(self.request)
