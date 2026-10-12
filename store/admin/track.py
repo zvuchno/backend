@@ -206,7 +206,7 @@ class TrackAdmin(
             },
         ),
     )
-    inlines = (ProductInline, TrackGeneratedAudioInline)
+    inlines = (TrackGeneratedAudioInline,)
 
     autocomplete_fields = ('album',)
 

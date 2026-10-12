@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+from django.conf import settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.response import Response
@@ -174,11 +175,17 @@ class TestCartAPI:
         # Делаем запрос, чтобы создалась сессия и корзина
         response = api_client.post(cart_add_url, data=payload, format='json')
         assert response.status_code == status.HTTP_201_CREATED
+        guest_session_key = (
+            api_client.cookies[settings.SESSION_COOKIE_NAME].value
+        )
         # Проверяем, что в базе есть анонимная корзина
         assert Cart.objects.filter(user__isnull=True).count() == 1
 
         login_response = self._login_user(api_client, login_url, user)
         assert login_response.status_code == status.HTTP_200_OK
+        assert api_client.cookies[settings.SESSION_COOKIE_NAME].value == (
+            guest_session_key
+        )
         # Анонимная корзина удалена после мержа
         assert Cart.objects.filter(user__isnull=True).count() == 0
         # У юзера должна появиться корзина

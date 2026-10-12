@@ -134,9 +134,8 @@ class CartService:
 
     @staticmethod
     @transaction.atomic
-    def merge_carts(user, request) -> None:
+    def merge_carts(user, session_key: str | None) -> None:
         """Объединить гостевую корзину с пользовательской."""
-        session_key = request.session.session_key
         if not session_key:
             return
 

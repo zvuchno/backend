@@ -64,10 +64,6 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
         if not user.is_authenticated:
             return queryset.none()
 
-        queryset = queryset.filter(
-            Q(is_active=True) & managed_artist_q(user),
-        )
-
         digital_variants_prefetch = Prefetch(
             'product__variants',
             queryset=ProductVariant.objects.filter(
@@ -77,22 +73,15 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             to_attr='digital_variants',
         )
 
-        if self.action == 'list':
-            queryset = queryset.select_related(
-                'product',
-                'artist',
-            ).prefetch_related(
-                digital_variants_prefetch,
-            )
-        elif self.action == 'retrieve':
-            queryset = queryset.select_related(
-                'product',
-                'genre',
-                'artist',
-                'artist__label',
-            ).prefetch_related(
-                digital_variants_prefetch,
-            )
+        queryset = (
+            queryset
+            .filter(Q(is_active=True) & managed_artist_q(user))
+            .select_related('product', 'artist')
+            .prefetch_related(digital_variants_prefetch)
+        )
+
+        if self.action in ('retrieve', 'create', 'partial_update'):
+            queryset = queryset.select_related('genre')
 
         return queryset
 
