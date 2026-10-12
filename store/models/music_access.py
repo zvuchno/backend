@@ -14,7 +14,7 @@ class ListenerTrackAccess(models.Model):
         verbose_name='Пользователь',
     )
     track = models.ForeignKey(
-        'store.Track',
+        'store.Recording',
         on_delete=models.DO_NOTHING,
         related_name='+',  # Отключение обратной связи.
         verbose_name='Трек',

@@ -11,7 +11,7 @@ from django.core.files import File
 from django.db import transaction
 from django.utils import timezone
 
-from store.models import Album, AlbumArchive, Bonus, Track
+from store.models import Album, AlbumArchive, Bonus, ReleaseTrack
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class AlbumArchiveService:
         cls,
         *,
         album: Album,
-        tracks: list[Track],
+        tracks: list[ReleaseTrack],
         bonuses: list[Bonus],
     ) -> str:
         """Возвращает отпечаток содержимого будущего архива."""
@@ -41,11 +41,15 @@ class AlbumArchiveService:
             'tracks': [
                 {
                     'id': track.id,
+                    'recording_id': track.recording_id,
                     'position': track.position,
-                    'name': track.name,
+                    'name': track.recording.name,
                     'audio_file': (
-                        track.audio_file.name if track.audio_file else None
+                        track.recording.audio_file.name
+                        if track.recording.audio_file
+                        else None
                     ),
+                    'file_hash': track.recording.file_hash,
                 }
                 for track in tracks
             ],
@@ -82,7 +86,13 @@ class AlbumArchiveService:
         """Собирает и сохраняет актуальный архив альбома."""
         album = Album.objects.get(pk=album_id)
         tracks = list(
-            album.tracks.filter(is_active=True).order_by('position', 'id'),
+            album.tracks
+            .filter(
+                is_active=True,
+                recording__is_active=True,
+            )
+            .select_related('recording')
+            .order_by('position', 'id'),
         )
         bonuses = list(
             album.bonuses.filter(is_active=True).order_by('name', 'id'),
@@ -126,10 +136,13 @@ class AlbumArchiveService:
 
                 current_album = Album.objects.get(pk=album_id)
                 current_tracks = list(
-                    current_album.tracks.filter(is_active=True).order_by(
-                        'position',
-                        'id',
-                    ),
+                    current_album.tracks
+                    .filter(
+                        is_active=True,
+                        recording__is_active=True,
+                    )
+                    .select_related('recording')
+                    .order_by('position', 'id'),
                 )
                 current_bonuses = list(
                     current_album.bonuses.filter(is_active=True).order_by(
@@ -239,7 +252,7 @@ class AlbumArchiveService:
         cls,
         *,
         album: Album,
-        tracks: list[Track],
+        tracks: list[ReleaseTrack],
         bonuses: list[Bonus],
         target_path: Path,
     ) -> None:
@@ -258,14 +271,17 @@ class AlbumArchiveService:
                 )
 
             for track in tracks:
-                if not track.audio_file:
+                recording = track.recording
+
+                if not recording.audio_file:
                     raise ValueError(
-                        f'У трека {track.pk} отсутствует исходный файл.',
+                        f'У записи {recording.pk} для трека {track.pk} '
+                        'отсутствует исходный файл.',
                     )
 
                 cls._write_storage_file(
                     zip_file=zip_file,
-                    field_file=track.audio_file,
+                    field_file=recording.audio_file,
                     entry_name=cls._get_track_filename(track),
                 )
 
@@ -310,11 +326,13 @@ class AlbumArchiveService:
                 )
 
     @classmethod
-    def _get_track_filename(cls, track: Track) -> str:
+    def _get_track_filename(cls, track: ReleaseTrack) -> str:
         """Возвращает безопасное имя трека внутри архива."""
-        suffix = Path(track.audio_file.name).suffix.lower()
+        audio_file = track.recording.audio_file
+
+        suffix = Path(audio_file.name).suffix.lower()
         position = str(track.position or 0).zfill(2)
-        safe_name = cls._sanitize_filename(track.name)
+        safe_name = cls._sanitize_filename(track.recording.name)
 
         return f'{position} - {safe_name}{suffix}'
 
@@ -438,7 +456,13 @@ class AlbumArchiveScheduler:
     def schedule(cls, album: Album) -> bool:
         """Ставит сборку в очередь, если содержимое архива изменилось."""
         tracks = list(
-            album.tracks.filter(is_active=True).order_by('position', 'id'),
+            album.tracks
+            .filter(
+                is_active=True,
+                recording__is_active=True,
+            )
+            .select_related('recording')
+            .order_by('position', 'id'),
         )
         bonuses = list(
             album.bonuses.filter(is_active=True).order_by('name', 'id'),

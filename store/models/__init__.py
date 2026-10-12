@@ -27,11 +27,13 @@ from .promocode import Promocode
 from .report import Report
 from .shipment import Shipment
 from .track import (
+    Recording,
     ReleaseTrack,
-    Track,
     TrackGeneratedAudio,
     TrackUpload,
 )
+
+Track = Recording
 
 __all__ = [
     'Album',
@@ -56,10 +58,11 @@ __all__ = [
     'Product',
     'ProductVariant',
     'Promocode',
+    'Recording',
     'ReleaseTrack',
+    'Track',
     'Report',
     'Shipment',
-    'Track',
     'TrackGeneratedAudio',
     'TrackUpload',
 ]
