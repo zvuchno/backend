@@ -13,6 +13,7 @@ class SocialAuthMixin:
 
     def post(self, request, *args, **kwargs):
         try:
+            self.pre_auth_session_key = request.session.session_key
             return super().post(request, *args, **kwargs)
         except (SocialAuthException, AuthenticationFailed) as exc:
             raise exc

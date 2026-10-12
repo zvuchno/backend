@@ -11,6 +11,7 @@ from store.exceptions import CDEKIntegrationError
 from users.exceptions import SocialAuthException
 
 logger = logging.getLogger(__name__)
+expired_access_logger = logging.getLogger('common.exceptions.expired_access')
 
 
 def _django_validation_error_to_data(exc) -> dict:
@@ -64,7 +65,23 @@ def custom_exception_handler(exception, context):
         )
 
     if response is not None:
-        logger.warning(
+        data = response.data if isinstance(response.data, dict) else {}
+
+        is_expired_access = (
+            response.status_code == status.HTTP_401_UNAUTHORIZED
+            and str(data.get('code')) == 'token_not_valid'
+            and any(
+                isinstance(item, dict)
+                and str(item.get('token_type')) == 'access'
+                and str(item.get('message')) == 'Token is expired'
+                for item in (data.get('messages') or [])
+            )
+        )
+
+        target_logger = expired_access_logger if is_expired_access else logger
+
+        target_logger.log(
+            logging.DEBUG if is_expired_access else logging.WARNING,
             'API error | %s | %s | status=%s | view=%s | detail=%s',
             request.method if request else 'UNKNOWN',
             request.path if request else 'UNKNOWN',
