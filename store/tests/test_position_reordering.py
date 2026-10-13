@@ -1,15 +1,21 @@
 from unittest import mock
 
 import pytest
+from django.db.models import QuerySet
 from rest_framework import status
 
-from store.models import AlbumArchive
+from store.models import AlbumArchive, Merch, Track
+from store.services import reorder_objects
 from store.services.album_archive import (
     AlbumArchiveScheduler,
     AlbumArchiveService,
 )
-from store.services.track import reorder_tracks
-from store.tests.factories import AlbumFactory, TrackFactory
+from store.tests.factories import (
+    AlbumFactory,
+    BonusFactory,
+    MerchFactory,
+    TrackFactory,
+)
 
 TASK_PATH = 'store.tasks.album_archive.build_album_archive.apply_async'
 
@@ -273,16 +279,167 @@ class TestTrackReorderArchive:
 class TestReorderTracksService:
     """Проверяет сервис изменения порядка треков."""
 
-    def test_rolls_back_positions_if_scheduler_fails(self, album, tracks):
-        """Ошибка планировщика откатывает изменение позиций."""
+    def test_rolls_back_positions_if_update_fails(self, album, tracks):
+        """Ошибка после записи позиций откатывает изменение."""
         before = db_order(album)
+        real_bulk_update = QuerySet.bulk_update
+
+        def update_then_fail(self, *args, **kwargs) -> None:
+            real_bulk_update(self, *args, **kwargs)
+            raise RuntimeError
+
+        with mock.patch.object(
+            QuerySet,
+            'bulk_update',
+            update_then_fail,
+        ):
+            with pytest.raises(RuntimeError):
+                reorder_objects(
+                    Track.objects.filter(album=album, is_active=True),
+                    [t.id for t in reversed(tracks)],
+                    'ids_field',
+                )
+
+        assert db_order(album) == before
+
+    def test_schedules_archive_after_commit(
+        self,
+        artist_client,
+        track_reorder_url,
+        album,
+        tracks,
+        django_capture_on_commit_callbacks,
+    ):
+        """Проверяет перестроение архива после коммита транзакции."""
+        with mock.patch.object(
+            AlbumArchiveScheduler,
+            'schedule_by_id',
+        ) as schedule:
+            with django_capture_on_commit_callbacks(execute=True):
+                response = artist_client.patch(
+                    track_reorder_url,
+                    payload(album, list(reversed(tracks))),
+                    format='json',
+                )
+
+        assert response.status_code == 200
+        schedule.assert_called_once_with(album.pk)
+
+    def test_does_not_schedule_archive_on_invalid_ids(
+        self,
+        artist_client,
+        track_reorder_url,
+        album,
+        tracks,
+        django_capture_on_commit_callbacks,
+    ):
+        """Проверяет, что архив не перестраивается при некорректных ID."""
+        bad_payload = {'album': album.id, 'track_ids': [999999]}
 
         with mock.patch.object(
             AlbumArchiveScheduler,
             'schedule_by_id',
-            side_effect=RuntimeError,
-        ):
-            with pytest.raises(RuntimeError):
-                reorder_tracks(album, [t.id for t in reversed(tracks)])
+        ) as schedule:
+            with django_capture_on_commit_callbacks(execute=True):
+                response = artist_client.patch(
+                    track_reorder_url,
+                    bad_payload,
+                    format='json',
+                )
 
-        assert db_order(album) == before
+        assert response.status_code == 400
+        schedule.assert_not_called()
+
+
+class TestBonusReorder:
+    """Тесты для изменения порядка бонусов альбома."""
+
+    def test_reorders_bonuses(self, artist_client, album, bonuses_reorder_url):
+        """Успешное изменение порядка бонусов альбома."""
+        b1, b2 = (
+            BonusFactory(album=album, position=1),
+            BonusFactory(album=album, position=2),
+        )
+
+        response = artist_client.patch(
+            bonuses_reorder_url,
+            {'album': album.id, 'bonus_ids': [b2.id, b1.id]},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert list(
+            album.bonuses.order_by('position').values_list('id', flat=True),
+        ) == [b2.id, b1.id]
+
+    def test_other_artist_cannot_reorder_bonuses(
+        self,
+        other_artist_client,
+        album,
+        album_reorder_url,
+    ):
+        """Чужой артист не может менять порядок бонусов чужого альбома."""
+        b1, b2 = (
+            BonusFactory(album=album, position=1),
+            BonusFactory(album=album, position=2),
+        )
+
+        response = other_artist_client.patch(
+            album_reorder_url,
+            {'bonus_ids': [b2.id, b1.id]},
+            format='json',
+        )
+
+        assert response.status_code in (
+            status.HTTP_400_BAD_REQUEST,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+
+class TestMerchReorder:
+    """Тесты для изменения порядка мерча."""
+
+    def test_reorders_merch(
+        self,
+        artist_client,
+        artist_user,
+        merch_reorder_url,
+    ):
+        """Успешное изменение порядка мерча артиста."""
+        artist = artist_user.artist_profile
+        m1, m2 = (
+            MerchFactory(artist=artist, position=1),
+            MerchFactory(artist=artist, position=2),
+        )
+
+        response = artist_client.patch(
+            merch_reorder_url,
+            {'artist': artist.id, 'merch_ids': [m2.id, m1.id]},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert list(
+            Merch.objects
+            .filter(artist=artist)
+            .order_by('position')
+            .values_list('id', flat=True),
+        ) == [m2.id, m1.id]
+
+    def test_merch_duplicate_ids_returns_400(
+        self,
+        artist_client,
+        artist_user,
+        merch_reorder_url,
+    ):
+        """Дублирующиеся ID мерча вызывают ошибку валидации."""
+        artist = artist_user.artist_profile
+        m1 = MerchFactory(artist=artist, position=1)
+
+        response = artist_client.patch(
+            merch_reorder_url,
+            {'artist': artist.id, 'merch_ids': [m1.id, m1.id]},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

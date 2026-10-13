@@ -3,6 +3,7 @@
 from django.db.models import Prefetch, Q
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from common.access import managed_artist_q
@@ -12,13 +13,14 @@ from .mixins import ProductActionMixin, SoftDeleteMixin
 from store.constants import CHAR_PRESET_DIGITAL
 from store.filters import AlbumFilter
 from store.models import Album, ProductVariant
-from store.schema import album_schema
+from store.schema import album_reorder_schema, album_schema
 from store.serializers import (
     AlbumReadDetailSerializer,
     AlbumReadSerializer,
+    AlbumReorderSerializer,
     AlbumWriteSerializer,
 )
-from store.services import get_release_sales_stats
+from store.services import get_release_sales_stats, reorder_objects
 
 
 @album_schema
@@ -78,6 +80,7 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             .filter(Q(is_active=True) & managed_artist_q(user))
             .select_related('product', 'artist')
             .prefetch_related(digital_variants_prefetch)
+            .order_by('position', 'id')
         )
 
         if self.action in ('retrieve', 'create', 'partial_update'):
@@ -131,3 +134,34 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             )
 
         return super().destroy(request, *args, **kwargs)
+
+    @album_reorder_schema
+    @action(
+        detail=False,
+        methods=['patch'],
+        url_path='reorder',
+        pagination_class=None,
+    )
+    def reorder(self, request):
+        """Задаёт порядок альбомов за один запрос."""
+        serializer = AlbumReorderSerializer(
+            data=request.data,
+            context=self.get_serializer_context(),
+        )
+        serializer.is_valid(raise_exception=True)
+        artist = serializer.validated_data['artist']
+        scoped = self.get_queryset().filter(artist=artist)
+
+        reorder_objects(
+            Album.objects.filter(pk__in=scoped.values('pk')),
+            serializer.validated_data['album_ids'],
+            'album_ids',
+        )
+
+        return Response(
+            AlbumReadSerializer(
+                scoped.order_by('position', 'pk'),
+                many=True,
+                context=self.get_serializer_context(),
+            ).data,
+        )

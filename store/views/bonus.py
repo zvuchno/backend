@@ -22,7 +22,7 @@ from store.serializers import (
     BonusReorderSerializer,
     BonusWriteSerializer,
 )
-from store.services import reorder_bonuses
+from store.services import reorder_objects
 
 
 @bonus_schema
@@ -58,7 +58,7 @@ class BonusViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
 
         return queryset.filter(
             Q(is_active=True) & managed_artist_q(user, prefix='album__artist'),
-        )
+        ).order_by('position', 'id')
 
     @bonus_reorder_schema
     @action(
@@ -75,9 +75,10 @@ class BonusViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         album = serializer.validated_data['album']
-        reorder_bonuses(
-            album,
+        reorder_objects(
+            Bonus.objects.filter(album=album, is_active=True),
             serializer.validated_data['bonus_ids'],
+            'bonus_ids',
         )
 
         bonuses = (

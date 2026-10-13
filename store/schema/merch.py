@@ -7,6 +7,8 @@ from drf_spectacular.utils import (
 
 from store.serializers import (
     MerchDetailSerializer,
+    MerchReadSerializer,
+    MerchReorderSerializer,
     MerchWriteSerializer,
 )
 
@@ -23,10 +25,12 @@ VARIANTS_DESCRIPTION = (
     '- `variants: []` → деактивирует все'
 )
 
+MERCH_TAGS = ['Merch']
+
 merch_schema = extend_schema_view(
     list=extend_schema(
         summary='Список мерча',
-        tags=['Merch'],
+        tags=MERCH_TAGS,
         description='Возвращает список мерча.',
         parameters=[
             OpenApiParameter(
@@ -93,19 +97,19 @@ merch_schema = extend_schema_view(
     ),
     retrieve=extend_schema(
         summary='Получить мерч',
-        tags=['Merch'],
+        tags=MERCH_TAGS,
         description='Возвращает мерч по id.',
     ),
     create=extend_schema(
         summary='Создать мерч',
-        tags=['Merch'],
+        tags=MERCH_TAGS,
         request=MerchWriteSerializer,
         responses={201: MerchDetailSerializer},
         description=(f'Создаёт новый мерч.\n\n{VARIANTS_DESCRIPTION}'),
     ),
     partial_update=extend_schema(
         summary='Частично обновить мерч',
-        tags=['Merch'],
+        tags=MERCH_TAGS,
         request=MerchWriteSerializer,
         responses={200: MerchDetailSerializer},
         description=(
@@ -116,7 +120,26 @@ merch_schema = extend_schema_view(
     ),
     destroy=extend_schema(
         summary='Удалить мерч',
-        tags=['Merch'],
+        tags=MERCH_TAGS,
         description='Удаляет мерч.',
     ),
 )
+
+
+def merch_reorder_schema(view_func):
+    """Декоратор для документирования экшена изменения порядка мерча."""
+    return extend_schema(
+        methods=['PATCH'],
+        summary='Изменить порядок мерча',
+        description=(
+            'Изменяет порядок всего активного мерча указанного артиста, '
+            'доступного пользователю. Необходимо передать ID артиста и '
+            'полный список ID его мерча в требуемом порядке.'
+        ),
+        request=MerchReorderSerializer,
+        responses={
+            200: MerchReadSerializer(many=True),
+        },
+        tags=MERCH_TAGS,
+        filters=False,
+    )(view_func)

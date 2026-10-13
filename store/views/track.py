@@ -24,10 +24,9 @@ from store.serializers import (
     TrackReorderSerializer,
     TrackWriteSerializer,
 )
-from store.services import get_track_sales_stats
+from store.services import get_track_sales_stats, reorder_objects
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
-from store.services.track import reorder_tracks
 
 
 @track_schema
@@ -147,9 +146,14 @@ class TrackViewSet(
         )
         serializer.is_valid(raise_exception=True)
         album = serializer.validated_data['album']
-        reorder_tracks(
-            album,
+
+        reorder_objects(
+            Track.objects.filter(album=album, is_active=True),
             serializer.validated_data['track_ids'],
+            'track_ids',
+        )
+        transaction.on_commit(
+            lambda: AlbumArchiveScheduler.schedule_by_id(album.pk),
         )
 
         tracks = (
