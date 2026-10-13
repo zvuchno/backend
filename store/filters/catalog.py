@@ -60,6 +60,21 @@ class ProductCatalogFilter(django_filters.FilterSet):
         if value == 'random':
             return queryset.order_by('?')
 
+        if self.data.get('artist'):
+            return queryset.annotate(
+                catalog_position=models.Case(
+                    models.When(
+                        product_type=Product.ProductType.ALBUM,
+                        then=models.F('album__position'),
+                    ),
+                    models.When(
+                        product_type=Product.ProductType.MERCH,
+                        then=models.F('merch__position'),
+                    ),
+                    output_field=models.IntegerField(),
+                ),
+            ).order_by('catalog_position', 'pk')
+
         if value == 'created_at':
             return queryset.order_by('catalog_created_at', 'pk')
 
