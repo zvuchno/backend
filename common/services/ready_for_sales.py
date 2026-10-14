@@ -14,6 +14,7 @@ class PublicationRequirement(StrEnum):
     LEGAL_PROFILE_VERIFICATION = 'legal_profile_verification'
     SHIPPING_POINT = 'shipping_point'
     PAYOUT_RECIPIENT = 'payout_recipient'
+    PROFILE_COVER = 'profile_cover'
 
     @property
     def description(self) -> str:
@@ -25,6 +26,7 @@ class PublicationRequirement(StrEnum):
             ),
             self.SHIPPING_POINT: 'не включена доставка СДЭК',
             self.PAYOUT_RECIPIENT: 'не определен получатель выплаты.',
+            self.PROFILE_COVER: 'не добавлена обложка профиля',
         }
         return descriptions[self]
 
@@ -41,6 +43,12 @@ class PublicationRequirement(StrEnum):
             ),
             self.SHIPPING_POINT: (
                 'Включите доставку СДЭК для публикации физических товаров.'
+            ),
+            self.PAYOUT_RECIPIENT: (
+                'Не назначен получатель выплат. Обратитесь в ТП.'
+            ),
+            self.PROFILE_COVER: (
+                'Добавьте обложку профиля для публикации товаров.'
             ),
         }
         return messages[self]
@@ -68,16 +76,28 @@ def get_artist_publication_readiness(
     artist: ArtistProfile,
 ) -> ArtistPublicationReadiness:
     """Возвращает готовность артиста к публикации товаров."""
+    digital_missing = []
+
+    if not artist.cover:
+        digital_missing.append(
+            PublicationRequirement.PROFILE_COVER,
+        )
+
     if not settings.PUBLICATION_READINESS_ENABLED:
+        missing = tuple(digital_missing)
+
         return ArtistPublicationReadiness(
-            digital_missing=(),
-            physical_missing=(),
+            digital_missing=missing,
+            physical_missing=missing,
         )
 
     if (artist.label_id is not None and artist.label.user_id is None) or (
         artist.label_id is None and artist.user_id is None
     ):
-        missing = (PublicationRequirement.PAYOUT_RECIPIENT,)
+        digital_missing.append(
+            PublicationRequirement.PAYOUT_RECIPIENT,
+        )
+        missing = tuple(digital_missing)
 
         return ArtistPublicationReadiness(
             digital_missing=missing,
@@ -85,8 +105,6 @@ def get_artist_publication_readiness(
         )
 
     payout_recipient = artist.default_payout_recipient
-
-    digital_missing = []
 
     if not payout_recipient.is_email_verified:
         digital_missing.append(
@@ -114,12 +132,16 @@ def get_artist_publication_readiness(
 
 def digital_publication_ready_q(prefix: str = '') -> Q:
     """Возвращает условие готовности цифрового товара к публикации."""
+    artist_cover_q = Q(**{f'{prefix}artist__cover__isnull': False}) & ~Q(**{
+        f'{prefix}artist__cover': '',
+    })
+
     if not settings.PUBLICATION_READINESS_ENABLED:
-        return Q()
+        return artist_cover_q
 
     payout_recipient = f'{prefix}payout_recipient'
 
-    return Q(
+    return artist_cover_q & Q(
         **{
             f'{payout_recipient}__is_email_verified': True,
             f'{payout_recipient}__legal_profile__is_verified': True,
@@ -130,7 +152,7 @@ def digital_publication_ready_q(prefix: str = '') -> Q:
 def physical_publication_ready_q(prefix: str = '') -> Q:
     """Возвращает условие готовности физического товара к публикации."""
     if not settings.PUBLICATION_READINESS_ENABLED:
-        return Q()
+        return digital_publication_ready_q(prefix)
 
     artist = f'{prefix}artist'
 
@@ -162,8 +184,12 @@ def physical_publication_ready_q(prefix: str = '') -> Q:
 
 def artist_publication_ready_q(prefix: str = '') -> Q:
     """Возвращает условие готовности артиста к публичному отображению."""
+    cover_q = Q(**{f'{prefix}cover__isnull': False}) & ~Q(**{
+        f'{prefix}cover': '',
+    })
+
     if not settings.PUBLICATION_READINESS_ENABLED:
-        return Q()
+        return cover_q
 
     own_user_q = Q(
         **{
@@ -181,7 +207,7 @@ def artist_publication_ready_q(prefix: str = '') -> Q:
         },
     )
 
-    return own_user_q | label_user_q
+    return cover_q & (own_user_q | label_user_q)
 
 
 def _shipping_point_configured_q(prefix: str) -> Q:

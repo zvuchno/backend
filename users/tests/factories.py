@@ -61,6 +61,7 @@ class ArtistProfileFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f'Артист {n}')
     city = 'Москва'
     description = 'Тестовое описание артиста.'
+    cover = 'artist-covers/test-cover.jpg'
     is_active = True
 
 
@@ -76,6 +77,7 @@ class LabelProfileFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f'Лейбл {n}')
     city = 'Москва'
     description = 'Тестовое описание лейбла.'
+    cover = 'artist-covers/test-cover.jpg'
     is_active = True
 
 
