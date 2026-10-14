@@ -376,7 +376,7 @@ class TestBonusReorder:
         self,
         other_artist_client,
         album,
-        album_reorder_url,
+        bonuses_reorder_url,
     ):
         """Чужой артист не может менять порядок бонусов чужого альбома."""
         b1, b2 = (
@@ -385,7 +385,7 @@ class TestBonusReorder:
         )
 
         response = other_artist_client.patch(
-            album_reorder_url,
+            bonuses_reorder_url,
             {'bonus_ids': [b2.id, b1.id]},
             format='json',
         )

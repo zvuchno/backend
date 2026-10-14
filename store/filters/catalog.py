@@ -60,7 +60,7 @@ class ProductCatalogFilter(django_filters.FilterSet):
         if value == 'random':
             return queryset.order_by('?')
 
-        if self.data.get('artist'):
+        if value == 'position':
             return queryset.annotate(
                 catalog_position=models.Case(
                     models.When(

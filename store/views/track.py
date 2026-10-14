@@ -49,7 +49,7 @@ class TrackViewSet(
     filterset_class = TrackFilter
     search_fields = ('name',)
     ordering_fields = ('name', 'position')
-    ordering = ('album', 'position')
+    ordering = ('album', 'position', 'id')
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):

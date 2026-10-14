@@ -53,8 +53,8 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     )
     filterset_class = MerchFilter
     search_fields = ('name', 'description')
-    ordering_fields = ('name', 'created_at')
-    ordering = ('name',)
+    ordering_fields = ('name', 'created_at', 'position')
+    ordering = ('position', 'id')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -72,7 +72,7 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
 
         queryset = queryset.filter(
             Q(is_active=True) & managed_artist_q(user),
-        ).order_by('position', 'id')
+        )
 
         active_variants_prefetch = Prefetch(
             'product__variants',

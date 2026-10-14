@@ -43,7 +43,7 @@ class TrackReadQuerysetMixin:
             'album',
             'album__artist',
             'product',
-        ).order_by('position', 'id')
+        )
 
         if user.is_authenticated:
             favorite_subquery = Favorite.objects.filter(

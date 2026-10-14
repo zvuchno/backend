@@ -49,8 +49,8 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     )
     filterset_class = AlbumFilter
     search_fields = ('name', 'genre__name')
-    ordering_fields = ('name', 'created_at', 'release_date')
-    ordering = ('-created_at', 'name')
+    ordering_fields = ('name', 'created_at', 'release_date', 'position')
+    ordering = ('position', 'id')
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
@@ -80,7 +80,6 @@ class AlbumViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             .filter(Q(is_active=True) & managed_artist_q(user))
             .select_related('product', 'artist')
             .prefetch_related(digital_variants_prefetch)
-            .order_by('position', 'id')
         )
 
         if self.action in ('retrieve', 'create', 'partial_update'):
