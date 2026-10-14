@@ -1,6 +1,6 @@
 """Представления профиля артиста."""
 
-from django.db.models import Case, Q, When
+from django.db.models import Case, Exists, OuterRef, Q, When
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status
 from rest_framework.generics import (
@@ -25,7 +25,7 @@ from common.permissions import (
 )
 from common.services import artist_publication_ready_q
 
-from store.models import Album, Merch
+from store.models import Album, Merch, Product
 from users.filters import ArtistFilter
 from users.models import ArtistProfile, ArtistProfileType
 from users.schemas import (
@@ -199,17 +199,16 @@ class ArtistListView(ListAPIView):
 
     def get_queryset(self):
         """Возвращает артистов, доступных в публичном списке."""
-        own_published_content = Q(album_items__is_published=True) | Q(
-            merch_items__is_published=True,
+        public_products = Product.objects.published_catalog_content()
+
+        own_published_content = public_products.filter(
+            Q(album__artist_id=OuterRef('pk'))
+            | Q(merch__artist_id=OuterRef('pk')),
         )
 
-        managed_artist_published_content = Q(
-            profile_type=ArtistProfileType.LABEL,
-            artists__profile_type=ArtistProfileType.ARTIST,
-            artists__is_active=True,
-        ) & (
-            Q(artists__album_items__is_published=True)
-            | Q(artists__merch_items__is_published=True)
+        managed_artist_published_content = public_products.filter(
+            Q(album__artist__label_id=OuterRef('pk'))
+            | Q(merch__artist__label_id=OuterRef('pk')),
         )
 
         return (
@@ -219,8 +218,18 @@ class ArtistListView(ListAPIView):
                 artist_publication_ready_q(),
                 is_active=True,
             )
+            .annotate(
+                has_own_public_content=Exists(own_published_content),
+                has_managed_public_content=Exists(
+                    managed_artist_published_content,
+                ),
+            )
             .filter(
-                own_published_content | managed_artist_published_content,
+                Q(has_own_public_content=True)
+                | Q(
+                    profile_type=ArtistProfileType.LABEL,
+                    has_managed_public_content=True,
+                ),
             )
             .select_related(
                 'user',
