@@ -19,7 +19,7 @@ from store.upload_paths import (
     track_preview_upload_to,
     track_stream_upload_to,
 )
-from store.validators import validate_audiofile_size
+from store.validators import validate_audiofile_size, validate_isrc
 
 
 class Track(BaseContent):
@@ -58,6 +58,14 @@ class Track(BaseContent):
         null=True,
         blank=True,
         help_text='Порядковый номер трека в альбоме',
+    )
+    isrc = models.CharField(
+        'ISRC',
+        max_length=12,
+        unique=True,
+        blank=True,
+        null=True,
+        validators=(validate_isrc,),
     )
 
     @property

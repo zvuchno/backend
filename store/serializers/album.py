@@ -16,6 +16,7 @@ from store.constants import (
     MISSING_GENRE_ERROR,
     MISSING_TRACKS_ERROR,
     MONEY_DISPLAY_PRECISION,
+    SINGLE_TRACK_COUNT_ERROR,
 )
 from store.models import Album
 from store.services.album_publication import has_uploaded_track
@@ -69,10 +70,11 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         model = Album
         fields = (
             'id',
+            'upc',
             'sku',
             'name',
             'artist_name',
-            'is_single',
+            'release_type',
             'price',
             'cover_image',
             'is_published',
@@ -131,9 +133,10 @@ class AlbumWriteSerializer(
     class Meta:
         model = Album
         fields = (
+            'upc',
             'name',
             'artist',
-            'is_single',
+            'release_type',
             'release_date',
             'genre',
             'price',
@@ -155,19 +158,43 @@ class AlbumWriteSerializer(
 
         errors = {}
 
-        if attrs.get('is_published') is True and (
-            self.instance is None or not has_uploaded_track(self.instance)
-        ):
-            errors['tracks'] = MISSING_TRACKS_ERROR
-
         is_published = attrs.get(
             'is_published',
             self.instance.is_published if self.instance else False,
+        )
+        release_type = attrs.get(
+            'release_type',
+            self.instance.release_type
+            if self.instance
+            else Album.ReleaseType.ALBUM,
         )
         genre = attrs.get(
             'genre',
             self.instance.genre if self.instance else None,
         )
+
+        if release_type == Album.ReleaseType.SINGLE:
+            if 'price' in attrs:
+                errors['price'] = (
+                    'Для сингла нельзя задать индивидуальную цену трека.'
+                )
+
+            if 'allow_overpay' in attrs:
+                errors['allow_overpay'] = (
+                    'Для сингла нельзя настроить переплату за трек.'
+                )
+
+        was_published = bool(self.instance and self.instance.is_published)
+        is_being_published = is_published and not was_published
+
+        if is_being_published:
+            if self.instance is None or not has_uploaded_track(self.instance):
+                errors['tracks'] = MISSING_TRACKS_ERROR
+            elif (
+                release_type == Album.ReleaseType.SINGLE
+                and self.instance.tracks.filter(is_active=True).count() != 1
+            ):
+                errors['tracks'] = SINGLE_TRACK_COUNT_ERROR
 
         if is_published and genre is None:
             errors['genre'] = MISSING_GENRE_ERROR

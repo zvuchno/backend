@@ -258,13 +258,17 @@ class ProductQuerySet(models.QuerySet):
         )
 
     def with_album_card_annotations(self):
-        """Добавляет вычисляемые поля карточек альбомов."""
+        """Добавляет вычисляемые поля карточек релизов."""
         return self.annotate(
             artist_name=models.F('album__artist__name'),
             kind=models.Case(
                 models.When(
-                    album__is_single=True,
+                    album__release_type='single',
                     then=models.Value('Сингл'),
+                ),
+                models.When(
+                    album__release_type='ep',
+                    then=models.Value('EP'),
                 ),
                 default=models.Value('Альбом'),
                 output_field=models.CharField(),
@@ -330,7 +334,7 @@ class ProductQuerySet(models.QuerySet):
     def with_catalog_card_annotations(self):
         """Добавляет вычисляемые поля карточек основного каталога.
 
-        Используется для смешанной выдачи альбомов и мерча.
+        Используется для смешанной выдачи релизов и мерча.
         """
         return self.annotate(
             artist_name=models.Case(
@@ -347,12 +351,17 @@ class ProductQuerySet(models.QuerySet):
             kind=models.Case(
                 models.When(
                     product_type='album',
-                    album__is_single=True,
+                    album__release_type='single',
                     then=models.Value('Сингл'),
                 ),
                 models.When(
                     product_type='album',
-                    album__is_single=False,
+                    album__release_type='ep',
+                    then=models.Value('EP'),
+                ),
+                models.When(
+                    product_type='album',
+                    album__release_type='album',
                     then=models.Value('Альбом'),
                 ),
                 models.When(

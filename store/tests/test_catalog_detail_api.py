@@ -44,7 +44,7 @@ class TestCatalogReleaseDetail:
 
         assert response.data['id'] == album.id
         assert response.data['artist_name'] == album.artist.name
-        assert response.data['is_single'] == album.is_single
+        assert response.data['release_type'] == album.release_type
 
     def test_catalog_release_detail_contains_album_and_carrier_variants(
         self,

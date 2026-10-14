@@ -4,6 +4,8 @@
 используемые в API.
 """
 
+import re
+
 from rest_framework import serializers
 
 from common.access import can_manage_artist
@@ -47,6 +49,7 @@ class TrackReadSerializer(serializers.ModelSerializer):
         model = Track
         fields = (
             'id',
+            'isrc',
             'artist_name',
             'name',
             'album',
@@ -87,6 +90,7 @@ class TrackWriteSerializer(
     class Meta:
         model = Track
         fields = (
+            'isrc',
             'name',
             'album',
             'audio_file',
@@ -111,6 +115,31 @@ class TrackWriteSerializer(
             TrackGeneratedAudioScheduler.schedule(track)
         return track
 
+    def validate(self, attrs):
+        """Проверяет коммерческие параметры трека."""
+        album = attrs.get(
+            'album',
+            self.instance.album if self.instance else None,
+        )
+
+        if album and album.release_type == Album.ReleaseType.SINGLE:
+            errors = {}
+
+            if 'price' in attrs:
+                errors['price'] = (
+                    'Для сингла нельзя задать индивидуальную цену трека.'
+                )
+
+            if 'allow_overpay' in attrs:
+                errors['allow_overpay'] = (
+                    'Для сингла нельзя настроить переплату за трек.'
+                )
+
+            if errors:
+                raise serializers.ValidationError(errors)
+
+        return attrs
+
     def validate_album(self, album):
         """Проверяет, что артист работает только со своим альбомом."""
         request = self.context['request']
@@ -121,6 +150,13 @@ class TrackWriteSerializer(
             )
 
         return album
+
+    def validate_isrc(self, value):
+        """Нормализует ISRC."""
+        if value is None:
+            return value
+
+        return re.sub(r'[-\s]', '', value).upper()
 
 
 class TrackReorderSerializer(serializers.Serializer):
