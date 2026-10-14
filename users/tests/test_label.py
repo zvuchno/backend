@@ -844,6 +844,8 @@ def test_admin_form_prevents_removing_payout_recipient(
     from users.admin.artist import ArtistProfileAdminForm
 
     artist = artist_user.artist_profile
+    artist.cover = None
+    artist.save(update_fields=('cover',))
     label = ArtistProfile.objects.create(
         name='Лейбл без аккаунта',
         profile_type=ArtistProfileType.LABEL,

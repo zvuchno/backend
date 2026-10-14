@@ -44,7 +44,9 @@ class PublicationRequirement(StrEnum):
             self.SHIPPING_POINT: (
                 'Включите доставку СДЭК для публикации физических товаров.'
             ),
-            self.PAYOUT_RECIPIENT: ('Не назначен получатель выплат.'),
+            self.PAYOUT_RECIPIENT: (
+                'Не назначен получатель выплат. Обратитесь в ТП.'
+            ),
             self.PROFILE_COVER: (
                 'Добавьте обложку профиля для публикации товаров.'
             ),

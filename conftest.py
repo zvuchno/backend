@@ -61,6 +61,7 @@ def artist_profile_factory(db):
         user=None,
         label=None,
         name='Test Artist',
+        cover='artist-covers/test-cover.jpg',
         is_active=True,
         **kwargs,
     ) -> ArtistProfile:
@@ -69,6 +70,7 @@ def artist_profile_factory(db):
             label=label,
             profile_type=ArtistProfileType.ARTIST,
             name=name,
+            cover=cover,
             is_active=is_active,
             **kwargs,
         )
@@ -84,6 +86,7 @@ def label_profile_factory(db):
         *,
         user,
         name='Test Label',
+        cover='artist-covers/test-cover.jpg',
         is_active=True,
         **kwargs,
     ) -> ArtistProfile:
@@ -91,6 +94,7 @@ def label_profile_factory(db):
             user=user,
             profile_type=ArtistProfileType.LABEL,
             name=name,
+            cover=cover,
             is_active=is_active,
             **kwargs,
         )

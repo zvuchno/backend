@@ -72,6 +72,25 @@ class TestArtistPublicationReadiness:
             PublicationRequirement.SHIPPING_POINT,
         )
 
+    def test_profile_without_cover_cannot_publish(
+        self,
+        ready_artist_factory,
+    ):
+        """Профиль без обложки не готов к публикации."""
+        artist = ready_artist_factory(cover=None)
+
+        readiness = get_artist_publication_readiness(artist)
+
+        assert readiness.can_publish_digital is False
+        assert readiness.can_publish_physical is False
+        assert readiness.digital_missing == (
+            PublicationRequirement.PROFILE_COVER,
+        )
+        assert readiness.physical_missing == (
+            PublicationRequirement.PROFILE_COVER,
+            PublicationRequirement.SHIPPING_POINT,
+        )
+
     def test_artist_me_contains_publication_readiness(
         self,
         auth_client,
@@ -124,9 +143,11 @@ class TestArtistPublicationReadiness:
         assert readiness.can_publish_physical is False
 
         assert readiness.digital_missing == (
+            PublicationRequirement.PROFILE_COVER,
             PublicationRequirement.PAYOUT_RECIPIENT,
         )
         assert readiness.physical_missing == (
+            PublicationRequirement.PROFILE_COVER,
             PublicationRequirement.PAYOUT_RECIPIENT,
         )
 
