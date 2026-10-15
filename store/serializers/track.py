@@ -9,7 +9,11 @@ from rest_framework import serializers
 from common.access import can_manage_artist
 
 from .mixins import ImmutableFieldsSerializerMixin
-from store.constants import MAX_PRICE_DIGITS, MONEY_DISPLAY_PRECISION
+from store.constants import (
+    MAX_PRICE_DIGITS,
+    MONEY_DISPLAY_PRECISION,
+    SINGLE_TRACK_COUNT_ERROR,
+)
 from store.models import Album, Track
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
 
@@ -112,7 +116,9 @@ class TrackWriteSerializer(
         return track
 
     def validate(self, attrs):
-        """Проверяет коммерческие параметры трека."""
+        """Проверяет коммерческие параметры трека и ограничения сингла."""
+        attrs = super().validate(attrs)
+
         album = attrs.get(
             'album',
             self.instance.album if self.instance else None,
@@ -130,6 +136,13 @@ class TrackWriteSerializer(
                 errors['allow_overpay'] = (
                     'Для сингла нельзя настроить переплату за трек.'
                 )
+            # Нельзя добавить второй активный трек в опубликованный сингл
+            if (
+                self.instance is None
+                and album.is_published
+                and album.tracks.filter(is_active=True).exists()
+            ):
+                errors['album'] = SINGLE_TRACK_COUNT_ERROR
 
             if errors:
                 raise serializers.ValidationError(errors)

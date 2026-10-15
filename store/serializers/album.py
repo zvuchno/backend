@@ -182,22 +182,29 @@ class AlbumWriteSerializer(
             self.instance.release_type if self.instance else None,
         )
 
-        if is_published and (
+        was_published = bool(self.instance and self.instance.is_published)
+        is_being_published = is_published and not was_published
+        release_type_changed = (
+            self.instance is not None
+            and 'release_type' in attrs
+            and attrs['release_type'] != self.instance.release_type
+        )
+
+        if is_being_published and (
             self.instance is None or not has_uploaded_track(self.instance)
         ):
             errors['tracks'] = MISSING_TRACKS_ERROR
-
-        if is_published and genre is None:
-            errors['genre'] = MISSING_GENRE_ERROR
-
-        if (
+        elif (
             is_published
             and release_type == Album.ReleaseType.SINGLE
             and self.instance is not None
-            and 'tracks' not in errors
-            and self.instance.tracks.filter(is_active=True).count() != 1
+            and (is_being_published or release_type_changed)
+            and self.instance.tracks.filter(is_active=True).count() > 1
         ):
             errors['tracks'] = SINGLE_TRACK_COUNT_ERROR
+
+        if is_published and genre is None:
+            errors['genre'] = MISSING_GENRE_ERROR
 
         if errors:
             raise serializers.ValidationError(errors)
