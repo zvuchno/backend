@@ -374,6 +374,24 @@ def track_reorder_url():
 
 
 @pytest.fixture
+def bonuses_reorder_url():
+    """Возвращает URL-адрес эндпоинта изменения порядка бонусов."""
+    return reverse('api:store:bonuses-reorder')
+
+
+@pytest.fixture
+def album_reorder_url():
+    """Возвращает URL-адрес эндпоинта изменения порядка альбома."""
+    return reverse('api:store:albums-reorder')
+
+
+@pytest.fixture
+def merch_reorder_url():
+    """Возвращает URL-адрес эндпоинта изменения порядка мерча."""
+    return reverse('api:store:merch-reorder')
+
+
+@pytest.fixture
 def bonus_list_url():
     """Возвращает URL списка и создания бонусов."""
     return reverse('api:store:bonuses-list')

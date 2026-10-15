@@ -13,6 +13,8 @@ from drf_spectacular.utils import (
 
 from store.serializers import (
     AlbumReadDetailSerializer,
+    AlbumReadSerializer,
+    AlbumReorderSerializer,
     AlbumWriteSerializer,
 )
 
@@ -88,3 +90,22 @@ album_schema = extend_schema_view(
         description='Удаляет альбом пользователя.',
     ),
 )
+
+
+def album_reorder_schema(view_func):
+    """Декоратор для документирования экшена изменения порядка альбомов."""
+    return extend_schema(
+        methods=['PATCH'],
+        summary='Изменить порядок альбомов',
+        description=(
+            'Изменяет порядок всех активных альбомов указанного артиста, '
+            'доступных пользователю. Необходимо передать ID артиста и '
+            'полный список ID его альбомов в требуемом порядке.'
+        ),
+        request=AlbumReorderSerializer,
+        responses={
+            200: AlbumReadSerializer(many=True),
+        },
+        tags=ALBUMS_TAGS,
+        filters=False,
+    )(view_func)

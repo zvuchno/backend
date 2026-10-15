@@ -1,4 +1,3 @@
-from .bonus import reorder_bonuses
 from .cart_calculation_service import CartCalculationService
 from .cart_service import CartService
 from .cdek import CDEKService
@@ -14,6 +13,7 @@ from .music_download import (
 from .order_service import OrderService
 from .payment import create_yookassa_payment, process_yookassa_webhook
 from .payout import PayoutService
+from .position_reorder import reorder_objects
 from .report import ReportService
 from .report_file_builder import ReportFileBuilder
 from .sales_statistics import (
@@ -22,7 +22,6 @@ from .sales_statistics import (
     releases_have_direct_sales,
     tracks_have_sales,
 )
-from .track import reorder_tracks
 
 __all__ = [
     'CartCalculationService',
@@ -41,8 +40,7 @@ __all__ = [
     'process_yookassa_webhook',
     'ProductService',
     'releases_have_direct_sales',
-    'reorder_bonuses',
-    'reorder_tracks',
+    'reorder_objects',
     'ReportService',
     'ReportFileBuilder',
     'ReservationService',
