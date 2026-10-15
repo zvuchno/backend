@@ -1,6 +1,7 @@
 from .album import (
     AlbumReadDetailSerializer,
     AlbumReadSerializer,
+    AlbumReorderSerializer,
     AlbumWriteSerializer,
 )
 from .bonus import (
@@ -35,6 +36,7 @@ from .image import ImageSerializer
 from .merch import (
     MerchDetailSerializer,
     MerchReadSerializer,
+    MerchReorderSerializer,
     MerchWriteSerializer,
     VariantReadSerializer,
     VariantWriteSerializer,
@@ -77,6 +79,7 @@ from .track_upload import (
 __all__ = [
     'AlbumReadDetailSerializer',
     'AlbumReadSerializer',
+    'AlbumReorderSerializer',
     'AlbumWriteSerializer',
     'ApplyPromocodeSerializer',
     'ArchiveNotReadySerializer',
@@ -108,6 +111,7 @@ __all__ = [
     'MerchDetailSerializer',
     'MerchKindSerializer',
     'MerchReadSerializer',
+    'MerchReorderSerializer',
     'MerchWriteSerializer',
     'OrderDetailSerializer',
     'OrderItemSerializer',

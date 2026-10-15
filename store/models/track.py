@@ -25,6 +25,8 @@ from store.validators import validate_audiofile_size, validate_isrc_format
 class Recording(BaseContent):
     """Музыкальная запись, существующая независимо от конкретного релиза."""
 
+    position = None
+
     audio_file = models.FileField(
         'Файл трека',
         upload_to=track_audio_upload_to,

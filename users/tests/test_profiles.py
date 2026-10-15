@@ -8,7 +8,7 @@ from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 
-from store.tests.factories import AlbumFactory, GenreFactory
+from store.tests.factories import AlbumProductFactory, GenreFactory
 from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.models import ArtistProfile, ArtistProfileType, UserConsent
 from users.tests.factories import ArtistProfileFactory
@@ -625,13 +625,13 @@ class TestArtistListApi:
         target_genre = GenreFactory(slug='rock')
         other_genre = GenreFactory(slug='jazz')
 
-        AlbumFactory(
-            artist=artist_user.artist_profile,
-            genre=target_genre,
+        AlbumProductFactory(
+            album__artist=artist_user.artist_profile,
+            album__genre=target_genre,
         )
-        AlbumFactory(
-            artist=other_artist_user.artist_profile,
-            genre=other_genre,
+        AlbumProductFactory(
+            album__artist=other_artist_user.artist_profile,
+            album__genre=other_genre,
         )
 
         response = api_client.get(
@@ -658,11 +658,11 @@ class TestArtistListApi:
         )
         genre = GenreFactory(slug='electronic')
 
-        AlbumFactory(
-            artist=artist,
-            genre=genre,
-            created_by=label_user,
-            payout_recipient=label_user,
+        AlbumProductFactory(
+            album__artist=artist,
+            album__genre=genre,
+            album__created_by=label_user,
+            album__payout_recipient=label_user,
         )
 
         response = api_client.get(
@@ -713,7 +713,10 @@ class TestArtistListApi:
         artist_list_url,
     ):
         artist = ArtistProfileFactory()
-        AlbumFactory(artist=artist)
+
+        AlbumProductFactory(
+            album__artist=artist,
+        )
 
         response = api_client.get(artist_list_url)
 
@@ -729,7 +732,10 @@ class TestArtistListApi:
         label = ArtistProfileFactory(
             profile_type=ArtistProfileType.LABEL,
         )
-        AlbumFactory(artist=label)
+
+        AlbumProductFactory(
+            album__artist=label,
+        )
 
         response = api_client.get(artist_list_url)
 
@@ -749,10 +755,10 @@ class TestArtistListApi:
             user=None,
             label=label,
         )
-        AlbumFactory(
-            artist=artist,
-            created_by=label.user,
-            payout_recipient=label.user,
+        AlbumProductFactory(
+            album__artist=artist,
+            album__created_by=label.user,
+            album__payout_recipient=label.user,
         )
 
         response = api_client.get(artist_list_url)
@@ -782,8 +788,8 @@ class TestArtistListReadiness:
             user__is_email_verified=False,
         )
 
-        AlbumFactory(
-            artist=artist,
+        AlbumProductFactory(
+            album__artist=artist,
         )
 
         response = api_client.get(artist_list_url)
@@ -803,8 +809,8 @@ class TestArtistListReadiness:
         """Готовый артист отображается в публичном списке."""
         artist = ready_artist_factory()
 
-        AlbumFactory(
-            artist=artist,
+        AlbumProductFactory(
+            album__artist=artist,
         )
 
         response = api_client.get(artist_list_url)
@@ -827,10 +833,10 @@ class TestArtistListReadiness:
             label=label_user.artist_profile,
         )
 
-        AlbumFactory(
-            artist=artist,
-            created_by=label_user,
-            payout_recipient=label_user,
+        AlbumProductFactory(
+            album__artist=artist,
+            album__created_by=label_user,
+            album__payout_recipient=label_user,
         )
 
         response = api_client.get(artist_list_url)

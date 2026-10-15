@@ -45,6 +45,7 @@ class BaseVariantTargetImageSerializer(
         """Возвращает данные для перехода на карточку товара."""
         return {
             'type': obj.target_type,
+            'id': obj.target_id,
             'url': self._get_target_url(obj),
             'selected_variant_id': obj.product_variant_id,
         }
