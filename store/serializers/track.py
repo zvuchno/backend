@@ -4,8 +4,6 @@
 используемые в API.
 """
 
-import re
-
 from rest_framework import serializers
 
 from common.access import can_manage_artist
@@ -49,7 +47,6 @@ class TrackReadSerializer(serializers.ModelSerializer):
         model = Track
         fields = (
             'id',
-            'isrc',
             'artist_name',
             'name',
             'album',
@@ -90,7 +87,6 @@ class TrackWriteSerializer(
     class Meta:
         model = Track
         fields = (
-            'isrc',
             'name',
             'album',
             'audio_file',
@@ -150,13 +146,6 @@ class TrackWriteSerializer(
             )
 
         return album
-
-    def validate_isrc(self, value):
-        """Нормализует ISRC."""
-        if value is None:
-            return value
-
-        return re.sub(r'[-\s]', '', value).upper()
 
 
 class TrackReorderSerializer(serializers.Serializer):

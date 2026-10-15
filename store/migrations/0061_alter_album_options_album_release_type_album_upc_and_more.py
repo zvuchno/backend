@@ -19,10 +19,19 @@ def migrate_release_types(apps, schema_editor):
     )
 
 
+def restore_is_single(apps, schema_editor):
+    """Восстанавливает is_single из release_type."""
+    Album = apps.get_model('store', 'Album')
+
+    Album.objects.filter(release_type='single').update(
+        is_single=True,
+    )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0059_alter_bonus_options_bonus_position'),
+        ('store', '0060_album_position_merch_position_alter_track_position'),
     ]
 
     operations = [
@@ -31,7 +40,11 @@ class Migration(migrations.Migration):
         drop_view('listener_track_access'),
         migrations.AlterModelOptions(
             name='album',
-            options={'ordering': ('-created_at',), 'verbose_name': 'релиз', 'verbose_name_plural': 'релизы'},
+            options={
+                'ordering': ('-created_at',),
+                'verbose_name': 'релиз',
+                'verbose_name_plural': 'релизы',
+            },
         ),
         migrations.AddField(
             model_name='album',
@@ -49,7 +62,7 @@ class Migration(migrations.Migration):
         ),
         migrations.RunPython(
             migrate_release_types,
-            migrations.RunPython.noop,
+            restore_is_single,
         ),
         migrations.RemoveField(
             model_name='album',
@@ -58,12 +71,14 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='album',
             name='upc',
-            field=models.CharField(blank=True, max_length=13, null=True, unique=True, validators=[store.validators.validate_upc], verbose_name='UPC'),
-        ),
-        migrations.AddField(
-            model_name='track',
-            name='isrc',
-            field=models.CharField(blank=True, max_length=12, null=True, unique=True, validators=[store.validators.validate_isrc], verbose_name='ISRC'),
+            field=models.CharField(
+                blank=True,
+                max_length=13,
+                null=True,
+                unique=True,
+                validators=[store.validators.validate_upc],
+                verbose_name='UPC',
+            ),
         ),
         create_view('listener_track_access', version=1),
         create_view('listener_album_access', version=1),

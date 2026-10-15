@@ -159,7 +159,6 @@ class TrackAdmin(
         'album__payout_recipient__email',
         'description',
         'name',
-        'isrc',
     )
     list_filter = (
         'is_active',
@@ -189,7 +188,6 @@ class TrackAdmin(
                     'audio_file',
                     'formatted_duration',
                     'description',
-                    'isrc',
                     'get_sku',
                     'artist',
                     'payout_recipient',

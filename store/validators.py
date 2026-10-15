@@ -159,12 +159,3 @@ def validate_upc(value):
             'Указана неверная контрольная цифра UPC.',
             code='invalid_upc_checksum',
         )
-
-
-def validate_isrc(value):
-    """Проверяет формат ISRC."""
-    if not re.fullmatch(r'[A-Z]{2}[A-Z0-9]{3}[0-9]{7}', value):
-        raise DjangoValidationError(
-            'ISRC должен соответствовать формату CCXXXNNNNNNN.',
-            code='invalid_isrc',
-        )

@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -227,8 +228,8 @@ class MerchWriteSerializer(
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
+        min_value=Decimal('0'),
         required=True,
-        write_only=True,
     )
     allow_overpay = serializers.BooleanField(required=False)
     property_name = serializers.CharField(
