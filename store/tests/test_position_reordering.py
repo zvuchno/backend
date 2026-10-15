@@ -386,14 +386,17 @@ class TestBonusReorder:
 
         response = other_artist_client.patch(
             bonuses_reorder_url,
-            {'bonus_ids': [b2.id, b1.id]},
+            {'album': album.id, 'bonus_ids': [b2.id, b1.id]},
             format='json',
         )
 
-        assert response.status_code in (
-            status.HTTP_400_BAD_REQUEST,
-            status.HTTP_403_FORBIDDEN,
-        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        b1.refresh_from_db()
+        b2.refresh_from_db()
+
+        assert b1.position == 1
+        assert b2.position == 2
 
 
 class TestMerchReorder:
