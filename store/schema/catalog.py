@@ -94,12 +94,14 @@ catalog_list_schema = extend_schema(
             enum=[
                 'created_at',
                 '-created_at',
+                'position',
                 'random',
             ],
             description=(
                 'Сортировка товаров. '
                 'created_at — сначала старые; '
                 '-created_at или отсутствие параметра — сначала новые; '
+                'position — по позиции товара; '
                 'random — случайный порядок.'
             ),
         ),

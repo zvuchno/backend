@@ -4,6 +4,8 @@ from decimal import Decimal
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from common.access import can_manage_artist
+
 from store.constants import (
     CHAR_PRESET_DIGITAL,
     CHAR_PRESET_SIMPLE,
@@ -14,6 +16,7 @@ from store.constants import (
 from store.models import Merch, ProductVariant
 from store.serializers import ImageSerializer
 from store.serializers.mixins import ImmutableFieldsSerializerMixin
+from users.models import ArtistProfile
 
 
 def validate_not_reserved(value):
@@ -80,6 +83,7 @@ class MerchReadSerializer(serializers.ModelSerializer):
             'description',
             'price',
             'stock',
+            'position',
             'main_image',
             'is_published',
         )
@@ -293,3 +297,30 @@ class MerchWriteSerializer(
         validated_data.pop('property_name', None)
         validated_data.pop('stock', None)
         return super().update(instance, validated_data)
+
+
+class MerchReorderSerializer(serializers.Serializer):
+    """Порядок мерча артиста."""
+
+    artist = serializers.PrimaryKeyRelatedField(
+        queryset=ArtistProfile.objects.select_related('label'),
+    )
+    merch_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=False,
+    )
+
+    def validate_artist(self, artist):
+        request = self.context['request']
+        if not can_manage_artist(request.user, artist):
+            raise serializers.ValidationError(
+                'Нельзя менять порядок мерча чужого артиста.',
+            )
+        return artist
+
+    def validate_merch_ids(self, merch_ids):
+        if len(merch_ids) != len(set(merch_ids)):
+            raise serializers.ValidationError(
+                'Мерч в списке не должен повторяться.',
+            )
+        return merch_ids

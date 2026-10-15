@@ -26,6 +26,12 @@ class BaseContent(ActivatableModel, TimestampModel):
         editable=False,
         verbose_name='Создал',
     )
+    position = models.PositiveIntegerField(
+        'Порядок',
+        null=True,
+        blank=True,
+        help_text='Позиция элемента при отображении.',
+    )
 
     class Meta:
         abstract = True

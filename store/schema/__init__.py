@@ -6,7 +6,7 @@
 Каждый файл соответствует отдельному ресурсу API.
 """
 
-from .album import album_schema
+from .album import album_reorder_schema, album_schema
 from .bonus import bonus_reorder_schema, bonus_schema
 from .cart import cart_schema
 from .cart_promocode import (
@@ -52,6 +52,7 @@ from .track_upload import (
 )
 
 __all__ = [
+    'album_reorder_schema',
     'album_schema',
     'archive_download_link_schema',
     'artist_reports_schema',

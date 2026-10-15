@@ -53,12 +53,6 @@ class Track(BaseContent):
         blank=True,
         help_text='Длительность трека в секундах',
     )
-    position = models.PositiveIntegerField(
-        'Порядок',
-        null=True,
-        blank=True,
-        help_text='Порядковый номер трека в альбоме',
-    )
 
     @property
     def artist(self):

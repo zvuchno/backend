@@ -236,6 +236,24 @@ def test_can_publish_album_with_uploaded_active_track(
     assert album.is_published is True
 
 
+def test_published_album_without_artist_cover_is_not_available(
+    variant_factory,
+    artist_user,
+):
+    """Опубликованный товар артиста без обложки недоступен для покупки."""
+    artist = artist_user.artist_profile
+    artist.cover = None
+    artist.save(update_fields=('cover',))
+
+    variant = variant_factory(
+        product_type='album',
+        artist=artist,
+    )
+
+    assert variant.product.album.is_published is True
+    assert variant.is_available_for_purchase is False
+
+
 def test_deleting_last_track_unpublishes_album(
     artist_client,
     ready_artist_user,

@@ -10,15 +10,16 @@ from common.permissions import IsArtistOrLabel, IsStoreObjectManager
 
 from store.filters.merch import MerchFilter
 from store.models import Image, Merch, ProductVariant
-from store.schema.merch import merch_schema
+from store.schema.merch import merch_reorder_schema, merch_schema
 from store.schema.merch_images import add_image_schema, image_detail_schema
 from store.serializers import (
     ImageSerializer,
     MerchDetailSerializer,
     MerchReadSerializer,
+    MerchReorderSerializer,
     MerchWriteSerializer,
 )
-from store.services import MerchImageService
+from store.services import MerchImageService, reorder_objects
 from store.views.mixins import ProductActionMixin, SoftDeleteMixin
 
 
@@ -52,8 +53,8 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     )
     filterset_class = MerchFilter
     search_fields = ('name', 'description')
-    ordering_fields = ('name', 'created_at')
-    ordering = ('name',)
+    ordering_fields = ('name', 'created_at', 'position')
+    ordering = ('position', 'id')
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -161,5 +162,36 @@ class MerchViewSet(ProductActionMixin, SoftDeleteMixin, viewsets.ModelViewSet):
             ImageSerializer(
                 image,
                 context={'request': request},
+            ).data,
+        )
+
+    @merch_reorder_schema
+    @action(
+        detail=False,
+        methods=['patch'],
+        url_path='reorder',
+        pagination_class=None,
+    )
+    def reorder(self, request):
+        """Задаёт порядок мерча артиста за один запрос."""
+        serializer = MerchReorderSerializer(
+            data=request.data,
+            context=self.get_serializer_context(),
+        )
+        serializer.is_valid(raise_exception=True)
+        artist = serializer.validated_data['artist']
+        scoped = self.get_queryset().filter(artist=artist)
+
+        reorder_objects(
+            Merch.objects.filter(pk__in=scoped.values('pk')),
+            serializer.validated_data['merch_ids'],
+            'merch_ids',
+        )
+
+        return Response(
+            MerchReadSerializer(
+                scoped.order_by('position', 'pk'),
+                many=True,
+                context=self.get_serializer_context(),
             ).data,
         )

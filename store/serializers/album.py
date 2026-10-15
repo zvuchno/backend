@@ -10,6 +10,8 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from common.access import can_manage_artist
+
 from .mixins import ImmutableFieldsSerializerMixin
 from store.constants import (
     CHAR_PRESET_DIGITAL,
@@ -21,6 +23,7 @@ from store.constants import (
 )
 from store.models import Album
 from store.services.album_publication import has_uploaded_track
+from users.models import ArtistProfile
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +80,7 @@ class AlbumReadSerializer(serializers.ModelSerializer):
             'artist_name',
             'release_type',
             'price',
+            'position',
             'cover_image',
             'is_published',
         )
@@ -209,3 +213,30 @@ class AlbumWriteSerializer(
         validated_data.pop('price', None)
         validated_data.pop('allow_overpay', None)
         return super().update(instance, validated_data)
+
+
+class AlbumReorderSerializer(serializers.Serializer):
+    """Порядок альбомов артиста."""
+
+    artist = serializers.PrimaryKeyRelatedField(
+        queryset=ArtistProfile.objects.select_related('label'),
+    )
+    album_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        allow_empty=False,
+    )
+
+    def validate_artist(self, artist):
+        request = self.context['request']
+        if not can_manage_artist(request.user, artist):
+            raise serializers.ValidationError(
+                'Нельзя менять порядок альбомов чужого артиста.',
+            )
+        return artist
+
+    def validate_album_ids(self, album_ids):
+        if len(album_ids) != len(set(album_ids)):
+            raise serializers.ValidationError(
+                'Альбомы в списке не должны повторяться.',
+            )
+        return album_ids
