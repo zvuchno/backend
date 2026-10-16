@@ -199,16 +199,25 @@ class ArtistListView(ListAPIView):
 
     def get_queryset(self):
         """Возвращает артистов, доступных в публичном списке."""
-        public_products = Product.objects.published_catalog_content()
+        public_albums = Product.objects.published_albums()
+        public_merch = Product.objects.published_merch()
 
-        own_published_content = public_products.filter(
-            Q(album__artist_id=OuterRef('pk'))
-            | Q(merch__artist_id=OuterRef('pk')),
+        own_public_album = public_albums.filter(
+            album__artist_id=OuterRef('pk'),
+        )
+        own_public_merch = public_merch.filter(
+            merch__artist_id=OuterRef('pk'),
         )
 
-        managed_artist_published_content = public_products.filter(
-            Q(album__artist__label_id=OuterRef('pk'))
-            | Q(merch__artist__label_id=OuterRef('pk')),
+        managed_artist_public_album = public_albums.filter(
+            album__artist__label_id=OuterRef('pk'),
+            album__artist__profile_type=ArtistProfileType.ARTIST,
+            album__artist__is_active=True,
+        )
+        managed_artist_public_merch = public_merch.filter(
+            merch__artist__label_id=OuterRef('pk'),
+            merch__artist__profile_type=ArtistProfileType.ARTIST,
+            merch__artist__is_active=True,
         )
 
         return (
@@ -218,25 +227,28 @@ class ArtistListView(ListAPIView):
                 artist_publication_ready_q(),
                 is_active=True,
             )
-            .annotate(
-                has_own_public_content=Exists(own_published_content),
-                has_managed_public_content=Exists(
-                    managed_artist_published_content,
+            .alias(
+                has_own_public_album=Exists(own_public_album),
+                has_own_public_merch=Exists(own_public_merch),
+                has_managed_public_album=Exists(
+                    managed_artist_public_album,
+                ),
+                has_managed_public_merch=Exists(
+                    managed_artist_public_merch,
                 ),
             )
             .filter(
-                Q(has_own_public_content=True)
-                | Q(
-                    profile_type=ArtistProfileType.LABEL,
-                    has_managed_public_content=True,
+                Q(has_own_public_album=True)
+                | Q(has_own_public_merch=True)
+                | (
+                    Q(profile_type=ArtistProfileType.LABEL)
+                    & (
+                        Q(has_managed_public_album=True)
+                        | Q(has_managed_public_merch=True)
+                    )
                 ),
             )
-            .select_related(
-                'user',
-                'label',
-                'label__user',
-            )
-            .distinct()
+            .select_related('label')
         )
 
 
