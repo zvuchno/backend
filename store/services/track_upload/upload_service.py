@@ -12,6 +12,7 @@ from django.utils import timezone
 from store.constants import (
     ALLOWED_AUDIO_EXTENSIONS,
     MAX_AUDIOFILE_SIZE_MB,
+    SINGLE_TRACK_COUNT_ERROR,
     ZERO_MONEY,
 )
 from store.models import Album, Track, TrackUpload
@@ -86,6 +87,28 @@ class TrackUploadService:
         )
 
         album = Album.objects.select_for_update().get(pk=album.pk)
+
+        if album.release_type == Album.ReleaseType.SINGLE:
+            errors = {}
+
+            if price is not None:
+                errors['price'] = (
+                    'Для сингла нельзя задать индивидуальную цену трека.'
+                )
+
+            if allow_overpay:
+                errors['allow_overpay'] = (
+                    'Для сингла нельзя настроить переплату за трек.'
+                )
+
+            if (
+                album.is_published
+                and album.tracks.filter(is_active=True).exists()
+            ):
+                errors['album'] = SINGLE_TRACK_COUNT_ERROR
+
+            if errors:
+                raise ValidationError(errors)
 
         track_name = name.strip() or cls._get_track_name(filename)
         track_price = price if price is not None else ZERO_MONEY

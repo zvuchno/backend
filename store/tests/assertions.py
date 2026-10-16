@@ -25,7 +25,7 @@ CATALOG_RELEASE_DETAIL_KEYS = {
     'artist_name',
     'artist_slug',
     'artist_image',
-    'is_single',
+    'release_type',
     'variants',
 }
 
@@ -111,7 +111,7 @@ def assert_catalog_release_detail_contract(data):
         data['artist_image'],
         str,
     )
-    assert isinstance(data['is_single'], bool)
+    assert data['release_type'] in {'album', 'ep', 'single'}
     assert isinstance(data['variants'], list)
 
     for variant in data['variants']:

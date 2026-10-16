@@ -364,7 +364,7 @@ class OrderService:
     def _get_product_kind(product) -> str:
         """Определяет тип (kind) продукта."""
         if product.product_type == product.ProductType.ALBUM:
-            return 'Сингл' if product.album.is_single else 'Альбом'
+            return product.album.get_release_type_display()
         if product.product_type == product.ProductType.TRACK:
             return 'Трек'
         if product.product_type == product.ProductType.MERCH:
