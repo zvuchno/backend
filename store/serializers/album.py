@@ -131,11 +131,6 @@ class AlbumWriteSerializer(
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
-        required=True,
-    )
-    price = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
         min_value=Decimal('0'),
         required=True,
     )
@@ -210,6 +205,10 @@ class AlbumWriteSerializer(
             raise serializers.ValidationError(errors)
 
         return attrs
+
+    def validate_upc(self, value):
+        """Приводит пустой UPC к None, чтобы не нарушать unique."""
+        return value or None
 
     def create(self, validated_data):
         validated_data.pop('price', None)
