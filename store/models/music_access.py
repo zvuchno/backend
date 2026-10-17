@@ -14,10 +14,16 @@ class ListenerTrackAccess(models.Model):
         verbose_name='Пользователь',
     )
     track = models.ForeignKey(
+        'store.ReleaseTrack',
+        on_delete=models.DO_NOTHING,
+        related_name='+',
+        verbose_name='Трек релиза',
+    )
+    recording = models.ForeignKey(
         'store.Recording',
         on_delete=models.DO_NOTHING,
-        related_name='+',  # Отключение обратной связи.
-        verbose_name='Трек',
+        related_name='+',
+        verbose_name='Запись',
     )
 
     class Meta:
