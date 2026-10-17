@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'drf_spectacular',
+    'drf_spectacular_sidecar',
     'nested_admin',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -172,6 +173,9 @@ PASSWORD_HASHERS = [
 
 ENABLE_API_DOCS = os.getenv('ENABLE_API_DOCS', 'False') == 'True'
 SPECTACULAR_SETTINGS = {
+    'REDOC_DIST': 'SIDECAR',
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_HREF': 'SIDECAR',
     'TITLE': 'Zvuchno API',
     'DESCRIPTION': 'Документация API проекта',
     'VERSION': '1.0.0',
