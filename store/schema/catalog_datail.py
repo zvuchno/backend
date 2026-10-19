@@ -15,13 +15,14 @@ catalog_release_detail_schema = extend_schema(
     summary='Детальная карточка релиза в каталоге',
     description=(
         'Возвращает данные релиза для публичной витрины.\n\n'
-        'В корне ответа находятся id релиза, данные '
-        'артиста и признак сингла.\n\n'
+        'В корне ответа находятся id релиза, тип релиза '
+        '(release_type) и данные артиста.\n\n'
+        'Поле release_type принимает значения album, ep и single.\n\n'
         'Коммерческие данные находятся в variants. Каждый вариант содержит '
         'цену, остаток, возможность переплаты, изображения и variant_id '
         'для добавления в корзину.\n\n'
         'Первый элемент variants считается вариантом по умолчанию. '
-        'Обычно это цифровая версия альбома.\n\n'
+        'Обычно это цифровая версия релиза.\n\n'
         'Если пользователь перешёл из карточки носителя, фронтенд может '
         'сопоставить selected_variant_id из карточки каталога с variant_id '
         'одного из вариантов в этом ответе и сразу выбрать нужный вариант.\n\n'
@@ -36,7 +37,7 @@ catalog_release_detail_schema = extend_schema(
                 'artist_name': 'Артист',
                 'artist_slug': 'artist',
                 'artist_image': 'https://zvuchno.ru/media/artists/artist.jpg',
-                'is_single': False,
+                'release_type': 'album',
                 'variants': [
                     {
                         'variant_id': 101,
@@ -82,7 +83,6 @@ catalog_release_detail_schema = extend_schema(
         ),
     ],
 )
-
 
 catalog_merch_detail_schema = extend_schema(
     tags=CATALOG_TAGS,

@@ -32,7 +32,7 @@ def album_create_payload():
 
     return {
         'name': 'Тестовый альбом',
-        'is_single': False,
+        'release_type': 'album',
         'release_date': '2026-01-01',
         'genre': genre.id,
         'price': '500.00',
@@ -353,7 +353,7 @@ def test_admin_form_rejects_publishing_empty_album(
         instance=album,
         data={
             'name': album.name,
-            'is_single': album.is_single,
+            'release_type': album.release_type,
             'release_date': album.release_date,
             'genre': album.genre_id,
             'description': album.description,
@@ -398,7 +398,7 @@ def test_admin_form_allows_publishing_album_with_uploaded_track(
         instance=album,
         data={
             'name': album.name,
-            'is_single': album.is_single,
+            'release_type': album.release_type,
             'release_date': album.release_date,
             'genre': album.genre_id,
             'description': album.description,
@@ -529,7 +529,7 @@ def test_admin_form_rejects_creating_published_album_without_tracks(
         data={
             'name': 'Новый альбом',
             'artist': ready_artist_user.artist_profile.id,
-            'is_single': False,
+            'release_type': 'album',
             'release_date': '2026-01-01',
             'genre': genre.id,
             'description': 'Описание альбома.',

@@ -8,7 +8,6 @@
 from django.db.models import Q
 
 from common.access import managed_artist_q
-from common.services import get_artist_publication_readiness
 
 from store.models import Product
 from users.models import ArtistProfileType, ArtistShippingPoint
@@ -40,8 +39,6 @@ def get_onboarding_checklist(user) -> dict[str, bool]:
     if not artist:
         return dict.fromkeys(ONBOARDING_STEPS, False)
 
-    readiness = get_artist_publication_readiness(artist)
-
     # ПВЗ артиста, если у него включена своя доставка, иначе ПВЗ лейбла
     has_shipping_point = artist.effective_shipping_point is not None
 
@@ -61,13 +58,15 @@ def get_onboarding_checklist(user) -> dict[str, bool]:
             .exists()
         )
 
+    legal_profile = getattr(user, 'legal_profile', None)
+
     return {
         'add_first_product': Product.objects.filter(
             _managed_products_q(user),
         ).exists(),
         # используем признак готовности к продаже цифры в качестве
         # подтверждения ввода и верификации необходимых данных
-        'payout_details': readiness.can_publish_digital,
+        'payout_details': bool(legal_profile and legal_profile.is_verified),
         'cdek_integration': has_shipping_point,
         'telegram_bot': bool(artist.telegram_chat_id),
         'publish_first_product': Product.objects.filter(

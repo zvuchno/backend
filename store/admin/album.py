@@ -424,10 +424,10 @@ class AlbumAdmin(
 
     list_display = (
         'name',
+        'release_type',
         'genre',
         'artist',
         'payout_recipient',
-        'is_single',
         'is_published',
         'get_price',
         'get_allow_overpay',
@@ -440,6 +440,7 @@ class AlbumAdmin(
         'artist__name',
         'payout_recipient__email',
         'created_by__email',
+        'upc',
     )
     list_filter = (
         'is_active',
@@ -454,11 +455,12 @@ class AlbumAdmin(
             'Основная информация',
             {
                 'fields': (
+                    'release_type',
                     'name',
                     'genre',
-                    'is_single',
                     'release_date',
                     'description',
+                    'upc',
                     'cover_image',
                     'image_preview',
                     'is_published',

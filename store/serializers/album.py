@@ -6,6 +6,7 @@
 """
 
 import logging
+from decimal import Decimal
 
 from rest_framework import serializers
 
@@ -18,6 +19,7 @@ from store.constants import (
     MISSING_GENRE_ERROR,
     MISSING_TRACKS_ERROR,
     MONEY_DISPLAY_PRECISION,
+    SINGLE_TRACK_COUNT_ERROR,
 )
 from store.models import Album
 from store.services.album_publication import has_uploaded_track
@@ -72,10 +74,11 @@ class AlbumReadSerializer(serializers.ModelSerializer):
         model = Album
         fields = (
             'id',
+            'upc',
             'sku',
             'name',
             'artist_name',
-            'is_single',
+            'release_type',
             'price',
             'position',
             'cover_image',
@@ -128,6 +131,7 @@ class AlbumWriteSerializer(
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
+        min_value=Decimal('0'),
         required=True,
     )
     allow_overpay = serializers.BooleanField(required=False)
@@ -135,9 +139,10 @@ class AlbumWriteSerializer(
     class Meta:
         model = Album
         fields = (
+            'upc',
             'name',
             'artist',
-            'is_single',
+            'release_type',
             'release_date',
             'genre',
             'price',
@@ -159,11 +164,6 @@ class AlbumWriteSerializer(
 
         errors = {}
 
-        if attrs.get('is_published') is True and (
-            self.instance is None or not has_uploaded_track(self.instance)
-        ):
-            errors['tracks'] = MISSING_TRACKS_ERROR
-
         is_published = attrs.get(
             'is_published',
             self.instance.is_published if self.instance else False,
@@ -172,6 +172,31 @@ class AlbumWriteSerializer(
             'genre',
             self.instance.genre if self.instance else None,
         )
+        release_type = attrs.get(
+            'release_type',
+            self.instance.release_type if self.instance else None,
+        )
+
+        was_published = bool(self.instance and self.instance.is_published)
+        is_being_published = is_published and not was_published
+        release_type_changed = (
+            self.instance is not None
+            and 'release_type' in attrs
+            and attrs['release_type'] != self.instance.release_type
+        )
+
+        if is_being_published and (
+            self.instance is None or not has_uploaded_track(self.instance)
+        ):
+            errors['tracks'] = MISSING_TRACKS_ERROR
+        elif (
+            is_published
+            and release_type == Album.ReleaseType.SINGLE
+            and self.instance is not None
+            and (is_being_published or release_type_changed)
+            and self.instance.tracks.filter(is_active=True).count() > 1
+        ):
+            errors['tracks'] = SINGLE_TRACK_COUNT_ERROR
 
         if is_published and genre is None:
             errors['genre'] = MISSING_GENRE_ERROR
@@ -180,6 +205,10 @@ class AlbumWriteSerializer(
             raise serializers.ValidationError(errors)
 
         return attrs
+
+    def validate_upc(self, value):
+        """Приводит пустой UPC к None, чтобы не нарушать unique."""
+        return value or None
 
     def create(self, validated_data):
         validated_data.pop('price', None)

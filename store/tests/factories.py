@@ -58,7 +58,7 @@ class AlbumFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f'Альбом {n}')
     description = 'Тестовое описание альбома.'
     release_date = date(2026, 1, 1)
-    is_single = False
+    release_type = 'album'
     is_published = True
     visibility = 'public'
 
