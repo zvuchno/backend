@@ -1,6 +1,7 @@
 """Сервис резервирования и освобождения складских остатков."""
 
 import logging
+from datetime import datetime
 
 from django.db import transaction
 from django.db.models import F
@@ -168,4 +169,21 @@ class ReservationService:
             'Резерв заказа id=%s снят.',
             order.id,
         )
+        return order
+
+    @staticmethod
+    @transaction.atomic
+    def extend_order_reserve(
+        order,
+        reserved_until: datetime,
+    ) -> Order:
+        """Продлевает срок действующего резерва заказа."""
+        order = Order.objects.select_for_update().get(pk=order.pk)
+
+        if order.status != Order.Status.RESERVED:
+            return order
+
+        order.reserved_until = reserved_until
+        order.save(update_fields=['reserved_until', 'updated_at'])
+
         return order
