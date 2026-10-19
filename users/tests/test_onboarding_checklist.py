@@ -109,6 +109,8 @@ class TestWithoutProfile:
             'cdek_integration': False,
             'telegram_bot': False,
             'publish_first_product': False,
+            'email_verified': False,
+            'artist_cover': False,
         }
 
 
@@ -375,3 +377,43 @@ class TestProductSteps:
 
         assert result['add_first_product'] is False
         assert result['publish_first_product'] is False
+
+
+class TestEmailVerified:
+    """Check email_verified."""
+
+    @pytest.mark.parametrize('is_verified', [True, False])
+    def test_artist(self, checklist, is_verified):
+        """Подтверждение email учётной записи артиста."""
+        artist = ArtistProfileFactory(user__is_email_verified=is_verified)
+        assert checklist(artist.user)['email_verified'] is is_verified
+
+    @pytest.mark.parametrize('is_verified', [True, False])
+    def test_label(self, checklist, is_verified):
+        """Подтверждение email учётной записи лейбла."""
+        label_user = LabelUserFactory(is_email_verified=is_verified)
+        assert checklist(label_user)['email_verified'] is is_verified
+
+
+class TestArtistCover:
+    """Шаг artist_cover."""
+
+    def test_cover_uploaded(self, checklist):
+        """Загруженная обложка засчитывается."""
+        artist = ArtistProfileFactory()
+        assert checklist(artist.user)['artist_cover'] is True
+
+    @pytest.mark.parametrize('empty_cover', ['', None], ids=['blank', 'null'])
+    def test_no_cover(self, checklist, empty_cover):
+        """Пустая обложка не засчитывается."""
+        artist = ArtistProfileFactory(cover=empty_cover)
+        assert checklist(artist.user)['artist_cover'] is False
+
+    def test_label_own_cover_only(self, checklist, label_user):
+        """У лейбла считается только собственная обложка, не подопечных."""
+        label = label_user.artist_profile
+        label.cover = ''
+        label.save(update_fields=['cover'])
+        ArtistProfileFactory(label=label)  # у подопечного обложка есть
+
+        assert checklist(label_user)['artist_cover'] is False

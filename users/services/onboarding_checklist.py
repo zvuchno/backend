@@ -13,6 +13,16 @@ from common.services import get_artist_publication_readiness
 from store.models import Product
 from users.models import ArtistProfileType, ArtistShippingPoint
 
+ONBOARDING_STEPS = (
+    'add_first_product',
+    'payout_details',
+    'cdek_integration',
+    'telegram_bot',
+    'publish_first_product',
+    'email_verified',
+    'artist_cover',
+)
+
 
 def get_onboarding_checklist(user) -> dict[str, bool]:
     """Возвращает состояние выполнения шагов онбординга для витрины.
@@ -28,13 +38,7 @@ def get_onboarding_checklist(user) -> dict[str, bool]:
     """
     artist = getattr(user, 'artist_profile', None)
     if not artist:
-        return {
-            'add_first_product': False,
-            'payout_details': False,
-            'cdek_integration': False,
-            'telegram_bot': False,
-            'publish_first_product': False,
-        }
+        return dict.fromkeys(ONBOARDING_STEPS, False)
 
     readiness = get_artist_publication_readiness(artist)
 
@@ -69,6 +73,8 @@ def get_onboarding_checklist(user) -> dict[str, bool]:
         'publish_first_product': Product.objects.filter(
             _managed_products_q(user, published=True),
         ).exists(),
+        'email_verified': bool(user.is_email_verified),
+        'artist_cover': bool(artist.cover),
     }
 
 
