@@ -140,7 +140,7 @@ def restore_recording_release_fields(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0060_album_position_merch_position_alter_track_position'),
+        ('store', '0061_alter_album_options_album_release_type_album_upc_and_more'),
         (
             'users',
             '0034_remove_artistprofile_'

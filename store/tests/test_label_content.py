@@ -24,7 +24,7 @@ class TestLabelAlbumCreate:
 
         return {
             'name': 'Альбом лейбла',
-            'is_single': False,
+            'release_type': 'album',
             'release_date': '2026-01-01',
             'genre': genre.id,
             'price': '500.00',
