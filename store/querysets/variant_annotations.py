@@ -58,14 +58,21 @@ def build_target_annotations(product_path: str) -> dict:
             When(
                 **{
                     f'{product_path}__product_type': 'album',
-                    f'{product_path}__album__is_single': True,
+                    f'{product_path}__album__release_type': 'single',
                 },
                 then=Value('Сингл'),
             ),
             When(
                 **{
                     f'{product_path}__product_type': 'album',
-                    f'{product_path}__album__is_single': False,
+                    f'{product_path}__album__release_type': 'ep',
+                },
+                then=Value('EP'),
+            ),
+            When(
+                **{
+                    f'{product_path}__product_type': 'album',
+                    f'{product_path}__album__release_type': 'album',
                 },
                 then=Value('Альбом'),
             ),

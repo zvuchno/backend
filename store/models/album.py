@@ -13,13 +13,24 @@ from store.constants import MAX_FILE_STATUS_STR, MAX_STR_LENGTH
 from store.models.abstract import ArtistContent, VisibilityModel
 from store.querysets import VisibilityQuerySet
 from store.upload_paths import album_archive_upload_to, album_cover_upload_to
-from store.validators import validate_file_size
+from store.validators import validate_file_size, validate_upc
 
 
 class Album(ArtistContent, VisibilityModel):
-    """Музыкальный альбом."""
+    """Музыкальный релиз."""
+
+    class ReleaseType(models.TextChoices):
+        ALBUM = 'album', 'Альбом'
+        EP = 'ep', 'EP'
+        SINGLE = 'single', 'Сингл'
 
     release_date = models.DateField('Дата релиза', blank=True, null=True)
+    release_type = models.CharField(
+        'Тип релиза',
+        max_length=6,
+        choices=ReleaseType.choices,
+        default=ReleaseType.ALBUM,
+    )
     genre = models.ForeignKey(
         'store.Genre',
         on_delete=models.SET_NULL,
@@ -28,7 +39,6 @@ class Album(ArtistContent, VisibilityModel):
         verbose_name='Жанр',
         related_name='albums',
     )
-    is_single = models.BooleanField('Сингл', default=False)
     cover_image = models.ImageField(
         'Обложка релиза',
         upload_to=album_cover_upload_to,
@@ -37,11 +47,19 @@ class Album(ArtistContent, VisibilityModel):
         null=True,
         validators=(validate_file_size,),
     )
+    upc = models.CharField(
+        'UPC',
+        max_length=13,
+        unique=True,
+        blank=True,
+        null=True,
+        validators=(validate_upc,),
+    )
     objects = VisibilityQuerySet.as_manager()
 
     class Meta:
-        verbose_name = 'альбом'
-        verbose_name_plural = 'альбомы'
+        verbose_name = 'релиз'
+        verbose_name_plural = 'релизы'
         ordering = ('-created_at',)
         constraints = [
             models.CheckConstraint(

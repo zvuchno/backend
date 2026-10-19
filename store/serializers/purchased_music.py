@@ -75,11 +75,11 @@ class LibraryAlbumCardSerializer(
 
     @extend_schema_field(OpenApiTypes.STR)
     def get_kind(self, obj) -> str:
-        """Возвращает тип релиза - альбом или сингл."""
-        return 'Сингл' if obj.album.is_single else 'Альбом'
+        """Возвращает тип релиза."""
+        return obj.album.get_release_type_display()
 
     @extend_schema_field(OpenApiTypes.INT)
-    def get_year(self, obj) -> int:
+    def get_year(self, obj) -> int | None:
         """Возвращает год релиза."""
         if not obj.album.release_date:
             return None
