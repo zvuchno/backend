@@ -47,10 +47,13 @@ def track_stream_upload_to(instance, filename: str) -> str:
     return f'recordings/stream/{build_unique_filename(filename)}'
 
 
-def track_upload_staging_key(album_id: int, filename: str) -> str:
-    """Формирует ключ временного объекта прямой загрузки трека."""
+def track_upload_staging_key(
+    recording_id: int,
+    filename: str,
+) -> str:
+    """Формирует ключ временного объекта загрузки записи."""
     return (
-        f'staging/track-uploads/{album_id}/'
+        f'staging/track-uploads/{recording_id}/'
         f'{uuid4().hex}/'
         f'{build_unique_filename(filename)}'
     )

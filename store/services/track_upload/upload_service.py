@@ -15,8 +15,9 @@ from store.constants import (
     SINGLE_TRACK_COUNT_ERROR,
     ZERO_MONEY,
 )
-from store.models import Album, Track, TrackUpload
+from store.models import Album, ReleaseTrack, TrackUpload
 from store.services.commerce import ProductService
+from store.services.track import TrackService
 from store.upload_paths import track_upload_staging_key
 
 TRACK_UPLOAD_TTL = timedelta(hours=1)
@@ -30,7 +31,7 @@ class TrackUploadService:
     def create_replacement_upload(
         cls,
         *,
-        track: Track,
+        track: ReleaseTrack,
         filename: str,
         size: int,
         content_type: str = '',
@@ -44,17 +45,17 @@ class TrackUploadService:
         )
 
         track = (
-            Track.objects
+            ReleaseTrack.objects
             .select_for_update()
-            .select_related('album')
+            .select_related('recording')
             .get(pk=track.pk)
         )
 
         return TrackUpload.objects.create(
-            track=track,
+            track=track.recording,
             purpose=TrackUpload.Purpose.REPLACE,
             staging_key=track_upload_staging_key(
-                track.album_id,
+                track.recording_id,
                 filename,
             ),
             original_filename=filename,
@@ -75,9 +76,10 @@ class TrackUploadService:
         content_type: str = '',
         name: str = '',
         description: str = '',
+        isrc: str | None = None,
         price: Decimal | None = None,
         allow_overpay: bool = False,
-    ) -> tuple[Track, TrackUpload]:
+    ) -> tuple[ReleaseTrack, TrackUpload]:
         """Создаёт черновой трек и попытку загрузки оригинального файла."""
         filename = Path(filename).name
 
@@ -113,13 +115,12 @@ class TrackUploadService:
         track_name = name.strip() or cls._get_track_name(filename)
         track_price = price if price is not None else ZERO_MONEY
 
-        track = Track.objects.create(
-            album=album,
+        track = TrackService.create(
+            release=album,
             created_by=created_by,
             name=track_name,
             description=description or '',
-            position=None,
-            is_active=True,
+            isrc=isrc,
         )
 
         ProductService.ensure_commerce(
@@ -132,10 +133,10 @@ class TrackUploadService:
         )
 
         upload = TrackUpload.objects.create(
-            track=track,
+            track=track.recording,
             purpose=TrackUpload.Purpose.CREATE,
             staging_key=track_upload_staging_key(
-                album.pk,
+                track.recording_id,
                 filename,
             ),
             original_filename=filename,

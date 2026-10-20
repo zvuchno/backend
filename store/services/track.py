@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Max
 
 from store.models import Album, Recording, ReleaseTrack
 from store.validators import validate_isrc_format
@@ -25,6 +26,8 @@ class TrackService:
         if isrc is not None:
             validate_isrc_format(isrc)
 
+        release = Album.objects.select_for_update().get(pk=release.pk)
+
         recording_data = {
             'owner': release.artist,
             'created_by': created_by,
@@ -38,7 +41,17 @@ class TrackService:
 
         recording = Recording.objects.create(**recording_data)
 
+        last_position = (
+            ReleaseTrack.objects.filter(
+                release=release,
+                position__isnull=False,
+            ).aggregate(
+                max_position=Max('position'),
+            )
+        )['max_position']
+
         return ReleaseTrack.objects.create(
             release=release,
             recording=recording,
+            position=(last_position or 0) + 1,
         )
