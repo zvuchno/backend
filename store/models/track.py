@@ -56,8 +56,9 @@ class Recording(BaseContent):
     isrc = models.CharField(
         'ISRC',
         max_length=12,
+        null=True,
         blank=True,
-        default='',
+        default=None,
         validators=(validate_isrc_format,),
         help_text='ISRC без дефисов, 12 символов.',
     )

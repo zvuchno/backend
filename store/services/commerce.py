@@ -8,7 +8,7 @@ from store.constants import (
     CHAR_PRESET_SIMPLE,
     ZERO_MONEY,
 )
-from store.models import Product, ProductVariant
+from store.models import Product, ProductVariant, ReleaseTrack
 from store.validators import validate_price
 
 
@@ -22,7 +22,10 @@ class ProductService:
     @classmethod
     @transaction.atomic
     def ensure_commerce(cls, content_instance, validated_data) -> Product:
-        model_name = content_instance.__class__.__name__.lower()
+        if isinstance(content_instance, ReleaseTrack):
+            model_name = 'track'
+        else:
+            model_name = content_instance.__class__.__name__.lower()
 
         price = validated_data.get('price', ZERO_MONEY)
         validate_price(price)

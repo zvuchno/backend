@@ -84,10 +84,11 @@ validate_bonus_file_size = FileSizeValidator(
 )
 
 validate_isrc_format = RegexValidator(
-    regex=r'^[A-Z]{2}[A-Z0-9]{3}[0-9]{7}$',
+    regex=r'\A[A-Z]{2}[A-Z0-9]{3}[0-9]{2}[0-9]{5}\Z',
     message=(
         'ISRC должен содержать 12 символов без дефисов: '
-        '2 буквы страны, 3 символа регистратора и 7 цифр.'
+        '2 буквы страны, 3 символа регистратора, '
+        '2 цифры года и 5 цифр обозначения.'
     ),
     code='invalid_isrc_format',
 )
