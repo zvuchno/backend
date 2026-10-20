@@ -26,14 +26,17 @@ ONBOARDING_STEPS = (
 def get_onboarding_checklist(user) -> dict[str, bool]:
     """Возвращает состояние выполнения шагов онбординга для витрины.
 
-    Проверяет пять ключевых условий готовности аккаунта:
-    1. `add_first_product` — наличие хотя бы одного активного товара
+    Проверяет семь условий готовности аккаунта:
+    1. `add_first_product` — есть хотя бы один активный товар
        (у самого пользователя или у подконтрольных артистов);
-    2. `payout_details` — готовность юридического профиля к верификации;
-    3. `cdek_integration` — наличие и активность способов доставки (курьер/СДЭК
-       или актуальные самовывозы);
-    4. `telegram_bot` — привязка Telegram-чата для уведомлений;
-    5. `publish_first_product` — наличие хотя бы одного опубликованного товара.
+    2. `payout_details` — верифицированы реквизиты получателя выплат
+       (для подопечного это пользователь лейбла);
+    3. `cdek_integration` — включена доставка СДЭК и настроен ПВЗ
+       (свой, лейбла или хотя бы одного подопечного, если это лейбл);
+    4. `telegram_bot` — привязан Telegram-чат для уведомлений;
+    5. `publish_first_product` — есть хотя бы один опубликованный товар;
+    6. `email_verified` — подтверждён email учётной записи;
+    7. `artist_cover` — загружена обложка собственного профиля.
     """
     artist = getattr(user, 'artist_profile', None)
     if not artist:
@@ -58,14 +61,17 @@ def get_onboarding_checklist(user) -> dict[str, bool]:
             .exists()
         )
 
-    legal_profile = getattr(user, 'legal_profile', None)
+    # Реквизиты проверяем у получателя выплат
+    legal_profile = getattr(
+        artist.default_payout_recipient,
+        'legal_profile',
+        None,
+    )
 
     return {
         'add_first_product': Product.objects.filter(
             _managed_products_q(user),
         ).exists(),
-        # используем признак готовности к продаже цифры в качестве
-        # подтверждения ввода и верификации необходимых данных
         'payout_details': bool(legal_profile and legal_profile.is_verified),
         'cdek_integration': has_shipping_point,
         'telegram_bot': bool(artist.telegram_chat_id),

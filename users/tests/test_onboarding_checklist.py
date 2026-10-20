@@ -10,12 +10,16 @@ from store.tests.scenarios import (
     create_merch_product,
 )
 from users.models import ArtistShippingPoint, ArtistStoreSettings
-from users.services.onboarding_checklist import get_onboarding_checklist
+from users.services.onboarding_checklist import (
+    ONBOARDING_STEPS,
+    get_onboarding_checklist,
+)
 from users.tests.factories import (
     ArtistProfileFactory,
     LabelUserFactory,
     UserFactory,
 )
+from users.tests.helpers import create_artist_legal_profile
 
 User = get_user_model()
 
@@ -261,6 +265,45 @@ class TestPayoutDetails:
         """Верифицированный лейбл проходит шаг."""
         assert checklist(ready_label_factory())['payout_details'] is True
 
+    def test_independent_of_email_and_cover(self, checklist):
+        """Payout_details не зависит от email и обложки."""
+        artist = ArtistProfileFactory(
+            cover='',
+            user__is_email_verified=False,
+        )
+        create_artist_legal_profile(
+            artist.default_payout_recipient,
+            is_verified=True,
+        )
+
+        result = checklist(artist.user)
+
+        assert result['payout_details'] is True
+        assert result['email_verified'] is False
+        assert result['artist_cover'] is False
+
+    def test_managed_artist_uses_label_recipient(
+        self,
+        checklist,
+        ready_label_factory,
+    ):
+        """У подопечного шаг определяется реквизитами лейбла."""
+        label_user = ready_label_factory()
+        artist = ArtistProfileFactory(label=label_user.artist_profile)
+        assert checklist(artist.user)['payout_details'] is True
+
+    def test_managed_artist_own_profile_ignored(self, checklist, label_user):
+        """Собственные реквизиты подопечного не учитываются."""
+        artist = ArtistProfileFactory(label=label_user.artist_profile)
+        create_artist_legal_profile(artist.user, is_verified=True)
+        assert checklist(artist.user)['payout_details'] is False
+
+    def test_unverified_profile(self, checklist):
+        """Неверифицированный юридический профиль шаг не закрывает."""
+        artist = ArtistProfileFactory()
+        create_artist_legal_profile(artist.user, is_verified=False)
+        assert checklist(artist.user)['payout_details'] is False
+
 
 # =================================
 # add_first_product и publish_first_product
@@ -417,3 +460,12 @@ class TestArtistCover:
         ArtistProfileFactory(label=label)  # у подопечного обложка есть
 
         assert checklist(label_user)['artist_cover'] is False
+
+
+class TestChecklistContract:
+    """Форма результата: набор ключей чек-листа."""
+
+    def test_keys_match_steps_constant(self, checklist):
+        """Ключи результата для профиля совпадают с ONBOARDING_STEPS."""
+        artist = ArtistProfileFactory()
+        assert set(checklist(artist.user)) == set(ONBOARDING_STEPS)

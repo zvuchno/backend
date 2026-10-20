@@ -7,7 +7,7 @@ ORDER_TAGS = ['Artists']
 
 telegram_connect_schema = extend_schema_view(
     post=extend_schema(
-        summary='Подключение Telegram для артиста',
+        summary='Подключить Telegram для артиста',
         description=(
             'Генерирует одноразовую ссылку для подключения Telegram-бота '
             'и привязывает артиста после /start.'
