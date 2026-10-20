@@ -48,6 +48,7 @@ from .invitation import (
     artist_profile_claim_invitation_revoke_schema,
 )
 from .listener_profile import listener_me_schema
+from .onboarding_checklist import onboarding_checklist_schema
 from .registration import (
     artist_registration_schema,
     listener_registration_schema,
@@ -88,6 +89,7 @@ __all__ = [
     'managed_artist_cover_update_schema',
     'managed_artist_schema',
     'me_schema',
+    'onboarding_checklist_schema',
     'password_reset_confirm_schema',
     'password_reset_request_schema',
     'password_reset_verify_schema',

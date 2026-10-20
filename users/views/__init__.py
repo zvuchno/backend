@@ -60,6 +60,7 @@ from .jwt import (
 )
 from .listener_profile import ListenerMeView
 from .listener_registration import ListenerRegistrationView
+from .onboarding_checklist import OnboardingChecklistView
 from .social_auth import (
     SocialAuthErrorCodesView,
     redirect_social_auth_cancelled,
@@ -100,6 +101,7 @@ __all__ = [
     'CustomTokenVerifyView',
     'EmailVerificationCodeView',
     'EmailVerificationView',
+    'OnboardingChecklistView',
     'LabelManagedProfileListView',
     'ListenerMeView',
     'ListenerRegistrationView',

@@ -20,6 +20,7 @@ from users.views import (
     ManagedArtistPickupPointViewSet,
     ManagedArtistProfileView,
     ManagedArtistShippingPointView,
+    OnboardingChecklistView,
     RecipientTypeListView,
     TelegramConnectView,
 )
@@ -136,5 +137,10 @@ urlpatterns = [
         'me/telegram/connect/',
         TelegramConnectView.as_view(),
         name='artist_telegram_connect',
+    ),
+    path(
+        'onboarding-checklist/',
+        OnboardingChecklistView.as_view(),
+        name='onboarding-checklist',
     ),
 ]
