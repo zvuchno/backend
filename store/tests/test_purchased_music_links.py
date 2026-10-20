@@ -10,9 +10,9 @@ from store.models import (
     AlbumArchive,
     Order,
     OrderItem,
-    Track,
 )
 from store.services import DownloadLink
+from store.tests.factories import ReleaseTrackFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -66,8 +66,8 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         )
         track = track_variant.product.track
 
-        track.audio_file = 'tracks/available-track.flac'
-        track.save(update_fields=('audio_file',))
+        track.recording.audio_file = 'tracks/available-track.flac'
+        track.recording.save(update_fields=('audio_file',))
 
         self.create_paid_order(listener_user, [track_variant])
 
@@ -95,7 +95,10 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         assert response.data['expires_at'] is not None
 
         get_link_mock.assert_called_once()
-        assert get_link_mock.call_args.kwargs['field_file'] == track.audio_file
+        assert (
+            get_link_mock.call_args.kwargs['field_file']
+            == track.recording.audio_file
+        )
 
     def test_inactive_purchased_track_returns_download_link(
         self,
@@ -108,8 +111,8 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         )
         track = track_variant.product.track
 
-        track.audio_file = 'tracks/inactive-purchased-track.flac'
-        track.save(update_fields=('audio_file',))
+        track.recording.audio_file = 'tracks/inactive-purchased-track.flac'
+        track.recording.save(update_fields=('audio_file',))
 
         self.create_paid_order(listener_user, [track_variant])
 
@@ -135,7 +138,10 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         assert response.data['url'] == link.url
 
         get_link_mock.assert_called_once()
-        assert get_link_mock.call_args.kwargs['field_file'] == track.audio_file
+        assert (
+            get_link_mock.call_args.kwargs['field_file']
+            == track.recording.audio_file
+        )
 
     def test_other_user_cannot_get_track_download_link(
         self,
@@ -151,8 +157,8 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         )
         track = track_variant.product.track
 
-        track.audio_file = 'tracks/other-user-track.flac'
-        track.save(update_fields=('audio_file',))
+        track.recording.audio_file = 'tracks/other-user-track.flac'
+        track.recording.save(update_fields=('audio_file',))
 
         self.create_paid_order(other_user, [track_variant])
 
@@ -173,8 +179,8 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         )
         track = track_variant.product.track
 
-        track.audio_file = ''
-        track.save(update_fields=('audio_file',))
+        track.recording.audio_file = ''
+        track.recording.save(update_fields=('audio_file',))
 
         self.create_paid_order(listener_user, [track_variant])
 
@@ -195,8 +201,8 @@ class TestPurchasedMusicTrackDownloadLinkAPI:
         )
         track = track_variant.product.track
 
-        track.audio_file = 'tracks/missing-track.flac'
-        track.save(update_fields=('audio_file',))
+        track.recording.audio_file = 'tracks/missing-track.flac'
+        track.recording.save(update_fields=('audio_file',))
 
         self.create_paid_order(listener_user, [track_variant])
 
@@ -265,14 +271,14 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
         )
         album = album_variant.product.album
 
-        Track.objects.create(
-            name='First Track',
-            album=album,
+        ReleaseTrackFactory(
+            recording__name='First Track',
+            release=album,
             position=1,
         )
-        Track.objects.create(
-            name='Second Track',
-            album=album,
+        ReleaseTrackFactory(
+            recording__name='Second Track',
+            release=album,
             position=2,
         )
 
@@ -334,11 +340,11 @@ class TestPurchasedMusicArchiveDownloadLinkAPI:
             name='Bought Track',
         )
         bought_track = track_variant.product.track
-        album = bought_track.album
+        album = bought_track.release
 
-        Track.objects.create(
-            name='Not Bought Track',
-            album=album,
+        ReleaseTrackFactory(
+            recording__name='Not Bought Track',
+            release=album,
             position=2,
         )
 

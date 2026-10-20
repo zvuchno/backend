@@ -11,11 +11,8 @@ def album_cover_upload_to(instance, filename: str) -> str:
 
 
 def track_audio_upload_to(instance, filename):
-    """Формирует путь для оригинального аудиофайла трека."""
-    return (
-        f'albums/{instance.album_id}/tracks/original/'
-        f'{build_unique_filename(filename)}'
-    )
+    """Формирует путь для оригинального аудиофайла записи."""
+    return f'recordings/original/{build_unique_filename(filename)}'
 
 
 def bonus_upload_to(instance, filename):
@@ -41,19 +38,13 @@ def album_archive_upload_to(instance, filename: str) -> str:
 
 
 def track_preview_upload_to(instance, filename: str) -> str:
-    """Формирует путь для публичного превью трека."""
-    return (
-        f'albums/{instance.track.album_id}/tracks/preview/'
-        f'{build_unique_filename(filename)}'
-    )
+    """Формирует путь для публичного превью записи."""
+    return f'recordings/preview/{build_unique_filename(filename)}'
 
 
 def track_stream_upload_to(instance, filename: str) -> str:
-    """Формирует путь для приватного файла воспроизведения."""
-    return (
-        f'albums/{instance.track.album_id}/tracks/stream/'
-        f'{build_unique_filename(filename)}'
-    )
+    """Формирует путь для приватного файла воспроизведения записи."""
+    return f'recordings/stream/{build_unique_filename(filename)}'
 
 
 def track_upload_staging_key(album_id: int, filename: str) -> str:

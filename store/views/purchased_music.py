@@ -66,7 +66,7 @@ class PurchasedMusicDLDetailView(PurchasedMusicAccessMixin, APIView):
             .get_track_access_queryset()
             .filter(
                 user=request.user,
-                track__album_id=album_access.album_id,
+                track__release_id=album_access.album_id,
             )
             .order_by('track__position', 'track__id')
         )
@@ -113,8 +113,9 @@ class PurchasedMusicTrackDownloadLinkView(
             track_id=track_id,
         )
         track = track_access.track
+        recording = track.recording
 
-        if not track.audio_file:
+        if not recording.audio_file:
             return Response(
                 {'detail': 'Файл трека временно недоступен.'},
                 status=status.HTTP_404_NOT_FOUND,
@@ -124,7 +125,7 @@ class PurchasedMusicTrackDownloadLinkView(
 
         try:
             link = DownloadLinkService.get_link(
-                field_file=track.audio_file,
+                field_file=recording.audio_file,
                 filename=filename,
             )
         except FileNotFoundError:
