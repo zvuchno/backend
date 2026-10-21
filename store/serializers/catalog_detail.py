@@ -161,7 +161,7 @@ class CatalogReleaseDetailSerializer(
     """Витринная detail-карточка релиза."""
 
     variants = serializers.SerializerMethodField(
-        help_text='Варианты покупки альбома.',
+        help_text='Варианты покупки релиза.',
     )
 
     class Meta:
@@ -171,7 +171,7 @@ class CatalogReleaseDetailSerializer(
             'artist_name',
             'artist_slug',
             'artist_image',
-            'is_single',
+            'release_type',
             'variants',
         )
 

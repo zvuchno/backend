@@ -12,6 +12,7 @@ from .email_verification import (
     generate_email_verification_data,
     verify_email_token,
 )
+from .onboarding_checklist import get_onboarding_checklist
 from .password_reset import (
     build_password_reset_url,
     generate_password_reset_data,
@@ -32,6 +33,7 @@ __all__ = [
     'build_password_reset_url',
     'verify_password_reset_token',
     'generate_email_verification_data',
+    'get_onboarding_checklist',
     'get_user_from_uid',
     'set_user_password',
     'verify_email_token',

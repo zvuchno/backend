@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -136,3 +137,25 @@ def validate_price(price) -> None:
         _price_validator(price)
     except DjangoValidationError as exc:
         raise ValidationError({'price': exc.messages}) from exc
+
+
+def validate_upc(value):
+    """Проверяет формат UPC и контрольную цифру GS1."""
+    if not re.fullmatch(r'[0-9]{12}|[0-9]{13}', value):
+        raise DjangoValidationError(
+            'UPC должен содержать 12 или 13 цифр.',
+            code='invalid_upc_format',
+        )
+
+    digits = [int(digit) for digit in value[:-1]]
+    checksum = sum(
+        digit * (3 if index % 2 == 0 else 1)
+        for index, digit in enumerate(reversed(digits))
+    )
+    check_digit = (10 - checksum % 10) % 10
+
+    if check_digit != int(value[-1]):
+        raise DjangoValidationError(
+            'Указана неверная контрольная цифра UPC.',
+            code='invalid_upc_checksum',
+        )
