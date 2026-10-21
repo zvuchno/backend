@@ -568,3 +568,9 @@ def login_url():
 def artist_leave_label_url() -> str:
     """Возвращает URL самостоятельного выхода артиста из лейбла."""
     return reverse('api:users:artist_leave_label')
+
+
+@pytest.fixture
+def sitemap_url():
+    """Возвращает URL эндпоинта данных для sitemap."""
+    return reverse('api:sitemap-data')

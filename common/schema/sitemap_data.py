@@ -10,7 +10,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 
-from .serializers import SitemapEntrySerializer
+from common.seo.serializers import SitemapEntrySerializer
 
 sitemap_schema = extend_schema_view(
     get=extend_schema(

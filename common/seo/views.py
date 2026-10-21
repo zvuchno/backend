@@ -4,9 +4,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.schema.sitemap_data import sitemap_schema
 from common.services import artist_publication_ready_q
 
-from .schema import sitemap_schema
 from .serializers import SitemapEntrySerializer
 from store.models import Product
 from users.models import ArtistProfile
