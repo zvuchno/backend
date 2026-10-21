@@ -39,8 +39,8 @@ def release_expired_reservations():
             continue  # не снимаем заказы ожидающие оплату
 
         try:
-            ReservationService.release_order_reserve(order)
-            count += 1
+            if ReservationService.release_expired_order_reserve(order):
+                count += 1
         except Exception:
             logger.exception(
                 'Ошибка снятия резерва | order_id=%s',

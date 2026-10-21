@@ -5,9 +5,10 @@ from datetime import datetime
 
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 
 from store.exceptions import NotEnoughStock, PromocodeNotAvailable
-from store.models import Order, Product, ProductVariant, Promocode
+from store.models import Order, Payment, Product, ProductVariant, Promocode
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,6 @@ class ReservationService:
         variants = (
             ProductVariant.objects
             .select_for_update()
-            .select_related('product')
             .order_by('id')
             .in_bulk(variant_ids)
         )
@@ -111,7 +111,7 @@ class ReservationService:
         order_items = list(
             order.items.filter(
                 product_variant__product__product_type=Product.ProductType.MERCH,
-            ).select_related('product_variant'),
+            ),
         )
 
         variant_ids = sorted({item.product_variant_id for item in order_items})
@@ -120,7 +120,6 @@ class ReservationService:
         variants = (
             ProductVariant.objects
             .select_for_update()
-            .select_related('product')
             .order_by('id')
             .in_bulk(variant_ids)
         )
@@ -170,6 +169,29 @@ class ReservationService:
             order.id,
         )
         return order
+
+    @staticmethod
+    @transaction.atomic
+    def release_expired_order_reserve(order) -> bool:
+        """Снимает резерв, только если заказ всё ещё просрочен."""
+        order = Order.objects.select_for_update().get(pk=order.pk)
+
+        # Заново проверяем условия таски под блокировкой заказа
+        if order.status != Order.Status.RESERVED:
+            return False
+        if (
+            order.reserved_until is None
+            or order.reserved_until > timezone.now()
+        ):
+            return False
+        if Payment.objects.filter(
+            order=order,
+            status=Payment.PaymentStatus.PENDING,
+        ).exists():
+            return False
+
+        ReservationService.release_order_reserve(order)
+        return True
 
     @staticmethod
     @transaction.atomic

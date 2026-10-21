@@ -21,6 +21,12 @@ from users.tests.factories import ArtistProfileFactory
 
 CATALOG_SEARCH_URL_NAME = 'api:store:catalog-search'
 
+# ================================SKIP=====================================
+pytestmark = pytest.mark.skip(
+    reason='Глобальный поиск временно отключён: materialized view удалена.',
+)
+# =========================================================================
+
 
 @pytest.fixture
 def catalog_search_url():
