@@ -128,7 +128,7 @@ class AlbumTrackUploadInitiateView(APIView):
                 content_type=serializer.validated_data['content_type'],
                 name=serializer.validated_data['name'],
                 description=serializer.validated_data['description'],
-                price=serializer.validated_data['price'],
+                price=serializer.validated_data.get('price'),
                 allow_overpay=serializer.validated_data['allow_overpay'],
             )
 
