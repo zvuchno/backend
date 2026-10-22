@@ -26,10 +26,13 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from common.seo.views import SitemapDataView
+
 # Список эндпоинтов бизнес-логики (Store, Users и т.д.)
 api_v1_urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
     path('', include('users.urls.api', namespace='users')),
+    path('sitemap-data/', SitemapDataView.as_view(), name='sitemap-data'),
 ]
 
 urlpatterns = [
