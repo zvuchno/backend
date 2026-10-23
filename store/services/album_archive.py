@@ -49,7 +49,6 @@ class AlbumArchiveService:
                         if track.recording.audio_file
                         else None
                     ),
-                    'file_hash': track.recording.file_hash,
                 }
                 for track in tracks
             ],

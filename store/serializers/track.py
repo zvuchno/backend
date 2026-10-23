@@ -189,6 +189,10 @@ class TrackWriteSerializer(
             setattr(recording, field_name, validated_data[field_name])
             update_fields.append(field_name)
 
+        if 'audio_file' in validated_data:
+            recording.file_hash = ''
+            update_fields.append('file_hash')
+
         if update_fields:
             recording.save(update_fields=update_fields)
 

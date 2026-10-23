@@ -1,7 +1,7 @@
 """Подготовка производных аудиофайлов трека."""
 
+import hashlib
 import logging
-import shutil
 import socket
 import tempfile
 from pathlib import Path
@@ -12,7 +12,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from store.exceptions import TemporaryAudioStorageError
-from store.models import Track, TrackGeneratedAudio
+from store.models import Recording, TrackGeneratedAudio
+from store.services.audio.file_hash import iter_file_chunks
 from store.services.audio.processing import AudioProcessingService
 
 logger = logging.getLogger(__name__)
@@ -22,27 +23,27 @@ class TrackAudioPreparationService:
     """Подготавливает preview и stream для трека."""
 
     @classmethod
-    def prepare(cls, track_id: int) -> None:
-        """Создаёт производные аудиофайлы для указанного трека."""
+    def prepare(cls, recording_id: int) -> None:
+        """Создаёт производные аудиофайлы для указанной записи."""
         try:
-            track = Track.objects.get(pk=track_id)
-        except Track.DoesNotExist:
+            recording = Recording.objects.get(pk=recording_id)
+        except Recording.DoesNotExist:
             return
 
         generated, _ = TrackGeneratedAudio.objects.get_or_create(
-            track=track,
+            track=recording,
         )
 
         cls._mark_processing_started(generated)
 
         try:
             with tempfile.TemporaryDirectory(
-                prefix=f'track-{track.pk}-',
+                prefix=f'recording-{recording.pk}-',
             ) as temporary_directory:
                 workdir = Path(temporary_directory)
 
-                source_path = cls._download_source_file(
-                    track=track,
+                source_path, file_hash = cls._download_source_file(
+                    recording=recording,
                     workdir=workdir,
                 )
 
@@ -50,8 +51,15 @@ class TrackAudioPreparationService:
                     source_path,
                 )
 
-                track.duration = metadata.duration
-                track.save(update_fields=('duration',))
+                recording.duration = metadata.duration
+                recording.file_hash = file_hash
+                recording.save(
+                    update_fields=(
+                        'duration',
+                        'file_hash',
+                        'updated_at',
+                    ),
+                )
 
                 stream_path = workdir / 'stream.mp3'
                 preview_path = workdir / 'preview.mp3'
@@ -92,21 +100,24 @@ class TrackAudioPreparationService:
     def _download_source_file(
         cls,
         *,
-        track: Track,
+        recording: Recording,
         workdir: Path,
-    ) -> Path:
-        """Скачивает исходный аудиофайл во временную директорию."""
-        suffix = Path(track.audio_file.name).suffix.lower()
+    ) -> tuple[Path, str]:
+        """Скачивает оригинал и вычисляет его SHA-256."""
+        suffix = Path(recording.audio_file.name).suffix.lower()
         source_path = workdir / f'original{suffix}'
+        hasher = hashlib.sha256()
 
         try:
-            with track.audio_file.open('rb') as source_file:
+            with recording.audio_file.open('rb') as source_file:
                 with source_path.open('wb') as target_file:
-                    shutil.copyfileobj(source_file, target_file)
+                    for chunk in iter_file_chunks(source_file):
+                        hasher.update(chunk)
+                        target_file.write(chunk)
         except Exception as error:
             cls._raise_storage_error(error)
 
-        return source_path
+        return source_path, hasher.hexdigest()
 
     @classmethod
     def _prepare_stream(
@@ -206,14 +217,14 @@ class TrackAudioPreparationService:
         except TemporaryAudioStorageError:
             raise
         except Exception as error:
-            generated.stream_status = (
+            generated.preview_status = (
                 TrackGeneratedAudio.ProcessingStatus.FAILED
             )
-            generated.stream_error = str(error)[:2000]
+            generated.preview_error = str(error)[:2000]
             generated.save(
                 update_fields=(
-                    'stream_status',
-                    'stream_error',
+                    'preview_status',
+                    'preview_error',
                 ),
             )
             raise

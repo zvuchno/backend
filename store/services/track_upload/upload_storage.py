@@ -118,9 +118,11 @@ class TrackUploadStorageService:
     def _set_recording_audio(*, recording, final_key: str) -> None:
         """Назначает записи загруженный оригинальный аудиофайл."""
         recording.audio_file.name = final_key
+        recording.file_hash = ''
         recording.save(
             update_fields=(
                 'audio_file',
+                'file_hash',
                 'updated_at',
             ),
         )

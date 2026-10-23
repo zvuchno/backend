@@ -237,6 +237,9 @@ class RecordingAdmin(
         should_schedule_audio = not change or 'audio_file' in form.changed_data
 
         with transaction.atomic():
+            if should_schedule_audio:
+                obj.file_hash = ''
+
             super().save_model(request, obj, form, change)
 
             if should_schedule_audio:
