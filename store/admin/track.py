@@ -2,9 +2,11 @@
 
 from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.html import format_html
 
+from ..services import get_track_sales_stats, tracks_have_sales
 from .forms import MoneyForm, TrackDeactivationProtectionMixin
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -12,6 +14,7 @@ from .mixins import (
     CommerceDisplayMixin,
 )
 from store.models import (
+    Album,
     Product,
     Recording,
     ReleaseTrack,
@@ -262,6 +265,8 @@ class ReleaseTrackAdmin(
 ):
     """Админка размещений музыкальных записей в релизах."""
 
+    form = TrackAdminForm
+
     list_display = (
         'name',
         'release',
@@ -354,3 +359,62 @@ class ReleaseTrackAdmin(
                 'product',
             )
         )
+
+    def delete_model(self, request, obj):
+        """Удаляет размещение и актуализирует состояние релиза."""
+        sales = get_track_sales_stats(obj)
+
+        if sales.total_sales:
+            raise ValidationError(
+                (
+                    'Нельзя физически удалить трек с историей приобретения. '
+                    f'Трек куплен отдельно: {sales.direct_sales} раз; '
+                    f'в составе релиза: {sales.release_sales} раз. '
+                    'Чтобы изменить состав, снимите текущий релиз с продажи '
+                    'и создайте новый без этого трека.'
+                ),
+            )
+
+        release_id = obj.release_id
+
+        with transaction.atomic():
+            super().delete_model(request, obj)
+
+            release = Album.objects.get(pk=release_id)
+            unpublish_if_empty(release)
+
+            transaction.on_commit(
+                lambda: AlbumArchiveScheduler.schedule_by_id(release_id),
+            )
+
+    def delete_queryset(self, request, queryset):
+        """Удаляет только треки без истории приобретения."""
+        if tracks_have_sales(queryset):
+            raise ValidationError(
+                'Среди выбранных треков есть треки с историей приобретения. '
+                'Их нельзя физически удалить.',
+            )
+
+        release_ids = set(
+            queryset.values_list('release_id', flat=True),
+        )
+
+        with transaction.atomic():
+            super().delete_queryset(request, queryset)
+
+            for release in Album.objects.filter(pk__in=release_ids):
+                unpublish_if_empty(release)
+                release_id = release.pk
+
+                transaction.on_commit(
+                    lambda release_id=release_id: (
+                        AlbumArchiveScheduler.schedule_by_id(release_id)
+                    ),
+                )
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает удаление трека с историей приобретения."""
+        if obj is not None and get_track_sales_stats(obj).total_sales:
+            return False
+
+        return super().has_delete_permission(request, obj)

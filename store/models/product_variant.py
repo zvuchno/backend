@@ -116,6 +116,12 @@ class ProductVariant(ActivatableModel, TimestampModel):
         if not content.is_active:
             return False
 
+        if (
+            product.product_type == product.ProductType.TRACK
+            and not content.recording.is_active
+        ):
+            return False
+
         publication_content = (
             content.release
             if product.product_type == product.ProductType.TRACK
@@ -140,15 +146,11 @@ class ProductVariant(ActivatableModel, TimestampModel):
         readiness = get_artist_publication_readiness(product.artist)
 
         if product.product_type == product.ProductType.MERCH:
-            if not readiness.can_publish_physical:
-                return False
+            return readiness.can_publish_physical and (
+                self.stock is None or self.stock > 0
+            )
 
-            return self.stock is None or self.stock > 0
-
-        if not readiness.can_publish_digital:
-            return False
-
-        return True
+        return readiness.can_publish_digital
 
     def __str__(self):
         return self.variant_name

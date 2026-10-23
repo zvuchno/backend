@@ -56,6 +56,7 @@ class ProductQuerySet(models.QuerySet):
         return self.filter(
             track__isnull=False,
             track__is_active=True,
+            track__recording__is_active=True,
             track__release__is_active=True,
             track__release__artist__is_active=True,
             track__release__is_published=True,
@@ -245,6 +246,7 @@ class ProductQuerySet(models.QuerySet):
         """Подтягивает данные для карточек треков."""
         return self.select_related(
             'track',
+            'track__recording',
             'track__release',
         )
 
