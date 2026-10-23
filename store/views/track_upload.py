@@ -77,6 +77,15 @@ def _build_track_upload_response(
     recording = track.recording
     product = getattr(track, 'product', None)
 
+    complete_path = reverse(
+        'api:store:track-upload-complete',
+        args=(upload.pk,),
+    )
+
+    complete_url = request.build_absolute_uri(
+        f'{complete_path}?track_id={track.pk}',
+    )
+
     data = {
         'track': {
             'id': track.pk,
@@ -93,12 +102,7 @@ def _build_track_upload_response(
             'uploaded_size': upload.uploaded_size,
             'expires_at': upload.expires_at,
             'completed_at': upload.completed_at,
-            'complete_url': request.build_absolute_uri(
-                reverse(
-                    'api:store:track-upload-complete',
-                    args=(upload.pk,),
-                ),
-            ),
+            'complete_url': complete_url,
         },
     }
 
@@ -137,7 +141,7 @@ class AlbumTrackUploadInitiateView(APIView):
                 content_type=serializer.validated_data['content_type'],
                 name=serializer.validated_data['name'],
                 description=serializer.validated_data['description'],
-                price=serializer.validated_data['price'],
+                price=serializer.validated_data.get('price'),
                 allow_overpay=serializer.validated_data['allow_overpay'],
                 isrc=serializer.validated_data.get('isrc'),
             )
@@ -253,6 +257,22 @@ class TrackUploadCompleteView(APIView):
         )
         _check_upload_access(request=request, upload=upload)
 
+        track_id = request.query_params.get('track_id')
+        if not track_id or not track_id.isdigit():
+            return Response(
+                {'detail': 'Не указан корректный track_id.'},
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        track = get_object_or_404(
+            ReleaseTrack.objects.select_related(
+                'recording',
+                'product',
+            ),
+            pk=int(track_id),
+            recording_id=upload.track_id,
+        )
+
         try:
             upload = TrackUploadStorageService.complete(upload=upload)
         except TrackUploadStorageError as exc:
@@ -267,6 +287,7 @@ class TrackUploadCompleteView(APIView):
             TrackUploadResponseSerializer(
                 instance=_build_track_upload_response(
                     request=request,
+                    track=track,
                     upload=upload,
                 ),
             ).data,

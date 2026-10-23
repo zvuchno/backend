@@ -1,8 +1,10 @@
 import json
 import logging
+from datetime import timedelta
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from rest_framework import status
@@ -14,9 +16,14 @@ from yookassa.domain.notification import WebhookNotificationFactory
 
 from common.utils import get_client_ip
 
+from store.constants import RESERVATION_TTL_MINUTES
 from store.models import Order
 from store.schema import payment_schema
-from store.services import create_yookassa_payment, process_yookassa_webhook
+from store.services import (
+    ReservationService,
+    create_yookassa_payment,
+    process_yookassa_webhook,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +46,14 @@ class CreatePaymentView(APIView):
             id=order_id,
             user=request.user,
         )
+
+        if order.status == Order.Status.RESERVED:
+            order = ReservationService.extend_order_reserve(
+                order,
+                reserved_until=(
+                    timezone.now() + timedelta(minutes=RESERVATION_TTL_MINUTES)
+                ),
+            )
 
         result = create_yookassa_payment(order)
 

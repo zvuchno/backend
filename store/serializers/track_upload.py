@@ -4,7 +4,6 @@ from store.constants import (
     MAX_CHAR_LENGTH,
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
-    ZERO_MONEY,
 )
 from store.models import TrackUpload
 from store.validators import validate_isrc_format
@@ -37,7 +36,6 @@ class TrackUploadInitiateSerializer(serializers.Serializer):
         max_digits=MAX_PRICE_DIGITS,
         decimal_places=MONEY_DISPLAY_PRECISION,
         required=False,
-        default=ZERO_MONEY,
     )
     allow_overpay = serializers.BooleanField(
         required=False,

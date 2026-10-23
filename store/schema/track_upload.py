@@ -1,6 +1,11 @@
 """Схемы API прямой загрузки оригинальных файлов треков."""
 
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+)
 
 from store.serializers import (
     TrackUploadFileInitiateSerializer,
@@ -70,10 +75,21 @@ track_upload_complete_schema = extend_schema(
         'Завершает прямую загрузку после того, '
         'как клиент успешно отправил файл '
         'по transport-инструкции. Проверяет staging-файл, '
-        'переносит его в постоянное '
-        'хранилище, назначает audio_file и position треку, помечает загрузку '
-        'завершённой и запускает подготовку audio preview/stream.'
+        'переносит его в постоянное хранилище мастер-записи, '
+        'помечает загрузку завершённой и запускает подготовку '
+        'audio preview/stream.'
     ),
+    parameters=[
+        OpenApiParameter(
+            name='track_id',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            description=(
+                'ID трека релиза, в контексте которого была начата загрузка.'
+            ),
+        ),
+    ],
     request=None,
     responses={
         200: TrackUploadResponseSerializer,
