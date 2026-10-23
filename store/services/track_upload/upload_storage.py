@@ -10,10 +10,9 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Max
 from django.utils import timezone
 
-from store.models import Album, Track, TrackUpload
+from store.models import TrackUpload
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.audio import TrackGeneratedAudioScheduler
 from store.upload_paths import track_audio_upload_to
@@ -33,13 +32,13 @@ class TrackUploadStorageService:
     def complete(cls, *, upload: TrackUpload) -> TrackUpload:
         """Завершает загрузку файла.
 
-        Подтверждает файл,
-        переносит его в Track.audio_file и запускает обработку.
+        Подтверждает staging-файл, переносит его в Recording.audio_file
+        и запускает обработку.
         """
         upload = (
             TrackUpload.objects
             .select_for_update()
-            .select_related('track__album')
+            .select_related('track')
             .get(pk=upload.pk)
         )
 
@@ -75,18 +74,12 @@ class TrackUploadStorageService:
                 'Размер staging-файла не совпадает с ожидаемым.',
             )
 
-        track = upload.track
+        recording = upload.track
 
-        if upload.purpose == TrackUpload.Purpose.REPLACE:
-            cls._replace_track_audio(
-                track=track,
-                final_key=final_key,
-            )
-        else:
-            cls._finalize_new_track(
-                track=track,
-                final_key=final_key,
-            )
+        cls._set_recording_audio(
+            recording=recording,
+            final_key=final_key,
+        )
 
         upload.status = TrackUpload.Status.COMPLETED
         upload.uploaded_size = uploaded_size
@@ -102,8 +95,16 @@ class TrackUploadStorageService:
             ),
         )
 
-        TrackGeneratedAudioScheduler.schedule(track)
-        AlbumArchiveScheduler.schedule(track.album)
+        TrackGeneratedAudioScheduler.schedule(recording)
+
+        release_ids = list(
+            recording.release_tracks.values_list(
+                'release_id',
+                flat=True,
+            ).distinct(),
+        )
+        for release_id in release_ids:
+            AlbumArchiveScheduler.schedule_by_id(release_id)
 
         transaction.on_commit(
             lambda upload=upload: cls._delete_staging_safely(
@@ -113,55 +114,15 @@ class TrackUploadStorageService:
 
         return upload
 
-    @classmethod
-    def _finalize_new_track(
-        cls,
-        *,
-        track: Track,
-        final_key: str,
-    ) -> None:
-        """Финализирует новый трек после успешной загрузки файла."""
-        album = Album.objects.select_for_update().get(
-            pk=track.album_id,
-        )
-
-        last_position = (
-            Track.objects
-            .filter(
-                album_id=album.pk,
-                position__isnull=False,
-            )
-            .exclude(
-                pk=track.pk,
-                audio_file='',
-            )
-            .aggregate(
-                max_position=Max('position'),
-            )
-        )['max_position']
-
-        track.position = (last_position or 0) + 1
-        track.audio_file.name = final_key
-        track.save(
+    @staticmethod
+    def _set_recording_audio(*, recording, final_key: str) -> None:
+        """Назначает записи загруженный оригинальный аудиофайл."""
+        recording.audio_file.name = final_key
+        recording.file_hash = ''
+        recording.save(
             update_fields=(
                 'audio_file',
-                'position',
-                'updated_at',
-            ),
-        )
-
-    @classmethod
-    def _replace_track_audio(
-        cls,
-        *,
-        track: Track,
-        final_key: str,
-    ) -> None:
-        """Заменяет оригинальный файл существующего трека."""
-        track.audio_file.name = final_key
-        track.save(
-            update_fields=(
-                'audio_file',
+                'file_hash',
                 'updated_at',
             ),
         )

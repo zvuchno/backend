@@ -6,7 +6,8 @@ from unittest.mock import patch
 import pytest
 from rest_framework import status
 
-from store.models import Album, AlbumArchive, Order, OrderItem, Track
+from store.models import Album, AlbumArchive, Order, OrderItem
+from store.tests.factories import ReleaseTrackFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -66,8 +67,8 @@ class TestPurchasedMusicAPI:
         album_variant = self.variant_factory('album', name='Purchased Album')
         album = album_variant.product.album
 
-        Track.objects.create(name='Track 1', album=album)
-        Track.objects.create(name='Track 2', album=album)
+        ReleaseTrackFactory(release=album, recording__name='Track 1')
+        ReleaseTrackFactory(release=album, recording__name='Track 2')
 
         self.create_paid_order(listener_user, [album_variant])
 
@@ -89,7 +90,7 @@ class TestPurchasedMusicAPI:
         self.variant_factory(
             'track',
             name='Second Track',
-            album=track.album,
+            album=track.release,
         )
 
         self.create_paid_order(listener_user, [track_variant])
@@ -98,7 +99,7 @@ class TestPurchasedMusicAPI:
         results = get_results(response)
 
         assert response.status_code == status.HTTP_200_OK
-        assert [item['id'] for item in results] == [track.album.id]
+        assert [item['id'] for item in results] == [track.release.id]
         assert results[0]['is_fully_available'] is False
 
     def test_purchased_music_returns_partial_album(
@@ -120,9 +121,9 @@ class TestPurchasedMusicAPI:
             album=album,
         )
 
-        Track.objects.create(
-            name='Not Bought Track',
-            album=album,
+        ReleaseTrackFactory(
+            recording__name='Not Bought Track',
+            release=album,
         )
 
         self.create_paid_order(listener_user, [bought_track_variant])
@@ -143,7 +144,7 @@ class TestPurchasedMusicAPI:
             'track',
             name='First Track',
         )
-        album = first_track_variant.product.track.album
+        album = first_track_variant.product.track.release
 
         second_track_variant = self.variant_factory(
             'track',
@@ -236,14 +237,14 @@ class TestPurchasedMusicDownloadDetailAPI:
         )
         album = album_variant.product.album
 
-        first_track = Track.objects.create(
-            name='First Track',
-            album=album,
+        first_track = ReleaseTrackFactory(
+            recording__name='First Track',
+            release=album,
             position=1,
         )
-        second_track = Track.objects.create(
-            name='Second Track',
-            album=album,
+        second_track = ReleaseTrackFactory(
+            recording__name='Second Track',
+            release=album,
             position=2,
         )
 
@@ -311,11 +312,11 @@ class TestPurchasedMusicDownloadDetailAPI:
         bought_track.position = 1
         bought_track.save(update_fields=('position',))
 
-        album = bought_track.album
+        album = bought_track.release
 
-        Track.objects.create(
-            name='Not Bought Track',
-            album=album,
+        ReleaseTrackFactory(
+            recording__name='Not Bought Track',
+            release=album,
             position=2,
         )
 
@@ -357,7 +358,7 @@ class TestPurchasedMusicDownloadDetailAPI:
             'track',
             name='Other User Track',
         )
-        album = track_variant.product.track.album
+        album = track_variant.product.track.release
 
         self.create_paid_order(other_user, [track_variant])
 
@@ -385,9 +386,9 @@ class TestPurchasedMusicDownloadDetailAPI:
         )
         album = album_variant.product.album
 
-        Track.objects.create(
-            name='First Track',
-            album=album,
+        ReleaseTrackFactory(
+            recording__name='First Track',
+            release=album,
             position=1,
         )
 

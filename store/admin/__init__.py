@@ -20,7 +20,7 @@ from .payout import PayoutAdmin
 from .promocode import PromocodeAdmin
 from .report import ReportAdmin
 from .shipment import ShipmentAdmin
-from .track import TrackAdmin
+from .track import RecordingAdmin
 
 __all__ = [
     'AlbumAdmin',
@@ -35,9 +35,9 @@ __all__ = [
     'PaymentAdmin',
     'PayoutAdmin',
     'PromocodeAdmin',
+    'RecordingAdmin',
     'ReportAdmin',
     'ShipmentAdmin',
-    'TrackAdmin',
 ]
 
 # Заголовок страницы (вкладка браузера)

@@ -6,6 +6,7 @@ from store.constants import (
     MONEY_DISPLAY_PRECISION,
 )
 from store.models import TrackUpload
+from store.validators import validate_isrc_format
 
 
 class TrackUploadInitiateSerializer(serializers.Serializer):
@@ -40,6 +41,17 @@ class TrackUploadInitiateSerializer(serializers.Serializer):
         required=False,
         default=False,
     )
+    isrc = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=12,
+        validators=(validate_isrc_format,),
+    )
+
+    def validate_isrc(self, value):
+        """Приводит пустой ISRC к отсутствующему значению."""
+        return value or None
 
 
 class TrackUploadTransportSerializer(serializers.Serializer):
@@ -68,6 +80,7 @@ class TrackUploadTrackSerializer(serializers.Serializer):
         decimal_places=MONEY_DISPLAY_PRECISION,
     )
     allow_overpay = serializers.BooleanField()
+    isrc = serializers.CharField(allow_null=True)
 
 
 class TrackUploadStateSerializer(serializers.Serializer):

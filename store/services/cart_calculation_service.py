@@ -36,7 +36,7 @@ class CartCalculationService:
             .exclude(product_variant__stock=0)
             .select_related(
                 'product_variant__product__album__artist',
-                'product_variant__product__track__album__artist',
+                'product_variant__product__track__release__artist',
                 'product_variant__product__merch__artist',
             )
         )

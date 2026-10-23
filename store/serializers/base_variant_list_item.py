@@ -78,7 +78,7 @@ class BaseVariantTargetImageSerializer(
             return self.get_main_image_url(items)
 
         if product.track_id:
-            items = self.get_album_image_items(product.track.album)
+            items = self.get_album_image_items(product.track.release)
             return self.get_main_image_url(items)
 
         return None

@@ -15,9 +15,9 @@ from store.services.audio.preparation import (
     max_retries=3,
     default_retry_delay=120,
 )
-def prepare_track_audio(self, track_id: int) -> None:
-    """Подготавливает preview и stream указанного трека."""
+def prepare_track_audio(self, recording_id: int) -> None:
+    """Подготавливает preview и stream указанной мастер-записи."""
     try:
-        TrackAudioPreparationService.prepare(track_id)
+        TrackAudioPreparationService.prepare(recording_id)
     except TemporaryAudioStorageError as error:
         raise self.retry(exc=error)

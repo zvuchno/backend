@@ -4,7 +4,7 @@ import pytest
 from django.db.models import QuerySet
 from rest_framework import status
 
-from store.models import AlbumArchive, Merch, Track
+from store.models import AlbumArchive, Merch, ReleaseTrack
 from store.services import reorder_objects
 from store.services.album_archive import (
     AlbumArchiveScheduler,
@@ -14,7 +14,7 @@ from store.tests.factories import (
     AlbumFactory,
     BonusFactory,
     MerchFactory,
-    TrackFactory,
+    ReleaseTrackFactory,
 )
 
 TASK_PATH = 'store.tasks.album_archive.build_album_archive.apply_async'
@@ -31,9 +31,13 @@ def album(artist_user):
 
 @pytest.fixture
 def tracks(album):
-    """Три активных трека с позициями 1, 2, 3."""
+    """Три активных трека релиза с позициями 1, 2, 3."""
     return [
-        TrackFactory(album=album, position=position) for position in (1, 2, 3)
+        ReleaseTrackFactory(
+            release=album,
+            position=position,
+        )
+        for position in (1, 2, 3)
     ]
 
 
@@ -101,7 +105,7 @@ class TestTrackReorder:
         make_ids,
     ):
         """Некорректный список ID отклоняется без изменения порядка."""
-        other_track = TrackFactory(position=1)
+        other_track = ReleaseTrackFactory(position=1)
         before = db_order(album)
 
         response = artist_client.patch(
@@ -122,7 +126,11 @@ class TestTrackReorder:
     ):
         """Неактивный трек не требуется передавать при сортировке."""
         a, b, c = tracks
-        deleted = TrackFactory(album=album, position=4, is_active=False)
+        deleted = ReleaseTrackFactory(
+            release=album,
+            position=4,
+            is_active=False,
+        )
 
         ok = artist_client.patch(
             track_reorder_url,
@@ -181,7 +189,7 @@ class TestTrackReorderPermissions:
     ):
         """Лейбл может пересортировать альбом подписанного артиста."""
         album = AlbumFactory(artist=signed_artist_user.artist_profile)
-        a, b = (TrackFactory(album=album, position=p) for p in (1, 2))
+        a, b = (ReleaseTrackFactory(release=album, position=p) for p in (1, 2))
 
         response = label_client.patch(
             track_reorder_url,
@@ -295,7 +303,7 @@ class TestReorderTracksService:
         ):
             with pytest.raises(RuntimeError):
                 reorder_objects(
-                    Track.objects.filter(album=album, is_active=True),
+                    ReleaseTrack.objects.filter(release=album, is_active=True),
                     [t.id for t in reversed(tracks)],
                     'ids_field',
                 )

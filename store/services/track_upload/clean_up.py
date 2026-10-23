@@ -15,11 +15,11 @@ TRACK_UPLOAD_CLEANUP_DELAY = timedelta(days=1)
 
 
 class TrackUploadCleanupService:
-    """Удаляет технические треки от заброшенных загрузок."""
+    """Удаляет данные заброшенных прямых загрузок треков."""
 
     @classmethod
     def cleanup_expired(cls) -> dict[str, int]:
-        """Удаляет черновики, оставленные после истечения срока загрузки."""
+        """Удаляет просроченные upload attempts и их staging-файлы."""
         cleanup_before = timezone.now() - TRACK_UPLOAD_CLEANUP_DELAY
 
         upload_ids = list(
@@ -27,7 +27,6 @@ class TrackUploadCleanupService:
             .filter(
                 completed_at__isnull=True,
                 expires_at__lt=cleanup_before,
-                track__audio_file='',
             )
             .exclude(
                 status=TrackUpload.Status.COMPLETED,
@@ -73,7 +72,6 @@ class TrackUploadCleanupService:
                 upload.status == TrackUpload.Status.COMPLETED
                 or upload.completed_at is not None
                 or upload.expires_at >= cleanup_before
-                or upload.track.audio_file
             ):
                 return 'skipped'
 
@@ -89,13 +87,23 @@ class TrackUploadCleanupService:
                 )
                 return 'storage_errors'
 
-            upload.track.delete()
+            recording = upload.track
+            recording_id = recording.pk
+
+            if (
+                upload.purpose == TrackUpload.Purpose.CREATE
+                and not recording.audio_file
+            ):
+                recording.release_tracks.all().delete()
+                recording.delete()
+            else:
+                upload.delete()
 
         logger.info(
-            'Удалён черновой трек заброшенной загрузки. '
-            'upload_id=%s, track_id=%s',
+            'Удалена заброшенная загрузка трека. '
+            'upload_id=%s, recording_id=%s',
             upload_id,
-            upload.track_id,
+            recording_id,
         )
 
         return 'deleted'

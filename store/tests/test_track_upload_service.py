@@ -14,7 +14,11 @@ from store.services.track_upload import (
     TrackUploadService,
     TrackUploadTransportService,
 )
-from store.tests.factories import AlbumFactory, TrackFactory
+from store.tests.factories import (
+    AlbumFactory,
+    RecordingFactory,
+    ReleaseTrackFactory,
+)
 
 
 @pytest.mark.django_db
@@ -22,52 +26,54 @@ class TestTrackUploadService:
     """Тесты подготовки треков к загрузке."""
 
     def test_creates_pending_track_and_upload(self):
-        """Создаёт неактивный технический трек и попытку загрузки."""
+        """Создаёт Recording, ReleaseTrack, Product и upload записи."""
         album = AlbumFactory()
 
-        track, upload = TrackUploadService.create_pending_track(
+        release_track, upload = TrackUploadService.create_pending_track(
             album=album,
             created_by=album.created_by,
             filename='01. Intro.flac',
             size=10,
             content_type='audio/flac',
         )
+        recording = release_track.recording
 
-        assert track.album == album
-        assert track.name == '01. Intro'
-        assert track.position is None
-        assert track.is_active is True
-        assert not track.audio_file
+        assert release_track.release == album
+        assert release_track.position == 1
+        assert release_track.is_active is True
+        assert recording.owner == album.artist
+        assert recording.name == '01. Intro'
+        assert not recording.audio_file
 
-        assert track.product.price == Decimal('0.00')
-        assert track.product.variants.count() == 1
+        assert release_track.product.price == Decimal('0.00')
+        assert release_track.product.variants.count() == 1
 
-        assert upload.track == track
+        assert upload.track == recording
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.original_filename == '01. Intro.flac'
         assert upload.expected_size == 10
         assert upload.content_type == 'audio/flac'
         assert upload.staging_key.startswith(
-            f'staging/track-uploads/{album.pk}/',
+            f'staging/track-uploads/{recording.pk}/',
         )
 
-    def test_pending_track_does_not_take_position_in_tracklist(self):
-        """Черновой трек не занимает позицию до успешной финализации."""
+    def test_pending_release_track_gets_next_position_immediately(self):
+        """Новое размещение сразу получает следующую позицию в релизе."""
         album = AlbumFactory()
 
-        TrackFactory(
-            album=album,
+        ReleaseTrackFactory(
+            release=album,
             position=4,
         )
 
-        track, _ = TrackUploadService.create_pending_track(
+        release_track, _ = TrackUploadService.create_pending_track(
             album=album,
             created_by=album.created_by,
             filename='Next.mp3',
             size=10,
         )
 
-        assert track.position is None
+        assert release_track.position == 5
 
     @pytest.mark.parametrize(
         'filename',
@@ -126,7 +132,7 @@ class TestTrackUploadService:
         """Создаёт черновой трек с метаданными из API-формы."""
         album = AlbumFactory()
 
-        track, upload = TrackUploadService.create_pending_track(
+        release_track, upload = TrackUploadService.create_pending_track(
             album=album,
             created_by=album.created_by,
             filename='01. Original name.flac',
@@ -136,56 +142,61 @@ class TestTrackUploadService:
             description='Описание трека.',
             price=Decimal('150.00'),
             allow_overpay=True,
+            isrc='RUA1B2345678',
         )
+        recording = release_track.recording
 
-        assert track.album == album
-        assert track.name == 'Новое название'
-        assert track.description == 'Описание трека.'
-        assert track.position is None
-        assert track.is_active is True
-        assert not track.audio_file
+        assert release_track.release == album
+        assert release_track.position == 1
+        assert release_track.is_active is True
+        assert recording.name == 'Новое название'
+        assert recording.description == 'Описание трека.'
+        assert recording.isrc == 'RUA1B2345678'
+        assert not recording.audio_file
 
-        assert track.product.price == Decimal('150.00')
-        assert track.product.allow_overpay is True
-        assert track.product.variants.count() == 1
+        assert release_track.product.price == Decimal('150.00')
+        assert release_track.product.allow_overpay is True
+        assert release_track.product.variants.count() == 1
 
-        assert upload.track == track
+        assert upload.track == recording
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.original_filename == '01. Original name.flac'
 
     def test_creates_replacement_upload_for_existing_track(self):
         """Создаёт попытку замены файла существующего трека."""
-        track = TrackFactory()
+        release_track = ReleaseTrackFactory()
+        recording = release_track.recording
 
         upload = TrackUploadService.create_replacement_upload(
-            track=track,
+            track=release_track,
             filename='new-original.flac',
             size=10,
             content_type='audio/flac',
         )
 
-        track.refresh_from_db()
+        release_track.refresh_from_db()
+        recording.refresh_from_db()
 
-        assert upload.track == track
+        assert upload.track == recording
         assert upload.purpose == TrackUpload.Purpose.REPLACE
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.original_filename == 'new-original.flac'
         assert upload.expected_size == 10
         assert upload.content_type == 'audio/flac'
         assert upload.staging_key.startswith(
-            f'staging/track-uploads/{track.album_id}/',
+            f'staging/track-uploads/{recording.pk}/',
         )
 
-        assert track.position is not None
-        assert track.audio_file
+        assert release_track.position is not None
+        assert recording.audio_file
 
     def test_replacement_upload_rejects_invalid_file(self):
         """Не создаёт попытку замены для неподдерживаемого файла."""
-        track = TrackFactory()
+        release_track = ReleaseTrackFactory()
 
         with pytest.raises(ValidationError):
             TrackUploadService.create_replacement_upload(
-                track=track,
+                track=release_track,
                 filename='new-original.jpg',
                 size=10,
                 content_type='image/jpeg',
@@ -205,9 +216,9 @@ class TestTrackUploadTransportService:
         """Возвращает local endpoint для загрузки файла."""
         settings.USE_S3_MEDIA = False
 
-        track = TrackFactory(album=AlbumFactory())
+        recording = RecordingFactory()
         upload = TrackUpload.objects.create(
-            track=track,
+            track=recording,
             staging_key='staging/track-uploads/1/test.flac',
             original_filename='test.flac',
             expected_size=10,
@@ -258,9 +269,9 @@ class TestTrackUploadTransportService:
             'django.utils.timezone.now',
             return_value=fixed_now,
         ):
-            track = TrackFactory(album=AlbumFactory())
+            recording = RecordingFactory()
             upload = TrackUpload.objects.create(
-                track=track,
+                track=recording,
                 staging_key='staging/track-uploads/1/test.flac',
                 original_filename='test.flac',
                 expected_size=10,

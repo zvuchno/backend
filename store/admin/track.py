@@ -1,8 +1,4 @@
-"""Модуль админки для модели Track.
-
-Содержит настройку интерфейса Django Admin для модели музыкального трека.
-TODO: позже перевести замену audio_file в админке на direct upload.
-"""
+"""Админка музыкальных записей и треков релизов."""
 
 from django import forms
 from django.contrib import admin
@@ -10,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.html import format_html
 
+from ..services import get_track_sales_stats, tracks_have_sales
 from .forms import MoneyForm, TrackDeactivationProtectionMixin
 from .mixins import (
     AutoCreatedByAdminMixin,
@@ -19,10 +16,10 @@ from .mixins import (
 from store.models import (
     Album,
     Product,
-    Track,
+    Recording,
+    ReleaseTrack,
     TrackGeneratedAudio,
 )
-from store.services import get_track_sales_stats, tracks_have_sales
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
@@ -126,27 +123,155 @@ class TrackAdminForm(
     TrackDeactivationProtectionMixin,
     forms.ModelForm,
 ):
-    """Форма трека с защитой приобретённого контента."""
+    """Форма трека релиза с защитой приобретённого контента."""
 
     class Meta:
-        model = Track
+        model = ReleaseTrack
         fields = '__all__'
 
 
-@admin.register(Track)
-class TrackAdmin(
+class RecordingReleaseTrackInline(admin.TabularInline):
+    """Показывает релизы, в которых используется мастер-запись."""
+
+    model = ReleaseTrack
+    fk_name = 'recording'
+    fields = (
+        'release',
+        'position',
+        'is_active',
+    )
+    readonly_fields = fields
+    extra = 0
+    can_delete = False
+    show_change_link = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Recording)
+class RecordingAdmin(
     AutoCreatedByAdminMixin,
+    admin.ModelAdmin,
+):
+    """Админка мастер-записей."""
+
+    list_display = (
+        'name',
+        'owner',
+        'isrc',
+        'formatted_duration',
+        'is_active',
+    )
+    search_fields = (
+        'name',
+        'description',
+        'isrc',
+        'owner__name',
+    )
+    list_filter = (
+        'is_active',
+        'created_at',
+        'updated_at',
+    )
+    ordering = ('name', 'id')
+    readonly_fields = (
+        'formatted_duration',
+        'duration',
+        'file_hash',
+        'created_at',
+        'updated_at',
+        'created_by',
+    )
+    fieldsets = (
+        (
+            'Основная информация',
+            {
+                'fields': (
+                    'name',
+                    'owner',
+                    'isrc',
+                    'is_active',
+                    'audio_file',
+                    'formatted_duration',
+                    'description',
+                ),
+            },
+        ),
+        (
+            'Системная информация',
+            {
+                'classes': ('collapse',),
+                'fields': (
+                    'file_hash',
+                    'created_at',
+                    'updated_at',
+                    'created_by',
+                ),
+            },
+        ),
+    )
+
+    inlines = (
+        RecordingReleaseTrackInline,
+        TrackGeneratedAudioInline,
+    )
+
+    @admin.display(description='Длительность')
+    def formatted_duration(self, obj):
+        """Показывает длительность трека в формате мм:сс."""
+        if obj.duration is None:
+            return '-'
+        minutes = obj.duration // 60
+        seconds = obj.duration % 60
+        return f'{minutes}:{seconds:02}'
+
+    def get_queryset(self, request):
+        """Возвращает записи с владельцем и создателем."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'owner',
+                'created_by',
+            )
+        )
+
+    def save_model(self, request, obj, form, change):
+        """Сохраняет мастер-запись и запускает обработку исходного аудио."""
+        should_schedule_audio = not change or 'audio_file' in form.changed_data
+
+        with transaction.atomic():
+            if should_schedule_audio:
+                obj.file_hash = ''
+
+            super().save_model(request, obj, form, change)
+
+            if should_schedule_audio:
+                transaction.on_commit(
+                    lambda: TrackGeneratedAudioScheduler.schedule(obj),
+                )
+
+    def has_delete_permission(self, request, obj=None):
+        """Запрещает физическое удаление мастер-записей."""
+        return False
+
+
+@admin.register(ReleaseTrack)
+class ReleaseTrackAdmin(
     CommerceBaseMixin,
     CommerceDisplayMixin,
     admin.ModelAdmin,
 ):
-    """Админка для модели Track."""
+    """Админка размещений музыкальных записей в релизах."""
 
     form = TrackAdminForm
 
     list_display = (
         'name',
-        'album',
+        'release',
+        'position',
+        'recording',
         'artist',
         'payout_recipient',
         'get_price',
@@ -154,41 +279,40 @@ class TrackAdmin(
         'is_active',
     )
     search_fields = (
-        'album__name',
-        'album__artist__name',
-        'album__payout_recipient__email',
-        'description',
-        'name',
+        'recording__name',
+        'recording__isrc',
+        'release__name',
+        'release__artist__name',
     )
     list_filter = (
         'is_active',
         'created_at',
         'updated_at',
     )
-    ordering = ('album', 'position')
+    ordering = (
+        'release',
+        'position',
+        'id',
+    )
     readonly_fields = (
-        'formatted_duration',
-        'duration',
-        'created_at',
-        'updated_at',
-        'created_by',
-        'get_sku',
         'artist',
         'payout_recipient',
+        'created_at',
+        'updated_at',
     )
-    list_editable = ('is_active',)
+    autocomplete_fields = (
+        'release',
+        'recording',
+    )
     fieldsets = (
         (
-            'Основная информация',
+            'Трек релиза',
             {
                 'fields': (
-                    'name',
-                    'album',
+                    'release',
+                    'recording',
+                    'position',
                     'is_active',
-                    'audio_file',
-                    'formatted_duration',
-                    'description',
-                    'get_sku',
                     'artist',
                     'payout_recipient',
                 ),
@@ -201,75 +325,43 @@ class TrackAdmin(
                 'fields': (
                     'created_at',
                     'updated_at',
-                    'created_by',
                 ),
             },
         ),
     )
-    inlines = (ProductInline, TrackGeneratedAudioInline)
-
-    autocomplete_fields = ('album',)
-
-    @admin.display(
-        description='Артист',
-        ordering='album__artist__name',
-    )
-    def artist(self, obj):
-        """Возвращает артиста альбома."""
-        return obj.album.artist
-
-    @admin.display(
-        description='Получатель выплат',
-        ordering='album__payout_recipient__email',
-    )
-    def payout_recipient(self, obj):
-        """Возвращает получателя выплат альбома."""
-        return obj.album.payout_recipient
-
-    @admin.display(description='Длительность')
-    def formatted_duration(self, obj):
-        """Показывает длительность трека в формате мм:сс."""
-        if obj.duration is None:
-            return '-'
-        minutes = obj.duration // 60
-        seconds = obj.duration % 60
-        return f'{minutes}:{seconds:02}'
-
-    def get_queryset(self, request):
-        """Возвращает треки с альбомом, владельцем и профилем артиста."""
-        return (
-            super()
-            .get_queryset(request)
-            .select_related(
-                'album',
-                'album__artist',
-                'album__payout_recipient',
-                'created_by',
-            )
-        )
+    inlines = (ProductInline,)
 
     def save_model(self, request, obj, form, change):
-        """Сохраняет трек и запускает обработку при изменении исходника."""
-        should_schedule_audio = not change or 'audio_file' in form.changed_data
+        """Сохраняет размещение и актуализирует состояние релиза."""
         should_schedule_archive = change and 'is_active' in form.changed_data
 
         with transaction.atomic():
             super().save_model(request, obj, form, change)
-            unpublish_if_empty(obj.album)
-
-            if should_schedule_audio:
-                transaction.on_commit(
-                    lambda: TrackGeneratedAudioScheduler.schedule(obj),
-                )
+            unpublish_if_empty(obj.release)
 
             if should_schedule_archive:
-                album_id = obj.album_id
                 transaction.on_commit(
-                    lambda: AlbumArchiveScheduler.schedule_by_id(album_id),
+                    lambda: AlbumArchiveScheduler.schedule_by_id(
+                        obj.release_id,
+                    ),
                 )
 
+    def get_queryset(self, request):
+        """Возвращает треки с релизом, записью и коммерческими данными."""
+        return (
+            super()
+            .get_queryset(request)
+            .select_related(
+                'recording',
+                'release',
+                'release__artist',
+                'release__payout_recipient',
+                'product',
+            )
+        )
+
     def delete_model(self, request, obj):
-        """Удаляет трек и актуализирует состояние альбома."""
+        """Удаляет размещение и актуализирует состояние релиза."""
         sales = get_track_sales_stats(obj)
 
         if sales.total_sales:
@@ -283,16 +375,16 @@ class TrackAdmin(
                 ),
             )
 
-        album_id = obj.album_id
+        release_id = obj.release_id
 
         with transaction.atomic():
             super().delete_model(request, obj)
 
-            album = Album.objects.get(pk=album_id)
-            unpublish_if_empty(album)
+            release = Album.objects.get(pk=release_id)
+            unpublish_if_empty(release)
 
             transaction.on_commit(
-                lambda: AlbumArchiveScheduler.schedule_by_id(album_id),
+                lambda: AlbumArchiveScheduler.schedule_by_id(release_id),
             )
 
     def delete_queryset(self, request, queryset):
@@ -303,17 +395,20 @@ class TrackAdmin(
                 'Их нельзя физически удалить.',
             )
 
-        album_ids = set(queryset.values_list('album_id', flat=True))
+        release_ids = set(
+            queryset.values_list('release_id', flat=True),
+        )
 
         with transaction.atomic():
             super().delete_queryset(request, queryset)
 
-            for album in Album.objects.filter(pk__in=album_ids):
-                unpublish_if_empty(album)
-                album_id = album.pk
+            for release in Album.objects.filter(pk__in=release_ids):
+                unpublish_if_empty(release)
+                release_id = release.pk
+
                 transaction.on_commit(
-                    lambda album_id=album_id: (
-                        AlbumArchiveScheduler.schedule_by_id(album_id)
+                    lambda release_id=release_id: (
+                        AlbumArchiveScheduler.schedule_by_id(release_id)
                     ),
                 )
 
@@ -323,8 +418,3 @@ class TrackAdmin(
             return False
 
         return super().has_delete_permission(request, obj)
-
-    def get_changelist_form(self, request, **kwargs):
-        """Использует проверки формы при редактировании списка."""
-        kwargs['form'] = self.form
-        return super().get_changelist_form(request, **kwargs)

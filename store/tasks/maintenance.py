@@ -8,12 +8,15 @@ from django.db.models import Q
 
 from store.models import (
     Album,
+    Recording,
     Report,
-    Track,
     TrackGeneratedAudio,
 )
 from store.services.album_archive import AlbumArchiveScheduler
-from store.services.audio import TrackGeneratedAudioScheduler
+from store.services.audio import (
+    TrackGeneratedAudioScheduler,
+    calculate_file_hash,
+)
 from store.services.payout import PayoutService
 from store.tasks.report import (
     generate_report_task,
@@ -25,10 +28,11 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def schedule_missing_track_audio() -> dict[str, int]:
-    """Ставит в очередь отсутствующее или неуспешное аудио треков."""
-    tracks = (
-        Track.objects
+    """Ставит в очередь отсутствующее или неуспешное аудио записей."""
+    recordings = (
+        Recording.objects
         .filter(audio_file__isnull=False)
+        .exclude(audio_file='')
         .filter(
             Q(generated__isnull=True)
             | Q(
@@ -45,17 +49,67 @@ def schedule_missing_track_audio() -> dict[str, int]:
         .distinct()
     )
 
-    candidates = tracks.count()
+    candidates = recordings.count()
 
-    for track in tracks.iterator():
-        TrackGeneratedAudioScheduler.schedule(track)
+    for recording in recordings.iterator():
+        TrackGeneratedAudioScheduler.schedule(recording)
 
     logger.info(
-        'Найдено треков для подготовки аудио: %s.',
+        'Найдено записей для подготовки аудио: %s.',
         candidates,
     )
 
     return {'candidates': candidates}
+
+
+@shared_task
+def backfill_missing_recording_hashes() -> dict[str, int]:
+    """Заполняет SHA-256 для записей, у которых он ещё не рассчитан."""
+    recordings = (
+        Recording.objects
+        .filter(file_hash='')
+        .filter(audio_file__isnull=False)
+        .exclude(audio_file='')
+    )
+
+    candidates = recordings.count()
+    updated = 0
+    skipped = 0
+    errors = 0
+
+    for recording in recordings.iterator():
+        audio_file_name = recording.audio_file.name
+
+        try:
+            with recording.audio_file.open('rb') as source_file:
+                file_hash = calculate_file_hash(source_file)
+        except Exception:
+            logger.exception(
+                'Не удалось рассчитать SHA-256 записи %s.',
+                recording.pk,
+            )
+            errors += 1
+            continue
+
+        updated_count = Recording.objects.filter(
+            pk=recording.pk,
+            audio_file=audio_file_name,
+            file_hash='',
+        ).update(
+            file_hash=file_hash,
+        )
+
+        if updated_count:
+            updated += 1
+        else:
+            skipped += 1
+
+    return {
+        'candidates': candidates,
+        'updated': updated,
+        'skipped': skipped,
+        'errors': errors,
+    }
 
 
 @shared_task

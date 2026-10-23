@@ -5,9 +5,9 @@ class ImmutableFieldsSerializerMixin:
     """Запрещает изменение указанных полей после создания объекта."""
 
     immutable_fields = ()
+    immutable_field_sources = {}
 
     def validate(self, attrs):
-        """Проверяет неизменность защищённых полей."""
         attrs = super().validate(attrs)
 
         if self.instance is None:
@@ -19,7 +19,11 @@ class ImmutableFieldsSerializerMixin:
             if field_name not in attrs:
                 continue
 
-            id_field_name = f'{field_name}_id'
+            source_name = self.immutable_field_sources.get(
+                field_name,
+                field_name,
+            )
+            id_field_name = f'{source_name}_id'
 
             if hasattr(self.instance, id_field_name):
                 current_value = getattr(
@@ -29,7 +33,7 @@ class ImmutableFieldsSerializerMixin:
             else:
                 current_value = getattr(
                     self.instance,
-                    field_name,
+                    source_name,
                 )
 
             new_value = attrs[field_name]

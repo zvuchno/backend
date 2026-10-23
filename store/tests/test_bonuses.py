@@ -14,7 +14,11 @@ from store.services.album_archive import (
     AlbumArchiveScheduler,
     AlbumArchiveService,
 )
-from store.tests.factories import AlbumFactory, BonusFactory, TrackFactory
+from store.tests.factories import (
+    AlbumFactory,
+    BonusFactory,
+    ReleaseTrackFactory,
+)
 from store.validators import FileSizeValidator
 
 TASK_PATH = 'store.tasks.album_archive.build_album_archive.apply_async'
@@ -250,8 +254,8 @@ class TestBonusArchive:
 
     def test_bonus_is_included_in_album_archive(self, album):
         """Активный бонус попадает в архив альбома."""
-        track = TrackFactory(
-            album=album,
+        track = ReleaseTrackFactory(
+            release=album,
             is_active=True,
             position=1,
         )
@@ -284,8 +288,8 @@ class TestBonusArchive:
 
     def test_inactive_bonus_is_not_included_in_album_archive(self, album):
         """Неактивный бонус не попадает в архив альбома."""
-        track = TrackFactory(
-            album=album,
+        track = ReleaseTrackFactory(
+            release=album,
             is_active=True,
             position=1,
         )
@@ -321,8 +325,8 @@ class TestBonusArchive:
         album,
     ):
         """Добавление бонуса меняет hash содержимого архива."""
-        TrackFactory(
-            album=album,
+        ReleaseTrackFactory(
+            release=album,
             position=1,
         )
         assert AlbumArchiveScheduler.schedule(album) is True
@@ -371,7 +375,7 @@ class TestBonusArchive:
     ):
         """Мягкое удаление бонуса ставит пересборку архива альбома."""
         album = bonus.album
-        TrackFactory(album=album, position=1)
+        ReleaseTrackFactory(release=album, position=1)
 
         AlbumArchive.objects.create(
             album=album,

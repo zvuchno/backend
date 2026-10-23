@@ -19,11 +19,12 @@ class DownloadFilenameService:
     @classmethod
     def get_track_filename(cls, track) -> str:
         """Возвращает имя отдельного скачиваемого трека."""
-        album = track.album
+        album = track.release
+        recording = track.recording
         artist = album.artist
 
         artist_name = artist.name if artist else 'Исполнитель'
-        suffix = Path(track.audio_file.name).suffix.lower()
+        suffix = Path(recording.audio_file.name).suffix.lower()
 
         album_part = cls._get_album_part(album)
         position_part = (

@@ -11,7 +11,7 @@ from store.services.album_archive import (
 from store.tasks.album_archive import build_album_archive
 from store.tests.factories import (
     AlbumFactory,
-    TrackFactory,
+    ReleaseTrackFactory,
     make_audio_file,
     make_cover_file,
 )
@@ -36,21 +36,21 @@ def album_with_tracks(local_media):
         ),
     )
 
-    TrackFactory(
-        album=album,
-        name='Первый / трек',
+    ReleaseTrackFactory(
+        release=album,
         position=1,
-        audio_file=make_audio_file(
+        recording__name='Первый / трек',
+        recording__audio_file=make_audio_file(
             name='first.mp3',
             content=b'first-audio',
         ),
     )
 
-    TrackFactory(
-        album=album,
-        name='Второй трек',
+    ReleaseTrackFactory(
+        release=album,
         position=2,
-        audio_file=make_audio_file(
+        recording__name='Второй трек',
+        recording__audio_file=make_audio_file(
             name='second.flac',
             content=b'second-audio',
         ),
@@ -146,7 +146,9 @@ def test_build_marks_archive_failed_when_source_file_is_missing(
     archive, expected_hash = prepare_archive(album)
 
     track = album.tracks.order_by('position', 'id').first()
-    track.audio_file.storage.delete(track.audio_file.name)
+    track.recording.audio_file.storage.delete(
+        track.recording.audio_file.name,
+    )
 
     result = AlbumArchiveService.build(
         album_id=album.pk,
@@ -180,13 +182,78 @@ def test_content_hash_changes_after_track_update(
     )
 
     track = tracks[0]
-    track.name = 'Новое название'
-    track.save(update_fields=('name',))
+    track.recording.name = 'Новое название'
+    track.recording.save(update_fields=('name',))
 
     new_hash = AlbumArchiveService.calculate_content_hash(
         album=album,
         tracks=list(
             album.tracks.order_by('position', 'id'),
+        ),
+        bonuses=bonuses,
+    )
+
+    assert new_hash != old_hash
+
+
+def test_content_hash_ignores_recording_file_hash(album_with_tracks):
+    """Асинхронное появление SHA-256 не меняет fingerprint архива."""
+    album = album_with_tracks
+    tracks = list(
+        album.tracks.select_related('recording').order_by('position', 'id'),
+    )
+    bonuses = list(album.bonuses.order_by('name', 'id'))
+
+    old_hash = AlbumArchiveService.calculate_content_hash(
+        album=album,
+        tracks=tracks,
+        bonuses=bonuses,
+    )
+
+    recording = tracks[0].recording
+    original_audio_name = recording.audio_file.name
+    recording.file_hash = 'calculated-later'
+    recording.save(update_fields=('file_hash',))
+
+    refreshed_tracks = list(
+        album.tracks.select_related('recording').order_by('position', 'id'),
+    )
+    new_hash = AlbumArchiveService.calculate_content_hash(
+        album=album,
+        tracks=refreshed_tracks,
+        bonuses=bonuses,
+    )
+
+    assert recording.audio_file.name == original_audio_name
+    assert new_hash == old_hash
+
+
+def test_content_hash_changes_with_recording_audio_storage_key(
+    album_with_tracks,
+):
+    """Замена storage key original меняет fingerprint архива."""
+    album = album_with_tracks
+    tracks = list(
+        album.tracks.select_related('recording').order_by('position', 'id'),
+    )
+    bonuses = list(album.bonuses.order_by('name', 'id'))
+    old_hash = AlbumArchiveService.calculate_content_hash(
+        album=album,
+        tracks=tracks,
+        bonuses=bonuses,
+    )
+
+    recording = tracks[0].recording
+    recording.audio_file.name = 'recordings/original/replacement.mp3'
+    recording.save(update_fields=('audio_file',))
+
+    new_hash = AlbumArchiveService.calculate_content_hash(
+        album=album,
+        tracks=list(
+            album.tracks.select_related('recording').order_by(
+                'position',
+                'id',
+            ),
         ),
         bonuses=bonuses,
     )
