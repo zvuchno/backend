@@ -117,7 +117,7 @@ class ProductVariant(ActivatableModel, TimestampModel):
             return False
 
         publication_content = (
-            content.album
+            content.release
             if product.product_type == product.ProductType.TRACK
             else content
         )

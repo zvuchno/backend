@@ -51,7 +51,7 @@ def build_target_annotations(product_path: str) -> dict:
         ),
         'artist_name': Coalesce(
             F(f'{product_path}__album__artist__name'),
-            F(f'{product_path}__track__album__artist__name'),
+            F(f'{product_path}__track__release__artist__name'),
             F(f'{product_path}__merch__artist__name'),
         ),
         'kind': Case(
@@ -117,7 +117,7 @@ def build_target_annotations(product_path: str) -> dict:
             ),
             When(
                 **{f'{product_path}__product_type': 'track'},
-                then=F(f'{product_path}__track__album_id'),
+                then=F(f'{product_path}__track__release_id'),
             ),
             output_field=IntegerField(),
         ),

@@ -144,7 +144,7 @@ class ProductCardSerializer(
             return self.get_main_image_url(items)
 
         if obj.track_id:
-            items = self.get_album_image_items(obj.track.album)
+            items = self.get_album_image_items(obj.track.release)
             return self.get_main_image_url(items)
 
         return None

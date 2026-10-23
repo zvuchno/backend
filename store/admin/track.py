@@ -17,6 +17,8 @@ from store.models import (
     ReleaseTrack,
     TrackGeneratedAudio,
 )
+from store.services.album_archive import AlbumArchiveScheduler
+from store.services.album_publication import unpublish_if_empty
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
 
 
@@ -323,6 +325,21 @@ class ReleaseTrackAdmin(
         ),
     )
     inlines = (ProductInline,)
+
+    def save_model(self, request, obj, form, change):
+        """Сохраняет размещение и актуализирует состояние релиза."""
+        should_schedule_archive = change and 'is_active' in form.changed_data
+
+        with transaction.atomic():
+            super().save_model(request, obj, form, change)
+            unpublish_if_empty(obj.release)
+
+            if should_schedule_archive:
+                transaction.on_commit(
+                    lambda: AlbumArchiveScheduler.schedule_by_id(
+                        obj.release_id,
+                    ),
+                )
 
     def get_queryset(self, request):
         """Возвращает треки с релизом, записью и коммерческими данными."""

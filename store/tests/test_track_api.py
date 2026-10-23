@@ -96,6 +96,7 @@ class TestTrackUpdate:
             recording__name='Старое название',
             recording__description='Старое описание.',
             recording__isrc='RUA1B2600001',
+            recording__file_hash='existing-hash',
         )
 
         ProductService.ensure_commerce(
@@ -142,6 +143,7 @@ class TestTrackUpdate:
         assert track.recording.name == 'Новое название'
         assert track.recording.description == 'Новое описание.'
         assert track.recording.isrc is None
+        assert track.recording.file_hash == 'existing-hash'
 
         assert track.product.price == Decimal('250.00')
         assert track.product.allow_overpay is False
@@ -181,6 +183,7 @@ class TestTrackUpdate:
         track.recording.refresh_from_db()
 
         assert track.recording.audio_file.name != old_audio_name
+        assert track.recording.file_hash == ''
         mocked_schedule.assert_called_once_with(track.recording)
 
     def test_cannot_change_track_album(

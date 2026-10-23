@@ -9,7 +9,7 @@ from store.constants import (
     MAX_AUDIOFILE_SIZE_MB,
     MAX_IMAGE_SIZE_MB,
 )
-from store.models import Album, Image, Merch, Track
+from store.models import Album, Image, Merch, Recording
 
 
 class TestFileValidators:
@@ -94,13 +94,14 @@ class TestFileValidators:
 
         file.size = MAX_AUDIOFILE_SIZE_MB * 1024 * 1024
 
-        track = Track(
+        recording = Recording(
             name='TestTrack',
-            album=self.album,
+            owner=self.album.artist,
+            created_by=self.user,
             audio_file=file,
         )
 
-        track.full_clean()
+        recording.full_clean()
 
     def test_validate_audiofile_size_error(self):
         """Размер аудиофайла превыжает допустимый → ошибка."""
@@ -112,14 +113,15 @@ class TestFileValidators:
 
         file.size = (MAX_AUDIOFILE_SIZE_MB + 1) * 1024 * 1024
 
-        track = Track(
+        recording = Recording(
             name='TestTrack',
-            album=self.album,
+            owner=self.album.artist,
+            created_by=self.user,
             audio_file=file,
         )
 
         with pytest.raises(ValidationError) as exc:
-            track.full_clean()
+            recording.full_clean()
         assert 'audio_file' in exc.value.message_dict
 
     @pytest.mark.parametrize('ext', ALLOWED_AUDIO_EXTENSIONS)
@@ -132,13 +134,14 @@ class TestFileValidators:
             content_type='audio/mpeg',
         )
 
-        track = Track(
+        recording = Recording(
             name='TestTrack',
-            album=self.album,
+            owner=self.album.artist,
+            created_by=self.user,
             audio_file=file,
         )
 
-        track.full_clean()
+        recording.full_clean()
 
     @pytest.mark.parametrize(
         'filename',
@@ -155,13 +158,14 @@ class TestFileValidators:
             content_type='application/octet-stream',
         )
 
-        track = Track(
+        recording = Recording(
             name='TestTrack',
-            album=self.album,
+            owner=self.album.artist,
+            created_by=self.user,
             audio_file=file,
         )
 
         with pytest.raises(ValidationError) as exc:
-            track.full_clean()
+            recording.full_clean()
 
         assert 'audio_file' in exc.value.message_dict

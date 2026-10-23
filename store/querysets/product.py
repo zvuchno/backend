@@ -56,13 +56,15 @@ class ProductQuerySet(models.QuerySet):
         return self.filter(
             track__isnull=False,
             track__is_active=True,
-            track__album__is_active=True,
-            track__album__artist__is_active=True,
-            track__album__is_published=True,
-            track__album__visibility='public',
+            track__release__is_active=True,
+            track__release__artist__is_active=True,
+            track__release__is_published=True,
+            track__release__visibility='public',
         ).filter(
-            models.Q(track__album__release_date__isnull=True)
-            | models.Q(track__album__release_date__lte=timezone.localdate()),
+            models.Q(track__release__release_date__isnull=True)
+            | models.Q(
+                track__release__release_date__lte=timezone.localdate(),
+            ),
         )
 
     def published_albums(self):
@@ -243,7 +245,7 @@ class ProductQuerySet(models.QuerySet):
         """Подтягивает данные для карточек треков."""
         return self.select_related(
             'track',
-            'track__album',
+            'track__release',
         )
 
     def with_merch_card_data(self):
@@ -316,13 +318,13 @@ class ProductQuerySet(models.QuerySet):
         """Добавляет вычисляемые поля карточек треков."""
         return self.annotate(
             artist_name=models.F(
-                'track__album__artist__name',
+                'track__release__artist__name',
             ),
             kind=models.Value(
                 'Трек',
                 output_field=models.CharField(),
             ),
-            year=ExtractYear('track__album__release_date'),
+            year=ExtractYear('track__release__release_date'),
             target_type=models.Value(
                 'track',
                 output_field=models.CharField(),
