@@ -11,10 +11,14 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
-from store.models import Track, TrackUpload
+from store.models import Recording, ReleaseTrack, TrackUpload
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.track_upload import UploadInstruction
-from store.tests.factories import AlbumFactory, TrackFactory
+from store.tests.factories import (
+    AlbumFactory,
+    RecordingFactory,
+    ReleaseTrackFactory,
+)
 
 
 @pytest.mark.django_db
@@ -47,6 +51,7 @@ class TestTrackUploadApi:
         )
 
         album = AlbumFactory(artist=artist_user.artist_profile)
+        RecordingFactory()
 
         url = reverse(
             'api:store:track-upload-initiate',
@@ -63,6 +68,7 @@ class TestTrackUploadApi:
                 'description': 'Описание трека.',
                 'price': '150.00',
                 'allow_overpay': True,
+                'isrc': 'RUA1B2345678',
             },
             format='json',
         )
@@ -71,43 +77,53 @@ class TestTrackUploadApi:
 
         data = response.json()
 
-        track = Track.objects.get(pk=data['track']['id'])
+        release_track = ReleaseTrack.objects.select_related(
+            'recording',
+        ).get(pk=data['track']['id'])
+        recording = release_track.recording
         upload = TrackUpload.objects.get(pk=data['upload']['id'])
 
-        assert track.album == album
-        assert track.name == 'Новое название'
-        assert track.description == 'Описание трека.'
-        assert track.position is None
-        assert not track.audio_file
+        assert release_track.release == album
+        assert release_track.position == 1
+        assert recording.name == 'Новое название'
+        assert recording.description == 'Описание трека.'
+        assert recording.isrc == 'RUA1B2345678'
+        assert not recording.audio_file
 
-        assert track.product.price == Decimal('150.00')
-        assert track.product.allow_overpay is True
-        assert track.product.variants.count() == 1
+        assert release_track.product.price == Decimal('150.00')
+        assert release_track.product.allow_overpay is True
+        assert release_track.product.variants.count() == 1
 
-        assert upload.track == track
+        assert upload.track == recording
+        assert upload.staging_key.startswith(
+            f'staging/track-uploads/{recording.pk}/',
+        )
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.original_filename == '01 Original.flac'
         assert upload.expected_size == 123
         assert upload.content_type == 'audio/flac'
 
         assert data['track'] == {
-            'id': track.pk,
+            'id': release_track.pk,
             'name': 'Новое название',
             'description': 'Описание трека.',
-            'position': None,
+            'position': 1,
             'price': '150.00',
             'allow_overpay': True,
+            'isrc': 'RUA1B2345678',
         }
+        assert data['track']['id'] != recording.pk
 
         assert data['upload']['id'] == upload.pk
         assert data['upload']['status'] == TrackUpload.Status.INITIATED
         assert data['upload']['uploaded_size'] is None
         assert data['upload']['completed_at'] is None
+        complete_path = reverse(
+            'api:store:track-upload-complete',
+            args=(upload.pk,),
+        )
         assert data['upload']['complete_url'].endswith(
-            reverse(
-                'api:store:track-upload-complete',
-                args=(upload.pk,),
-            ),
+            f'{complete_path}?track_id={release_track.pk}',
         )
         assert data['upload']['transport'] == {
             'method': 'POST',
@@ -173,7 +189,8 @@ class TestTrackUploadApi:
         )
 
         assert response.status_code == HTTPStatus.BAD_REQUEST
-        assert Track.objects.count() == 0
+        assert Recording.objects.count() == 0
+        assert ReleaseTrack.objects.count() == 0
         assert TrackUpload.objects.count() == 0
 
     def test_completes_local_upload_flow(
@@ -192,7 +209,7 @@ class TestTrackUploadApi:
             location=tmp_path,
             base_url='/private/',
         )
-        audio_file_field = Track._meta.get_field('audio_file')
+        audio_file_field = Recording._meta.get_field('audio_file')
 
         monkeypatch.setattr(
             audio_file_field,
@@ -229,7 +246,7 @@ class TestTrackUploadApi:
         upload_id = initiate_data['upload']['id']
         transport = initiate_data['upload']['transport']
 
-        assert initiate_data['track']['position'] is None
+        assert initiate_data['track']['position'] == 1
         assert transport['method'] == 'POST'
         assert transport['fields'] == {}
         assert transport['headers'] == {}
@@ -266,10 +283,7 @@ class TestTrackUploadApi:
 
         assert storage.exists(upload.staging_key)
 
-        complete_url = reverse(
-            'api:store:track-upload-complete',
-            args=(upload_id,),
-        )
+        complete_url = initiate_data['upload']['complete_url']
 
         with patch(
             'store.services.track_upload.upload_storage.'
@@ -277,7 +291,7 @@ class TestTrackUploadApi:
         ) as mocked_schedule:
             with patch.object(
                 AlbumArchiveScheduler,
-                'schedule',
+                'schedule_by_id',
                 return_value=True,
             ) as mocked_archive_schedule:
                 with django_capture_on_commit_callbacks(execute=True):
@@ -294,6 +308,7 @@ class TestTrackUploadApi:
             'position': 1,
             'price': '100.00',
             'allow_overpay': True,
+            'isrc': None,
         }
         assert complete_data['upload']['id'] == upload_id
         assert complete_data['upload']['status'] == (
@@ -302,33 +317,32 @@ class TestTrackUploadApi:
         assert complete_data['upload']['uploaded_size'] == len(file_content)
         assert complete_data['upload']['completed_at'] is not None
 
-        track = Track.objects.get(pk=track_id)
+        release_track = ReleaseTrack.objects.select_related(
+            'recording',
+        ).get(pk=track_id)
+        recording = release_track.recording
         upload.refresh_from_db()
 
-        assert track.audio_file
-        assert track.position == 1
-        assert track.audio_file.name.startswith(
-            f'albums/{album.pk}/tracks/original/',
+        assert upload.track == recording
+        assert recording.audio_file
+        assert release_track.position == 1
+        assert recording.audio_file.name.startswith(
+            'recordings/original/',
         )
-        assert storage.exists(track.audio_file.name)
+        assert storage.exists(recording.audio_file.name)
         assert not storage.exists(upload.staging_key)
 
-        mocked_schedule.assert_called_once_with(track)
-        mocked_archive_schedule.assert_called_once_with(album)
+        mocked_schedule.assert_called_once_with(recording)
+        mocked_archive_schedule.assert_called_once_with(album.pk)
 
     def test_cannot_complete_foreign_upload(
         self,
         artist_client,
     ):
         """Не позволяет завершить чужую загрузку трека."""
-        album = AlbumFactory()
-        track = Track.objects.create(
-            album=album,
-            name='Track',
-            position=None,
-        )
+        release_track = ReleaseTrackFactory()
         upload = TrackUpload.objects.create(
-            track=track,
+            track=release_track.recording,
             staging_key='staging/track-uploads/1/test.flac',
             original_filename='test.flac',
             expected_size=10,
@@ -341,9 +355,42 @@ class TestTrackUploadApi:
             args=(upload.pk,),
         )
 
-        response = artist_client.post(url)
+        response = artist_client.post(
+            f'{url}?track_id={release_track.pk}',
+        )
 
         assert response.status_code == HTTPStatus.FORBIDDEN
+
+    def test_rejects_complete_for_unrelated_release_track(
+        self,
+        artist_client,
+        artist_user,
+    ):
+        """Не принимает внешний track из другой Recording."""
+        album = AlbumFactory(artist=artist_user.artist_profile)
+        release_track = ReleaseTrackFactory(release=album)
+        unrelated_track = ReleaseTrackFactory(release=album)
+        upload = TrackUpload.objects.create(
+            track=release_track.recording,
+            staging_key='staging/track-uploads/1/test.flac',
+            original_filename='test.flac',
+            expected_size=10,
+            content_type='audio/flac',
+            expires_at=timezone.now() + timedelta(hours=1),
+        )
+
+        url = reverse(
+            'api:store:track-upload-complete',
+            args=(upload.pk,),
+        )
+
+        response = artist_client.post(
+            f'{url}?track_id={unrelated_track.pk}',
+        )
+
+        assert response.status_code == HTTPStatus.NOT_FOUND
+        upload.refresh_from_db()
+        assert upload.status == TrackUpload.Status.INITIATED
 
     @patch(
         'store.views.track_upload.'
@@ -371,14 +418,14 @@ class TestTrackUploadApi:
         )
 
         album = AlbumFactory(artist=artist_user.artist_profile)
-        track = TrackFactory(
-            album=album,
+        release_track = ReleaseTrackFactory(
+            release=album,
             position=5,
         )
 
         url = reverse(
             'api:store:track-file-upload-initiate',
-            args=(track.pk,),
+            args=(release_track.pk,),
         )
 
         response = artist_client.post(
@@ -396,18 +443,21 @@ class TestTrackUploadApi:
         data = response.json()
 
         upload = TrackUpload.objects.get(pk=data['upload']['id'])
-        track.refresh_from_db()
+        release_track.refresh_from_db()
 
-        assert upload.track == track
+        assert upload.track == release_track.recording
         assert upload.purpose == TrackUpload.Purpose.REPLACE
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.original_filename == 'new-original.flac'
         assert upload.expected_size == 123
         assert upload.content_type == 'audio/flac'
 
-        assert data['track']['id'] == track.pk
-        assert data['track']['name'] == track.name
+        assert data['track']['id'] == release_track.pk
+        assert data['track']['name'] == release_track.name
         assert data['track']['position'] == 5
+        assert data['upload']['complete_url'].endswith(
+            f'?track_id={release_track.pk}',
+        )
         assert data['upload']['status'] == TrackUpload.Status.INITIATED
         assert data['upload']['transport'] == {
             'method': 'POST',
@@ -427,11 +477,11 @@ class TestTrackUploadApi:
         artist_client,
     ):
         """Не позволяет артисту заменить файл чужого трека."""
-        track = TrackFactory()
+        release_track = ReleaseTrackFactory()
 
         url = reverse(
             'api:store:track-file-upload-initiate',
-            args=(track.pk,),
+            args=(release_track.pk,),
         )
 
         response = artist_client.post(

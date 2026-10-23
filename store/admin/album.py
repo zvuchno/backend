@@ -45,6 +45,7 @@ from store.models import (
     AlbumArchive,
     Bonus,
     Product,
+    ReleaseTrack,
     Track,
     TrackGeneratedAudio,
     TrackUpload,
@@ -599,16 +600,21 @@ class AlbumAdmin(
 
         try:
             with transaction.atomic():
-                track, upload = TrackUploadService.create_pending_track(
-                    album=album,
-                    created_by=request.user,
-                    filename=payload.get('filename', ''),
-                    size=payload.get('size', 0),
-                    content_type=payload.get('content_type', ''),
+                release_track, upload = (
+                    TrackUploadService.create_pending_track(
+                        album=album,
+                        created_by=request.user,
+                        filename=payload.get('filename', ''),
+                        size=payload.get('size', 0),
+                        content_type=payload.get('content_type', ''),
+                    )
                 )
-                local_upload_url = reverse(
+                local_upload_path = reverse(
                     'admin:store_track_upload_receive_file',
                     args=(upload.pk,),
+                )
+                local_upload_url = (
+                    f'{local_upload_path}?track_id={release_track.pk}'
                 )
 
                 upload_instruction = (
@@ -635,22 +641,25 @@ class AlbumAdmin(
                 status=HTTPStatus.SERVICE_UNAVAILABLE,
             )
 
+        complete_path = reverse(
+            'admin:store_track_upload_complete',
+            args=(upload.pk,),
+        )
+        complete_url = f'{complete_path}?track_id={release_track.pk}'
+
         return JsonResponse(
             {
                 'track': {
-                    'id': track.pk,
-                    'name': track.name,
-                    'position': track.position,
-                    'is_active': track.is_active,
+                    'id': release_track.pk,
+                    'name': release_track.name,
+                    'position': release_track.position,
+                    'is_active': release_track.is_active,
                 },
                 'upload': {
                     'id': upload.pk,
                     'status': upload.status,
                     'expires_at': upload_instruction.expires_at.isoformat(),
-                    'complete_url': reverse(
-                        'admin:store_track_upload_complete',
-                        args=(upload.pk,),
-                    ),
+                    'complete_url': complete_url,
                     'transport': {
                         'method': upload_instruction.method,
                         'url': upload_instruction.url,
@@ -679,13 +688,28 @@ class AlbumAdmin(
             raise Http404
 
         try:
-            upload = TrackUpload.objects.select_related('track__album').get(
+            upload = TrackUpload.objects.select_related('track').get(
                 pk=upload_id,
             )
         except TrackUpload.DoesNotExist as exc:
             raise Http404('Попытка загрузки не найдена.') from exc
 
-        album = upload.track.album
+        track_id = request.GET.get('track_id')
+
+        if not track_id or not track_id.isdigit():
+            raise Http404('Трек релиза не найден.')
+
+        try:
+            release_track = ReleaseTrack.objects.select_related(
+                'release',
+            ).get(
+                pk=int(track_id),
+                recording_id=upload.track_id,
+            )
+        except ReleaseTrack.DoesNotExist as exc:
+            raise Http404('Трек релиза не найден.') from exc
+
+        album = release_track.release
 
         if not self.has_change_permission(request, album):
             raise PermissionDenied
@@ -735,13 +759,28 @@ class AlbumAdmin(
             )
 
         try:
-            upload = TrackUpload.objects.select_related('track__album').get(
+            upload = TrackUpload.objects.select_related('track').get(
                 pk=upload_id,
             )
         except TrackUpload.DoesNotExist as exc:
             raise Http404('Попытка загрузки не найдена.') from exc
 
-        album = upload.track.album
+        track_id = request.GET.get('track_id')
+
+        if not track_id or not track_id.isdigit():
+            raise Http404('Трек релиза не найден.')
+
+        try:
+            release_track = ReleaseTrack.objects.select_related(
+                'release',
+            ).get(
+                pk=int(track_id),
+                recording_id=upload.track_id,
+            )
+        except ReleaseTrack.DoesNotExist as exc:
+            raise Http404('Трек релиза не найден.') from exc
+
+        album = release_track.release
 
         if not self.has_change_permission(request, album):
             raise PermissionDenied
@@ -761,10 +800,10 @@ class AlbumAdmin(
         return JsonResponse(
             {
                 'track': {
-                    'id': upload.track_id,
-                    'name': upload.track.name,
-                    'position': upload.track.position,
-                    'is_active': upload.track.is_active,
+                    'id': release_track.pk,
+                    'name': release_track.name,
+                    'position': release_track.position,
+                    'is_active': release_track.is_active,
                 },
                 'upload': {
                     'id': upload.pk,
