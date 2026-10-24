@@ -36,8 +36,11 @@ def _item_title(item) -> str:
     info = item.product_info or {}
     name = info.get('name', 'Товар')
     variant = info.get('variant_name')
+    sku = _short(info.get('sku'), 50)
+
     title = f'{name} ({variant})' if variant else name
-    return _short(title, ITEM_TITLE_LIMIT)
+    title = _short(title, ITEM_TITLE_LIMIT)
+    return f'{title} [{sku}]' if sku else title
 
 
 def _split_items(items) -> tuple[list, list]:
