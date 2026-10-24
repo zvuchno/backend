@@ -6,6 +6,7 @@ from django.db import transaction
 from store.exceptions import CDEKIntegrationError
 from store.models import Order, Shipment
 from store.services import CDEKService
+from store.tasks.notifications import notify_artist_about_cdek_order_task
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +50,9 @@ def register_cdek_orders_task(order_id):
     bind=True,
     autoretry_for=(CDEKIntegrationError,),
     retry_backoff=30,
-    retry_backoff_max=300,
+    retry_backoff_max=14400,
     retry_jitter=True,
-    max_retries=5,
+    max_retries=10,
 )
 def update_cdek_shipment_task(self, shipment_id: int):
     """Ожидает завершения регистрации отправления в СДЭК."""
@@ -140,10 +141,9 @@ def update_cdek_shipment_task(self, shipment_id: int):
                 'updated_at',
             ],
         )
-        from store.notifications import send_shipment_registered_notification
 
         transaction.on_commit(
-            lambda: send_shipment_registered_notification(shipment),
+            lambda: notify_artist_about_cdek_order_task.delay(shipment_id),
         )
 
     logger.info(

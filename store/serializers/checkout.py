@@ -102,6 +102,11 @@ class CheckoutSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    pickup_contact = serializers.CharField(
+        max_length=MAX_CHAR_LENGTH,
+        required=False,
+        allow_blank=True,
+    )
 
     def validate_email(self, value):
         """Нормализует email."""
@@ -118,7 +123,12 @@ class CheckoutSerializer(serializers.Serializer):
             })
         if not calculation_service.has_merch():
             attrs['delivery'] = None
-            self._clear_fields(attrs, *CDEK_FIELDS, 'pickup_point')
+            self._clear_fields(
+                attrs,
+                *CDEK_FIELDS,
+                'pickup_point',
+                'pickup_contact',
+            )
             return attrs
 
         delivery = attrs.get('delivery')
@@ -135,12 +145,13 @@ class CheckoutSerializer(serializers.Serializer):
                 attrs,
                 'delivery_point',
                 'delivery_point_address',
+                'pickup_contact',
             )
             attrs['pickup_point'] = None
             self._validate_delivery_address(attrs)
 
         elif delivery.delivery_type == Delivery.DeliveryType.PICKPOINT:
-            self._clear_fields(attrs, *ADDRESS_FIELDS)
+            self._clear_fields(attrs, *ADDRESS_FIELDS, 'pickup_contact')
             attrs['pickup_point'] = None
             self._validate_pickpoint_fields(attrs)
 
@@ -189,6 +200,8 @@ class CheckoutSerializer(serializers.Serializer):
             {
                 'pickup_point': 'Необходимо выбрать '
                 'точку самовывоза от артиста.',
+                'pickup_contact': 'Контакт для связи необходим при самовывозе '
+                '(Телефон, Email, Telegram, Instagram и т.п.).',
             },
         )
 

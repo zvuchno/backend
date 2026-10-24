@@ -3,6 +3,10 @@ from .audio import prepare_track_audio
 from .catalog_search import refresh_catalog_search
 from .cdek import register_cdek_orders_task, update_cdek_shipment_task
 from .delete_anonymous_carts import delete_stale_anonymous_carts
+from .notifications import (
+    notify_artist_about_cdek_order_task,
+    notify_artists_about_new_order_task,
+)
 from .report import dispatch_monthly_reports
 from .reservations import release_expired_reservations
 from .telegram import send_telegram_notification
@@ -13,6 +17,8 @@ __all__ = [
     'cleanup_expired_track_uploads',
     'delete_stale_anonymous_carts',
     'dispatch_monthly_reports',
+    'notify_artist_about_cdek_order_task',
+    'notify_artists_about_new_order_task',
     'prepare_track_audio',
     'refresh_catalog_search',
     'register_cdek_orders_task',
