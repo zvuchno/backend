@@ -17,8 +17,10 @@ from yookassa import Payment as YookassaPayment
 from store.constants import MONEY_ROUNDING
 from store.exceptions import ReceiptValidationError
 from store.models import Order, OrderItem, Payment
-from store.notifications import send_order_paid_notifications_to_artists
-from store.tasks import register_cdek_orders_task
+from store.tasks import (
+    notify_artists_about_new_order_task,
+    register_cdek_orders_task,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -381,8 +383,8 @@ def mark_payment_succeeded(payment):
         transaction.on_commit(
             lambda: (
                 # Отправлем уведомление артистам
-                send_order_paid_notifications_to_artists(payment.order),
-                # Регистрируем заказ в СДЭК
+                notify_artists_about_new_order_task.delay(payment.order_id),
+                # Регистрируем отправления в СДЭК
                 register_cdek_orders_task.delay(payment.order_id),
             ),
         )

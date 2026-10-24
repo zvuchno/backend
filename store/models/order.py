@@ -99,6 +99,13 @@ class Order(TimestampModel):
             'Формат: {"address": "Адрес", "date": "YYYY-MM-DD"}.'
         ),
     )
+    pickup_contact = models.CharField(
+        'Контакт для связи (самовывоз)',
+        max_length=MAX_CHAR_LENGTH,
+        blank=True,
+        default='',
+        help_text='Контакт покупателя для передачи заказа: ',
+    )
     cdek_city_code = models.CharField(
         'Код населенного пункта в СДЭК',
         max_length=MAX_CDEK_CODE_LENGTH,

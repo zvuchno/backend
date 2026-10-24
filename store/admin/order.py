@@ -217,6 +217,7 @@ class OrderAdmin(admin.ModelAdmin):
         'reserved_until',
         'delivery_calculation',
         'pickup_point',
+        'pickup_contact',
     )
     search_fields = (
         'order_number',
@@ -258,6 +259,7 @@ class OrderAdmin(admin.ModelAdmin):
                 'fields': (
                     'delivery',
                     'pickup_point',
+                    'pickup_contact',
                     'display_address',
                     'display_delivery_point_address',
                     'cdek_city_code',
@@ -307,6 +309,7 @@ class OrderAdmin(admin.ModelAdmin):
 
         checks = {
             'pickup_point': bool(obj.pickup_point),
+            'pickup_contact': bool(obj.pickup_contact),
             'display_address': is_courier and bool(self.display_address(obj)),
             'display_delivery_point_address': (
                 is_pickpoint and bool(obj.delivery_point_address)
