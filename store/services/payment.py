@@ -370,15 +370,33 @@ def _get_payment_subject(order_item) -> str:
 def mark_payment_succeeded(payment):
     """Отмечает платеж как успешно оплаченный и отправляет уведомления."""
     with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=payment.order_id)
+        payment = Payment.objects.select_for_update().get(pk=payment.pk)
+
+        if payment.status == Payment.PaymentStatus.SUCCEEDED:
+            return  # повторный опрос
+
         payment.status = Payment.PaymentStatus.SUCCEEDED
         payment.paid_at = timezone.now()
         payment.save(update_fields=['status', 'paid_at', 'updated_at'])
 
-        payment.order.status = Order.Status.PAID
-        payment.order.reserved_until = None
-        payment.order.save(
-            update_fields=['status', 'reserved_until', 'updated_at'],
-        )
+        if order.status == Order.Status.PAID:
+            return
+
+        if order.status != Order.Status.RESERVED:
+            # деньги получены, а заказ уже не в резерве
+            logger.error(
+                'Оплата по заказу не в резерве | order_id=%s | status=%s '
+                '| payment_id=%s',
+                order.id,
+                order.status,
+                payment.id,
+            )
+            return
+
+        order.status = Order.Status.PAID
+        order.reserved_until = None
+        order.save(update_fields=['status', 'reserved_until', 'updated_at'])
 
         transaction.on_commit(
             lambda: (

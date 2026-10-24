@@ -80,13 +80,15 @@ def _pickup_date(point: dict) -> str | None:
 def _get_dropoff_address(artist) -> str:
     """Возвращает адрес точки, куда артист относит посылку."""
     try:
-        return artist.shipping_point.address
+        city = artist.shipping_point.city
+        address = artist.shipping_point.address
     except ObjectDoesNotExist:
         logger.warning(
             'У артиста id=%s нет точки отправки СДЭК.',
             artist.id,
         )
         return ''
+    return ', '.join(part for part in (city, address) if part)
 
 
 def _build_new_order_message(order, items) -> str | None:

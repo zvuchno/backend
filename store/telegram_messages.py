@@ -99,7 +99,7 @@ def format_cdek_notification(
         '',
         '📍 Отнести в ПВЗ СДЭК:',
         dropoff_address,
-        f'⏳ Срок: передать до {_format_cdek_deadline()}',
+        f'⏳ Срок: до {_format_cdek_deadline()}',
         f'📦 Номер отправления: {shipment.cdek_number}',
         f'🔗 Отследить: {tracking_url}',
     ])
