@@ -7,8 +7,8 @@ import pytest
 
 from store.models import Order, OrderItem, Shipment
 from store.notifications import (
-    send_order_paid_notifications_to_artists,
-    send_shipment_registered_notification,
+    notify_artist_about_cdek_order,
+    notify_artists_about_new_order,
 )
 from users.tests.factories import (
     ArtistProfileFactory,
@@ -82,7 +82,7 @@ def test_order_paid_email_sent_to_artist_and_label(
         product_variant=product_variant,
     )
 
-    send_order_paid_notifications_to_artists(order)
+    notify_artists_about_new_order(order)
 
     assert mock_send_email.call_count == 2
     mock_send_email.assert_has_calls(
@@ -134,7 +134,7 @@ def test_order_paid_email_sent_only_to_label_when_artist_has_no_account(
         product_variant=product_variant,
     )
 
-    send_order_paid_notifications_to_artists(order)
+    notify_artists_about_new_order(order)
 
     mock_send_email.assert_called_once_with(
         subject=f'Оплачен заказ {order.order_number}',
@@ -186,7 +186,7 @@ def test_label_receives_separate_order_email_for_each_artist(
         name='Второй товар',
     )
 
-    send_order_paid_notifications_to_artists(order)
+    notify_artists_about_new_order(order)
 
     assert mock_send_email.call_count == 2
     mock_send_email.assert_has_calls(
@@ -246,7 +246,7 @@ def test_shipment_email_sent_to_label_when_artist_has_no_account(
         shipment=shipment,
     )
 
-    send_shipment_registered_notification(shipment)
+    notify_artist_about_cdek_order(shipment)
 
     mock_send_email.assert_called_once_with(
         subject=(
