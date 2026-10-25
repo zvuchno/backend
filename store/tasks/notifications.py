@@ -23,6 +23,9 @@ def notify_artist_about_cdek_order_task(shipment_id: int) -> None:
         'artist__user',
         'artist__label__user',
         'artist__shipping_point',
+        'artist__store_settings',
+        'artist__label__shipping_point',
+        'artist__label__store_settings',
         'order',
     ).get(pk=shipment_id)
     notify_artist_about_cdek_order(shipment)

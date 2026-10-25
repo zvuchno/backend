@@ -2,8 +2,6 @@ import logging
 from collections import defaultdict
 from datetime import date
 
-from django.core.exceptions import ObjectDoesNotExist
-
 from common.services import send_template_email
 
 from store.models import Delivery
@@ -82,16 +80,14 @@ def _pickup_date(point: dict) -> str | None:
 
 def _get_dropoff_address(artist) -> str:
     """Возвращает адрес точки, куда артист относит посылку."""
-    try:
-        city = artist.shipping_point.city
-        address = artist.shipping_point.address
-    except ObjectDoesNotExist:
+    point = artist.effective_shipping_point
+    if point is None:
         logger.warning(
-            'У артиста id=%s нет точки отправки СДЭК.',
+            'У артиста id=%s нет доступной точки отправки СДЭК.',
             artist.id,
         )
         return ''
-    return ', '.join(part for part in (city, address) if part)
+    return ', '.join(part for part in (point.city, point.address) if part)
 
 
 def _build_new_order_message(order, items) -> str | None:
