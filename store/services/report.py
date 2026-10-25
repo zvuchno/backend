@@ -69,6 +69,7 @@ class ReportService:
                 )
 
                 data = items.aggregate(
+                    items_count=Coalesce(Sum('quantity'), Value(0)),
                     sales_amount=Coalesce(
                         Sum(line_total_expression),
                         ZERO_MONEY,
