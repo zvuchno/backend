@@ -5,7 +5,9 @@
 """
 
 from django.core.validators import FileExtensionValidator
+from django.db import transaction
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 
 from common.access import can_manage_artist
 
@@ -19,6 +21,7 @@ from store.constants import (
 )
 from store.models import Album, ReleaseTrack
 from store.services import TrackService
+from store.services.album_archive import AlbumArchiveScheduler
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
 from store.validators import validate_audiofile_size, validate_isrc_format
 
@@ -199,11 +202,41 @@ class TrackWriteSerializer(
         if 'audio_file' in validated_data:
             TrackGeneratedAudioScheduler.schedule(recording)
 
+        if {'name', 'audio_file'} & validated_data.keys():
+            release_ids = recording.release_tracks.values_list(
+                'release_id',
+                flat=True,
+            ).distinct()
+
+            for release_id in release_ids:
+                transaction.on_commit(
+                    lambda release_id=release_id: (
+                        AlbumArchiveScheduler.schedule_by_id(release_id)
+                    ),
+                )
+
         return instance
 
     def validate(self, attrs):
         """Проверяет коммерческие параметры трека и ограничения сингла."""
         attrs = super().validate(attrs)
+
+        if self.instance is not None:
+            recording_fields = {
+                'name',
+                'description',
+                'audio_file',
+                'isrc',
+            }
+
+            if recording_fields.intersection(attrs) and not can_manage_artist(
+                self.context['request'].user,
+                self.instance.recording.owner,
+            ):
+                raise PermissionDenied(
+                    'Нельзя изменять мастер-запись, '
+                    'принадлежащую другому артисту.',
+                )
 
         album = attrs.get(
             'album',

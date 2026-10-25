@@ -46,7 +46,6 @@ from store.models import (
     Bonus,
     Product,
     ReleaseTrack,
-    Track,
     TrackGeneratedAudio,
     TrackUpload,
 )
@@ -89,7 +88,7 @@ class TrackInlineForm(TrackDeactivationProtectionMixin, MoneyForm):
     )
 
     class Meta:
-        model = Track
+        model = ReleaseTrack
         fields = '__all__'
 
     def __init__(self, *args, **kwargs):
@@ -150,9 +149,9 @@ class TrackInlineForm(TrackDeactivationProtectionMixin, MoneyForm):
 
 
 class TrackInline(NestedTabularInline):
-    """Инлайн для списка треков (модель Track)."""
+    """Инлайн для размещений музыкальных записей в релизе."""
 
-    model = Track
+    model = ReleaseTrack
     form = TrackInlineForm
     fields = (
         'position',
@@ -164,6 +163,7 @@ class TrackInline(NestedTabularInline):
         'price',
     )
     readonly_fields = (
+        'name',
         'duration',
         'preview_player',
         'audio_status',
@@ -176,20 +176,16 @@ class TrackInline(NestedTabularInline):
     can_delete = False
 
     def get_queryset(self, request):
-        """Возвращает только финализированные треки альбома."""
-        qs = super().get_queryset(request)
-
+        """Возвращает размещения с загруженным оригиналом записи."""
         return (
-            qs
-            .filter(
-                audio_file__isnull=False,
-            )
-            .exclude(
-                audio_file='',
-            )
+            super()
+            .get_queryset(request)
+            .filter(recording__audio_file__isnull=False)
+            .exclude(recording__audio_file='')
             .select_related(
+                'recording',
+                'recording__generated',
                 'product',
-                'generated',
             )
         )
 
@@ -201,7 +197,7 @@ class TrackInline(NestedTabularInline):
     def preview_player(self, obj):
         """Показывает проигрыватель готового превью трека."""
         try:
-            generated = obj.generated
+            generated = obj.recording.generated
         except TrackGeneratedAudio.DoesNotExist:
             return 'Ожидает обработки'
 
@@ -231,7 +227,7 @@ class TrackInline(NestedTabularInline):
     def audio_status(self, obj):
         """Показывает компактные статусы производных аудиофайлов."""
         try:
-            generated = obj.generated
+            generated = obj.recording.generated
         except TrackGeneratedAudio.DoesNotExist:
             return 'Ожидает обработки'
 
@@ -249,6 +245,11 @@ class TrackInline(NestedTabularInline):
             preview,
             stream,
         )
+
+    @admin.display(description='Длительность')
+    def duration(self, obj):
+        """Возвращает длительность мастер-записи."""
+        return obj.recording.duration
 
     @staticmethod
     def _processing_status(*, status, error) -> str:
@@ -817,7 +818,7 @@ class AlbumAdmin(
 
     def save_formset(self, request, form, formset, change):
         """Сохраняет inline и актуализирует состояние релиза."""
-        track_formset = formset.model is Track
+        track_formset = formset.model is ReleaseTrack
 
         super().save_formset(
             request,

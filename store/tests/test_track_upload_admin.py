@@ -2,6 +2,7 @@
 
 import json
 from datetime import timedelta
+from decimal import Decimal
 from http import HTTPStatus
 from unittest.mock import patch
 
@@ -11,7 +12,12 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
-from store.models import Recording, ReleaseTrack, TrackUpload
+from store.models import (
+    Recording,
+    ReleaseTrack,
+    TrackGeneratedAudio,
+    TrackUpload,
+)
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.track_upload import UploadInstruction
 from store.tests.factories import (
@@ -19,6 +25,7 @@ from store.tests.factories import (
     RecordingFactory,
     ReleaseTrackFactory,
 )
+from store.tests.test_sales_protection import create_order
 
 
 @pytest.mark.django_db
@@ -341,3 +348,213 @@ class TestAlbumAdminTrackUpload:
         upload = TrackUpload.objects.get(pk=upload_id)
         assert upload.track == release_track.recording
         assert upload.status == TrackUpload.Status.INITIATED
+
+
+@pytest.mark.django_db
+class TestAlbumAdminTrackInline:
+    """HTTP-тесты inline размещений на странице релиза."""
+
+    @staticmethod
+    def album_change_data(album, tracks) -> dict:
+        """Собирает POST как formset страницы nested_admin."""
+        data = {
+            'release_type': album.release_type,
+            'name': album.name,
+            'genre': album.genre_id,
+            'release_date': (
+                album.release_date.isoformat() if album.release_date else ''
+            ),
+            'description': album.description,
+            'upc': album.upc or '',
+            'visibility': album.visibility,
+            'product-TOTAL_FORMS': '1',
+            'product-INITIAL_FORMS': '0',
+            'product-MIN_NUM_FORMS': '0',
+            'product-MAX_NUM_FORMS': '1',
+            'product-0-price': '0.00',
+            'product-0-album': album.pk,
+            'archive-TOTAL_FORMS': '0',
+            'archive-INITIAL_FORMS': '0',
+            'archive-MIN_NUM_FORMS': '0',
+            'archive-MAX_NUM_FORMS': '0',
+            'bonuses-TOTAL_FORMS': '0',
+            'bonuses-INITIAL_FORMS': '0',
+            'bonuses-MIN_NUM_FORMS': '0',
+            'bonuses-MAX_NUM_FORMS': '1000',
+            'tracks-TOTAL_FORMS': str(len(tracks)),
+            'tracks-INITIAL_FORMS': str(len(tracks)),
+            'tracks-MIN_NUM_FORMS': '0',
+            'tracks-MAX_NUM_FORMS': '0',
+        }
+
+        if album.is_published:
+            data['is_published'] = 'on'
+        if album.is_active:
+            data['is_active'] = 'on'
+
+        for index, track_data in enumerate(tracks):
+            track = track_data['track']
+            prefix = f'tracks-{index}'
+            data.update({
+                f'{prefix}-id': track.pk,
+                f'{prefix}-release': album.pk,
+                f'{prefix}-position': track_data['position'],
+                f'{prefix}-price': track_data['price'],
+            })
+
+            if track_data['is_active']:
+                data[f'{prefix}-is_active'] = 'on'
+
+        return data
+
+    def test_change_page_shows_existing_release_track(
+        self,
+        admin_client,
+        variant_factory,
+    ):
+        """Страница релиза показывает данные и аудиостатус трека."""
+        variant = variant_factory(
+            'track',
+            name='Трек в inline',
+            price=Decimal('123.45'),
+            position=1,
+        )
+        track = variant.product.track
+        track.recording.duration = 187
+        track.recording.save(update_fields=('duration',))
+        TrackGeneratedAudio.objects.create(
+            track=track.recording,
+            preview_status=TrackGeneratedAudio.ProcessingStatus.READY,
+            stream_status=TrackGeneratedAudio.ProcessingStatus.BUILDING,
+        )
+
+        response = admin_client.get(
+            reverse(
+                'admin:store_album_change',
+                args=(track.release_id,),
+            ),
+        )
+
+        assert response.status_code == HTTPStatus.OK
+        assert 'Трек в inline' in response.content.decode()
+        assert '187' in response.content.decode()
+        assert '123.45' in response.content.decode()
+        assert 'Файл не создан' in response.content.decode()
+        assert 'Preview:' in response.content.decode()
+        assert 'Stream:' in response.content.decode()
+        assert 'подготавливается' in response.content.decode()
+
+    def test_change_position_and_price_schedules_archive(
+        self,
+        admin_client,
+        variant_factory,
+        django_capture_on_commit_callbacks,
+    ):
+        """POST inline сохраняет размещение и обновляет архив после commit."""
+        variant = variant_factory(
+            'track',
+            name='Непроданный трек',
+            price=Decimal('100.00'),
+            position=0,
+        )
+        track = variant.product.track
+        album = track.release
+        another_variant = variant_factory(
+            'track',
+            album=album,
+            name='Другой непроданный трек',
+            price=Decimal('75.00'),
+            position=1,
+        )
+        another_track = another_variant.product.track
+        url = reverse(
+            'admin:store_album_change',
+            args=(album.pk,),
+        )
+        data = self.album_change_data(
+            album,
+            (
+                {
+                    'track': track,
+                    'position': '1',
+                    'price': '250.00',
+                    'is_active': True,
+                },
+                {
+                    'track': another_track,
+                    'position': '0',
+                    'price': '75.00',
+                    'is_active': True,
+                },
+            ),
+        )
+        data['_continue'] = 'Сохранить и продолжить редактирование'
+
+        with (
+            patch.object(
+                AlbumArchiveScheduler,
+                'schedule_by_id',
+            ) as mocked_archive_schedule,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            response = admin_client.post(url, data=data)
+            mocked_archive_schedule.assert_not_called()
+
+        assert response.status_code == HTTPStatus.FOUND
+
+        track.refresh_from_db()
+        track.product.refresh_from_db()
+        another_track.refresh_from_db()
+
+        assert track.position == 1
+        assert another_track.position == 0
+        assert track.product.price == Decimal('250.00')
+        assert mocked_archive_schedule.called
+        assert {
+            archive_call.args[0]
+            for archive_call in mocked_archive_schedule.call_args_list
+        } == {album.pk}
+
+    def test_cannot_deactivate_purchased_release_track(
+        self,
+        admin_client,
+        listener_user,
+        variant_factory,
+    ):
+        """POST inline отклоняет деактивацию купленного трека."""
+        variant = variant_factory(
+            'track',
+            name='Купленный трек',
+            price=Decimal('100.00'),
+            position=1,
+        )
+        track = variant.product.track
+        album = track.release
+        create_order(listener_user, variant)
+        url = reverse(
+            'admin:store_album_change',
+            args=(album.pk,),
+        )
+        data = self.album_change_data(
+            album,
+            (
+                {
+                    'track': track,
+                    'position': track.position,
+                    'price': '100.00',
+                    'is_active': False,
+                },
+            ),
+        )
+
+        response = admin_client.post(url, data=data)
+
+        assert response.status_code == HTTPStatus.OK
+        assert (
+            'Нельзя деактивировать трек с историей приобретения.'
+            in response.content.decode()
+        )
+
+        track.refresh_from_db()
+
+        assert track.is_active is True
