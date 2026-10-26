@@ -19,6 +19,7 @@ class TrackService:
         description: str = '',
         audio_file=None,
         isrc: str | None = None,
+        pending_upload: bool = False,
     ) -> ReleaseTrack:
         """Создаёт новую запись и её первое размещение в релизе."""
         isrc = isrc or None
@@ -41,17 +42,23 @@ class TrackService:
 
         recording = Recording.objects.create(**recording_data)
 
-        last_position = (
-            ReleaseTrack.objects.filter(
-                release=release,
-                position__isnull=False,
-            ).aggregate(
-                max_position=Max('position'),
-            )
-        )['max_position']
+        if pending_upload:
+            position = None
+        else:
+            last_position = (
+                ReleaseTrack.objects.filter(
+                    release=release,
+                    position__isnull=False,
+                ).aggregate(
+                    max_position=Max('position'),
+                )
+            )['max_position']
+
+            position = (last_position or 0) + 1
 
         return ReleaseTrack.objects.create(
             release=release,
             recording=recording,
-            position=(last_position or 0) + 1,
+            position=position,
+            is_active=not pending_upload,
         )

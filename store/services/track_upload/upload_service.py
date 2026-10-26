@@ -121,6 +121,7 @@ class TrackUploadService:
             name=track_name,
             description=description or '',
             isrc=isrc,
+            pending_upload=True,
         )
 
         ProductService.ensure_commerce(

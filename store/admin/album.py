@@ -789,6 +789,7 @@ class AlbumAdmin(
         try:
             upload = TrackUploadStorageService.complete(
                 upload=upload,
+                release_track=release_track,
             )
         except TrackUploadStorageError as exc:
             return JsonResponse(
@@ -797,6 +798,10 @@ class AlbumAdmin(
                 },
                 status=HTTPStatus.BAD_REQUEST,
             )
+
+        release_track.refresh_from_db(
+            fields=('position', 'is_active'),
+        )
 
         return JsonResponse(
             {

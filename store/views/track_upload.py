@@ -274,7 +274,10 @@ class TrackUploadCompleteView(APIView):
         )
 
         try:
-            upload = TrackUploadStorageService.complete(upload=upload)
+            upload = TrackUploadStorageService.complete(
+                upload=upload,
+                release_track=track,
+            )
         except TrackUploadStorageError as exc:
             return Response(
                 {
@@ -282,6 +285,10 @@ class TrackUploadCompleteView(APIView):
                 },
                 status=HTTPStatus.BAD_REQUEST,
             )
+
+        track.refresh_from_db(
+            fields=('position', 'is_active'),
+        )
 
         return Response(
             TrackUploadResponseSerializer(

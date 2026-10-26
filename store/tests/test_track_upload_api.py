@@ -84,7 +84,8 @@ class TestTrackUploadApi:
         upload = TrackUpload.objects.get(pk=data['upload']['id'])
 
         assert release_track.release == album
-        assert release_track.position == 1
+        assert release_track.position is None
+        assert release_track.is_active is False
         assert recording.name == 'Новое название'
         assert recording.description == 'Описание трека.'
         assert recording.isrc == 'RUA1B2345678'
@@ -107,7 +108,7 @@ class TestTrackUploadApi:
             'id': release_track.pk,
             'name': 'Новое название',
             'description': 'Описание трека.',
-            'position': 1,
+            'position': None,
             'price': '150.00',
             'allow_overpay': True,
             'isrc': 'RUA1B2345678',
@@ -246,7 +247,7 @@ class TestTrackUploadApi:
         upload_id = initiate_data['upload']['id']
         transport = initiate_data['upload']['transport']
 
-        assert initiate_data['track']['position'] == 1
+        assert initiate_data['track']['position'] is None
         assert transport['method'] == 'POST'
         assert transport['fields'] == {}
         assert transport['headers'] == {}
@@ -326,6 +327,7 @@ class TestTrackUploadApi:
         assert upload.track == recording
         assert recording.audio_file
         assert release_track.position == 1
+        assert release_track.is_active is True
         assert recording.audio_file.name.startswith(
             'recordings/original/',
         )

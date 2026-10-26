@@ -39,8 +39,8 @@ class TestTrackUploadService:
         recording = release_track.recording
 
         assert release_track.release == album
-        assert release_track.position == 1
-        assert release_track.is_active is True
+        assert release_track.position is None
+        assert release_track.is_active is False
         assert recording.owner == album.artist
         assert recording.name == '01. Intro'
         assert not recording.audio_file
@@ -57,8 +57,8 @@ class TestTrackUploadService:
             f'staging/track-uploads/{recording.pk}/',
         )
 
-    def test_pending_release_track_gets_next_position_immediately(self):
-        """Новое размещение сразу получает следующую позицию в релизе."""
+    def test_pending_release_track_does_not_take_position(self):
+        """Незавершённая загрузка не занимает позицию в релизе."""
         album = AlbumFactory()
 
         ReleaseTrackFactory(
@@ -73,7 +73,8 @@ class TestTrackUploadService:
             size=10,
         )
 
-        assert release_track.position == 5
+        assert release_track.position is None
+        assert release_track.is_active is False
 
     @pytest.mark.parametrize(
         'filename',
@@ -147,8 +148,8 @@ class TestTrackUploadService:
         recording = release_track.recording
 
         assert release_track.release == album
-        assert release_track.position == 1
-        assert release_track.is_active is True
+        assert release_track.position is None
+        assert release_track.is_active is False
         assert recording.name == 'Новое название'
         assert recording.description == 'Описание трека.'
         assert recording.isrc == 'RUA1B2345678'

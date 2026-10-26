@@ -86,10 +86,12 @@ class TestTrackUploadStorageService:
                 with django_capture_on_commit_callbacks(execute=True):
                     completed_upload = TrackUploadStorageService.complete(
                         upload=received_upload,
+                        release_track=release_track,
                     )
 
         recording.refresh_from_db()
         completed_upload.refresh_from_db()
+        release_track.refresh_from_db()
 
         assert completed_upload.status == TrackUpload.Status.COMPLETED
         assert completed_upload.uploaded_size == len(file_content)
@@ -102,6 +104,9 @@ class TestTrackUploadStorageService:
 
         assert storage.exists(recording.audio_file.name)
         assert not storage.exists(upload.staging_key)
+
+        assert release_track.position == 1
+        assert release_track.is_active is True
 
         with storage.open(recording.audio_file.name, 'rb') as audio_file:
             assert audio_file.read() == file_content
@@ -132,7 +137,7 @@ class TestTrackUploadStorageService:
 
         album = AlbumFactory()
 
-        _, upload = TrackUploadService.create_pending_track(
+        release_track, upload = TrackUploadService.create_pending_track(
             album=album,
             created_by=album.created_by,
             filename='missing.flac',
@@ -144,10 +149,16 @@ class TestTrackUploadStorageService:
             TrackUploadStorageError,
             match='Временный файл загрузки не найден',
         ):
-            TrackUploadStorageService.complete(upload=upload)
+            TrackUploadStorageService.complete(
+                upload=upload,
+                release_track=release_track,
+            )
 
         upload.refresh_from_db()
+        release_track.refresh_from_db()
 
+        assert release_track.position is None
+        assert release_track.is_active is False
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.completed_at is None
 
@@ -230,6 +241,7 @@ class TestTrackUploadStorageService:
                 with django_capture_on_commit_callbacks(execute=True):
                     completed_upload = TrackUploadStorageService.complete(
                         upload=received_upload,
+                        release_track=release_track,
                     )
 
         release_track.refresh_from_db()
@@ -304,7 +316,10 @@ class TestTrackUploadStorageService:
             TrackUploadStorageError,
             match='Временный файл загрузки не найден',
         ):
-            TrackUploadStorageService.complete(upload=upload)
+            TrackUploadStorageService.complete(
+                upload=upload,
+                release_track=release_track,
+            )
 
         recording.refresh_from_db()
         upload.refresh_from_db()
@@ -370,17 +385,26 @@ class TestTrackUploadStorageService:
                 with django_capture_on_commit_callbacks(execute=True):
                     completed_upload = TrackUploadStorageService.complete(
                         upload=upload,
+                        release_track=release_track,
                     )
+
+                release_track.refresh_from_db()
+                first_position = release_track.position
 
                 recording.refresh_from_db()
                 first_audio_file_name = recording.audio_file.name
 
                 second_completed_upload = TrackUploadStorageService.complete(
                     upload=completed_upload,
+                    release_track=release_track,
                 )
 
         recording.refresh_from_db()
         second_completed_upload.refresh_from_db()
+        release_track.refresh_from_db()
+
+        assert release_track.position == first_position
+        assert release_track.is_active is True
 
         assert second_completed_upload.status == TrackUpload.Status.COMPLETED
         assert recording.audio_file.name == first_audio_file_name
@@ -396,7 +420,7 @@ class TestTrackUploadStorageService:
         monkeypatch,
         django_capture_on_commit_callbacks,
     ):
-        """Планирует архив каждого релиза с общей Recording."""
+        """Замена общего оригинала обновляет архивы всех связанных релизов."""
         settings.USE_S3_MEDIA = False
 
         storage = FileSystemStorage(
@@ -406,46 +430,118 @@ class TestTrackUploadStorageService:
         audio_file_field = Recording._meta.get_field('audio_file')
         monkeypatch.setattr(audio_file_field, 'storage', storage)
 
+        # 1. Создаём трек в первом релизе.
         first_album = AlbumFactory()
-        file_content = b'shared audio content'
-        release_track, upload = TrackUploadService.create_pending_track(
+        original_content = b'shared audio content'
+
+        release_track, create_upload = TrackUploadService.create_pending_track(
             album=first_album,
             created_by=first_album.created_by,
             filename='shared.flac',
-            size=len(file_content),
+            size=len(original_content),
             content_type='audio/flac',
         )
-        second_album = AlbumFactory(artist=first_album.artist)
-        ReleaseTrackFactory(
-            release=second_album,
-            recording=release_track.recording,
-        )
-        upload = TrackUploadService.receive_local_file(
-            upload=upload,
+
+        create_upload = TrackUploadService.receive_local_file(
+            upload=create_upload,
             uploaded_file=SimpleUploadedFile(
                 name='shared.flac',
-                content=file_content,
+                content=original_content,
                 content_type='audio/flac',
             ),
         )
 
-        with patch(
-            'store.services.track_upload.upload_storage.'
-            'TrackGeneratedAudioScheduler.schedule',
-        ) as mocked_audio_schedule:
-            with patch.object(
+        # 2. Полностью завершаем первоначальный CREATE.
+        # Планировщики здесь мокируем: в этом тесте
+        # нас интересует последующая замена оригинала.
+        with (
+            patch(
+                'store.services.track_upload.upload_storage.'
+                'TrackGeneratedAudioScheduler.schedule',
+            ),
+            patch.object(
                 AlbumArchiveScheduler,
                 'schedule_by_id',
                 return_value=True,
-            ) as mocked_archive_schedule:
-                with django_capture_on_commit_callbacks(execute=True):
-                    TrackUploadStorageService.complete(upload=upload)
+            ),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            TrackUploadStorageService.complete(
+                upload=create_upload,
+                release_track=release_track,
+            )
 
-        mocked_audio_schedule.assert_called_once_with(
-            release_track.recording,
+        release_track.refresh_from_db()
+        recording = release_track.recording
+
+        assert release_track.is_active is True
+        assert release_track.position == 1
+        assert recording.audio_file
+
+        # 3. Добавляем уже загруженную запись во второй релиз.
+        second_album = AlbumFactory(artist=first_album.artist)
+
+        second_release_track = ReleaseTrackFactory(
+            release=second_album,
+            recording=recording,
         )
+
+        assert second_release_track.recording_id == recording.pk
+
+        # 4. Начинаем замену общего оригинального файла.
+        new_content = b'updated shared audio content'
+
+        replace_upload = TrackUploadService.create_replacement_upload(
+            track=release_track,
+            filename='shared-new.flac',
+            size=len(new_content),
+            content_type='audio/flac',
+        )
+
+        replace_upload = TrackUploadService.receive_local_file(
+            upload=replace_upload,
+            uploaded_file=SimpleUploadedFile(
+                name='shared-new.flac',
+                content=new_content,
+                content_type='audio/flac',
+            ),
+        )
+
+        # 5. Завершаем REPLACE и проверяем планировщики.
+        with (
+            patch(
+                'store.services.track_upload.upload_storage.'
+                'TrackGeneratedAudioScheduler.schedule',
+            ) as mocked_audio_schedule,
+            patch.object(
+                AlbumArchiveScheduler,
+                'schedule_by_id',
+                return_value=True,
+            ) as mocked_archive_schedule,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            completed_upload = TrackUploadStorageService.complete(
+                upload=replace_upload,
+                release_track=release_track,
+            )
+
+        assert completed_upload.status == TrackUpload.Status.COMPLETED
+
+        mocked_audio_schedule.assert_called_once_with(recording)
+
         assert mocked_archive_schedule.call_count == 2
         mocked_archive_schedule.assert_has_calls(
-            [call(first_album.pk), call(second_album.pk)],
+            [
+                call(first_album.pk),
+                call(second_album.pk),
+            ],
             any_order=True,
         )
+
+        # 6. Замена файла не должна менять размещения.
+        release_track.refresh_from_db()
+        second_release_track.refresh_from_db()
+
+        assert release_track.is_active is True
+        assert release_track.position == 1
+        assert second_release_track.recording_id == recording.pk

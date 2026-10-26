@@ -83,8 +83,8 @@ class TestAlbumAdminTrackUpload:
 
         assert release_track.release == album
         assert release_track.name == '01 Intro'
-        assert release_track.position == 1
-        assert release_track.is_active is True
+        assert release_track.position is None
+        assert release_track.is_active is False
         assert recording.created_by == staff_user
 
         assert upload.track == recording
@@ -94,7 +94,7 @@ class TestAlbumAdminTrackUpload:
         assert data['track']['id'] != recording.pk
         assert data['upload']['id'] == upload.pk
         assert data['track']['name'] == '01 Intro'
-        assert data['track']['position'] == 1
+        assert data['track']['position'] is None
         assert data['upload']['status'] == TrackUpload.Status.INITIATED
         complete_path = reverse(
             'admin:store_track_upload_complete',
