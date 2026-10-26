@@ -2,13 +2,17 @@ import logging
 from collections import defaultdict
 from datetime import date
 
+from django.conf import settings
+
 from common.services import send_template_email
 
+from store.constants import ARTIST_FINANCE_PATH
 from store.models import Delivery
 from store.tasks import send_telegram_notification
 from store.telegram_messages import (
     format_cdek_notification,
     format_digital_notification,
+    format_monthly_report_notification,
     format_pickup_notification,
 )
 
@@ -295,3 +299,37 @@ def notify_artist_about_cdek_order(shipment) -> None:
         _send_telegram(artist, message)
 
     _send_shipment_registered_emails(order, artist, shipment, shipment_items)
+
+
+def _get_finance_url() -> str:
+    """Возвращает ссылку на страницу финансов в личном кабинете."""
+    return f'{settings.FRONTEND_BASE_URL.rstrip("/")}{ARTIST_FINANCE_PATH}'
+
+
+def _report_message(report, *, with_pdf: bool) -> str:
+    return format_monthly_report_notification(
+        period_start=report.period_start,
+        period_end=report.period_end,
+        items_sold=report.items_count,
+        revenue=report.sales_amount,
+        payout=report.payout_amount,
+        report_url=_get_finance_url(),
+        with_pdf=with_pdf,
+    )
+
+
+def notify_artist_about_monthly_report(report) -> None:
+    """Уведомляет артиста в Telegram о готовом месячном отчёте."""
+    profile = getattr(report.payout_recipient, 'artist_profile', None)
+    if not profile or not profile.telegram_chat_id:
+        return
+
+    file = report.report_file
+    with_pdf = bool(file) and file.storage.exists(file.name)
+
+    send_telegram_notification.delay(
+        artist_id=profile.id,
+        message=_report_message(report, with_pdf=with_pdf),
+        document_path=file.name if with_pdf else None,
+        document_name=report.pdf_filename if with_pdf else None,
+    )

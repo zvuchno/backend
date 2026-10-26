@@ -59,3 +59,5 @@ CATALOG_SEARCH_REFRESH_INTERVAL = 1800
 MISSING_TRACKS_ERROR = 'Добавьте хотя бы один загруженный активный трек.'
 MISSING_GENRE_ERROR = 'Укажите жанр релиза.'
 SINGLE_TRACK_COUNT_ERROR = 'Сингл должен содержать ровно один трек.'
+
+ARTIST_FINANCE_PATH = '/artist/finance'

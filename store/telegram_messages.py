@@ -1,6 +1,9 @@
-from datetime import timedelta
+from datetime import date, timedelta
+from decimal import Decimal
 
 from django.utils import timezone
+
+from common.utils import format_document_money
 
 from store.constants import (
     CDEK_HANDOFF_DEADLINE_DAYS,
@@ -98,7 +101,7 @@ def format_cdek_notification(
     lines.extend([
         '',
         '📍 Отнести в ПВЗ СДЭК:',
-        dropoff_address,
+        dropoff_address or '—',
         f'⏳ Срок: до {_format_cdek_deadline()}',
         f'📦 Номер отправления: {shipment.cdek_number}',
         f'🔗 Отследить: {tracking_url}',
@@ -152,5 +155,74 @@ def format_pickup_notification(
     ])
 
     _append_customer_comment(lines, comment)
+
+    return '\n'.join(lines)
+
+
+# ======================================================
+# ОТЧЕТЫ
+# ======================================================
+
+
+MONTHS_NOMINATIVE = (
+    'январь',
+    'февраль',
+    'март',
+    'апрель',
+    'май',
+    'июнь',
+    'июль',
+    'август',
+    'сентябрь',
+    'октябрь',
+    'ноябрь',
+    'декабрь',
+)
+MONTHS_GENITIVE = (
+    'января',
+    'февраля',
+    'марта',
+    'апреля',
+    'мая',
+    'июня',
+    'июля',
+    'августа',
+    'сентября',
+    'октября',
+    'ноября',
+    'декабря',
+)
+
+
+def format_monthly_report_notification(
+    period_start: date,
+    period_end: date,
+    items_sold: int,
+    revenue: Decimal,
+    payout: Decimal,
+    report_url: str,
+    with_pdf: bool = False,
+) -> str:
+    """Формирует уведомление артисту о готовом месячном отчёте."""
+    payout_month = period_end + timedelta(days=1)
+
+    lines = [
+        f'📊 Отчёт за {MONTHS_NOMINATIVE[period_start.month - 1]} готов',
+        '',
+        f'Период: {period_start:%d.%m.%Y} – {period_end:%d.%m.%Y}',
+        f'Продано: {items_sold} шт. на {format_document_money(revenue)} ₽',
+        f'К выплате: {format_document_money(payout)} ₽',
+        '',
+        f'Полный отчёт в личном кабинете: {report_url}',
+    ]
+    if with_pdf:
+        lines.append('(PDF приложен к сообщению)')
+
+    lines.extend([
+        '',
+        f'Выплата будет до 10 {MONTHS_GENITIVE[payout_month.month - 1]}.',
+        'Отчёт считается принятым, если в течение 3 дней '
+        'ты не сообщишь о замечаниях.',
+    ])
 
     return '\n'.join(lines)

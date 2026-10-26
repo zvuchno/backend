@@ -46,6 +46,10 @@ class Report(TimestampModel):
     period_end = models.DateField(
         'Конец периода',
     )
+    items_count = models.PositiveIntegerField(
+        'Продано, шт.',
+        default=0,
+    )
     sales_amount = models.DecimalField(
         'Сумма проданных товаров, руб.',
         max_digits=MAX_PRICE_DIGITS,
@@ -83,6 +87,13 @@ class Report(TimestampModel):
         null=True,
         blank=True,
     )
+
+    @property
+    def pdf_filename(self) -> str:
+        return (
+            f'report_{self.period_start:%Y_%m_%d}_'
+            f'{self.period_end:%Y_%m_%d}.pdf'
+        )
 
     class Meta:
         ordering = ('-created_at',)

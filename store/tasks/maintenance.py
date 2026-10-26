@@ -115,7 +115,7 @@ def schedule_missing_reports(
             payout_recipient_id=payout_recipient_id,
             period_start=period_start,
             period_end=period_end,
-            send_email=False,
+            notify=False,
         )
 
     logger.info(
