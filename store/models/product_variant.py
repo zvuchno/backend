@@ -116,11 +116,11 @@ class ProductVariant(ActivatableModel, TimestampModel):
         if not content.is_active:
             return False
 
-        if (
-            product.product_type == product.ProductType.TRACK
-            and not content.recording.is_active
-        ):
-            return False
+        if product.product_type == product.ProductType.TRACK:
+            recording = content.recording
+
+            if not recording.is_active or not recording.audio_file:
+                return False
 
         publication_content = (
             content.release

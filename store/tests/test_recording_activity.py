@@ -125,3 +125,27 @@ def test_recording_activity_does_not_affect_other_product_types(
     other_variant = ProductVariant.objects.get(pk=other_variant.pk)
 
     assert other_variant.is_available_for_purchase is True
+
+
+def test_recording_without_original_is_unavailable_for_purchase(
+    ready_artist_user,
+    variant_factory,
+):
+    """Трек без оригинала нельзя купить даже при активном размещении."""
+    variant = variant_factory(
+        'track',
+        artist=ready_artist_user.artist_profile,
+    )
+    recording = variant.product.track.recording
+
+    assert recording.audio_file
+    assert variant.is_available_for_purchase is True
+
+    recording.audio_file = ''
+    recording.save(update_fields=('audio_file',))
+
+    variant = ProductVariant.objects.get(pk=variant.pk)
+
+    assert variant.product.track.is_active is True
+    assert variant.product.track.recording.is_active is True
+    assert variant.is_available_for_purchase is False

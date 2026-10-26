@@ -8,6 +8,7 @@ from rest_framework import status
 from store.constants import PREVIEW_DURATION
 from store.models import (
     Favorite,
+    ListenerTrackAccess,
     Order,
     OrderItem,
     Product,
@@ -194,6 +195,96 @@ class TestPlayerAlbumAPI:
         assert [track['id'] for track in response.data['tracks']] == [
             active_track.id,
         ]
+
+    @pytest.mark.parametrize(
+        'has_purchase',
+        (False, True),
+        ids=('guest', 'album_buyer'),
+    )
+    def test_missing_original_is_excluded_from_player(
+        self,
+        api_client,
+        listener_user,
+        player_album_url,
+        player_track_play_url,
+        variant_factory,
+        settings,
+        has_purchase,
+    ):
+        """Запись без original недоступна в плеере даже покупателю."""
+        settings.CATALOG_DRAFT_PREVIEW_MODE = 'off'
+        settings.PLAYER_STREAM_MODE = 'purchased'
+
+        album_variant = variant_factory(
+            'album',
+            name='Альбом с незавершённой загрузкой',
+        )
+        album = album_variant.product.album
+
+        ready_variant = variant_factory(
+            'track',
+            album=album,
+            name='Готовый трек',
+            position=1,
+        )
+        ready_track = ready_variant.product.track
+
+        missing_variant = variant_factory(
+            'track',
+            album=album,
+            name='Незагруженный трек',
+            position=2,
+        )
+        missing_track = missing_variant.product.track
+
+        missing_track.recording.audio_file = ''
+        missing_track.recording.save(
+            update_fields=('audio_file',),
+        )
+
+        assert album.is_published is True
+        assert ready_track.is_active is True
+        assert missing_track.is_active is True
+        assert missing_track.recording.is_active is True
+        assert not missing_track.recording.audio_file
+
+        if has_purchase:
+            create_paid_order(listener_user, album_variant)
+
+            assert ListenerTrackAccess.objects.filter(
+                user=listener_user,
+                track_id=missing_track.pk,
+            ).exists()
+
+            api_client.force_authenticate(user=listener_user)
+
+        queue_response = api_client.get(
+            player_album_url(album.pk),
+        )
+
+        assert queue_response.status_code == status.HTTP_200_OK
+
+        track_ids = [item['id'] for item in queue_response.data['tracks']]
+
+        assert track_ids == [ready_track.pk]
+        assert missing_track.pk not in track_ids
+
+        missing_play_response = api_client.get(
+            player_track_play_url(missing_track.pk),
+        )
+
+        assert missing_play_response.status_code == status.HTTP_404_NOT_FOUND
+
+        ready_play_response = api_client.get(
+            player_track_play_url(ready_track.pk),
+        )
+
+        assert ready_play_response.status_code == status.HTTP_409_CONFLICT
+
+        assert ReleaseTrack.objects.filter(
+            pk=missing_track.pk,
+            is_active=True,
+        ).exists()
 
     def test_staff_does_not_return_inactive_tracks(
         self,

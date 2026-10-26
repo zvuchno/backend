@@ -96,6 +96,8 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
                 queryset=ReleaseTrack.objects.all(),
                 player_preview=preview,
             )
+            .filter(recording__audio_file__isnull=False)
+            .exclude(recording__audio_file='')
             .select_related('recording__generated')
             .annotate(
                 favorite_variant_id=favorite_variant_id_subquery,
@@ -173,7 +175,11 @@ class PlayerTrackPlayView(APIView):
         track = (
             tracks
             .select_related('recording__generated')
-            .filter(pk=track_id)
+            .filter(
+                pk=track_id,
+                recording__audio_file__isnull=False,
+            )
+            .exclude(recording__audio_file='')
             .first()
         )
 
