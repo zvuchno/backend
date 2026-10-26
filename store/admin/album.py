@@ -255,7 +255,7 @@ class TrackInline(NestedTabularInline):
     def _processing_status(*, status, error) -> str:
         """Возвращает краткий HTML-статус подготовки файла."""
         if status == TrackGeneratedAudio.ProcessingStatus.READY:
-            return format_html('<span class="yes"> готов</span>')
+            return format_html('<span class="yes"> {}</span>', 'готов')
 
         if status == TrackGeneratedAudio.ProcessingStatus.FAILED:
             return format_html(

@@ -27,7 +27,8 @@ ADMIN_REORDER = (
         'label': 'Витрина',
         'models': (
             'store.Album',
-            'store.Track',
+            'store.Recording',
+            'store.ReleaseTrack',
             'store.Merch',
             'store.Genre',
             'store.MerchKind',

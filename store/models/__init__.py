@@ -33,8 +33,6 @@ from .track import (
     TrackUpload,
 )
 
-Track = Recording
-
 __all__ = [
     'Album',
     'AlbumArchive',
@@ -60,7 +58,6 @@ __all__ = [
     'Promocode',
     'Recording',
     'ReleaseTrack',
-    'Track',
     'Report',
     'Shipment',
     'TrackGeneratedAudio',

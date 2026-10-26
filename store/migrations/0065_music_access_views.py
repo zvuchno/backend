@@ -9,7 +9,7 @@ from store.migrations.utils import create_view
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('store', '0063_recording_release_track_refactor'),
+        ('store', '0064_recording_release_track_refactor'),
     ]
 
     operations = [

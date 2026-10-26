@@ -1,6 +1,6 @@
 """Сериализаторы для работы с треками.
 
-Содержит сериализаторы для чтения и записи данных модели Track,
+Содержит сериализаторы для чтения и записи данных модели ReleaseTrack,
 используемые в API.
 """
 
@@ -27,7 +27,7 @@ from store.validators import validate_audiofile_size, validate_isrc_format
 
 
 class TrackReadSerializer(serializers.ModelSerializer):
-    """Сериализатор для чтения Track."""
+    """Сериализатор для чтения ReleaseTrack."""
 
     price = serializers.DecimalField(
         source='product.price',
@@ -86,7 +86,7 @@ class TrackReadSerializer(serializers.ModelSerializer):
 
 
 class TrackReadDetailSerializer(TrackReadSerializer):
-    """Сериализатор для подробного просмотра (retrieve) объекта Track."""
+    """Сериализатор для подробного просмотра-retrieve объекта ReleaseTrack."""
 
     audio_file = serializers.FileField(
         source='recording.audio_file',

@@ -17,7 +17,6 @@ from store.models import (
     ProductVariant,
     Recording,
     ReleaseTrack,
-    Track,
 )
 from users.tests.factories import ArtistProfileFactory
 
@@ -86,26 +85,6 @@ def make_audio_file(
         name=name,
         content=content,
         content_type='audio/mpeg',
-    )
-
-
-class TrackFactory(factory.django.DjangoModelFactory):
-    """Фабрика трека с исходным аудиофайлом."""
-
-    class Meta:
-        model = Track
-
-    album = factory.SubFactory(AlbumFactory)
-    created_by = factory.LazyAttribute(
-        lambda obj: obj.album.created_by,
-    )
-    name = factory.Sequence(lambda n: f'Трек {n}')
-    position = factory.Sequence(lambda n: n + 1)
-    audio_file = factory.Sequence(
-        lambda n: make_audio_file(
-            name=f'track-{n}.mp3',
-            content=f'audio-content-{n}'.encode(),
-        ),
     )
 
 
