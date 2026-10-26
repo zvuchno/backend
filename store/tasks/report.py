@@ -52,9 +52,9 @@ def generate_report_task(
     payout_recipient_id,
     period_start,
     period_end,
-    send_email=False,
+    notify=False,
 ):
-    """Формирует отчет получателя и опционально отправляет его на почту."""
+    """Формирует отчет получателя и опционально отправляет его артисту."""
     try:
         report = ReportService.generate(
             payout_recipient=User.objects.get(id=payout_recipient_id),
@@ -63,12 +63,8 @@ def generate_report_task(
         )
 
         buffer = ReportFileBuilder.build(report)
-        filename = (
-            f'report_{report.period_start:%Y_%m_%d}_'
-            f'{report.period_end:%Y_%m_%d}.pdf'
-        )
         report.report_file.save(
-            filename,
+            report.pdf_filename,
             ContentFile(buffer.getvalue()),
             save=False,
         )
@@ -124,8 +120,9 @@ def generate_report_task(
         period_end,
     )
 
-    if send_email:
+    if notify:
         send_report_email_task.delay(report.id)
+        send_report_telegram_task.delay(report.id)
 
 
 @shared_task
@@ -158,12 +155,11 @@ def dispatch_monthly_reports():
             payout_recipient_id=payout_recipient_id,
             period_start=period_start,
             period_end=period_end,
-            send_email=True,
+            notify=True,
         )
 
 
 @shared_task(
-    bind=True,
     autoretry_for=(
         TimeoutError,
         OSError,
@@ -174,7 +170,7 @@ def dispatch_monthly_reports():
     retry_jitter=True,
     max_retries=5,
 )
-def send_report_email_task(self, report_id: int) -> None:
+def send_report_email_task(report_id: int) -> None:
     """Отправляет сформированный отчет получателю выплат по email."""
     report = Report.objects.select_related(
         'payout_recipient__artist_profile',
@@ -195,11 +191,6 @@ def send_report_email_task(self, report_id: int) -> None:
             f'У отчета id={report.id} отсутствует файл',
         )
 
-    filename = (
-        f'report_{report.period_start:%Y_%m_%d}_'
-        f'{report.period_end:%Y_%m_%d}.pdf'
-    )
-
     with report.report_file.open('rb') as report_file:
         content = report_file.read()
 
@@ -213,9 +204,20 @@ def send_report_email_task(self, report_id: int) -> None:
         },
         attachments=[
             (
-                filename,
+                report.pdf_filename,
                 content,
                 'application/pdf',
             ),
         ],
     )
+
+
+@shared_task
+def send_report_telegram_task(report_id: int) -> None:
+    """Отправляет получателю выплат уведомление об отчёте в Telegram."""
+    from store.notifications import notify_artist_about_monthly_report
+
+    report = Report.objects.select_related(
+        'payout_recipient__artist_profile',
+    ).get(id=report_id)
+    notify_artist_about_monthly_report(report)
