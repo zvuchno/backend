@@ -67,7 +67,7 @@ def merch_key(product):
 
 def artist_key(artist):
     """Ключ записи артиста в выдаче sitemap."""
-    return ('artist', None, artist.slug)
+    return ('artists', None, artist.slug)
 
 
 # =================================
