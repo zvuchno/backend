@@ -415,3 +415,16 @@ def bonus_detail_url():
         )
 
     return build
+
+
+@pytest.fixture
+def track_placement_url():
+    """URL добавления существующей записи в релиз."""
+
+    def build(album) -> str:
+        return reverse(
+            'api:store:album-track-create',
+            kwargs={'album_id': album.pk},
+        )
+
+    return build

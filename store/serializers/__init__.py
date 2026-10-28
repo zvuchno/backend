@@ -64,15 +64,17 @@ from .purchased_music import (
 from .report import ArtistReportSerializer
 from .sale import ArtistSaleDetailSerializer, ArtistSaleSerializer
 from .track import (
+    TrackPlacementCreateSerializer,
     TrackReadDetailSerializer,
     TrackReadSerializer,
     TrackReorderSerializer,
     TrackWriteSerializer,
 )
 from .track_upload import (
-    TrackUploadFileInitiateSerializer,
+    TrackReplacementUploadInitiateSerializer,
     TrackUploadInitiateSerializer,
     TrackUploadLocalFileResponseSerializer,
+    TrackUploadRecordingSerializer,
     TrackUploadResponseSerializer,
 )
 
@@ -119,7 +121,10 @@ __all__ = [
     'PlaybackNotReadySerializer',
     'PlayerAlbumSerializer',
     'PlayerAlbumTrackSerializer',
+    'TrackUploadRecordingSerializer',
     'TrackPlaybackSerializer',
+    'TrackPlacementCreateSerializer',
+    'TrackReplacementUploadInitiateSerializer',
     'PromocodeReadDetailSerializer',
     'PromocodeReadSerializer',
     'PromocodeWriteSerializer',
@@ -130,7 +135,6 @@ __all__ = [
     'TrackReadSerializer',
     'TrackReorderSerializer',
     'TrackWriteSerializer',
-    'TrackUploadFileInitiateSerializer',
     'TrackUploadInitiateSerializer',
     'TrackUploadLocalFileResponseSerializer',
     'TrackUploadResponseSerializer',

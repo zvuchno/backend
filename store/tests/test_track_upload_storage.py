@@ -28,6 +28,7 @@ class TestTrackUploadStorageService:
 
     def test_completes_local_upload_and_removes_staging_file(
         self,
+        artist_user,
         settings,
         tmp_path,
         monkeypatch,
@@ -48,17 +49,15 @@ class TestTrackUploadStorageService:
             storage,
         )
 
-        album = AlbumFactory()
         file_content = b'test audio content'
 
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
             filename='01 Intro.flac',
             size=len(file_content),
             content_type='audio/flac',
         )
-        recording = release_track.recording
 
         uploaded_file = SimpleUploadedFile(
             name='01 Intro.flac',
@@ -86,12 +85,10 @@ class TestTrackUploadStorageService:
                 with django_capture_on_commit_callbacks(execute=True):
                     completed_upload = TrackUploadStorageService.complete(
                         upload=received_upload,
-                        release_track=release_track,
                     )
 
         recording.refresh_from_db()
         completed_upload.refresh_from_db()
-        release_track.refresh_from_db()
 
         assert completed_upload.status == TrackUpload.Status.COMPLETED
         assert completed_upload.uploaded_size == len(file_content)
@@ -105,17 +102,15 @@ class TestTrackUploadStorageService:
         assert storage.exists(recording.audio_file.name)
         assert not storage.exists(upload.staging_key)
 
-        assert release_track.position == 1
-        assert release_track.is_active is True
-
         with storage.open(recording.audio_file.name, 'rb') as audio_file:
             assert audio_file.read() == file_content
 
         mocked_schedule.assert_called_once_with(recording)
-        mocked_archive_schedule.assert_called_once_with(album.pk)
+        mocked_archive_schedule.assert_not_called()
 
     def test_raises_error_when_local_staging_file_is_missing(
         self,
+        artist_user,
         settings,
         tmp_path,
         monkeypatch,
@@ -135,11 +130,9 @@ class TestTrackUploadStorageService:
             storage,
         )
 
-        album = AlbumFactory()
-
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
             filename='missing.flac',
             size=10,
             content_type='audio/flac',
@@ -151,14 +144,12 @@ class TestTrackUploadStorageService:
         ):
             TrackUploadStorageService.complete(
                 upload=upload,
-                release_track=release_track,
             )
 
         upload.refresh_from_db()
-        release_track.refresh_from_db()
+        recording.refresh_from_db()
 
-        assert release_track.position is None
-        assert release_track.is_active is False
+        assert not recording.audio_file
         assert upload.status == TrackUpload.Status.INITIATED
         assert upload.completed_at is None
 
@@ -213,7 +204,7 @@ class TestTrackUploadStorageService:
         new_content = b'new audio content'
 
         upload = TrackUploadService.create_replacement_upload(
-            track=release_track,
+            recording=recording,
             filename='new-original.flac',
             size=len(new_content),
             content_type='audio/flac',
@@ -241,7 +232,6 @@ class TestTrackUploadStorageService:
                 with django_capture_on_commit_callbacks(execute=True):
                     completed_upload = TrackUploadStorageService.complete(
                         upload=received_upload,
-                        release_track=release_track,
                     )
 
         release_track.refresh_from_db()
@@ -306,7 +296,7 @@ class TestTrackUploadStorageService:
         old_audio_name = recording.audio_file.name
 
         upload = TrackUploadService.create_replacement_upload(
-            track=release_track,
+            recording=recording,
             filename='missing-new-original.flac',
             size=10,
             content_type='audio/flac',
@@ -318,7 +308,6 @@ class TestTrackUploadStorageService:
         ):
             TrackUploadStorageService.complete(
                 upload=upload,
-                release_track=release_track,
             )
 
         recording.refresh_from_db()
@@ -332,6 +321,7 @@ class TestTrackUploadStorageService:
 
     def test_complete_is_idempotent_for_completed_upload(
         self,
+        artist_user,
         settings,
         tmp_path,
         monkeypatch,
@@ -352,17 +342,15 @@ class TestTrackUploadStorageService:
             storage,
         )
 
-        album = AlbumFactory()
         file_content = b'test audio content'
 
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
             filename='track.flac',
             size=len(file_content),
             content_type='audio/flac',
         )
-        recording = release_track.recording
 
         upload = TrackUploadService.receive_local_file(
             upload=upload,
@@ -385,33 +373,24 @@ class TestTrackUploadStorageService:
                 with django_capture_on_commit_callbacks(execute=True):
                     completed_upload = TrackUploadStorageService.complete(
                         upload=upload,
-                        release_track=release_track,
                     )
-
-                release_track.refresh_from_db()
-                first_position = release_track.position
 
                 recording.refresh_from_db()
                 first_audio_file_name = recording.audio_file.name
 
                 second_completed_upload = TrackUploadStorageService.complete(
                     upload=completed_upload,
-                    release_track=release_track,
                 )
 
         recording.refresh_from_db()
         second_completed_upload.refresh_from_db()
-        release_track.refresh_from_db()
-
-        assert release_track.position == first_position
-        assert release_track.is_active is True
 
         assert second_completed_upload.status == TrackUpload.Status.COMPLETED
         assert recording.audio_file.name == first_audio_file_name
         assert not storage.exists(upload.staging_key)
 
         assert mocked_audio_schedule.call_count == 1
-        assert mocked_archive_schedule.call_count == 1
+        assert mocked_archive_schedule.call_count == 0
 
     def test_schedules_archives_for_every_release_using_recording(
         self,
@@ -430,12 +409,12 @@ class TestTrackUploadStorageService:
         audio_file_field = Recording._meta.get_field('audio_file')
         monkeypatch.setattr(audio_file_field, 'storage', storage)
 
-        # 1. Создаём трек в первом релизе.
+        # 1. Создаём независимую запись и upload.
         first_album = AlbumFactory()
         original_content = b'shared audio content'
 
-        release_track, create_upload = TrackUploadService.create_pending_track(
-            album=first_album,
+        recording, create_upload = TrackUploadService.create_recording_upload(
+            owner=first_album.artist,
             created_by=first_album.created_by,
             filename='shared.flac',
             size=len(original_content),
@@ -468,22 +447,25 @@ class TestTrackUploadStorageService:
         ):
             TrackUploadStorageService.complete(
                 upload=create_upload,
-                release_track=release_track,
             )
 
-        release_track.refresh_from_db()
-        recording = release_track.recording
-
-        assert release_track.is_active is True
-        assert release_track.position == 1
+        recording.refresh_from_db()
         assert recording.audio_file
 
-        # 3. Добавляем уже загруженную запись во второй релиз.
+        # 3. Размещаем уже загруженную запись в двух релизах.
+        release_track = ReleaseTrackFactory(
+            release=first_album,
+            recording=recording,
+        )
         second_album = AlbumFactory(artist=first_album.artist)
 
         second_release_track = ReleaseTrackFactory(
             release=second_album,
             recording=recording,
+        )
+        initial_positions = (
+            release_track.position,
+            second_release_track.position,
         )
 
         assert second_release_track.recording_id == recording.pk
@@ -492,7 +474,7 @@ class TestTrackUploadStorageService:
         new_content = b'updated shared audio content'
 
         replace_upload = TrackUploadService.create_replacement_upload(
-            track=release_track,
+            recording=recording,
             filename='shared-new.flac',
             size=len(new_content),
             content_type='audio/flac',
@@ -522,7 +504,6 @@ class TestTrackUploadStorageService:
         ):
             completed_upload = TrackUploadStorageService.complete(
                 upload=replace_upload,
-                release_track=release_track,
             )
 
         assert completed_upload.status == TrackUpload.Status.COMPLETED
@@ -543,5 +524,8 @@ class TestTrackUploadStorageService:
         second_release_track.refresh_from_db()
 
         assert release_track.is_active is True
-        assert release_track.position == 1
+        assert (
+            release_track.position,
+            second_release_track.position,
+        ) == initial_positions
         assert second_release_track.recording_id == recording.pk

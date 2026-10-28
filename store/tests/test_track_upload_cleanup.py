@@ -14,20 +14,21 @@ from store.services.track_upload import (
     TrackUploadCleanupService,
     TrackUploadService,
 )
-from store.tests.factories import AlbumFactory, ReleaseTrackFactory
+from store.tests.factories import ReleaseTrackFactory
 
 
 @pytest.mark.django_db
 class TestTrackUploadCleanupService:
     """Тесты уборки технических треков и staging-файлов."""
 
-    def test_deletes_abandoned_upload_and_pending_track(
+    def test_deletes_abandoned_upload_and_recording(
         self,
+        artist_user,
         settings,
         tmp_path,
         monkeypatch,
     ):
-        """Удаляет staging, ReleaseTrack, Product, Recording и upload."""
+        """Удаляет staging, независимую Recording и upload."""
         settings.USE_S3_MEDIA = False
 
         storage = FileSystemStorage(
@@ -42,17 +43,15 @@ class TestTrackUploadCleanupService:
             storage,
         )
 
-        album = AlbumFactory()
         file_content = b'test audio content'
 
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
             filename='abandoned.flac',
             size=len(file_content),
             content_type='audio/flac',
         )
-        recording = release_track.recording
 
         TrackUploadService.receive_local_file(
             upload=upload,
@@ -70,7 +69,7 @@ class TestTrackUploadCleanupService:
         )
 
         assert storage.exists(upload.staging_key)
-        assert Product.objects.filter(track_id=release_track.pk).exists()
+        assert not recording.release_tracks.exists()
 
         result = TrackUploadCleanupService.cleanup_expired()
 
@@ -80,18 +79,17 @@ class TestTrackUploadCleanupService:
             'storage_errors': 0,
         }
         assert not storage.exists(upload.staging_key)
-        assert not ReleaseTrack.objects.filter(pk=release_track.pk).exists()
         assert not Recording.objects.filter(pk=recording.pk).exists()
         assert not TrackUpload.objects.filter(pk=upload.pk).exists()
-        assert not Product.objects.filter(track_id=release_track.pk).exists()
 
     def test_keeps_recent_pending_upload(
         self,
+        artist_user,
         settings,
         tmp_path,
         monkeypatch,
     ):
-        """Не удаляет технический трек до истечения срока очистки."""
+        """Не удаляет запись до истечения срока очистки."""
         settings.USE_S3_MEDIA = False
 
         storage = FileSystemStorage(
@@ -106,11 +104,9 @@ class TestTrackUploadCleanupService:
             storage,
         )
 
-        album = AlbumFactory()
-
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
             filename='recent.flac',
             size=10,
             content_type='audio/flac',
@@ -123,19 +119,17 @@ class TestTrackUploadCleanupService:
             'skipped': 0,
             'storage_errors': 0,
         }
-        assert ReleaseTrack.objects.filter(pk=release_track.pk).exists()
-        assert Recording.objects.filter(
-            pk=release_track.recording_id,
-        ).exists()
+        assert Recording.objects.filter(pk=recording.pk).exists()
         assert TrackUpload.objects.filter(pk=upload.pk).exists()
 
     def test_keeps_upload_when_staging_cleanup_fails(
         self,
+        artist_user,
         settings,
         tmp_path,
         monkeypatch,
     ):
-        """Не удаляет БД-черновик, если staging-файл удалить не удалось."""
+        """Не удаляет запись, если staging-файл удалить не удалось."""
         settings.USE_S3_MEDIA = False
 
         storage = FileSystemStorage(
@@ -150,11 +144,9 @@ class TestTrackUploadCleanupService:
             storage,
         )
 
-        album = AlbumFactory()
-
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
             filename='failed-cleanup.flac',
             size=10,
             content_type='audio/flac',
@@ -176,11 +168,7 @@ class TestTrackUploadCleanupService:
             'skipped': 0,
             'storage_errors': 1,
         }
-        assert ReleaseTrack.objects.filter(pk=release_track.pk).exists()
-        assert Recording.objects.filter(
-            pk=release_track.recording_id,
-        ).exists()
-        assert Product.objects.filter(track_id=release_track.pk).exists()
+        assert Recording.objects.filter(pk=recording.pk).exists()
         assert TrackUpload.objects.filter(pk=upload.pk).exists()
 
     def test_replacement_cleanup_keeps_recording_release_track_and_product(
@@ -212,7 +200,7 @@ class TestTrackUploadCleanupService:
         original_audio_name = recording.audio_file.name
         staging_content = b'replacement audio'
         upload = TrackUploadService.create_replacement_upload(
-            track=release_track,
+            recording=recording,
             filename='replacement.flac',
             size=len(staging_content),
             content_type='audio/flac',
@@ -248,6 +236,7 @@ class TestTrackUploadCleanupService:
 
     def test_create_cleanup_keeps_recording_that_already_has_audio(
         self,
+        artist_user,
         settings,
         tmp_path,
         monkeypatch,
@@ -262,15 +251,13 @@ class TestTrackUploadCleanupService:
         audio_file_field = Recording._meta.get_field('audio_file')
         monkeypatch.setattr(audio_file_field, 'storage', storage)
 
-        album = AlbumFactory()
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
             filename='created.flac',
             size=10,
             content_type='audio/flac',
         )
-        recording = release_track.recording
         TrackUploadService.receive_local_file(
             upload=upload,
             uploaded_file=SimpleUploadedFile(
@@ -297,5 +284,3 @@ class TestTrackUploadCleanupService:
         assert not storage.exists(upload.staging_key)
         assert not TrackUpload.objects.filter(pk=upload.pk).exists()
         assert Recording.objects.filter(pk=recording.pk).exists()
-        assert ReleaseTrack.objects.filter(pk=release_track.pk).exists()
-        assert Product.objects.filter(track_id=release_track.pk).exists()

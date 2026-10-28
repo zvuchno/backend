@@ -18,8 +18,9 @@ from store.constants import (
     MAX_PRICE_DIGITS,
     MONEY_DISPLAY_PRECISION,
     SINGLE_TRACK_COUNT_ERROR,
+    ZERO_MONEY,
 )
-from store.models import Album, ReleaseTrack
+from store.models import Album, Recording, ReleaseTrack
 from store.services import TrackService
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.audio.schedule import TrackGeneratedAudioScheduler
@@ -288,6 +289,25 @@ class TrackWriteSerializer(
             instance,
             context=self.context,
         ).data
+
+
+class TrackPlacementCreateSerializer(serializers.Serializer):
+    """Входные данные для размещения существующей записи."""
+
+    recording_id = serializers.PrimaryKeyRelatedField(
+        source='recording',
+        queryset=Recording.objects.all(),
+    )
+    price = serializers.DecimalField(
+        max_digits=MAX_PRICE_DIGITS,
+        decimal_places=MONEY_DISPLAY_PRECISION,
+        min_value=ZERO_MONEY,
+        required=False,
+    )
+    allow_overpay = serializers.BooleanField(
+        required=False,
+        default=False,
+    )
 
 
 class TrackReorderSerializer(serializers.Serializer):

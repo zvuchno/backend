@@ -2,16 +2,19 @@ from rest_framework import serializers
 
 from store.constants import (
     MAX_CHAR_LENGTH,
-    MAX_PRICE_DIGITS,
-    MONEY_DISPLAY_PRECISION,
 )
-from store.models import TrackUpload
+from store.models import Recording, ReleaseTrack, TrackUpload
 from store.validators import validate_isrc_format
+from users.models import ArtistProfile
 
 
 class TrackUploadInitiateSerializer(serializers.Serializer):
-    """Валидирует создание чернового трека и попытки загрузки."""
+    """Валидирует создание мастер-записи и начало загрузки оригинала."""
 
+    artist = serializers.PrimaryKeyRelatedField(
+        queryset=ArtistProfile.objects.all(),
+        source='owner',
+    )
     filename = serializers.CharField(max_length=MAX_CHAR_LENGTH)
     size = serializers.IntegerField(min_value=1)
     content_type = serializers.CharField(
@@ -31,15 +34,6 @@ class TrackUploadInitiateSerializer(serializers.Serializer):
         required=False,
         allow_blank=True,
         default='',
-    )
-    price = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-        required=False,
-    )
-    allow_overpay = serializers.BooleanField(
-        required=False,
-        default=False,
     )
     isrc = serializers.CharField(
         required=False,
@@ -68,18 +62,12 @@ class TrackUploadTransportSerializer(serializers.Serializer):
     file_field_name = serializers.CharField()
 
 
-class TrackUploadTrackSerializer(serializers.Serializer):
-    """Описывает черновой или финализированный трек загрузки."""
+class TrackUploadRecordingSerializer(serializers.Serializer):
+    """Данные мастер-записи в ответе direct upload."""
 
     id = serializers.IntegerField()
     name = serializers.CharField()
-    description = serializers.CharField()
-    position = serializers.IntegerField(allow_null=True)
-    price = serializers.DecimalField(
-        max_digits=MAX_PRICE_DIGITS,
-        decimal_places=MONEY_DISPLAY_PRECISION,
-    )
-    allow_overpay = serializers.BooleanField()
+    description = serializers.CharField(allow_blank=True)
     isrc = serializers.CharField(allow_null=True)
 
 
@@ -98,9 +86,9 @@ class TrackUploadStateSerializer(serializers.Serializer):
 
 
 class TrackUploadResponseSerializer(serializers.Serializer):
-    """Ответ API прямой загрузки трека."""
+    """Ответ API прямой загрузки мастер-записи."""
 
-    track = TrackUploadTrackSerializer()
+    recording = TrackUploadRecordingSerializer()
     upload = TrackUploadStateSerializer()
 
 
@@ -120,8 +108,8 @@ class TrackUploadLocalFileResponseSerializer(serializers.Serializer):
     upload = TrackUploadLocalFileStateSerializer()
 
 
-class TrackUploadFileInitiateSerializer(serializers.Serializer):
-    """Валидирует начало загрузки файла для существующего трека."""
+class TrackReplacementUploadInitiateSerializer(serializers.Serializer):
+    """Валидирует замену оригинала по track_id или recording_id."""
 
     filename = serializers.CharField(max_length=MAX_CHAR_LENGTH)
     size = serializers.IntegerField(min_value=1)
@@ -131,3 +119,41 @@ class TrackUploadFileInitiateSerializer(serializers.Serializer):
         allow_blank=True,
         default='',
     )
+
+    track_id = serializers.PrimaryKeyRelatedField(
+        source='release_track',
+        queryset=ReleaseTrack.objects.select_related('recording'),
+        required=False,
+    )
+    recording_id = serializers.PrimaryKeyRelatedField(
+        source='recording',
+        queryset=Recording.objects.all(),
+        required=False,
+    )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        release_track = attrs.pop('release_track', None)
+        recording = attrs.get('recording')
+
+        if release_track is None and recording is None:
+            raise serializers.ValidationError(
+                'Необходимо указать track_id или recording_id.',
+            )
+
+        if release_track is not None:
+            if (
+                recording is not None
+                and recording.pk != release_track.recording_id
+            ):
+                raise serializers.ValidationError({
+                    'recording_id': (
+                        'Указанные track_id и recording_id '
+                        'относятся к разным записям.'
+                    ),
+                })
+
+            attrs['recording'] = release_track.recording
+
+        return attrs

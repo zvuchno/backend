@@ -10,11 +10,9 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Max
 from django.utils import timezone
 
-from store.constants import SINGLE_TRACK_COUNT_ERROR
-from store.models import Album, ReleaseTrack, TrackUpload
+from store.models import TrackUpload
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.audio import TrackGeneratedAudioScheduler
 from store.upload_paths import track_audio_upload_to
@@ -35,7 +33,6 @@ class TrackUploadStorageService:
         cls,
         *,
         upload: TrackUpload,
-        release_track: ReleaseTrack,
     ) -> TrackUpload:
         """Завершает загрузку файла.
 
@@ -47,11 +44,6 @@ class TrackUploadStorageService:
             .select_for_update()
             .select_related('track')
             .get(pk=upload.pk)
-        )
-
-        cls._validate_release_track_context(
-            upload=upload,
-            release_track=release_track,
         )
 
         if upload.status == TrackUpload.Status.COMPLETED:
@@ -86,61 +78,12 @@ class TrackUploadStorageService:
                 'Размер staging-файла не совпадает с ожидаемым.',
             )
 
-        if upload.purpose == TrackUpload.Purpose.CREATE:
-            album = Album.objects.select_for_update().get(
-                pk=release_track.release_id,
-            )
-
-            try:
-                release_track = ReleaseTrack.objects.select_for_update().get(
-                    pk=release_track.pk,
-                    release_id=album.pk,
-                    recording_id=upload.track_id,
-                )
-            except ReleaseTrack.DoesNotExist as exc:
-                raise TrackUploadStorageError(
-                    'Размещение изменилось или удалено во время загрузки.',
-                ) from exc
-
-            if (
-                album.release_type == Album.ReleaseType.SINGLE
-                and album.is_published
-                and album.tracks
-                .filter(is_active=True)
-                .exclude(pk=release_track.pk)
-                .exists()
-            ):
-                raise TrackUploadStorageError(
-                    SINGLE_TRACK_COUNT_ERROR,
-                )
-
-            last_position = (
-                ReleaseTrack.objects.filter(
-                    release=album,
-                    position__isnull=False,
-                ).aggregate(
-                    max_position=Max('position'),
-                )
-            )['max_position']
-
-            release_track.position = (last_position or 0) + 1
-            release_track.is_active = True
-
         recording = upload.track
 
         cls._set_recording_audio(
             recording=recording,
             final_key=final_key,
         )
-
-        if upload.purpose == TrackUpload.Purpose.CREATE:
-            release_track.save(
-                update_fields=(
-                    'position',
-                    'is_active',
-                    'updated_at',
-                ),
-            )
 
         upload.status = TrackUpload.Status.COMPLETED
         upload.uploaded_size = uploaded_size
@@ -174,41 +117,6 @@ class TrackUploadStorageService:
         )
 
         return upload
-
-    @staticmethod
-    def _validate_release_track_context(
-        *,
-        upload: TrackUpload,
-        release_track: ReleaseTrack,
-    ) -> None:
-        """Проверяет соответствие размещения попытке загрузки."""
-        exists = ReleaseTrack.objects.filter(
-            pk=release_track.pk,
-            recording_id=upload.track_id,
-        ).exists()
-
-        if not exists:
-            raise TrackUploadStorageError(
-                'Размещение не относится к загружаемой записи.',
-            )
-
-        if (
-            upload.purpose != TrackUpload.Purpose.CREATE
-            or upload.status == TrackUpload.Status.COMPLETED
-        ):
-            return
-
-        release_track_ids = list(
-            ReleaseTrack.objects
-            .filter(recording_id=upload.track_id)
-            .order_by('pk')
-            .values_list('pk', flat=True)[:2],
-        )
-
-        if release_track_ids != [release_track.pk]:
-            raise TrackUploadStorageError(
-                'Невозможно однозначно определить размещение записи.',
-            )
 
     @staticmethod
     def _set_recording_audio(*, recording, final_key: str) -> None:

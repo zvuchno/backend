@@ -2,13 +2,19 @@
 
 from django.db import transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from common.access import managed_artist_q
-from common.permissions import IsArtistOrLabel, IsStoreObjectManager
+from common.permissions import (
+    CanCreateArtistContent,
+    IsArtistOrLabel,
+    IsStoreObjectManager,
+)
 
 from .mixins import (
     ProductActionMixin,
@@ -16,15 +22,16 @@ from .mixins import (
     TrackReadQuerysetMixin,
 )
 from store.filters import TrackFilter
-from store.models import ReleaseTrack
+from store.models import Album, ReleaseTrack
 from store.schema import track_reorder_schema, track_schema
 from store.serializers import (
+    TrackPlacementCreateSerializer,
     TrackReadDetailSerializer,
     TrackReadSerializer,
     TrackReorderSerializer,
     TrackWriteSerializer,
 )
-from store.services import get_track_sales_stats, reorder_objects
+from store.services import TrackService, get_track_sales_stats, reorder_objects
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
 
@@ -202,4 +209,36 @@ class TrackViewSet(
                 many=True,
                 context=self.get_serializer_context(),
             ).data,
+        )
+
+
+class AlbumTrackCreateView(APIView):
+    """Размещает существующую запись в релизе."""
+
+    permission_classes = (CanCreateArtistContent,)
+
+    def post(self, request, album_id):
+        album = get_object_or_404(Album, pk=album_id)
+
+        serializer = TrackPlacementCreateSerializer(
+            data=request.data,
+        )
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+
+        track = TrackService.add_recording(
+            release=album,
+            recording=data['recording'],
+            user=request.user,
+            price=data.get('price'),
+            allow_overpay=data['allow_overpay'],
+        )
+
+        return Response(
+            TrackReadDetailSerializer(
+                track,
+                context={'request': request},
+            ).data,
+            status=status.HTTP_201_CREATED,
         )

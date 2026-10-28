@@ -1,7 +1,6 @@
 """Тесты сервисов загрузки оригинальных файлов треков."""
 
 from datetime import timedelta
-from decimal import Decimal
 from unittest.mock import Mock, patch
 
 import pytest
@@ -9,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from store.constants import MAX_AUDIOFILE_SIZE_MB
-from store.models import TrackUpload
+from store.models import Product, Recording, ReleaseTrack, TrackUpload
 from store.services.track_upload import (
     TrackUploadService,
     TrackUploadTransportService,
@@ -25,57 +24,6 @@ from store.tests.factories import (
 class TestTrackUploadService:
     """Тесты подготовки треков к загрузке."""
 
-    def test_creates_pending_track_and_upload(self):
-        """Создаёт Recording, ReleaseTrack, Product и upload записи."""
-        album = AlbumFactory()
-
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
-            filename='01. Intro.flac',
-            size=10,
-            content_type='audio/flac',
-        )
-        recording = release_track.recording
-
-        assert release_track.release == album
-        assert release_track.position is None
-        assert release_track.is_active is False
-        assert recording.owner == album.artist
-        assert recording.name == '01. Intro'
-        assert not recording.audio_file
-
-        assert release_track.product.price == Decimal('0.00')
-        assert release_track.product.variants.count() == 1
-
-        assert upload.track == recording
-        assert upload.status == TrackUpload.Status.INITIATED
-        assert upload.original_filename == '01. Intro.flac'
-        assert upload.expected_size == 10
-        assert upload.content_type == 'audio/flac'
-        assert upload.staging_key.startswith(
-            f'staging/track-uploads/{recording.pk}/',
-        )
-
-    def test_pending_release_track_does_not_take_position(self):
-        """Незавершённая загрузка не занимает позицию в релизе."""
-        album = AlbumFactory()
-
-        ReleaseTrackFactory(
-            release=album,
-            position=4,
-        )
-
-        release_track, _ = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
-            filename='Next.mp3',
-            size=10,
-        )
-
-        assert release_track.position is None
-        assert release_track.is_active is False
-
     @pytest.mark.parametrize(
         'filename',
         (
@@ -84,84 +32,44 @@ class TestTrackUploadService:
             'track',
         ),
     )
-    def test_rejects_unsupported_extension(self, filename):
-        """Не создаёт трек для файла с неподдерживаемым расширением."""
-        album = AlbumFactory()
-
+    def test_rejects_unsupported_extension(self, artist_user, filename):
+        """Не создаёт запись для файла с неподдерживаемым расширением."""
         with pytest.raises(ValidationError):
-            TrackUploadService.create_pending_track(
-                album=album,
-                created_by=album.created_by,
+            TrackUploadService.create_recording_upload(
+                owner=artist_user.artist_profile,
+                created_by=artist_user,
                 filename=filename,
                 size=10,
             )
 
-        assert album.tracks.count() == 0
+        assert Recording.objects.count() == 0
         assert TrackUpload.objects.count() == 0
 
-    def test_rejects_empty_file(self):
-        """Не создаёт трек для файла нулевого размера."""
-        album = AlbumFactory()
-
+    def test_rejects_empty_file(self, artist_user):
+        """Не создаёт запись для файла нулевого размера."""
         with pytest.raises(ValidationError):
-            TrackUploadService.create_pending_track(
-                album=album,
-                created_by=album.created_by,
+            TrackUploadService.create_recording_upload(
+                owner=artist_user.artist_profile,
+                created_by=artist_user,
                 filename='empty.mp3',
                 size=0,
             )
 
-        assert album.tracks.count() == 0
+        assert Recording.objects.count() == 0
         assert TrackUpload.objects.count() == 0
 
-    def test_rejects_too_large_file(self):
-        """Не создаёт трек для файла больше допустимого размера."""
-        album = AlbumFactory()
-
+    def test_rejects_too_large_file(self, artist_user):
+        """Не создаёт запись для файла больше допустимого размера."""
         with pytest.raises(ValidationError):
-            TrackUploadService.create_pending_track(
-                album=album,
-                created_by=album.created_by,
+            TrackUploadService.create_recording_upload(
+                owner=artist_user.artist_profile,
+                created_by=artist_user,
                 filename='huge.flac',
                 size=(MAX_AUDIOFILE_SIZE_MB * 1024 * 1024) + 1,
             )
 
-        assert album.tracks.count() == 0
+        assert Recording.objects.count() == 0
         assert TrackUpload.objects.count() == 0
-
-    def test_creates_pending_track_with_api_metadata(self):
-        """Создаёт черновой трек с метаданными из API-формы."""
-        album = AlbumFactory()
-
-        release_track, upload = TrackUploadService.create_pending_track(
-            album=album,
-            created_by=album.created_by,
-            filename='01. Original name.flac',
-            size=10,
-            content_type='audio/flac',
-            name='Новое название',
-            description='Описание трека.',
-            price=Decimal('150.00'),
-            allow_overpay=True,
-            isrc='RUA1B2345678',
-        )
-        recording = release_track.recording
-
-        assert release_track.release == album
-        assert release_track.position is None
-        assert release_track.is_active is False
-        assert recording.name == 'Новое название'
-        assert recording.description == 'Описание трека.'
-        assert recording.isrc == 'RUA1B2345678'
-        assert not recording.audio_file
-
-        assert release_track.product.price == Decimal('150.00')
-        assert release_track.product.allow_overpay is True
-        assert release_track.product.variants.count() == 1
-
-        assert upload.track == recording
-        assert upload.status == TrackUpload.Status.INITIATED
-        assert upload.original_filename == '01. Original name.flac'
 
     def test_creates_replacement_upload_for_existing_track(self):
         """Создаёт попытку замены файла существующего трека."""
@@ -169,7 +77,7 @@ class TestTrackUploadService:
         recording = release_track.recording
 
         upload = TrackUploadService.create_replacement_upload(
-            track=release_track,
+            recording=recording,
             filename='new-original.flac',
             size=10,
             content_type='audio/flac',
@@ -194,15 +102,145 @@ class TestTrackUploadService:
     def test_replacement_upload_rejects_invalid_file(self):
         """Не создаёт попытку замены для неподдерживаемого файла."""
         release_track = ReleaseTrackFactory()
+        recording = release_track.recording
 
         with pytest.raises(ValidationError):
             TrackUploadService.create_replacement_upload(
-                track=release_track,
+                recording=recording,
                 filename='new-original.jpg',
                 size=10,
                 content_type='image/jpeg',
             )
 
+        assert TrackUpload.objects.count() == 0
+
+    def test_creates_replacement_without_release(self):
+        """Для замены оригинала не требуется ReleaseTrack."""
+        recording = RecordingFactory()
+
+        upload = TrackUploadService.create_replacement_upload(
+            recording=recording,
+            filename='new-original.flac',
+            size=100,
+            content_type='audio/flac',
+        )
+
+        assert upload.track_id == recording.pk
+        assert upload.purpose == TrackUpload.Purpose.REPLACE
+        assert upload.status == TrackUpload.Status.INITIATED
+        assert not recording.release_tracks.exists()
+
+
+@pytest.mark.django_db
+class TestRecordingUploadCreation:
+    """Независимое создание мастер-записи для direct upload."""
+
+    def test_creates_recording_and_upload_only(self, artist_user):
+        """Создаёт Recording и TrackUpload без размещения и товара."""
+        recording_count = Recording.objects.count()
+
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
+            filename='01. Intro.flac',
+            size=1024,
+            content_type='audio/flac',
+            name='Intro',
+            description='Описание записи',
+            isrc='RUA1B2345678',
+        )
+
+        assert Recording.objects.count() == recording_count + 1
+
+        recording.refresh_from_db()
+
+        assert recording.owner == artist_user.artist_profile
+        assert recording.created_by == artist_user
+        assert recording.name == 'Intro'
+        assert recording.description == 'Описание записи'
+        assert recording.isrc == 'RUA1B2345678'
+        assert not recording.audio_file
+
+        assert upload.track_id == recording.pk
+        assert upload.purpose == TrackUpload.Purpose.CREATE
+        assert upload.status == TrackUpload.Status.INITIATED
+        assert upload.expected_size == 1024
+        assert upload.original_filename == '01. Intro.flac'
+        assert upload.content_type == 'audio/flac'
+        assert upload.staging_key.startswith(
+            f'staging/track-uploads/{recording.pk}/',
+        )
+
+        assert not ReleaseTrack.objects.filter(
+            recording=recording,
+        ).exists()
+        assert Product.objects.count() == 0
+
+    def test_uses_filename_when_name_is_empty(self, artist_user):
+        """Подставляет название из имени исходного файла."""
+        recording, _ = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
+            filename='My New Track.mp3',
+            size=100,
+            name='  ',
+        )
+
+        assert recording.name == 'My New Track'
+        assert recording.isrc is None
+
+    def test_does_not_change_existing_release(self, artist_user):
+        """Создание записи не меняет состав релиза."""
+        album = AlbumFactory(
+            artist=artist_user.artist_profile,
+        )
+        existing = ReleaseTrackFactory(
+            release=album,
+            position=3,
+        )
+
+        recording, _ = TrackUploadService.create_recording_upload(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
+            filename='Another Track.wav',
+            size=100,
+        )
+
+        assert album.tracks.count() == 1
+        assert album.tracks.get().pk == existing.pk
+        assert not recording.release_tracks.exists()
+
+    @pytest.mark.parametrize(
+        'filename',
+        ('track.jpg', 'track.mp4', 'track'),
+    )
+    def test_rejects_invalid_file(self, artist_user, filename):
+        """Неподдерживаемый файл не создаёт запись и upload."""
+        recording_count = Recording.objects.count()
+
+        with pytest.raises(ValidationError):
+            TrackUploadService.create_recording_upload(
+                owner=artist_user.artist_profile,
+                created_by=artist_user,
+                filename=filename,
+                size=100,
+            )
+
+        assert Recording.objects.count() == recording_count
+        assert TrackUpload.objects.count() == 0
+
+    def test_rejects_invalid_isrc(self, artist_user):
+        """Некорректный ISRC не оставляет записей в базе."""
+        with pytest.raises(ValidationError):
+            TrackUploadService.create_recording_upload(
+                owner=artist_user.artist_profile,
+                created_by=artist_user,
+                filename='track.flac',
+                size=100,
+                isrc='INVALID',
+            )
+
+        assert Recording.objects.count() == 0
         assert TrackUpload.objects.count() == 0
 
 

@@ -7,7 +7,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
-    AlbumTrackUploadInitiateView,
+    AlbumTrackCreateView,
     AlbumViewSet,
     ArtistReportViewSet,
     BonusViewSet,
@@ -34,8 +34,9 @@ from .views import (
     PurchasedMusicTrackDownloadLinkView,
     PurchasedMusicView,
     SalesExportView,
-    TrackFileUploadInitiateView,
+    TrackReplacementUploadInitiateView,
     TrackUploadCompleteView,
+    TrackUploadInitiateView,
     TrackUploadReceiveFileView,
     TrackViewSet,
     yookassa_webhook,
@@ -114,9 +115,9 @@ urlpatterns = [
         name='player-play-track',
     ),
     path(
-        'albums/<int:album_id>/track-uploads/initiate/',
-        AlbumTrackUploadInitiateView.as_view(),
-        name='track-upload-initiate',
+        'albums/<int:album_id>/tracks/',
+        AlbumTrackCreateView.as_view(),
+        name='album-track-create',
     ),
     path(
         'track-uploads/<int:upload_id>/file/',
@@ -129,9 +130,14 @@ urlpatterns = [
         name='track-upload-complete',
     ),
     path(
-        'tracks/<int:track_id>/file-upload/initiate/',
-        TrackFileUploadInitiateView.as_view(),
-        name='track-file-upload-initiate',
+        'track-uploads/initiate/',
+        TrackUploadInitiateView.as_view(),
+        name='track-upload-initiate',
+    ),
+    path(
+        'track-uploads/replace/initiate/',
+        TrackReplacementUploadInitiateView.as_view(),
+        name='track-upload-replace-initiate',
     ),
     path(
         'artists/me/sales/export/',

@@ -29,16 +29,16 @@ from .purchased_music import (
 )
 from .report import ArtistReportViewSet
 from .sale import ArtistSaleViewSet
-from .track import TrackViewSet
+from .track import AlbumTrackCreateView, TrackViewSet
 from .track_upload import (
-    AlbumTrackUploadInitiateView,
-    TrackFileUploadInitiateView,
+    TrackReplacementUploadInitiateView,
     TrackUploadCompleteView,
+    TrackUploadInitiateView,
     TrackUploadReceiveFileView,
 )
 
 __all__ = [
-    'AlbumTrackUploadInitiateView',
+    'AlbumTrackCreateView',
     'AlbumViewSet',
     'ArtistReportViewSet',
     'ArtistSaleViewSet',
@@ -66,7 +66,8 @@ __all__ = [
     'PurchasedMusicTrackDownloadLinkView',
     'PurchasedMusicView',
     'SalesExportView',
-    'TrackFileUploadInitiateView',
+    'TrackReplacementUploadInitiateView',
+    'TrackUploadInitiateView',
     'TrackUploadCompleteView',
     'TrackUploadReceiveFileView',
     'TrackViewSet',
