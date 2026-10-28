@@ -5,13 +5,13 @@ class SitemapEntrySerializer(serializers.Serializer):
     """Запись для sitemap. URL собирает фронтенд по type + id/slug."""
 
     type = serializers.CharField(
-        help_text='Тип страницы: release, merch или artist.',
+        help_text='Тип страницы: release, merch или artists.',
     )
     id = serializers.IntegerField(
         allow_null=True,
         help_text=(
             'ID релиза (Album) или мерча (Merch), как в target.id '
-            'карточки каталога. Для artist равен null.'
+            'карточки каталога. Для artists равен null.'
         ),
     )
     slug = serializers.CharField(

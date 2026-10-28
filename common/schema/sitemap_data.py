@@ -38,7 +38,7 @@ sitemap_schema = extend_schema_view(
                         'lastmod': '2026-10-15T09:30:00Z',
                     },
                     {
-                        'type': 'artist',
+                        'type': 'artists',
                         'id': None,
                         'slug': 'some-artist',
                         'lastmod': '2026-10-14T08:00:00Z',
