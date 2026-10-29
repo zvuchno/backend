@@ -352,6 +352,44 @@ def test_build_excludes_inactive_tracks(
             assert zip_file.read('01 - Первый - трек.mp3') == b'first-audio'
 
 
+@pytest.mark.parametrize(
+    ('status', 'pending_hash'),
+    (
+        (AlbumArchive.Status.READY, 'failed-hash'),
+        (AlbumArchive.Status.BUILDING, 'failed-hash'),
+        (AlbumArchive.Status.PENDING, 'newer-hash'),
+    ),
+)
+@patch(
+    'store.tasks.album_archive.build_album_archive.apply_async',
+    side_effect=RuntimeError('Broker unavailable'),
+)
+def test_enqueue_failure_does_not_overwrite_newer_archive_state(
+    _mocked_task,
+    status,
+    pending_hash,
+):
+    """Ошибка старого enqueue не меняет актуальное состояние архива."""
+    album = AlbumFactory()
+    archive = AlbumArchive.objects.create(
+        album=album,
+        status=status,
+        pending_hash=pending_hash,
+        error_message='current state',
+    )
+
+    AlbumArchiveScheduler._enqueue_safely(
+        album_id=album.pk,
+        content_hash='failed-hash',
+    )
+
+    archive.refresh_from_db()
+
+    assert archive.status == status
+    assert archive.pending_hash == pending_hash
+    assert archive.error_message == 'current state'
+
+
 @patch(
     'store.tasks.album_archive.build_album_archive.apply_async',
 )

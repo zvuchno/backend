@@ -510,15 +510,46 @@ class AlbumArchiveScheduler:
             ),
         )
 
-        from store.tasks.album_archive import build_album_archive
-
         transaction.on_commit(
             lambda album_id=album.pk, content_hash=expected_hash: (
-                build_album_archive.apply_async(
-                    args=(album_id, content_hash),
-                    countdown=cls.REBUILD_DELAY_SECONDS,
+                cls._enqueue_safely(
+                    album_id=album_id,
+                    content_hash=content_hash,
                 )
             ),
+            robust=True,
         )
 
         return True
+
+    @classmethod
+    def _enqueue_safely(
+        cls,
+        *,
+        album_id: int,
+        content_hash: str,
+    ) -> None:
+        """Ставит сборку ZIP в очередь, не прерывая другие callbacks."""
+        try:
+            from store.tasks.album_archive import build_album_archive
+
+            build_album_archive.apply_async(
+                args=(album_id, content_hash),
+                countdown=cls.REBUILD_DELAY_SECONDS,
+            )
+        except Exception as error:
+            logger.exception(
+                'Не удалось поставить сборку архива в очередь для альбома %s.',
+                album_id,
+            )
+            AlbumArchive.objects.filter(
+                album_id=album_id,
+                pending_hash=content_hash,
+                status=AlbumArchive.Status.PENDING,
+            ).update(
+                status=AlbumArchive.Status.FAILED,
+                error_message=str(error)[
+                    : AlbumArchiveService.MAX_ERROR_MESSAGE_LENGTH
+                ],
+                updated_at=timezone.now(),
+            )

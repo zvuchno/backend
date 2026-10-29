@@ -1,16 +1,25 @@
 """Тесты завершения загрузки оригинальных файлов треков."""
 
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import call, patch
 
 import pytest
 from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 
-from store.models import Recording, TrackUpload
+from store.models import (
+    AlbumArchive,
+    Product,
+    Recording,
+    ReleaseTrack,
+    TrackUpload,
+)
 from store.services import ProductService
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.track_upload import (
+    TrackUploadCleanupService,
     TrackUploadService,
     TrackUploadStorageError,
     TrackUploadStorageService,
@@ -529,3 +538,244 @@ class TestTrackUploadStorageService:
             second_release_track.position,
         ) == initial_positions
         assert second_release_track.recording_id == recording.pk
+
+    def test_archive_enqueue_failure_does_not_block_callbacks_and_retry(
+        self,
+        settings,
+        tmp_path,
+        monkeypatch,
+        django_capture_on_commit_callbacks,
+    ):
+        """Ошибка первой ZIP-задачи не мешает остальным callbacks и retry."""
+        settings.USE_S3_MEDIA = False
+
+        storage = FileSystemStorage(
+            location=tmp_path,
+            base_url='/private/',
+        )
+        audio_file_field = Recording._meta.get_field('audio_file')
+        monkeypatch.setattr(audio_file_field, 'storage', storage)
+
+        first_album = AlbumFactory()
+        second_album = AlbumFactory(artist=first_album.artist)
+        file_content = b'shared original content'
+        recording, upload = TrackUploadService.create_recording_upload(
+            owner=first_album.artist,
+            created_by=first_album.created_by,
+            filename='shared.flac',
+            size=len(file_content),
+            content_type='audio/flac',
+        )
+        ReleaseTrackFactory(release=first_album, recording=recording)
+        ReleaseTrackFactory(release=second_album, recording=recording)
+        upload = TrackUploadService.receive_local_file(
+            upload=upload,
+            uploaded_file=SimpleUploadedFile(
+                name='shared.flac',
+                content=file_content,
+                content_type='audio/flac',
+            ),
+        )
+
+        with (
+            patch(
+                'store.services.track_upload.upload_storage.'
+                'TrackGeneratedAudioScheduler.schedule',
+            ),
+            patch.object(
+                AlbumArchiveScheduler,
+                'schedule_by_id',
+                wraps=AlbumArchiveScheduler.schedule_by_id,
+            ) as mocked_archive_schedule,
+            patch(
+                'store.tasks.album_archive.build_album_archive.apply_async',
+                side_effect=(RuntimeError('Broker unavailable'), None),
+            ) as mocked_archive_enqueue,
+            patch.object(
+                TrackUploadStorageService,
+                '_delete_staging_safely',
+                wraps=TrackUploadStorageService._delete_staging_safely,
+            ) as mocked_staging_cleanup,
+        ):
+            with django_capture_on_commit_callbacks(execute=True):
+                completed_upload = TrackUploadStorageService.complete(
+                    upload=upload,
+                )
+
+            recording.refresh_from_db()
+            completed_upload.refresh_from_db()
+
+            assert recording.audio_file
+            assert storage.exists(recording.audio_file.name)
+            assert completed_upload.status == TrackUpload.Status.COMPLETED
+            assert completed_upload.completed_at is not None
+            assert mocked_archive_schedule.call_count == 2
+            mocked_archive_schedule.assert_has_calls(
+                [
+                    call(first_album.pk),
+                    call(second_album.pk),
+                ],
+                any_order=True,
+            )
+            assert mocked_archive_enqueue.call_count == 2
+            failed_album_id = mocked_archive_enqueue.call_args_list[0].kwargs[
+                'args'
+            ][0]
+            successful_album_id = mocked_archive_enqueue.call_args_list[
+                1
+            ].kwargs['args'][0]
+            assert {failed_album_id, successful_album_id} == {
+                first_album.pk,
+                second_album.pk,
+            }
+            mocked_staging_cleanup.assert_called_once()
+            assert not storage.exists(upload.staging_key)
+
+            failed_archive = AlbumArchive.objects.get(
+                album_id=failed_album_id,
+            )
+            successful_archive = AlbumArchive.objects.get(
+                album_id=successful_album_id,
+            )
+            failed_hash = failed_archive.pending_hash
+
+            assert failed_archive.status == AlbumArchive.Status.FAILED
+            assert failed_hash
+            assert failed_archive.error_message == 'Broker unavailable'
+            assert successful_archive.status == AlbumArchive.Status.PENDING
+            assert successful_archive.pending_hash
+
+            mocked_archive_enqueue.reset_mock()
+            mocked_archive_enqueue.side_effect = None
+
+            with django_capture_on_commit_callbacks(execute=True) as callbacks:
+                retry_results = [
+                    AlbumArchiveScheduler.schedule_by_id(failed_album_id),
+                    AlbumArchiveScheduler.schedule_by_id(successful_album_id),
+                ]
+
+            assert retry_results == [True, False]
+            assert len(callbacks) == 1
+            mocked_archive_enqueue.assert_called_once_with(
+                args=(failed_album_id, failed_hash),
+                countdown=AlbumArchiveScheduler.REBUILD_DELAY_SECONDS,
+            )
+
+            failed_archive.refresh_from_db()
+            successful_archive.refresh_from_db()
+
+            assert failed_archive.status == AlbumArchive.Status.PENDING
+            assert failed_archive.pending_hash == failed_hash
+            assert failed_archive.error_message == ''
+            assert successful_archive.status == AlbumArchive.Status.PENDING
+
+    def test_staging_delete_failure_is_not_retried_by_cleanup(
+        self,
+        settings,
+        tmp_path,
+        monkeypatch,
+        django_capture_on_commit_callbacks,
+    ):
+        """COMPLETED-upload со staging не подхватывается cleanup-сервисом."""
+        settings.USE_S3_MEDIA = False
+
+        storage = FileSystemStorage(
+            location=tmp_path,
+            base_url='/private/',
+        )
+        audio_file_field = Recording._meta.get_field('audio_file')
+        monkeypatch.setattr(audio_file_field, 'storage', storage)
+
+        album = AlbumFactory()
+        release_track = ReleaseTrackFactory(
+            release=album,
+            position=7,
+            recording__audio_file=make_audio_file(
+                name='old-original.mp3',
+                content=b'old audio content',
+            ),
+        )
+        recording = release_track.recording
+        product = ProductService.ensure_commerce(
+            release_track,
+            validated_data={
+                'price': Decimal('250.00'),
+                'allow_overpay': True,
+                'variants': [],
+            },
+        )
+        release_track_id = release_track.pk
+        product_id = product.pk
+        position = release_track.position
+
+        file_content = b'new original content'
+        upload = TrackUploadService.create_replacement_upload(
+            recording=recording,
+            filename='new-original.flac',
+            size=len(file_content),
+            content_type='audio/flac',
+        )
+        upload = TrackUploadService.receive_local_file(
+            upload=upload,
+            uploaded_file=SimpleUploadedFile(
+                name='new-original.flac',
+                content=file_content,
+                content_type='audio/flac',
+            ),
+        )
+
+        with (
+            patch(
+                'store.services.track_upload.upload_storage.'
+                'TrackGeneratedAudioScheduler.schedule',
+            ),
+            patch.object(
+                AlbumArchiveScheduler,
+                'schedule_by_id',
+                return_value=True,
+            ),
+            patch.object(
+                TrackUploadStorageService,
+                'delete_staging',
+                side_effect=RuntimeError('Storage unavailable'),
+            ) as mocked_staging_delete,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            completed_upload = TrackUploadStorageService.complete(
+                upload=upload,
+            )
+
+        recording.refresh_from_db()
+        completed_upload.refresh_from_db()
+        release_track.refresh_from_db()
+        product.refresh_from_db()
+
+        assert mocked_staging_delete.call_count == 1
+        assert recording.audio_file
+        assert storage.exists(recording.audio_file.name)
+        with storage.open(recording.audio_file.name, 'rb') as audio_file:
+            assert audio_file.read() == file_content
+        assert completed_upload.status == TrackUpload.Status.COMPLETED
+        assert completed_upload.completed_at is not None
+        assert storage.exists(upload.staging_key)
+
+        assert ReleaseTrack.objects.filter(pk=release_track_id).exists()
+        assert release_track.position == position
+        assert release_track.recording_id == recording.pk
+        assert Product.objects.filter(pk=product_id).exists()
+        assert product.track_id == release_track.pk
+        assert product.price == Decimal('250.00')
+        assert product.allow_overpay is True
+
+        TrackUpload.objects.filter(pk=upload.pk).update(
+            expires_at=timezone.now() - timedelta(days=2),
+        )
+        cleanup_result = TrackUploadCleanupService.cleanup_expired()
+
+        assert cleanup_result == {
+            'deleted': 0,
+            'skipped': 0,
+            'storage_errors': 0,
+        }
+        assert storage.exists(upload.staging_key)
+        assert TrackUpload.objects.filter(pk=upload.pk).exists()
