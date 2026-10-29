@@ -1,0 +1,14 @@
+User-agent: *
+Disallow: /api/
+Disallow: /forgot-password
+Disallow: /reset-password-confirm
+Disallow: /signin
+Disallow: /signup/
+Disallow: /role
+Disallow: /artist/
+Disallow: /fans/
+Disallow: /order
+Disallow: /verify/
+Disallow: /cart
+
+Sitemap: https://zvuchno.space/sitemap.xml

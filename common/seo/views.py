@@ -68,7 +68,7 @@ class SitemapDataView(APIView):
         )
         for row in artists:
             entries.append({
-                'type': 'artist',
+                'type': 'artists',
                 'id': None,
                 'slug': row['slug'],
                 'lastmod': row['updated_at'],
