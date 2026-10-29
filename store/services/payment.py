@@ -17,6 +17,7 @@ from yookassa import Payment as YookassaPayment
 from store.constants import MONEY_ROUNDING
 from store.exceptions import ReceiptValidationError
 from store.models import Order, OrderItem, Payment
+from store.services.album_archive import AlbumArchiveScheduler
 from store.tasks import (
     notify_artists_about_new_order_task,
     register_cdek_orders_task,
@@ -397,6 +398,29 @@ def mark_payment_succeeded(payment):
         order.status = Order.Status.PAID
         order.reserved_until = None
         order.save(update_fields=['status', 'reserved_until', 'updated_at'])
+
+        album_ids = set()
+        product_album_rows = OrderItem.objects.filter(
+            order_id=order.pk,
+        ).values_list(
+            'product_variant__product__album_id',
+            'product_variant__product__merch__album_id',
+            'product_variant__product__merch__kind__is_carrier',
+        )
+
+        for album_id, merch_album_id, merch_is_carrier in product_album_rows:
+            if album_id:
+                album_ids.add(album_id)
+            if merch_is_carrier and merch_album_id:
+                album_ids.add(merch_album_id)
+
+        for album_id in sorted(album_ids):
+            transaction.on_commit(
+                lambda album_id=album_id: AlbumArchiveScheduler.schedule_by_id(
+                    album_id,
+                ),
+                robust=True,
+            )
 
         transaction.on_commit(
             lambda: (
