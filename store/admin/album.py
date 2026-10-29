@@ -12,7 +12,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models, transaction
+from django.db import IntegrityError, models, transaction
 from django.forms import Textarea
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.middleware.csrf import get_token
@@ -23,6 +23,9 @@ from nested_admin.nested import (
     NestedStackedInline,
     NestedTabularInline,
 )
+from rest_framework.exceptions import ValidationError as DRFValidationError
+
+from common.access import can_manage_artist
 
 from .forms import (
     MoneyForm,
@@ -45,12 +48,14 @@ from store.models import (
     AlbumArchive,
     Bonus,
     Product,
+    Recording,
     ReleaseTrack,
     TrackGeneratedAudio,
     TrackUpload,
 )
 from store.services import (
     ProductService,
+    TrackService,
     get_release_sales_stats,
     releases_have_direct_sales,
 )
@@ -567,12 +572,17 @@ class AlbumAdmin(
                 self.admin_site.admin_view(self.complete_track_upload),
                 name='store_track_upload_complete',
             ),
+            path(
+                '<int:album_id>/track-uploads/place/',
+                self.admin_site.admin_view(self.place_recording),
+                name='store_album_track_upload_place',
+            ),
         ]
 
         return custom_urls + urls
 
     def initiate_track_upload(self, request, album_id):
-        """Создаёт черновой трек и попытку загрузки файла."""
+        """Создаёт мастер-запись и попытку загрузки файла."""
         if request.method != 'POST':
             return JsonResponse(
                 {
@@ -586,7 +596,10 @@ class AlbumAdmin(
         if album is None:
             raise Http404('Альбом не найден.')
 
-        if not self.has_change_permission(request, album):
+        if not self.has_change_permission(
+            request,
+            album,
+        ) or not can_manage_artist(request.user, album.artist):
             raise PermissionDenied
 
         try:
@@ -601,27 +614,22 @@ class AlbumAdmin(
 
         try:
             with transaction.atomic():
-                release_track, upload = (
-                    TrackUploadService.create_pending_track(
-                        album=album,
-                        created_by=request.user,
-                        filename=payload.get('filename', ''),
-                        size=payload.get('size', 0),
-                        content_type=payload.get('content_type', ''),
-                    )
+                recording, upload = TrackUploadService.create_recording_upload(
+                    owner=album.artist,
+                    created_by=request.user,
+                    filename=payload.get('filename', ''),
+                    size=payload.get('size', 0),
+                    content_type=payload.get('content_type', ''),
                 )
                 local_upload_path = reverse(
                     'admin:store_track_upload_receive_file',
                     args=(upload.pk,),
                 )
-                local_upload_url = (
-                    f'{local_upload_path}?track_id={release_track.pk}'
-                )
 
                 upload_instruction = (
                     TrackUploadTransportService.create_instruction(
                         upload=upload,
-                        local_upload_url=local_upload_url,
+                        local_upload_url=local_upload_path,
                         local_upload_headers={
                             'X-CSRFToken': get_token(request),
                         },
@@ -646,21 +654,18 @@ class AlbumAdmin(
             'admin:store_track_upload_complete',
             args=(upload.pk,),
         )
-        complete_url = f'{complete_path}?track_id={release_track.pk}'
 
         return JsonResponse(
             {
-                'track': {
-                    'id': release_track.pk,
-                    'name': release_track.name,
-                    'position': release_track.position,
-                    'is_active': release_track.is_active,
+                'recording': {
+                    'id': recording.pk,
+                    'name': recording.name,
                 },
                 'upload': {
                     'id': upload.pk,
                     'status': upload.status,
                     'expires_at': upload_instruction.expires_at.isoformat(),
-                    'complete_url': complete_url,
+                    'complete_url': complete_path,
                     'transport': {
                         'method': upload_instruction.method,
                         'url': upload_instruction.url,
@@ -689,30 +694,16 @@ class AlbumAdmin(
             raise Http404
 
         try:
-            upload = TrackUpload.objects.select_related('track').get(
-                pk=upload_id,
-            )
+            upload = TrackUpload.objects.select_related(
+                'track__owner__label',
+            ).get(pk=upload_id)
         except TrackUpload.DoesNotExist as exc:
             raise Http404('Попытка загрузки не найдена.') from exc
 
-        track_id = request.GET.get('track_id')
-
-        if not track_id or not track_id.isdigit():
-            raise Http404('Трек релиза не найден.')
-
-        try:
-            release_track = ReleaseTrack.objects.select_related(
-                'release',
-            ).get(
-                pk=int(track_id),
-                recording_id=upload.track_id,
-            )
-        except ReleaseTrack.DoesNotExist as exc:
-            raise Http404('Трек релиза не найден.') from exc
-
-        album = release_track.release
-
-        if not self.has_change_permission(request, album):
+        if not self.has_change_permission(request) or not can_manage_artist(
+            request.user,
+            upload.track.owner,
+        ):
             raise PermissionDenied
 
         uploaded_file = request.FILES.get('file')
@@ -760,36 +751,21 @@ class AlbumAdmin(
             )
 
         try:
-            upload = TrackUpload.objects.select_related('track').get(
-                pk=upload_id,
-            )
+            upload = TrackUpload.objects.select_related(
+                'track__owner__label',
+            ).get(pk=upload_id)
         except TrackUpload.DoesNotExist as exc:
             raise Http404('Попытка загрузки не найдена.') from exc
 
-        track_id = request.GET.get('track_id')
-
-        if not track_id or not track_id.isdigit():
-            raise Http404('Трек релиза не найден.')
-
-        try:
-            release_track = ReleaseTrack.objects.select_related(
-                'release',
-            ).get(
-                pk=int(track_id),
-                recording_id=upload.track_id,
-            )
-        except ReleaseTrack.DoesNotExist as exc:
-            raise Http404('Трек релиза не найден.') from exc
-
-        album = release_track.release
-
-        if not self.has_change_permission(request, album):
+        if not self.has_change_permission(request) or not can_manage_artist(
+            request.user,
+            upload.track.owner,
+        ):
             raise PermissionDenied
 
         try:
             upload = TrackUploadStorageService.complete(
                 upload=upload,
-                release_track=release_track,
             )
         except TrackUploadStorageError as exc:
             return JsonResponse(
@@ -799,17 +775,11 @@ class AlbumAdmin(
                 status=HTTPStatus.BAD_REQUEST,
             )
 
-        release_track.refresh_from_db(
-            fields=('position', 'is_active'),
-        )
-
         return JsonResponse(
             {
-                'track': {
-                    'id': release_track.pk,
-                    'name': release_track.name,
-                    'position': release_track.position,
-                    'is_active': release_track.is_active,
+                'recording': {
+                    'id': upload.track.pk,
+                    'name': upload.track.name,
                 },
                 'upload': {
                     'id': upload.pk,
@@ -819,6 +789,143 @@ class AlbumAdmin(
                 },
             },
             status=HTTPStatus.OK,
+        )
+
+    def place_recording(self, request, album_id):
+        """Размещает готовую мастер-запись в выбранном альбоме."""
+        if request.method != 'POST':
+            return JsonResponse(
+                {
+                    'detail': 'Метод не поддерживается.',
+                },
+                status=HTTPStatus.METHOD_NOT_ALLOWED,
+            )
+
+        album = self.get_object(request, str(album_id))
+
+        if album is None:
+            raise Http404('Альбом не найден.')
+
+        try:
+            payload = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {
+                    'detail': 'Некорректный JSON.',
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        recording_id = payload.get('recording_id')
+
+        if not isinstance(recording_id, int) or recording_id <= 0:
+            return JsonResponse(
+                {
+                    'detail': 'Не указана мастер-запись.',
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        try:
+            recording = Recording.objects.select_related(
+                'owner__label',
+            ).get(pk=recording_id)
+        except Recording.DoesNotExist as exc:
+            raise Http404('Мастер-запись не найдена.') from exc
+
+        if not all((
+            self.has_change_permission(request, album),
+            can_manage_artist(request.user, album.artist),
+            can_manage_artist(request.user, recording.owner),
+        )):
+            raise PermissionDenied
+
+        try:
+            track, created = self._add_recording_idempotently(
+                album=album,
+                recording=recording,
+                user=request.user,
+            )
+        except DRFValidationError as exc:
+            return JsonResponse(
+                {
+                    'detail': self._validation_error_detail(exc),
+                },
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        return self._placement_response(track, created=created)
+
+    @staticmethod
+    def _add_recording_idempotently(
+        *,
+        album: Album,
+        recording: Recording,
+        user,
+    ) -> tuple[ReleaseTrack, bool]:
+        """Создаёт размещение или возвращает созданное конкурентно."""
+        existing_track = ReleaseTrack.objects.filter(
+            release=album,
+            recording=recording,
+        ).first()
+
+        if existing_track is not None:
+            return existing_track, False
+
+        try:
+            track = TrackService.add_recording(
+                release=album,
+                recording=recording,
+                user=user,
+            )
+        except (DRFValidationError, IntegrityError):
+            existing_track = ReleaseTrack.objects.filter(
+                release=album,
+                recording=recording,
+            ).first()
+
+            if existing_track is not None:
+                return existing_track, False
+
+            raise
+
+        return track, True
+
+    @staticmethod
+    def _validation_error_detail(error: DRFValidationError) -> object:
+        """Приводит ошибку сервиса к сообщению внутреннего endpoint-а."""
+        detail = error.detail
+        if not isinstance(detail, dict):
+            return detail
+
+        return [
+            str(message)
+            for field_errors in detail.values()
+            for message in (
+                field_errors
+                if isinstance(field_errors, list)
+                else (field_errors,)
+            )
+        ]
+
+    @staticmethod
+    def _placement_response(
+        track: ReleaseTrack,
+        *,
+        created: bool,
+    ) -> JsonResponse:
+        """Возвращает результат идемпотентного размещения записи."""
+        return JsonResponse(
+            {
+                'track': {
+                    'id': track.pk,
+                    'recording_id': track.recording_id,
+                    'position': track.position,
+                    'is_active': track.is_active,
+                },
+                'created': created,
+            },
+            status=(HTTPStatus.CREATED if created else HTTPStatus.OK),
         )
 
     def save_formset(self, request, form, formset, change):

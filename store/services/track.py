@@ -8,6 +8,7 @@ from common.access import can_manage_artist
 
 from store.constants import SINGLE_TRACK_COUNT_ERROR, ZERO_MONEY
 from store.models import Album, Recording, ReleaseTrack
+from store.policies.recording import can_use_recording_in_release
 from store.services import ProductService
 from store.services.album_archive import AlbumArchiveScheduler
 from store.validators import validate_isrc_format
@@ -103,6 +104,13 @@ class TrackService:
             raise PermissionDenied(
                 'Нет прав на использование записи.',
             )
+
+        if not can_use_recording_in_release(recording, release):
+            raise ValidationError({
+                'recording_id': (
+                    'Запись нельзя разместить в релизе этого артиста.'
+                ),
+            })
 
         if not recording.is_active or not recording.audio_file:
             raise ValidationError({

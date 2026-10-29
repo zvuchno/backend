@@ -63,6 +63,98 @@ class TestAddRecording:
             == 1
         )
 
+    def test_superuser_places_recording_in_owners_release(
+        self,
+        artist_user,
+        staff_user,
+    ):
+        """Суперпользователь размещает запись в релизе её владельца."""
+        album = AlbumFactory(
+            artist=artist_user.artist_profile,
+            is_published=False,
+        )
+        recording = RecordingFactory(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
+        )
+
+        track = TrackService.add_recording(
+            release=album,
+            recording=recording,
+            user=staff_user,
+        )
+
+        assert track.release_id == album.pk
+        assert track.recording_id == recording.pk
+        assert track.product.product_type == Product.ProductType.TRACK
+
+    def test_superuser_cannot_mix_independent_artists(
+        self,
+        artist_user,
+        other_artist_user,
+        staff_user,
+    ):
+        """Полномочия суперпользователя не обходят совместимость профилей."""
+        album = AlbumFactory(
+            artist=artist_user.artist_profile,
+            is_published=False,
+        )
+        recording = RecordingFactory(
+            owner=other_artist_user.artist_profile,
+            created_by=other_artist_user,
+        )
+        product_count = Product.objects.count()
+
+        with pytest.raises(ValidationError) as exc_info:
+            TrackService.add_recording(
+                release=album,
+                recording=recording,
+                user=staff_user,
+            )
+
+        assert 'recording_id' in exc_info.value.detail
+        assert not ReleaseTrack.objects.filter(
+            release=album,
+            recording=recording,
+        ).exists()
+        assert Product.objects.count() == product_count
+
+    def test_superuser_cannot_mix_different_labels(
+        self,
+        artist_profile_factory,
+        label_user_factory,
+        signed_artist_user,
+        staff_user,
+    ):
+        """Записи артистов разных лейблов несовместимы."""
+        other_label_user = label_user_factory(
+            email='other-label@test.com',
+            username='other_label',
+        )
+        other_label_artist = artist_profile_factory(
+            user=None,
+            label=other_label_user.artist_profile,
+            name='Other Label Artist',
+        )
+        album = AlbumFactory(
+            artist=signed_artist_user.artist_profile,
+            is_published=False,
+        )
+        recording = RecordingFactory(
+            owner=other_label_artist,
+            created_by=other_label_user,
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            TrackService.add_recording(
+                release=album,
+                recording=recording,
+                user=staff_user,
+            )
+
+        assert 'recording_id' in exc_info.value.detail
+        assert not album.tracks.filter(recording=recording).exists()
+
     def test_assigns_next_position(
         self,
         artist_user,
@@ -171,6 +263,96 @@ class TestAddRecording:
 
         recording.refresh_from_db()
         assert recording.owner_id == label_created_artist.pk
+
+    @pytest.mark.parametrize(
+        'release_owner',
+        ('label', 'artist'),
+    )
+    def test_label_and_managed_artist_recordings_are_compatible(
+        self,
+        label_user,
+        signed_artist_user,
+        release_owner,
+    ):
+        """Профиль лейбла и его артист совместимы в обоих направлениях."""
+        label = label_user.artist_profile
+        artist = signed_artist_user.artist_profile
+        album_artist = label if release_owner == 'label' else artist
+        recording_owner = artist if release_owner == 'label' else label
+        album = AlbumFactory(
+            artist=album_artist,
+            created_by=label_user,
+            is_published=False,
+        )
+        recording = RecordingFactory(
+            owner=recording_owner,
+            created_by=label_user,
+        )
+
+        track = TrackService.add_recording(
+            release=album,
+            recording=recording,
+            user=label_user,
+        )
+
+        assert track.release_id == album.pk
+        assert track.recording_id == recording.pk
+
+    def test_artist_cannot_use_other_artist_recording_from_same_label(
+        self,
+        label_created_artist,
+        signed_artist_user,
+    ):
+        """Общий лейбл не даёт артисту права на чужую запись."""
+        album = AlbumFactory(
+            artist=signed_artist_user.artist_profile,
+            created_by=signed_artist_user,
+            is_published=False,
+        )
+        recording = RecordingFactory(
+            owner=label_created_artist,
+        )
+        product_count = Product.objects.count()
+
+        with pytest.raises(PermissionDenied):
+            TrackService.add_recording(
+                release=album,
+                recording=recording,
+                user=signed_artist_user,
+            )
+
+        assert not album.tracks.filter(recording=recording).exists()
+        assert Product.objects.count() == product_count
+
+    def test_staff_has_no_superuser_access(
+        self,
+        artist_user,
+        user_factory,
+    ):
+        """Обычный staff не управляет чужим релизом и записью."""
+        staff = user_factory(
+            email='track-staff@test.com',
+            username='track_staff',
+            is_staff=True,
+            is_superuser=False,
+        )
+        album = AlbumFactory(
+            artist=artist_user.artist_profile,
+            is_published=False,
+        )
+        recording = RecordingFactory(
+            owner=artist_user.artist_profile,
+            created_by=artist_user,
+        )
+
+        with pytest.raises(PermissionDenied):
+            TrackService.add_recording(
+                release=album,
+                recording=recording,
+                user=staff,
+            )
+
+        assert not album.tracks.filter(recording=recording).exists()
 
     @pytest.mark.parametrize(
         'forbidden_object',

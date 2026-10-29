@@ -8,6 +8,9 @@ def can_manage_artist(user, artist: ArtistProfile | None) -> bool:
     if not user or not user.is_authenticated or artist is None:
         return False
 
+    if user.is_active and user.is_superuser:
+        return True
+
     return artist.user_id == user.id or (
         artist.label_id is not None and artist.label.user_id == user.id
     )
