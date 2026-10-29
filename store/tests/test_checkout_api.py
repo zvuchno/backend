@@ -1,5 +1,8 @@
 """Тесты логики создания заказа."""
 
+from decimal import Decimal
+from unittest.mock import patch
+
 import pytest
 from rest_framework import status
 
@@ -11,6 +14,30 @@ pytestmark = [
     pytest.mark.django_db,
     pytest.mark.usefixtures('publication_readiness_disabled'),
 ]
+
+
+@pytest.fixture(autouse=True)
+def mock_cdek_service():
+    """Мокирует обращения к API СДЭК в тестах чекаута."""
+    with (
+        patch(
+            'store.services.cdek.CDEKService.get_city_info_by_fias',
+            return_value={
+                'city_code': 44,
+                'city': 'Москва',
+            },
+        ),
+        patch(
+            'store.services.cdek.CDEKService._calculate_for_artist',
+            autospec=True,
+            return_value={
+                'total_sum': Decimal('300.00'),
+                'period_min': 3,
+                'period_max': 5,
+            },
+        ),
+    ):
+        yield
 
 
 @pytest.mark.django_db
@@ -28,6 +55,7 @@ class TestCheckoutAPI:
         delivery_courier,
         consent_doc_pdn,
         artist_user,
+        mock_cdek_service,
     ) -> None:
         """Автоматически прокидывает зависимости в self перед каждым тестом."""
         self.user = user
