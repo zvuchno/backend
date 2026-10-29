@@ -669,14 +669,14 @@ class TestTrackUploadStorageService:
             assert failed_archive.error_message == ''
             assert successful_archive.status == AlbumArchive.Status.PENDING
 
-    def test_staging_delete_failure_is_not_retried_by_cleanup(
+    def test_staging_delete_failure_is_retried_by_cleanup(
         self,
         settings,
         tmp_path,
         monkeypatch,
         django_capture_on_commit_callbacks,
     ):
-        """COMPLETED-upload со staging не подхватывается cleanup-сервисом."""
+        """Cleanup повторяет удаление staging завершённой загрузки."""
         settings.USE_S3_MEDIA = False
 
         storage = FileSystemStorage(
@@ -767,15 +767,83 @@ class TestTrackUploadStorageService:
         assert product.price == Decimal('250.00')
         assert product.allow_overpay is True
 
+        audio_file_name = recording.audio_file.name
         TrackUpload.objects.filter(pk=upload.pk).update(
-            expires_at=timezone.now() - timedelta(days=2),
+            completed_at=timezone.now() - timedelta(hours=23),
         )
-        cleanup_result = TrackUploadCleanupService.cleanup_expired()
+        completed_upload.refresh_from_db()
 
-        assert cleanup_result == {
+        with django_capture_on_commit_callbacks(execute=True) as callbacks:
+            repeated_upload = TrackUploadStorageService.complete(
+                upload=completed_upload,
+            )
+
+        recording.refresh_from_db()
+
+        assert not callbacks
+        assert repeated_upload.pk == completed_upload.pk
+        assert repeated_upload.status == TrackUpload.Status.COMPLETED
+        assert recording.audio_file.name == audio_file_name
+        assert storage.exists(recording.audio_file.name)
+        assert storage.exists(upload.staging_key)
+
+        recent_cleanup_result = TrackUploadCleanupService.cleanup_expired()
+
+        assert recent_cleanup_result == {
             'deleted': 0,
             'skipped': 0,
             'storage_errors': 0,
         }
-        assert storage.exists(upload.staging_key)
         assert TrackUpload.objects.filter(pk=upload.pk).exists()
+        assert storage.exists(upload.staging_key)
+
+        TrackUpload.objects.filter(pk=upload.pk).update(
+            completed_at=timezone.now() - timedelta(days=2),
+        )
+
+        with patch(
+            'store.services.track_upload.clean_up.'
+            'TrackUploadStorageService.delete_staging',
+            side_effect=RuntimeError('Storage unavailable'),
+        ):
+            failed_cleanup_result = TrackUploadCleanupService.cleanup_expired()
+
+        assert failed_cleanup_result == {
+            'deleted': 0,
+            'skipped': 0,
+            'storage_errors': 1,
+        }
+        assert TrackUpload.objects.filter(pk=upload.pk).exists()
+        assert storage.exists(upload.staging_key)
+
+        recovered_cleanup_result = TrackUploadCleanupService.cleanup_expired()
+
+        assert recovered_cleanup_result == {
+            'deleted': 1,
+            'skipped': 0,
+            'storage_errors': 0,
+        }
+        assert not TrackUpload.objects.filter(pk=upload.pk).exists()
+        assert not storage.exists(upload.staging_key)
+
+        repeated_cleanup_result = TrackUploadCleanupService.cleanup_expired()
+
+        assert repeated_cleanup_result == {
+            'deleted': 0,
+            'skipped': 0,
+            'storage_errors': 0,
+        }
+
+        recording.refresh_from_db()
+        release_track.refresh_from_db()
+        product.refresh_from_db()
+
+        assert recording.audio_file.name == audio_file_name
+        assert storage.exists(recording.audio_file.name)
+        assert ReleaseTrack.objects.filter(pk=release_track_id).exists()
+        assert release_track.recording_id == recording.pk
+        assert release_track.position == position
+        assert Product.objects.filter(pk=product_id).exists()
+        assert product.track_id == release_track.pk
+        assert product.price == Decimal('250.00')
+        assert product.allow_overpay is True
