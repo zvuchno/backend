@@ -151,8 +151,8 @@ class Migration(migrations.Migration):
     operations = [
         # Старые SQL views зависят от Track/Product и должны исчезнуть
         # до перестройки музыкальной модели.
-        drop_view('listener_album_access'),
-        drop_view('listener_track_access'),
+        drop_view('listener_album_access', restore_version=1),
+        drop_view('listener_track_access', restore_version=1),
 
         # Старый Track становится самостоятельной мастер-записью.
         # Это именно rename: существующие id и данные сохраняются.

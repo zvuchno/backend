@@ -86,7 +86,7 @@ class TrackService:
         """Добавляет существующую запись в релиз."""
         release = (
             Album.objects
-            .select_for_update()
+            .select_for_update(of=('self',))
             .select_related('artist__label')
             .get(pk=release.pk)
         )

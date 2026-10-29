@@ -295,14 +295,12 @@ class ReleaseTrackAdmin(
         'id',
     )
     readonly_fields = (
+        'release',
+        'recording',
         'artist',
         'payout_recipient',
         'created_at',
         'updated_at',
-    )
-    autocomplete_fields = (
-        'release',
-        'recording',
     )
     fieldsets = (
         (
@@ -418,3 +416,7 @@ class ReleaseTrackAdmin(
             return False
 
         return super().has_delete_permission(request, obj)
+
+    def has_add_permission(self, request, obj=None):
+        """Создание размещений выполняется только через TrackService."""
+        return False

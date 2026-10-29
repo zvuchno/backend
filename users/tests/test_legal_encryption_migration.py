@@ -29,6 +29,17 @@ MIGRATE_TO = (
 )
 
 
+@pytest.fixture
+def restore_migrations(transactional_db):
+    """Восстанавливает актуальную схему после миграционного теста."""
+    executor = MigrationExecutor(connection)
+    targets = executor.loader.graph.leaf_nodes()
+
+    yield
+
+    MigrationExecutor(connection).migrate(targets)
+
+
 def test_legal_encryption_v1_roundtrip():
     """Значение миграционного формата расшифровывается без потерь."""
     key = Fernet.generate_key().decode('ascii')
@@ -115,6 +126,7 @@ def _migrate(target) -> Apps:
 
 def test_legal_data_encryption_migration_roundtrip(
     migration_keyring,
+    restore_migrations,
 ):
     """Миграция шифрует данные и полностью восстанавливает их."""
     old_apps = _migrate(MIGRATE_FROM)
@@ -317,6 +329,3 @@ def test_legal_data_encryption_migration_roundtrip(
     assert restored_legal_profile.updated_at == legal_updated_at
     assert restored_identity.updated_at == identity_updated_at
     assert restored_bank.updated_at == bank_updated_at
-
-    # Возвращаем test DB в актуальное состояние.
-    _migrate(MIGRATE_TO)

@@ -90,11 +90,16 @@ class TrackUploadCleanupService:
             recording = upload.track
             recording_id = recording.pk
 
-            if (
+            can_delete_recording = (
                 upload.purpose == TrackUpload.Purpose.CREATE
                 and not recording.audio_file
-            ):
-                recording.release_tracks.all().delete()
+                and not recording.release_tracks.exists()
+                and not recording.upload_attempts.exclude(
+                    pk=upload.pk,
+                ).exists()
+            )
+
+            if can_delete_recording:
                 recording.delete()
             else:
                 upload.delete()

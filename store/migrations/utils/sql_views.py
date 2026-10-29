@@ -70,11 +70,20 @@ def read_view_sql(view_name: str, version: int) -> str:
     return path.read_text(encoding='utf-8')
 
 
-def drop_view(view_name: str) -> migrations.RunSQL:
-    """Возвращает операцию удаления SQL view."""
+def drop_view(
+    view_name: str,
+    restore_version: int | None = None,
+) -> migrations.RunSQL:
+    """Удаляет SQL view с необязательным восстановлением при откате."""
+    reverse_sql = (
+        read_view_sql(view_name, restore_version)
+        if restore_version is not None
+        else migrations.RunSQL.noop
+    )
+
     return migrations.RunSQL(
         sql=f'DROP VIEW IF EXISTS {view_name};',
-        reverse_sql=migrations.RunSQL.noop,
+        reverse_sql=reverse_sql,
     )
 
 
