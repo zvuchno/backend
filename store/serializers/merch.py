@@ -268,6 +268,20 @@ class MerchWriteSerializer(
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
+        album = attrs.get('album')
+
+        if album is not None:
+            artist = (
+                self.instance.artist
+                if self.instance is not None
+                else attrs.get('artist')
+            )
+
+            if artist is not None and album.artist_id != artist.id:
+                raise serializers.ValidationError({
+                    'album': 'Альбом должен принадлежать артисту товара.',
+                })
+
         if attrs.get('variants') and attrs.get('stock') is not None:
             raise serializers.ValidationError({
                 'stock': 'Нельзя указывать stock вместе с variants. '

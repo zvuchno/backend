@@ -5,10 +5,14 @@ import logging
 from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
+from allauth.socialaccount.providers.yandex.views import (
+    YandexOAuth2Adapter as AllauthYandexOAuth2Adapter,
+)
 from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
+from requests import HTTPError
 
 from common.utils import get_client_ip, get_user_agent
 from common.utils.urls import build_frontend_url
@@ -16,6 +20,7 @@ from common.utils.urls import build_frontend_url
 from users.constants import (
     SOCIAL_AUTH_ERRORS,
     SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,
+    SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
     SOCIAL_AUTH_ERROR_MISSING_EMAIL,
     SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
     SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
@@ -25,6 +30,20 @@ from users.exceptions import SocialAuthException
 from users.services import SocialAuthService
 
 logger = logging.getLogger(__name__)
+
+
+class YandexOAuth2Adapter(AllauthYandexOAuth2Adapter):
+    """Проверяет, что токен Яндекса выпущен для нашего OAuth-приложения."""
+
+    def complete_login(self, request, app, token, **kwargs):
+        """Отклоняет access token другого OAuth-приложения."""
+        login = super().complete_login(request, app, token, **kwargs)
+        token_client_id = login.account.extra_data.get('client_id')
+
+        if str(token_client_id) != str(app.client_id):
+            raise HTTPError('Yandex OAuth client_id mismatch')
+
+        return login
 
 
 class SocialAccountAdapter(DefaultSocialAccountAdapter):
@@ -79,19 +98,16 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
         provider_obj = sociallogin.account.get_provider()
 
         service = self.get_service()
-        user = service.find_user_by_social_account(
+        social_account_user = service.find_user_by_social_account(
             provider=provider,
             provider_uid=uid,
         )
 
-        if user is None:
-            user = service.find_user_by_email(email)
-
-        if user is not None:
+        if social_account_user is not None:
             try:
-                service.ensure_user_is_active(user)
+                service.ensure_user_is_active(social_account_user)
                 service.mark_email_verified_from_social_provider(
-                    user=user,
+                    user=social_account_user,
                     email=email,
                     is_email_verified=self.is_email_verified(
                         provider_obj,
@@ -99,7 +115,7 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                     ),
                 )
                 service.accept_registration_consents(
-                    user=user,
+                    user=social_account_user,
                     create_account=getattr(
                         request,
                         'social_create_account',
@@ -120,9 +136,6 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                     provider,
                 )
 
-            if not sociallogin.is_existing:
-                sociallogin.connect(request, user)
-
             return
 
         if not email:
@@ -131,6 +144,52 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
                 SOCIAL_AUTH_ERROR_MISSING_EMAIL,
                 provider,
             )
+
+        email_user = service.find_user_by_email(email)
+        if email_user is None:
+            return
+
+        try:
+            service.ensure_user_is_active(email_user)
+
+            if not email_user.is_email_verified:
+                raise SocialAuthException(
+                    SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
+                    SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED],
+                )
+
+            service.mark_email_verified_from_social_provider(
+                user=email_user,
+                email=email,
+                is_email_verified=self.is_email_verified(
+                    provider_obj,
+                    email,
+                ),
+            )
+            service.accept_registration_consents(
+                user=email_user,
+                create_account=getattr(
+                    request,
+                    'social_create_account',
+                    False,
+                ),
+                accepted_consents=getattr(
+                    request,
+                    'social_consents',
+                    (),
+                ),
+                ip_address=get_client_ip(request),
+                user_agent=get_user_agent(request),
+            )
+        except SocialAuthException as exc:
+            self._handle_auth_error(
+                request,
+                exc.error_code,
+                provider,
+            )
+
+        if not sociallogin.is_existing:
+            sociallogin.connect(request, email_user)
 
     @transaction.atomic
     def save_user(self, request, sociallogin, form=None):

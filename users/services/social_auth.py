@@ -102,18 +102,19 @@ class SocialAuthService:
         existing_user = self.find_user_by_email(email)
         if existing_user:
             self.ensure_user_is_active(existing_user)
-            ensure_listener_profile(existing_user)
-            self.mark_email_verified_from_social_provider(
-                user=existing_user,
-                email=email,
-                is_email_verified=is_email_verified,
-            )
 
             if not existing_user.is_email_verified:
                 raise SocialAuthException(
                     SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
                     SOCIAL_AUTH_ERRORS[SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED],
                 )
+
+            ensure_listener_profile(existing_user)
+            self.mark_email_verified_from_social_provider(
+                user=existing_user,
+                email=email,
+                is_email_verified=is_email_verified,
+            )
 
             self.accept_registration_consents(
                 user=existing_user,

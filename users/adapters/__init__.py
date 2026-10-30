@@ -1,3 +1,3 @@
-from .social_auth import SocialAccountAdapter
+from .social_auth import SocialAccountAdapter, YandexOAuth2Adapter
 
-__all__ = ['SocialAccountAdapter']
+__all__ = ('SocialAccountAdapter', 'YandexOAuth2Adapter')

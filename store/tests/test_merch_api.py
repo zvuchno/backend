@@ -73,6 +73,70 @@ class TestMerchCreate:
             == 2
         )
 
+    def test_create_merch_rejects_album_of_another_artist(
+        self,
+        merch_list_url,
+        artist_client,
+        artist_user,
+        other_artist_user,
+        variant_factory,
+    ):
+        """Нельзя связать мерч артиста с чужим альбомом."""
+        foreign_album = variant_factory(
+            product_type='album',
+            artist=other_artist_user.artist_profile,
+        ).product.album
+
+        response = artist_client.post(
+            merch_list_url,
+            {
+                'name': 'Merch With Foreign Album',
+                'artist': artist_user.artist_profile.id,
+                'album': foreign_album.id,
+                'price': '500.00',
+                'stock': 10,
+                'is_published': False,
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'album' in response.data
+        assert not Merch.objects.filter(
+            name='Merch With Foreign Album',
+        ).exists()
+
+    def test_create_merch_with_own_album(
+        self,
+        merch_list_url,
+        artist_client,
+        artist_user,
+        variant_factory,
+    ):
+        """Можно создать мерч со своим альбомом без явного artist."""
+        own_album = variant_factory(
+            product_type='album',
+            artist=artist_user.artist_profile,
+        ).product.album
+
+        response = artist_client.post(
+            merch_list_url,
+            {
+                'name': 'Merch With Own Album',
+                'album': own_album.id,
+                'price': '500.00',
+                'stock': 10,
+                'is_published': False,
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        merch = Merch.objects.get(name='Merch With Own Album')
+        assert merch.artist_id == artist_user.artist_profile.id
+        assert merch.album_id == own_album.id
+
 
 @pytest.mark.django_db
 class TestMerchUpdate:
@@ -113,6 +177,85 @@ class TestMerchUpdate:
         assert response.status_code == status.HTTP_200_OK
         merch.refresh_from_db()
         assert merch.product.property_name == ''
+
+    def test_update_merch_rejects_album_of_another_artist(
+        self,
+        merch,
+        merch_detail_url,
+        artist_client,
+        other_artist_user,
+        variant_factory,
+    ):
+        """Нельзя привязать чужой альбом к существующему мерчу."""
+        foreign_album = variant_factory(
+            product_type='album',
+            artist=other_artist_user.artist_profile,
+        ).product.album
+
+        response = artist_client.patch(
+            merch_detail_url,
+            {'album': foreign_album.id},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'album' in response.data
+
+        merch.refresh_from_db()
+        assert merch.album_id is None
+
+    def test_update_merch_allows_own_album(
+        self,
+        merch,
+        merch_detail_url,
+        artist_client,
+        artist_user,
+        variant_factory,
+    ):
+        """Можно менять связанный альбом внутри своего артиста."""
+        own_album = variant_factory(
+            product_type='album',
+            artist=artist_user.artist_profile,
+        ).product.album
+
+        response = artist_client.patch(
+            merch_detail_url,
+            {'album': own_album.id},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        merch.refresh_from_db()
+        assert merch.album_id == own_album.id
+
+    def test_update_merch_allows_clearing_album(
+        self,
+        merch,
+        merch_detail_url,
+        artist_client,
+        artist_user,
+        variant_factory,
+    ):
+        """Связь мерча с альбомом можно удалить."""
+        own_album = variant_factory(
+            product_type='album',
+            artist=artist_user.artist_profile,
+        ).product.album
+
+        merch.album = own_album
+        merch.save(update_fields=['album'])
+
+        response = artist_client.patch(
+            merch_detail_url,
+            {'album': None},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+        merch.refresh_from_db()
+        assert merch.album_id is None
 
 
 @pytest.mark.django_db

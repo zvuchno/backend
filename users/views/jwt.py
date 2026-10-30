@@ -7,7 +7,6 @@
 
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from allauth.socialaccount.providers.vk.views import VKOAuth2Adapter
-from allauth.socialaccount.providers.yandex.views import YandexOAuth2Adapter
 from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -21,6 +20,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
+from users.adapters import YandexOAuth2Adapter
 from users.schemas import (
     logout_schema,
     social_auth_schema,
