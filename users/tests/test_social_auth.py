@@ -1,23 +1,38 @@
 """Тесты социальной аутентификации."""
 
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from allauth.account.models import EmailAddress
-from allauth.socialaccount.models import SocialAccount
+from allauth.core.exceptions import ImmediateHttpResponse
+from allauth.socialaccount.models import SocialAccount, SocialApp, SocialLogin
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from allauth.socialaccount.providers.vk import views as vk_views
+from allauth.socialaccount.providers.vk.views import VKOAuth2Adapter
+from allauth.socialaccount.providers.yandex.views import (
+    YandexOAuth2Adapter as AllauthYandexOAuth2Adapter,
+)
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.sites.models import Site
 from django.db import IntegrityError
 from django.test import override_settings
+from django.urls import reverse
+from requests import HTTPError
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
-from users.adapters import SocialAccountAdapter
+from users.adapters import SocialAccountAdapter, YandexOAuth2Adapter
 from users.consents_policy import ConsentPolicy, ConsentScenario
 from users.constants import (
+    SOCIAL_AUTH_ERRORS,
     SOCIAL_AUTH_ERROR_BLOCKED_USER,
     SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,
     SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
     SOCIAL_AUTH_ERROR_MISSING_EMAIL,
+    SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
     SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
 )
@@ -33,6 +48,17 @@ pytestmark = pytest.mark.django_db
 
 YANDEX_PROVIDER = 'yandex'
 VK_PROVIDER = 'vk'
+
+SOCIAL_PROVIDERS = {
+    VK_PROVIDER: (
+        VKOAuth2Adapter,
+        'api:users:vk_login',
+    ),
+    YANDEX_PROVIDER: (
+        AllauthYandexOAuth2Adapter,
+        'api:users:yandex_login',
+    ),
+}
 
 
 def build_sociallogin(
@@ -62,6 +88,61 @@ def build_sociallogin(
     sociallogin.save = save if save is not None else Mock()
 
     return sociallogin
+
+
+def configure_social_provider(
+    monkeypatch,
+    provider,
+    uid,
+    email,
+    *,
+    token_client_id=None,
+):
+    """Подменяет внешний профиль, сохраняя реальный backend OAuth-flow."""
+    adapter_class, url_name = SOCIAL_PROVIDERS[provider]
+    client_id = f'{provider}-client-id'
+    app = SocialApp.objects.create(
+        provider=provider,
+        name=f'Test {provider}',
+        client_id=client_id,
+        secret=f'{provider}-secret',
+    )
+    app.sites.add(Site.objects.get(pk=settings.SITE_ID))
+
+    def complete_login(
+        adapter,
+        request,
+        social_app,
+        token,
+        **kwargs,
+    ) -> SocialLogin:
+        extra_data = {
+            'email': email,
+            'client_id': token_client_id or client_id,
+        }
+        account = SocialAccount(
+            provider=provider,
+            uid=uid,
+            extra_data=extra_data,
+        )
+        social_user = User(
+            email=email,
+            username=email.split('@')[0],
+        )
+        email_address = EmailAddress(
+            email=email,
+            verified=True,
+            primary=True,
+        )
+        return SocialLogin(
+            user=social_user,
+            account=account,
+            email_addresses=[email_address],
+            provider=adapter.get_provider(),
+        )
+
+    monkeypatch.setattr(adapter_class, 'complete_login', complete_login)
+    return reverse(url_name)
 
 
 class TestSocialAuthService:
@@ -131,26 +212,34 @@ class TestSocialAuthService:
             is_active=True,
         ).exists()
 
-    def test_confirms_existing_unverified_user_from_trusted_social_email(
+    def test_rejects_existing_unverified_user_from_trusted_social_email(
         self,
     ):
-        """Подтверждает email существующего пользователя через соцсеть."""
+        """Не привязывает соцсеть до локального подтверждения email."""
         user = UserFactory(
             email='listener@example.test',
             is_email_verified=False,
         )
+        user.set_password('existing-password')
+        user.save(update_fields=['password'])
+        password_hash = user.password
 
-        resolved_user = SocialAuthService().resolve_user(
-            provider=YANDEX_PROVIDER,
-            provider_uid='yandex-1003',
-            email='LISTENER@EXAMPLE.TEST',
-            is_email_verified=True,
+        with pytest.raises(SocialAuthException) as exc_info:
+            SocialAuthService().resolve_user(
+                provider=YANDEX_PROVIDER,
+                provider_uid='yandex-1003',
+                email='LISTENER@EXAMPLE.TEST',
+                is_email_verified=True,
+            )
+
+        assert (
+            exc_info.value.error_code == SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED
         )
 
-        assert resolved_user.pk == user.pk
-
         user.refresh_from_db()
-        assert user.is_email_verified is True
+        assert user.is_email_verified is False
+        assert user.password == password_hash
+        assert user.check_password('existing-password') is True
 
     def test_rejects_existing_unverified_user_from_untrusted_social_email(
         self,
@@ -510,15 +599,15 @@ class TestSocialAuthService:
 class TestSocialAccountAdapter:
     """Тесты custom adapter-а социальной аутентификации."""
 
-    def test_pre_social_login_confirms_existing_user_email(
+    def test_pre_social_login_connects_confirmed_existing_user(
         self,
         monkeypatch,
         rf,
     ):
-        """Подтверждает email и привязывает соцсеть к существующему user."""
+        """Привязывает соцсеть к аккаунту с подтвержденным email."""
         user = UserFactory(
             email='listener@example.test',
-            is_email_verified=False,
+            is_email_verified=True,
         )
         sociallogin = build_sociallogin(
             provider=YANDEX_PROVIDER,
@@ -541,12 +630,12 @@ class TestSocialAccountAdapter:
         assert user.is_email_verified is True
         sociallogin.connect.assert_called_once_with(request, user)
 
-    def test_pre_social_login_does_not_confirm_untrusted_email(
+    def test_pre_social_login_rejects_unverified_email_before_connect(
         self,
         monkeypatch,
         rf,
     ):
-        """Не подтверждает email, если provider не считается trusted."""
+        """Не подтверждает и не привязывает неподтвержденный аккаунт."""
         user = UserFactory(
             email='listener@example.test',
             is_email_verified=False,
@@ -564,13 +653,56 @@ class TestSocialAccountAdapter:
             lambda *args, **kwargs: False,
         )
 
+        with pytest.raises(SocialAuthException) as exc_info:
+            adapter.pre_social_login(
+                rf.post('/api/v1/auth/social/yandex/'),
+                sociallogin,
+            )
+
+        user.refresh_from_db()
+        assert (
+            exc_info.value.error_code == SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED
+        )
+        assert user.is_email_verified is False
+        sociallogin.connect.assert_not_called()
+
+    def test_pre_social_login_keeps_existing_social_account_working(
+        self,
+        monkeypatch,
+        rf,
+    ):
+        """Повторный вход по SocialAccount не требует локального флага."""
+        user = UserFactory(
+            email='listener@example.test',
+            is_email_verified=False,
+        )
+        SocialAccount.objects.create(
+            user=user,
+            provider=YANDEX_PROVIDER,
+            uid='yandex-linked',
+            extra_data={},
+        )
+        sociallogin = build_sociallogin(
+            provider=YANDEX_PROVIDER,
+            uid='yandex-linked',
+            email=user.email,
+            is_existing=True,
+        )
+        adapter = SocialAccountAdapter()
+        monkeypatch.setattr(
+            adapter,
+            'is_email_verified',
+            lambda *args, **kwargs: True,
+        )
+
         adapter.pre_social_login(
             rf.post('/api/v1/auth/social/yandex/'),
             sociallogin,
         )
 
         user.refresh_from_db()
-        assert user.is_email_verified is False
+        assert user.is_email_verified is True
+        sociallogin.connect.assert_not_called()
 
     def test_pre_social_login_rejects_blocked_existing_user(
         self,
@@ -871,3 +1003,233 @@ class TestSocialAccountAdapter:
 
         assert saved_types == set(listener_registration_consents)
         sociallogin.connect.assert_called_once_with(request, user)
+
+
+class TestSocialAuthFlows:
+    """Интеграционные проверки API и redirect OAuth-flow."""
+
+    def test_api_rejects_unverified_local_account_without_mutation(
+        self,
+        api_client,
+        monkeypatch,
+    ):
+        """API сохраняет пароль и флаг, не создавая SocialAccount."""
+        user = UserFactory(
+            email='unverified@example.test',
+            is_email_verified=False,
+        )
+        user.set_password('existing-password')
+        user.save(update_fields=['password'])
+        password_hash = user.password
+        social_url = configure_social_provider(
+            monkeypatch,
+            YANDEX_PROVIDER,
+            'yandex-api-unverified',
+            user.email,
+        )
+
+        response = api_client.post(
+            social_url,
+            data={'access_token': 'provider-access-token'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data == {
+            'error_code': SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
+            'detail': SOCIAL_AUTH_ERRORS[
+                SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED
+            ],
+        }
+        user.refresh_from_db()
+        assert user.is_email_verified is False
+        assert user.password == password_hash
+        assert user.check_password('existing-password') is True
+        assert not SocialAccount.objects.filter(user=user).exists()
+
+    def test_yandex_authorization_code_flow_still_connects_account(
+        self,
+        api_client,
+        monkeypatch,
+    ):
+        """Backend по-прежнему обменивает code и завершает OAuth-вход."""
+        user = UserFactory(
+            email='confirmed@example.test',
+            is_email_verified=True,
+        )
+        social_url = configure_social_provider(
+            monkeypatch,
+            YANDEX_PROVIDER,
+            'yandex-code-flow',
+            user.email,
+        )
+        exchange_code = Mock(
+            return_value={
+                'access_token': 'provider-access-token',
+            },
+        )
+        monkeypatch.setattr(
+            OAuth2Client,
+            'get_access_token',
+            exchange_code,
+        )
+
+        response = api_client.post(
+            social_url,
+            data={'code': 'authorization-code'},
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {'authenticated': True}
+        exchange_code.assert_called_once_with('authorization-code')
+        assert SocialAccount.objects.filter(
+            user=user,
+            provider=YANDEX_PROVIDER,
+            uid='yandex-code-flow',
+        ).exists()
+
+    @override_settings(
+        FRONTEND_SOCIAL_AUTH_PATH='https://frontend.example/oauth-result',
+    )
+    def test_redirect_flow_returns_email_not_confirmed_error(
+        self,
+        monkeypatch,
+        rf,
+    ):
+        """Web-flow возвращает тот же код ошибки в redirect query."""
+        user = UserFactory(
+            email='redirect-unverified@example.test',
+            is_email_verified=False,
+        )
+        sociallogin = build_sociallogin(
+            provider=YANDEX_PROVIDER,
+            uid='yandex-redirect-unverified',
+            email=user.email,
+        )
+        adapter = SocialAccountAdapter()
+        monkeypatch.setattr(
+            adapter,
+            'is_email_verified',
+            lambda *args, **kwargs: True,
+        )
+
+        with pytest.raises(ImmediateHttpResponse) as exc_info:
+            adapter.pre_social_login(
+                rf.get('/accounts/yandex/login/callback/'),
+                sociallogin,
+            )
+
+        response = exc_info.value.response
+        query = parse_qs(urlparse(response['Location']).query)
+        assert response.status_code == status.HTTP_302_FOUND
+        assert query == {
+            'status': ['error'],
+            'error_code': [SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED],
+            'provider': [YANDEX_PROVIDER],
+        }
+        sociallogin.connect.assert_not_called()
+
+    def test_yandex_rejects_access_token_from_another_oauth_app(
+        self,
+        monkeypatch,
+        rf,
+    ):
+        """Yandex access_token привязан к client_id backend-приложения."""
+        login = SimpleNamespace(
+            account=SimpleNamespace(
+                extra_data={'client_id': 'another-client-id'},
+            ),
+        )
+        monkeypatch.setattr(
+            AllauthYandexOAuth2Adapter,
+            'complete_login',
+            lambda *args, **kwargs: login,
+        )
+        adapter = YandexOAuth2Adapter(rf.get('/api/v1/auth/social/yandex/'))
+        app = SimpleNamespace(client_id='backend-client-id')
+
+        with pytest.raises(HTTPError):
+            adapter.complete_login(
+                rf.get('/api/v1/auth/social/yandex/'),
+                app,
+                token=object(),
+            )
+
+    def test_yandex_api_rejects_access_token_from_another_oauth_app(
+        self,
+        api_client,
+        monkeypatch,
+    ):
+        """Чужой Yandex token не создает social account и не выдает JWT."""
+        uid = 'yandex-foreign-app-token'
+        social_url = configure_social_provider(
+            monkeypatch,
+            YANDEX_PROVIDER,
+            uid,
+            'foreign-token@example.test',
+            token_client_id='another-client-id',
+        )
+
+        response = api_client.post(
+            social_url,
+            data={
+                'access_token': 'foreign-provider-access-token',
+                'create_account': True,
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert (
+            response.data['error_code'] == SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED
+        )
+        assert 'access' not in response.data
+        assert 'refresh' not in response.data
+        assert settings.JWT_ACCESS_COOKIE_NAME not in response.cookies
+        assert settings.JWT_REFRESH_COOKIE_NAME not in response.cookies
+        assert not SocialAccount.objects.filter(
+            provider=YANDEX_PROVIDER,
+            uid=uid,
+        ).exists()
+
+    def test_vk_user_info_receives_backend_client_id(
+        self,
+        monkeypatch,
+        rf,
+    ):
+        """Backend передает VK token вместе с client_id приложения."""
+        request = rf.post('/api/v1/auth/social/vk/')
+        adapter = VKOAuth2Adapter(request)
+        app = SimpleNamespace(client_id='backend-client-id')
+        token = SimpleNamespace(token='provider-access-token')
+        login = object()
+        provider = Mock()
+        provider.sociallogin_from_response.return_value = login
+        session = MagicMock()
+        response = Mock()
+        response.json.return_value = {
+            'user': {'user_id': 'vk-user-id'},
+        }
+        session.__enter__.return_value.post.return_value = response
+
+        monkeypatch.setattr(adapter, 'get_provider', lambda: provider)
+        monkeypatch.setattr(
+            vk_views,
+            'get_adapter',
+            lambda: SimpleNamespace(
+                get_requests_session=lambda: session,
+            ),
+        )
+
+        result = adapter.complete_login(request, app, token)
+
+        assert result is login
+        session.__enter__.return_value.post.assert_called_once_with(
+            adapter.profile_url,
+            data={
+                'access_token': 'provider-access-token',
+                'client_id': 'backend-client-id',
+            },
+        )
+        response.raise_for_status.assert_called_once_with()

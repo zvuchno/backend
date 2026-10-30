@@ -44,7 +44,8 @@ SOCIAL_AUTH_ERRORS = {
     SOCIAL_AUTH_ERROR_BLOCKED_USER: 'Учетная запись заблокирована.',
     SOCIAL_AUTH_ERROR_MISSING_EMAIL: 'Провайдер не передал email.',
     SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED: (
-        'Аккаунт с таким email уже существует, но email не подтвержден.'
+        'Аккаунт с таким email уже существует, но email не подтвержден. '
+        'Войдите обычным способом и подтвердите email или восстановите пароль.'
     ),
     SOCIAL_AUTH_ERROR_USERNAME_GENERATION_FAILED: (
         'Не удалось подобрать уникальный username.'
