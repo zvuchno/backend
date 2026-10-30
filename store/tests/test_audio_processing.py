@@ -9,7 +9,7 @@ from django.contrib.admin.sites import AdminSite
 from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from store.admin.track import RecordingAdmin
+from store.admin.recording import RecordingAdmin
 from store.exceptions import TemporaryAudioStorageError
 from store.models import Recording, TrackGeneratedAudio
 from store.services.audio import (

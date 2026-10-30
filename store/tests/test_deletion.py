@@ -8,7 +8,8 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from rest_framework import status
 
-from store.admin.track import RecordingAdmin, ReleaseTrackAdmin
+from store.admin.recording import RecordingAdmin
+from store.admin.track import ReleaseTrackAdmin
 from store.models import (
     Merch,
     Product,
