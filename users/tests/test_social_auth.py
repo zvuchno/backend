@@ -1,7 +1,7 @@
 """Тесты социальной аутентификации."""
 
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -9,6 +9,7 @@ from allauth.account.models import EmailAddress
 from allauth.core.exceptions import ImmediateHttpResponse
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialLogin
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from allauth.socialaccount.providers.vk import views as vk_views
 from allauth.socialaccount.providers.vk.views import VKOAuth2Adapter
 from allauth.socialaccount.providers.yandex.views import (
     YandexOAuth2Adapter as AllauthYandexOAuth2Adapter,
@@ -31,6 +32,7 @@ from users.constants import (
     SOCIAL_AUTH_ERROR_EMAIL_CONFLICT,
     SOCIAL_AUTH_ERROR_EMAIL_NOT_CONFIRMED,
     SOCIAL_AUTH_ERROR_MISSING_EMAIL,
+    SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED,
     SOCIAL_AUTH_ERROR_REGISTRATION_REQUIRED,
     SOCIAL_AUTH_ERROR_SOCIAL_SAVE_FAILED,
 )
@@ -88,7 +90,14 @@ def build_sociallogin(
     return sociallogin
 
 
-def configure_social_provider(monkeypatch, provider, uid, email):
+def configure_social_provider(
+    monkeypatch,
+    provider,
+    uid,
+    email,
+    *,
+    token_client_id=None,
+):
     """Подменяет внешний профиль, сохраняя реальный backend OAuth-flow."""
     adapter_class, url_name = SOCIAL_PROVIDERS[provider]
     client_id = f'{provider}-client-id'
@@ -109,7 +118,7 @@ def configure_social_provider(monkeypatch, provider, uid, email):
     ) -> SocialLogin:
         extra_data = {
             'email': email,
-            'client_id': client_id,
+            'client_id': token_client_id or client_id,
         }
         account = SocialAccount(
             provider=provider,
@@ -1146,3 +1155,81 @@ class TestSocialAuthFlows:
                 app,
                 token=object(),
             )
+
+    def test_yandex_api_rejects_access_token_from_another_oauth_app(
+        self,
+        api_client,
+        monkeypatch,
+    ):
+        """Чужой Yandex token не создает social account и не выдает JWT."""
+        uid = 'yandex-foreign-app-token'
+        social_url = configure_social_provider(
+            monkeypatch,
+            YANDEX_PROVIDER,
+            uid,
+            'foreign-token@example.test',
+            token_client_id='another-client-id',
+        )
+
+        response = api_client.post(
+            social_url,
+            data={
+                'access_token': 'foreign-provider-access-token',
+                'create_account': True,
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert (
+            response.data['error_code'] == SOCIAL_AUTH_ERROR_OAUTH_AUTH_FAILED
+        )
+        assert 'access' not in response.data
+        assert 'refresh' not in response.data
+        assert settings.JWT_ACCESS_COOKIE_NAME not in response.cookies
+        assert settings.JWT_REFRESH_COOKIE_NAME not in response.cookies
+        assert not SocialAccount.objects.filter(
+            provider=YANDEX_PROVIDER,
+            uid=uid,
+        ).exists()
+
+    def test_vk_user_info_receives_backend_client_id(
+        self,
+        monkeypatch,
+        rf,
+    ):
+        """Backend передает VK token вместе с client_id приложения."""
+        request = rf.post('/api/v1/auth/social/vk/')
+        adapter = VKOAuth2Adapter(request)
+        app = SimpleNamespace(client_id='backend-client-id')
+        token = SimpleNamespace(token='provider-access-token')
+        login = object()
+        provider = Mock()
+        provider.sociallogin_from_response.return_value = login
+        session = MagicMock()
+        response = Mock()
+        response.json.return_value = {
+            'user': {'user_id': 'vk-user-id'},
+        }
+        session.__enter__.return_value.post.return_value = response
+
+        monkeypatch.setattr(adapter, 'get_provider', lambda: provider)
+        monkeypatch.setattr(
+            vk_views,
+            'get_adapter',
+            lambda: SimpleNamespace(
+                get_requests_session=lambda: session,
+            ),
+        )
+
+        result = adapter.complete_login(request, app, token)
+
+        assert result is login
+        session.__enter__.return_value.post.assert_called_once_with(
+            adapter.profile_url,
+            data={
+                'access_token': 'provider-access-token',
+                'client_id': 'backend-client-id',
+            },
+        )
+        response.raise_for_status.assert_called_once_with()
