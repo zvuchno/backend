@@ -297,6 +297,9 @@ class TrackPlacementCreateSerializer(serializers.Serializer):
     recording_id = serializers.PrimaryKeyRelatedField(
         source='recording',
         queryset=Recording.objects.all(),
+        help_text=(
+            'ID существующей Recording. Это не ID ReleaseTrack из /tracks/.'
+        ),
     )
     price = serializers.DecimalField(
         max_digits=MAX_PRICE_DIGITS,

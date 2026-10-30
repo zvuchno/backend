@@ -14,6 +14,7 @@ class TrackUploadInitiateSerializer(serializers.Serializer):
     artist = serializers.PrimaryKeyRelatedField(
         queryset=ArtistProfile.objects.all(),
         source='owner',
+        help_text='ID артиста — владельца создаваемой Recording.',
     )
     filename = serializers.CharField(max_length=MAX_CHAR_LENGTH)
     size = serializers.IntegerField(min_value=1)
@@ -65,7 +66,9 @@ class TrackUploadTransportSerializer(serializers.Serializer):
 class TrackUploadRecordingSerializer(serializers.Serializer):
     """Данные мастер-записи в ответе direct upload."""
 
-    id = serializers.IntegerField()
+    id = serializers.IntegerField(
+        help_text='ID Recording, не ReleaseTrack.',
+    )
     name = serializers.CharField()
     description = serializers.CharField(allow_blank=True)
     isrc = serializers.CharField(allow_null=True)
@@ -74,7 +77,9 @@ class TrackUploadRecordingSerializer(serializers.Serializer):
 class TrackUploadStateSerializer(serializers.Serializer):
     """Описывает состояние попытки загрузки."""
 
-    id = serializers.IntegerField()
+    id = serializers.IntegerField(
+        help_text='ID попытки загрузки TrackUpload.',
+    )
     status = serializers.ChoiceField(
         choices=TrackUpload.Status.choices,
     )
@@ -124,11 +129,13 @@ class TrackReplacementUploadInitiateSerializer(serializers.Serializer):
         source='release_track',
         queryset=ReleaseTrack.objects.select_related('recording'),
         required=False,
+        help_text='ID ReleaseTrack из /tracks/.',
     )
     recording_id = serializers.PrimaryKeyRelatedField(
         source='recording',
         queryset=Recording.objects.all(),
         required=False,
+        help_text='ID Recording.',
     )
 
     def validate(self, attrs):

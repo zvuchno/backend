@@ -25,7 +25,9 @@ track_upload_initiate_schema = extend_schema(
         'передав поля из upload.transport.fields и сам файл в поле '
         'upload.transport.file_field_name. '
         'После успешной отправки необходимо вызвать upload.complete_url. '
-        'Завершённую мастер-запись можно отдельно добавить в релиз.'
+        'После завершения используйте recording.id как recording_id в '
+        'POST /api/v1/store/albums/{album_id}/tracks/, чтобы создать '
+        'ReleaseTrack и товар в релизе.'
     ),
     request=TrackUploadInitiateSerializer,
     responses={
@@ -81,7 +83,7 @@ track_upload_complete_schema = extend_schema(
         'по transport-инструкции. Проверяет staging-файл, '
         'переносит его в постоянное хранилище мастер-записи, '
         'помечает загрузку завершённой и запускает подготовку '
-        'audio preview/stream.'
+        'audio preview/stream. В complete-ответе transport отсутствует.'
     ),
     request=None,
     responses={

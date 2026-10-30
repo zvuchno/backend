@@ -23,7 +23,11 @@ from .mixins import (
 )
 from store.filters import TrackFilter
 from store.models import Album, ReleaseTrack
-from store.schema import track_reorder_schema, track_schema
+from store.schema import (
+    album_track_create_schema,
+    track_reorder_schema,
+    track_schema,
+)
 from store.serializers import (
     TrackPlacementCreateSerializer,
     TrackReadDetailSerializer,
@@ -217,6 +221,7 @@ class AlbumTrackCreateView(APIView):
 
     permission_classes = (CanCreateArtistContent,)
 
+    @album_track_create_schema
     def post(self, request, album_id):
         album = get_object_or_404(Album, pk=album_id)
 
