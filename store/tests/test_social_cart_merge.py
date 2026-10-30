@@ -80,7 +80,10 @@ def configure_social_provider(monkeypatch, provider, uid, email):
         account = SocialAccount(
             provider=provider,
             uid=uid,
-            extra_data={'email': email},
+            extra_data={
+                'email': email,
+                'client_id': social_app.client_id,
+            },
         )
         social_user = User(
             email=email,
