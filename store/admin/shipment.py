@@ -5,18 +5,38 @@
 
 from django.contrib import admin
 
-from store.models import Shipment
+from store.models import Shipment, ShipmentStatusEvent
+
+
+class ShipmentStatusEventInline(admin.TabularInline):
+    """Инлайн истории статусов отправления в админке."""
+
+    model = ShipmentStatusEvent
+    extra = 0
+    readonly_fields = (
+        'code',
+        'occurred_at',
+        'raw',
+        'created_at',
+        'updated_at',
+    )
+    can_delete = False
+    ordering = ('-occurred_at', '-pk')
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Shipment)
 class ShipmentAdmin(admin.ModelAdmin):
-    """Админка типов мерча."""
+    """Админка модели отправлений."""
 
     list_display = (
         'order',
         'artist',
         'state',
         'cdek_number',
+        'delivery_status',
         'updated_at',
     )
     list_filter = (
@@ -35,6 +55,8 @@ class ShipmentAdmin(admin.ModelAdmin):
         'order',
         'artist',
         'state',
+        'delivery_status',
+        'delivery_status_changed_at',
         'cdek_uuid',
         'cdek_number',
         'weight',
@@ -43,6 +65,7 @@ class ShipmentAdmin(admin.ModelAdmin):
         'updated_at',
     )
     list_select_related = ('order', 'artist__user')
+    inlines = (ShipmentStatusEventInline,)
     fieldsets = (
         (
             'Основная информация',
@@ -51,6 +74,7 @@ class ShipmentAdmin(admin.ModelAdmin):
                     'order',
                     'artist',
                     'state',
+                    'delivery_status',
                     'cdek_uuid',
                     'cdek_number',
                     'estimated_delivery_cost',
@@ -64,6 +88,7 @@ class ShipmentAdmin(admin.ModelAdmin):
                 'fields': (
                     'created_at',
                     'updated_at',
+                    'delivery_status_changed_at',
                 ),
             },
         ),

@@ -165,6 +165,7 @@ class ShipmentInline(admin.TabularInline):
         'cdek_number',
         'weight',
         'display_estimated_delivery_cost',
+        'delivery_status',
     )
     readonly_fields = fields
     can_delete = False

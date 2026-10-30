@@ -131,15 +131,24 @@ def update_cdek_shipment_task(self, shipment_id: int):
         raise self.retry()
 
     with transaction.atomic():
-        shipment.cdek_number = cdek_number
+        update_fields = ['state']
+
+        if cdek_number and not shipment.cdek_number:
+            shipment.cdek_number = cdek_number
+            update_fields.append('cdek_number')
+        elif cdek_number and shipment.cdek_number != cdek_number:
+            logger.warning(
+                'Номер заказа СДЭК не совпадает: shipment_id=%s, '
+                'saved_cdek_number=%s, response_cdek_number=%s',
+                shipment.pk,
+                shipment.cdek_number,
+                cdek_number,
+            )
+
         shipment.state = state
 
         shipment.save(
-            update_fields=[
-                'cdek_number',
-                'state',
-                'updated_at',
-            ],
+            update_fields=[*update_fields, 'updated_at'],
         )
 
         transaction.on_commit(

@@ -7,7 +7,12 @@ from .catalog import (
     ProductCatalogListView,
 )
 from .catalog_search import CatalogSearchView
-from .cdek import CDEKWidgetView, CdekCalculateView, CdekCitiesView
+from .cdek import (
+    CDEKWidgetView,
+    CdekCalculateView,
+    CdekCitiesView,
+    cdek_webhook_view,
+)
 from .delivery import DeliveryViewSet
 from .export import SalesExportView
 from .favorites import FavoritesViewSet
@@ -51,6 +56,7 @@ __all__ = [
     'CdekCalculateView',
     'CdekCitiesView',
     'CreatePaymentView',
+    'cdek_webhook_view',
     'DeliveryViewSet',
     'FavoritesViewSet',
     'GenreViewSet',

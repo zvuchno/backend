@@ -25,7 +25,7 @@ from .product import Product
 from .product_variant import ProductVariant
 from .promocode import Promocode
 from .report import Report
-from .shipment import Shipment
+from .shipment import Shipment, ShipmentStatusEvent
 from .track import (
     Track,
     TrackGeneratedAudio,
@@ -57,6 +57,7 @@ __all__ = [
     'Promocode',
     'Report',
     'Shipment',
+    'ShipmentStatusEvent',
     'Track',
     'TrackGeneratedAudio',
     'TrackUpload',

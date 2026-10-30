@@ -22,6 +22,7 @@ from .sales_statistics import (
     releases_have_direct_sales,
     tracks_have_sales,
 )
+from .shipment import sync_order_status
 
 __all__ = [
     'CartCalculationService',
@@ -44,5 +45,6 @@ __all__ = [
     'ReportService',
     'ReportFileBuilder',
     'ReservationService',
+    'sync_order_status',
     'tracks_have_sales',
 ]

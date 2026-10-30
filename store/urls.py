@@ -38,6 +38,7 @@ from .views import (
     TrackUploadCompleteView,
     TrackUploadReceiveFileView,
     TrackViewSet,
+    cdek_webhook_view,
     yookassa_webhook,
 )
 
@@ -97,6 +98,7 @@ urlpatterns = [
         name='cdek-calculate',
     ),
     path('cdek-cities/', CdekCitiesView.as_view(), name='cdek-cities'),
+    path('cdek/webhook/<str:token>/', cdek_webhook_view, name='cdek-webhook'),
     path(
         'payments/create/',
         CreatePaymentView.as_view(),

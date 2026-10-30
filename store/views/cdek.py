@@ -1,11 +1,20 @@
+import json
 import logging
+import secrets
 
+from django.conf import settings
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework.views import APIView
 
+from common.utils.get_client_ip import get_client_ip
+
+from store.models import Shipment
 from store.schema import (
     cdek_calculate_schema,
     cdek_cities_suggest_schema,
@@ -13,6 +22,11 @@ from store.schema import (
 )
 from store.serializers import CdekCalculateSerializer
 from store.services import CDEKService, CartService
+from store.services.shipment import (
+    RESULT_APPLIED,
+    apply_status_event,
+    parse_event_time,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -96,3 +110,96 @@ class CdekCitiesView(APIView):
         result = cdek_service.suggest_cities(query=query)
 
         return Response(result, status=status.HTTP_200_OK)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def cdek_webhook_view(request, token):
+    """Эндпоинт для приёма вебхуков от СДЭК."""
+    if not _token_is_valid(token):
+        logger.warning(
+            'СДЭК: запрос с неверным токеном, ip=%s',
+            get_client_ip(request),
+        )
+        return HttpResponse(status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        logger.warning('СДЭК: получен некорректный JSON')
+        return _bad_request('Invalid JSON')
+
+    if not isinstance(data, dict):
+        logger.warning('СДЭК: получена некорректная структура запроса')
+        return _bad_request('Invalid payload')
+
+    if data.get('type') != 'ORDER_STATUS':
+        return _ok()
+
+    cdek_uuid = data.get('uuid')
+    attributes = data.get('attributes')
+
+    if not isinstance(attributes, dict):
+        logger.warning(
+            'СДЭК: отсутствуют атрибуты события, uuid=%s',
+            cdek_uuid,
+        )
+        return _bad_request('Invalid attributes')
+
+    status_code = attributes.get('code')
+    if not cdek_uuid or not status_code:
+        logger.warning(
+            'СДЭК: отсутствует uuid или код статуса, uuid=%s',
+            cdek_uuid,
+        )
+        return _bad_request('Missing uuid or status code')
+
+    if status_code not in Shipment.DeliveryStatus.values:
+        logger.warning(
+            'СДЭК: неизвестный статус: uuid=%s, status=%s',
+            cdek_uuid,
+            status_code,
+        )
+        return _ok()
+
+    cdek_number = attributes.get('cdek_number')
+    cdek_number = str(cdek_number) if cdek_number else ''
+
+    occurred_at = parse_event_time(
+        attributes.get('status_date_time') or data.get('date_time'),
+    )
+
+    result = apply_status_event(
+        cdek_uuid=cdek_uuid,
+        status_code=status_code,
+        occurred_at=occurred_at,
+        cdek_number=cdek_number,
+        raw=data,
+    )
+
+    if result == RESULT_APPLIED:
+        logger.info(
+            'СДЭК: обновлён статус отправления: uuid=%s, status=%s',
+            cdek_uuid,
+            status_code,
+        )
+
+    return _ok()
+
+
+def _token_is_valid(token: str) -> bool:
+    expected = settings.CDEK_WEBHOOK_TOKEN
+    if not expected:
+        return False
+    return secrets.compare_digest(token.encode(), expected.encode())
+
+
+def _ok() -> JsonResponse:
+    return JsonResponse({'status': 'success'}, status=status.HTTP_200_OK)
+
+
+def _bad_request(message: str) -> JsonResponse:
+    return JsonResponse(
+        {'error': message},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
