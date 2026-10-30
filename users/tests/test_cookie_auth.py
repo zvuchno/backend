@@ -3,13 +3,31 @@
 import pytest
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
+from django.core.cache import cache
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.throttling import ScopedRateThrottle
+
+from users.views.cookie_auth import CookieLoginView
 
 pytestmark = pytest.mark.django_db
 
 PASSWORD = 'StrongPassword123!'
+
+
+@pytest.fixture(autouse=True)
+def disable_cookie_login_throttling(monkeypatch):
+    """Отключает throttling во всех тестах, кроме его регрессии."""
+    monkeypatch.setattr(CookieLoginView, 'throttle_classes', [])
+
+
+@pytest.fixture
+def clear_throttle_cache():
+    """Очищает общий throttle cache до и после регрессионного теста."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture
@@ -148,6 +166,53 @@ class TestCookieLogin:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['email'] == password_user.email
+
+    def test_invalid_logins_from_same_ip_are_throttled(
+        self,
+        api_client,
+        password_user,
+        cookie_login_url,
+        clear_throttle_cache,
+        monkeypatch,
+    ):
+        """Неверные пароли расходуют login-limit и приводят к HTTP 429."""
+        monkeypatch.setattr(
+            CookieLoginView,
+            'throttle_classes',
+            [ScopedRateThrottle],
+        )
+        login_rate = settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']['login']
+        assert login_rate == '5/min'
+
+        request_data = {
+            'email': password_user.email,
+            'password': 'WrongPassword123!',
+        }
+        responses = [
+            api_client.post(
+                cookie_login_url,
+                data=request_data,
+                format='json',
+                REMOTE_ADDR='192.0.2.30',
+            )
+            for _ in range(6)
+        ]
+
+        assert all(
+            response.status_code == status.HTTP_400_BAD_REQUEST
+            for response in responses[:5]
+        )
+        assert responses[5].status_code == status.HTTP_429_TOO_MANY_REQUESTS
+        assert responses[5].data['detail'].code == 'throttled'
+        assert all(
+            settings.REST_AUTH['JWT_AUTH_COOKIE'] not in response.cookies
+            for response in responses
+        )
+        assert all(
+            settings.REST_AUTH['JWT_AUTH_REFRESH_COOKIE']
+            not in response.cookies
+            for response in responses
+        )
 
 
 class TestCookieRefresh:
