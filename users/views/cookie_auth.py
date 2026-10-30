@@ -4,6 +4,7 @@ from drf_spectacular.utils import (
     extend_schema,
     extend_schema_view,
 )
+from rest_framework.throttling import ScopedRateThrottle
 
 from users.serializers import (
     CookieLoginResponseSerializer,
@@ -27,6 +28,9 @@ BaseCookieRefreshView = get_refresh_view()
 )
 class CookieLoginView(CookieResponseMixin, LoginView):
     """Создаёт JWT-сессию с токенами в HttpOnly cookie."""
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
 
 
 @extend_schema_view(
