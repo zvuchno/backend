@@ -10,7 +10,6 @@ from django.db import transaction
 from django.db.models import Exists, OuterRef
 from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html
-from django.utils.safestring import mark_safe
 
 from common.utils.money import format_money
 
@@ -69,7 +68,7 @@ class OrderItemInline(admin.TabularInline):
                         f'{content_obj._meta.model_name}_change',
                         args=[content_obj.id],
                     )
-                    return mark_safe(f'<a href="{url}">{link_text}</a>')
+                    return format_html('<a href="{}">{}</a>', url, link_text)
                 except NoReverseMatch:
                     pass
         return link_text
