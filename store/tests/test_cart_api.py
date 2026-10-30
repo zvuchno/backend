@@ -52,6 +52,37 @@ class TestCartAPI:
         assert item.quantity == 2
         assert response.data['items'][0]['quantity'] == 2
 
+    def test_cannot_add_track_without_original(
+        self,
+        auth_client,
+        cart_add_url,
+        variant_factory,
+        user,
+    ):
+        """Нельзя добавить незагруженный трек по известному variant ID."""
+        variant = variant_factory('track')
+        recording = variant.product.track.recording
+
+        recording.audio_file = ''
+        recording.save(update_fields=('audio_file',))
+
+        response = auth_client.post(
+            cart_add_url,
+            data={
+                'product_variant': variant.pk,
+                'quantity': 1,
+            },
+            format='json',
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'product_variant' in response.data
+
+        assert not CartItem.objects.filter(
+            cart__user=user,
+            product_variant=variant,
+        ).exists()
+
     def test_update_cart_item_with_patch(
         self,
         auth_client,

@@ -2,12 +2,14 @@
 
 from drf_spectacular.utils import (
     OpenApiParameter,
+    OpenApiResponse,
     OpenApiTypes,
     extend_schema,
     extend_schema_view,
 )
 
 from store.serializers import (
+    TrackPlacementCreateSerializer,
     TrackReadDetailSerializer,
     TrackReadSerializer,
     TrackReorderSerializer,
@@ -20,7 +22,10 @@ track_schema = extend_schema_view(
     list=extend_schema(
         summary='Список треков',
         tags=TRACKS_TAGS,
-        description='Возвращает список всех аудиозаписей.',
+        description=(
+            'Возвращает размещения мастер-записей в релизах. '
+            'ID элемента — это ID ReleaseTrack, а не Recording.'
+        ),
         parameters=[
             OpenApiParameter(
                 name='name',
@@ -70,15 +75,20 @@ track_schema = extend_schema_view(
     retrieve=extend_schema(
         summary='Получить трек',
         tags=TRACKS_TAGS,
-        description='Возвращает детальную информацию о треке по id.',
+        description=(
+            'Возвращает детальную информацию о ReleaseTrack по его ID. '
+            'Название, описание, длительность и аудиофайл берутся '
+            'из связанной Recording.'
+        ),
         responses={200: TrackReadDetailSerializer},
     ),
     create=extend_schema(
         summary='Загрузить трек простым способом',
         tags=TRACKS_TAGS,
         description=(
-            'Создаёт новую запись трека и принимает '
-            'аудиофайл через multipart/form-data. '
+            'Создаёт новую Recording, её первое размещение ReleaseTrack '
+            'в указанном альбоме и связанный товар. Принимает '
+            'оригинальный аудиофайл через multipart/form-data. '
             'Этот способ оставлен для простых одиночных '
             'загрузок и обратной совместимости. '
             'Для больших файлов и стабильной загрузки '
@@ -94,7 +104,10 @@ track_schema = extend_schema_view(
         summary='Частично обновить трек',
         tags=TRACKS_TAGS,
         description=(
-            'Обновляет только переданные поля трека. '
+            'Обновляет только переданные поля. Название, описание, ISRC '
+            'и аудиофайл относятся к Recording и меняются во всех её '
+            'размещениях; цена и разрешение переплаты относятся к товару '
+            'конкретного ReleaseTrack. '
             'Если передан audio_file, файл загружается '
             'через backend простым '
             'multipart-способом. Для больших файлов предпочтительнее '
@@ -106,9 +119,50 @@ track_schema = extend_schema_view(
     destroy=extend_schema(
         summary='Удалить трек',
         tags=TRACKS_TAGS,
-        description='Удаляет запись трека.',
+        description=(
+            'Деактивирует размещение ReleaseTrack. Связанная Recording '
+            'и другие её размещения не удаляются. Трек с историей '
+            'приобретения удалить нельзя.'
+        ),
+        responses={
+            204: OpenApiResponse(description='ReleaseTrack деактивирован.'),
+            409: OpenApiResponse(
+                description='У трека или его релиза есть история продаж.',
+            ),
+        },
     ),
 )
+
+
+def album_track_create_schema(view_func):
+    """Документирует размещение существующей записи в релизе."""
+    return extend_schema(
+        methods=['POST'],
+        summary='Добавить существующую запись в релиз',
+        description=(
+            'Создаёт ReleaseTrack и связанный товар для существующей '
+            'Recording в альбоме из URL. Оригинальный файл повторно '
+            'загружать не нужно. recording_id — ID Recording; ID в ответе '
+            '— ID нового ReleaseTrack. Пользователь должен иметь права '
+            'и на релиз, и на владельца Recording. Одну Recording нельзя '
+            'добавить в один релиз повторно.'
+        ),
+        request=TrackPlacementCreateSerializer,
+        responses={
+            201: TrackReadDetailSerializer,
+            400: OpenApiResponse(
+                description=(
+                    'Запись недоступна, несовместима с артистом релиза '
+                    'или уже размещена в этом релизе.'
+                ),
+            ),
+            403: OpenApiResponse(
+                description='Нет прав на релиз или мастер-запись.',
+            ),
+            404: OpenApiResponse(description='Альбом не найден.'),
+        },
+        tags=TRACKS_TAGS,
+    )(view_func)
 
 
 def track_reorder_schema(view_func):

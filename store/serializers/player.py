@@ -34,7 +34,7 @@ class TrackPlaybackSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         """Возвращает данные источника воспроизведения трека."""
-        generated = getattr(instance, 'generated', None)
+        generated = getattr(instance.recording, 'generated', None)
 
         if generated is None:
             return self._not_ready(
@@ -78,7 +78,7 @@ class TrackPlaybackSerializer(serializers.Serializer):
             return {
                 'status': TrackGeneratedAudio.ProcessingStatus.READY,
                 'kind': 'full',
-                'duration': instance.duration,
+                'duration': instance.recording.duration,
                 'url': reverse(
                     'api:store:player-play-track',
                     kwargs={'track_id': instance.pk},
@@ -106,7 +106,7 @@ class PlayerAlbumTrackSerializer(TrackReadSerializer):
         read_only=True,
     )
     artist_slug = serializers.CharField(
-        source='album.artist.slug',
+        source='release.artist.slug',
         read_only=True,
     )
     playback = TrackPlaybackSerializer(

@@ -24,7 +24,7 @@ from store.models import (
     Album,
     ListenerTrackAccess,
     ProductVariant,
-    Track,
+    ReleaseTrack,
     TrackGeneratedAudio,
 )
 from store.schema import (
@@ -64,8 +64,8 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
                 product__track_id=OuterRef('pk'),
                 product__price__gt=0,
                 is_active=True,
-                product__track__album__is_published=True,
-                product__track__album__is_active=True,
+                product__track__release__is_published=True,
+                product__track__release__is_active=True,
             )
             .order_by('id')
             .values('pk')[:1],
@@ -93,10 +93,12 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
             self
             .get_track_read_queryset(
                 action='retrieve',
-                queryset=Track.objects.all(),
+                queryset=ReleaseTrack.objects.all(),
                 player_preview=preview,
             )
-            .select_related('generated')
+            .filter(recording__audio_file__isnull=False)
+            .exclude(recording__audio_file='')
+            .select_related('recording__generated')
             .annotate(
                 favorite_variant_id=favorite_variant_id_subquery,
                 purchase_variant_id=purchase_variant_id_subquery,
@@ -124,7 +126,7 @@ class PlayerAlbumView(TrackReadQuerysetMixin, GenericAPIView):
         if self.request.user.is_authenticated:
             accessible_album_ids = ListenerTrackAccess.objects.filter(
                 user=self.request.user,
-            ).values('track__album_id')
+            ).values('track__release_id')
 
             purchased_albums = Album.objects.filter(
                 pk__in=accessible_album_ids,
@@ -156,7 +158,7 @@ class PlayerTrackPlayView(APIView):
 
     def get(self, request, track_id: int):
         """Перенаправляет на доступную версию трека."""
-        tracks = Track.objects.for_player(
+        tracks = ReleaseTrack.objects.for_player(
             request.user,
             preview=can_preview_catalog_drafts(request.user),
         )
@@ -166,11 +168,20 @@ class PlayerTrackPlayView(APIView):
                 user=request.user,
             ).values('track_id')
 
-            tracks = tracks | Track.objects.filter(
+            tracks = tracks | ReleaseTrack.objects.filter(
                 pk__in=accessible_track_ids,
             )
 
-        track = tracks.select_related('generated').filter(pk=track_id).first()
+        track = (
+            tracks
+            .select_related('recording__generated')
+            .filter(
+                pk=track_id,
+                recording__audio_file__isnull=False,
+            )
+            .exclude(recording__audio_file='')
+            .first()
+        )
 
         if track is None:
             raise Http404
@@ -183,7 +194,7 @@ class PlayerTrackPlayView(APIView):
                 track_id=track.pk,
             ).exists()
 
-        generated = getattr(track, 'generated', None)
+        generated = getattr(track.recording, 'generated', None)
 
         if generated is None:
             detail = (
@@ -207,7 +218,7 @@ class PlayerTrackPlayView(APIView):
 
     def _redirect_to_audio(
         self,
-        track: Track,
+        track: ReleaseTrack,
         generated: TrackGeneratedAudio,
         audio_file,
         audio_status: str,
@@ -288,7 +299,7 @@ class PlayerTrackPlayView(APIView):
 
     def _redirect_to_stream(
         self,
-        track: Track,
+        track: ReleaseTrack,
         generated: TrackGeneratedAudio,
     ) -> Response:
         """Редиректит на полную версию трека."""
@@ -305,7 +316,7 @@ class PlayerTrackPlayView(APIView):
 
     def _redirect_to_preview(
         self,
-        track: Track,
+        track: ReleaseTrack,
         generated: TrackGeneratedAudio,
     ) -> Response:
         """Редиректит на превью."""

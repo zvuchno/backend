@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from django.db.models import Exists, OuterRef, Q, QuerySet, Sum
 
-from store.models import Album, Order, OrderItem, Payment, Track
+from store.models import Album, Order, OrderItem, Payment, ReleaseTrack
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,7 @@ def get_release_sales_stats(album: Album) -> ReleaseSalesStats:
     )
 
 
-def get_track_sales_stats(track: Track) -> TrackSalesStats:
+def get_track_sales_stats(track: ReleaseTrack) -> TrackSalesStats:
     """Возвращает статистику приобретений трека."""
     paid_items = _paid_order_items()
 
@@ -78,7 +78,7 @@ def get_track_sales_stats(track: Track) -> TrackSalesStats:
     )
     release_sales = _sum_quantity(
         paid_items.filter(
-            product_variant__product__album_id=track.album_id,
+            product_variant__product__album_id=track.release_id,
         ),
     )
 
@@ -88,10 +88,10 @@ def get_track_sales_stats(track: Track) -> TrackSalesStats:
     )
 
 
-def tracks_have_sales(queryset: QuerySet[Track]) -> bool:
+def tracks_have_sales(queryset: QuerySet[ReleaseTrack]) -> bool:
     """Проверяет наличие продаж у переданных треков."""
     track_ids = queryset.values('pk')
-    release_ids = queryset.values('album_id')
+    release_ids = queryset.values('release_id')
 
     return (
         _paid_order_items()

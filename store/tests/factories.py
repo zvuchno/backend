@@ -15,7 +15,8 @@ from store.models import (
     MerchKind,
     Product,
     ProductVariant,
-    Track,
+    Recording,
+    ReleaseTrack,
 )
 from users.tests.factories import ArtistProfileFactory
 
@@ -87,26 +88,6 @@ def make_audio_file(
     )
 
 
-class TrackFactory(factory.django.DjangoModelFactory):
-    """Фабрика трека с исходным аудиофайлом."""
-
-    class Meta:
-        model = Track
-
-    album = factory.SubFactory(AlbumFactory)
-    created_by = factory.LazyAttribute(
-        lambda obj: obj.album.created_by,
-    )
-    name = factory.Sequence(lambda n: f'Трек {n}')
-    position = factory.Sequence(lambda n: n + 1)
-    audio_file = factory.Sequence(
-        lambda n: make_audio_file(
-            name=f'track-{n}.mp3',
-            content=f'audio-content-{n}'.encode(),
-        ),
-    )
-
-
 class MerchFactory(factory.django.DjangoModelFactory):
     """Фабрика мерча."""
 
@@ -147,6 +128,40 @@ class AlbumProductFactory(ProductFactory):
 
     product_type = Product.ProductType.ALBUM
     album = factory.SubFactory(AlbumFactory)
+
+
+class RecordingFactory(factory.django.DjangoModelFactory):
+    """Фабрика музыкальной записи с исходным аудиофайлом."""
+
+    class Meta:
+        model = Recording
+
+    owner = factory.SubFactory(ArtistProfileFactory)
+    created_by = factory.LazyAttribute(
+        lambda obj: obj.owner.user or obj.owner.default_payout_recipient,
+    )
+    name = factory.Sequence(lambda n: f'Запись {n}')
+    audio_file = factory.Sequence(
+        lambda n: make_audio_file(
+            name=f'recording-{n}.mp3',
+            content=f'audio-content-{n}'.encode(),
+        ),
+    )
+
+
+class ReleaseTrackFactory(factory.django.DjangoModelFactory):
+    """Фабрика размещения музыкальной записи в релизе."""
+
+    class Meta:
+        model = ReleaseTrack
+
+    release = factory.SubFactory(AlbumFactory)
+    recording = factory.SubFactory(
+        RecordingFactory,
+        owner=factory.SelfAttribute('..release.artist'),
+        created_by=factory.SelfAttribute('..release.created_by'),
+    )
+    position = factory.Sequence(lambda n: n + 1)
 
 
 class MerchProductFactory(ProductFactory):

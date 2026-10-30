@@ -4,6 +4,7 @@ import logging
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .upload_storage import TrackUploadStorageService
@@ -15,24 +16,26 @@ TRACK_UPLOAD_CLEANUP_DELAY = timedelta(days=1)
 
 
 class TrackUploadCleanupService:
-    """Удаляет технические треки от заброшенных загрузок."""
+    """Удаляет данные заброшенных прямых загрузок треков."""
 
     @classmethod
     def cleanup_expired(cls) -> dict[str, int]:
-        """Удаляет черновики, оставленные после истечения срока загрузки."""
+        """Удаляет просроченные upload attempts и их staging-файлы."""
         cleanup_before = timezone.now() - TRACK_UPLOAD_CLEANUP_DELAY
 
-        upload_ids = list(
-            TrackUpload.objects
-            .filter(
+        eligible = Q(
+            status=TrackUpload.Status.COMPLETED,
+            completed_at__lt=cleanup_before,
+        ) | (
+            Q(
                 completed_at__isnull=True,
                 expires_at__lt=cleanup_before,
-                track__audio_file='',
             )
-            .exclude(
-                status=TrackUpload.Status.COMPLETED,
-            )
-            .values_list('pk', flat=True),
+            & ~Q(status=TrackUpload.Status.COMPLETED)
+        )
+
+        upload_ids = list(
+            TrackUpload.objects.filter(eligible).values_list('pk', flat=True),
         )
 
         result = {
@@ -69,12 +72,19 @@ class TrackUploadCleanupService:
             except TrackUpload.DoesNotExist:
                 return 'skipped'
 
-            if (
+            completed_expired = (
                 upload.status == TrackUpload.Status.COMPLETED
-                or upload.completed_at is not None
-                or upload.expires_at >= cleanup_before
-                or upload.track.audio_file
-            ):
+                and upload.completed_at is not None
+                and upload.completed_at < cleanup_before
+            )
+
+            abandoned_expired = (
+                upload.status != TrackUpload.Status.COMPLETED
+                and upload.completed_at is None
+                and upload.expires_at < cleanup_before
+            )
+
+            if not (completed_expired or abandoned_expired):
                 return 'skipped'
 
             try:
@@ -89,13 +99,30 @@ class TrackUploadCleanupService:
                 )
                 return 'storage_errors'
 
-            upload.track.delete()
+            recording = upload.track
+            recording_id = recording.pk
+
+            can_delete_recording = (
+                upload.purpose == TrackUpload.Purpose.CREATE
+                and not recording.audio_file
+                and not recording.release_tracks.exists()
+                and not recording.upload_attempts.exclude(
+                    pk=upload.pk,
+                ).exists()
+            )
+
+            if completed_expired:
+                upload.delete()
+            elif can_delete_recording:
+                recording.delete()
+            else:
+                upload.delete()
 
         logger.info(
-            'Удалён черновой трек заброшенной загрузки. '
-            'upload_id=%s, track_id=%s',
+            'Удалена заброшенная загрузка трека. '
+            'upload_id=%s, recording_id=%s',
             upload_id,
-            upload.track_id,
+            recording_id,
         )
 
         return 'deleted'

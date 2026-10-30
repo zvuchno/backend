@@ -69,7 +69,7 @@ class Product(models.Model):
         related_name='product',
     )
     track = models.OneToOneField(
-        'store.Track',
+        'store.ReleaseTrack',
         on_delete=models.CASCADE,
         null=True,
         blank=True,

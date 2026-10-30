@@ -18,9 +18,10 @@ from .order import OrderAdmin
 from .payment import PaymentAdmin
 from .payout import PayoutAdmin
 from .promocode import PromocodeAdmin
+from .recording import RecordingAdmin
 from .report import ReportAdmin
 from .shipment import ShipmentAdmin
-from .track import TrackAdmin
+from .track import ReleaseTrackAdmin
 
 __all__ = [
     'AlbumAdmin',
@@ -35,9 +36,10 @@ __all__ = [
     'PaymentAdmin',
     'PayoutAdmin',
     'PromocodeAdmin',
+    'RecordingAdmin',
+    'ReleaseTrackAdmin',
     'ReportAdmin',
     'ShipmentAdmin',
-    'TrackAdmin',
 ]
 
 # Заголовок страницы (вкладка браузера)

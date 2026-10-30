@@ -2,14 +2,15 @@ from store.models import Album
 
 
 def has_uploaded_track(album: Album) -> bool:
-    """Проверяет наличие активного трека с загруженным аудиофайлом."""
+    """Проверяет наличие активного трека с доступной мастер-записью."""
     return (
         album.tracks
         .filter(
-            audio_file__isnull=False,
             is_active=True,
+            recording__is_active=True,
+            recording__audio_file__isnull=False,
         )
-        .exclude(audio_file='')
+        .exclude(recording__audio_file='')
         .exists()
     )
 

@@ -3,6 +3,7 @@
 
     const STORAGE_RETRY_DELAYS = [1000];
     const COMPLETE_RETRY_DELAYS = [1000, 2000, 4000];
+    const PLACE_RETRY_DELAYS = [1000, 2000, 4000];
 
     class UploadRequestError extends Error {
         constructor(message, status = null) {
@@ -13,12 +14,18 @@
     }
 
     class UploadFlowError extends Error {
-        constructor({ cause, stage, uploadData = null }) {
+        constructor({
+            cause,
+            stage,
+            uploadData = null,
+            recordingId = null,
+        }) {
             super(cause.message);
             this.name = 'UploadFlowError';
             this.cause = cause;
             this.stage = stage;
             this.uploadData = uploadData;
+            this.recordingId = recordingId;
         }
     }
 
@@ -43,6 +50,7 @@
             '[data-track-upload-list]',
         );
         const initiateUrl = root.dataset.initiateUrl;
+        const placeUrl = root.dataset.placeUrl;
 
         let activeFiles = [];
         let queueItems = [];
@@ -262,6 +270,40 @@
             return response.json();
         }
 
+        async function placeRecording(recordingId) {
+            let response;
+
+            try {
+                response = await fetch(placeUrl, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken(),
+                    },
+                    body: JSON.stringify({
+                        recording_id: recordingId,
+                    }),
+                });
+            } catch {
+                throw new UploadRequestError(
+                    'Не удалось разместить запись в альбоме.',
+                );
+            }
+
+            if (!response.ok) {
+                throw new UploadRequestError(
+                    await getErrorMessage(
+                        response,
+                        'Не удалось разместить запись в альбоме.',
+                    ),
+                    response.status,
+                );
+            }
+
+            return response.json();
+        }
+
         async function runWithRetry(
             operation,
             retryDelays,
@@ -301,6 +343,7 @@
             index,
             queueItem,
             uploadData = null,
+            recordingId = null,
             resumeFrom = 'initiate',
         }) {
             const fileLabel = getFileLabel(
@@ -327,7 +370,10 @@
                 }
             }
 
-            if (resumeFrom !== 'complete') {
+            if (
+                resumeFrom === 'initiate'
+                || resumeFrom === 'upload'
+            ) {
                 setStatus(`Передаём ${fileLabel} в хранилище.`);
                 setQueueItemStatus(
                     queueItem,
@@ -358,22 +404,52 @@
                 }
             }
 
-            setStatus(`Подтверждаем ${fileLabel}.`);
+            if (resumeFrom !== 'place') {
+                setStatus(`Подтверждаем ${fileLabel}.`);
+                setQueueItemStatus(
+                    queueItem,
+                    `${fileLabel} — подтверждение…`,
+                    'progress',
+                );
+
+                try {
+                    const completeData = await runWithRetry(
+                        () => completeUpload(
+                            uploadData.upload.complete_url,
+                        ),
+                        COMPLETE_RETRY_DELAYS,
+                        (delay) => {
+                            setStatus(
+                                `${fileLabel}: повторяем подтверждение `
+                                + `через ${delay / 1000} с…`,
+                            );
+                        },
+                    );
+
+                    recordingId = completeData.recording.id;
+                } catch (error) {
+                    throw new UploadFlowError({
+                        cause: error,
+                        stage: 'complete',
+                        uploadData,
+                    });
+                }
+            }
+
+            setStatus(`Размещаем ${fileLabel} в альбоме.`);
             setQueueItemStatus(
                 queueItem,
-                `${fileLabel} — подтверждение…`,
+                `${fileLabel} — размещение…`,
                 'progress',
             );
 
             try {
                 await runWithRetry(
-                    () => completeUpload(
-                        uploadData.upload.complete_url,
-                    ),
-                    COMPLETE_RETRY_DELAYS,
+                    () => placeRecording(recordingId),
+                    PLACE_RETRY_DELAYS,
                     (delay) => {
                         setStatus(
-                            `${fileLabel}: повторяем подтверждение `
+                            `${fileLabel}: повторяем размещение `
                             + `через ${delay / 1000} с…`,
                         );
                     },
@@ -381,14 +457,15 @@
             } catch (error) {
                 throw new UploadFlowError({
                     cause: error,
-                    stage: 'complete',
+                    stage: 'place',
                     uploadData,
+                    recordingId,
                 });
             }
 
             setQueueItemStatus(
                 queueItem,
-                `${fileLabel} — загружен`,
+                `${fileLabel} — загружен и размещён`,
                 'success',
             );
         }
@@ -421,6 +498,9 @@
                         uploadData: isResumedFile
                             ? resumeContext.uploadData
                             : null,
+                        recordingId: isResumedFile
+                            ? resumeContext.recordingId
+                            : null,
                         resumeFrom: isResumedFile
                             ? resumeContext.stage
                             : 'initiate',
@@ -431,6 +511,7 @@
                         index,
                         queueItem,
                         uploadData: error.uploadData,
+                        recordingId: error.recordingId,
                         stage: error.stage,
                     };
 
@@ -446,7 +527,15 @@
                         'error',
                     );
 
-                    if (error.uploadData) {
+                    if (error.stage === 'place') {
+                        setStatus(
+                            'Файл загружен, но запись не размещена. '
+                            + 'Загруженная мастер-запись сохранена; '
+                            + 'можно повторить размещение.',
+                            true,
+                        );
+                        showRetryButton(true);
+                    } else if (error.uploadData) {
                         setStatus(
                             'Загрузка остановлена. '
                             + 'Можно повторить текущий файл.',

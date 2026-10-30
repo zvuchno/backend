@@ -2,13 +2,19 @@
 
 from django.db import transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from common.access import managed_artist_q
-from common.permissions import IsArtistOrLabel, IsStoreObjectManager
+from common.permissions import (
+    CanCreateArtistContent,
+    IsArtistOrLabel,
+    IsStoreObjectManager,
+)
 
 from .mixins import (
     ProductActionMixin,
@@ -16,17 +22,52 @@ from .mixins import (
     TrackReadQuerysetMixin,
 )
 from store.filters import TrackFilter
-from store.models import Track
-from store.schema import track_reorder_schema, track_schema
+from store.models import Album, ReleaseTrack
+from store.schema import (
+    album_track_create_schema,
+    track_reorder_schema,
+    track_schema,
+)
 from store.serializers import (
+    TrackPlacementCreateSerializer,
     TrackReadDetailSerializer,
     TrackReadSerializer,
     TrackReorderSerializer,
     TrackWriteSerializer,
 )
-from store.services import get_track_sales_stats, reorder_objects
+from store.services import TrackService, get_track_sales_stats, reorder_objects
 from store.services.album_archive import AlbumArchiveScheduler
 from store.services.album_publication import unpublish_if_empty
+
+
+class TrackOrderingFilter(filters.OrderingFilter):
+    """Сохраняет публичные имена полей сортировки треков."""
+
+    ordering_aliases = {
+        'name': 'recording__name',
+    }
+
+    def get_ordering(self, request, queryset, view):
+        ordering = super().get_ordering(request, queryset, view)
+
+        if not ordering:
+            return ordering
+
+        result = []
+
+        for field in ordering:
+            descending = field.startswith('-')
+            field_name = field.removeprefix('-')
+            internal_name = self.ordering_aliases.get(
+                field_name,
+                field_name,
+            )
+
+            result.append(
+                f'-{internal_name}' if descending else internal_name,
+            )
+
+        return result
 
 
 @track_schema
@@ -38,18 +79,18 @@ class TrackViewSet(
 ):
     """API для работы с треками."""
 
-    queryset = Track.objects.all()
+    queryset = ReleaseTrack.objects.all()
     permission_classes = (IsArtistOrLabel, IsStoreObjectManager)
     http_method_names = ('get', 'post', 'patch', 'delete')
     filter_backends = (
         DjangoFilterBackend,
         filters.SearchFilter,
-        filters.OrderingFilter,
+        TrackOrderingFilter,
     )
     filterset_class = TrackFilter
-    search_fields = ('name',)
+    search_fields = ('recording__name',)
     ordering_fields = ('name', 'position')
-    ordering = ('album', 'position', 'id')
+    ordering = ('release_id', 'position', 'id')
 
     def get_serializer_class(self):
         if self.action in ('create', 'partial_update'):
@@ -67,7 +108,8 @@ class TrackViewSet(
             return queryset.none()
 
         queryset = queryset.filter(
-            Q(is_active=True) & managed_artist_q(user, prefix='album__artist'),
+            Q(is_active=True)
+            & managed_artist_q(user, prefix='release__artist'),
         )
         return self.get_track_read_queryset(
             action=self.action,
@@ -104,7 +146,7 @@ class TrackViewSet(
     def destroy(self, request, *args, **kwargs):
         """Удаляет трек и снимает пустой альбом с публикации."""
         track = self.get_object()
-        album = track.album
+        release = track.release
         sales = get_track_sales_stats(track)
 
         if sales.total_sales:
@@ -123,10 +165,10 @@ class TrackViewSet(
 
         with transaction.atomic():
             response = super().destroy(request, *args, **kwargs)
-            unpublish_if_empty(album)
+            unpublish_if_empty(release)
 
             transaction.on_commit(
-                lambda: AlbumArchiveScheduler.schedule_by_id(album.pk),
+                lambda: AlbumArchiveScheduler.schedule_by_id(release.pk),
             )
 
         return response
@@ -145,22 +187,22 @@ class TrackViewSet(
             context=self.get_serializer_context(),
         )
         serializer.is_valid(raise_exception=True)
-        album = serializer.validated_data['album']
+        release = serializer.validated_data['album']
 
         reorder_objects(
-            Track.objects.filter(album=album, is_active=True),
+            ReleaseTrack.objects.filter(release=release, is_active=True),
             serializer.validated_data['track_ids'],
             'track_ids',
         )
         transaction.on_commit(
-            lambda: AlbumArchiveScheduler.schedule_by_id(album.pk),
+            lambda: AlbumArchiveScheduler.schedule_by_id(release.pk),
         )
 
         tracks = (
             self
             .get_queryset()
             .filter(
-                album=album,
+                release=release,
             )
             .order_by('position')
         )
@@ -171,4 +213,37 @@ class TrackViewSet(
                 many=True,
                 context=self.get_serializer_context(),
             ).data,
+        )
+
+
+class AlbumTrackCreateView(APIView):
+    """Размещает существующую запись в релизе."""
+
+    permission_classes = (CanCreateArtistContent,)
+
+    @album_track_create_schema
+    def post(self, request, album_id):
+        album = get_object_or_404(Album, pk=album_id)
+
+        serializer = TrackPlacementCreateSerializer(
+            data=request.data,
+        )
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+
+        track = TrackService.add_recording(
+            release=album,
+            recording=data['recording'],
+            user=request.user,
+            price=data.get('price'),
+            allow_overpay=data['allow_overpay'],
+        )
+
+        return Response(
+            TrackReadDetailSerializer(
+                track,
+                context={'request': request},
+            ).data,
+            status=status.HTTP_201_CREATED,
         )

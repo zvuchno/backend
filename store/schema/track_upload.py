@@ -1,9 +1,12 @@
-"""Схемы API прямой загрузки оригинальных файлов треков."""
+"""Схемы API прямой загрузки оригиналов мастер-записей."""
 
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import (
+    OpenApiResponse,
+    extend_schema,
+)
 
 from store.serializers import (
-    TrackUploadFileInitiateSerializer,
+    TrackReplacementUploadInitiateSerializer,
     TrackUploadInitiateSerializer,
     TrackUploadLocalFileResponseSerializer,
     TrackUploadResponseSerializer,
@@ -12,21 +15,29 @@ from store.serializers import (
 TRACK_UPLOAD_TAGS = ('Tracks',)
 
 track_upload_initiate_schema = extend_schema(
-    summary='Инициализировать прямую загрузку трека в альбом',
+    summary='Инициализировать загрузку новой мастер-записи',
     description=(
-        'Создаёт черновой трек в указанном альбоме и возвращает инструкцию '
-        'для загрузки оригинального аудиофайла. Клиент должен отправить файл '
-        'по адресу upload.transport.url, '
-        'передав все поля из upload.transport.fields '
-        'и сам файл в поле upload.transport.file_field_name. После успешной '
-        'отправки файла нужно вызвать upload.complete_url.'
+        'Создаёт мастер-запись Recording для указанного артиста '
+        'и попытку загрузки её оригинального аудиофайла. '
+        'Пользователь должен иметь права на управление артистом. '
+        'Размещение в релизе (ReleaseTrack) и товар не создаются. '
+        'Клиент должен отправить файл по адресу upload.transport.url, '
+        'передав поля из upload.transport.fields и сам файл в поле '
+        'upload.transport.file_field_name. '
+        'После успешной отправки необходимо вызвать upload.complete_url. '
+        'После завершения используйте recording.id как recording_id в '
+        'POST /api/v1/store/albums/{album_id}/tracks/, чтобы создать '
+        'ReleaseTrack и товар в релизе.'
     ),
     request=TrackUploadInitiateSerializer,
     responses={
         201: TrackUploadResponseSerializer,
-        400: OpenApiResponse(description='Ошибка валидации файла.'),
-        403: OpenApiResponse(description='Нет доступа к альбому.'),
-        404: OpenApiResponse(description='Альбом не найден.'),
+        400: OpenApiResponse(
+            description='Некорректные параметры записи или файла.',
+        ),
+        403: OpenApiResponse(
+            description='Нет прав на управление указанным артистом.',
+        ),
         503: OpenApiResponse(
             description='Не настроен транспорт загрузки.',
         ),
@@ -65,14 +76,14 @@ track_upload_receive_file_schema = extend_schema(
 )
 
 track_upload_complete_schema = extend_schema(
-    summary='Завершить загрузку трека',
+    summary='Завершить загрузку оригинала мастер-записи',
     description=(
         'Завершает прямую загрузку после того, '
         'как клиент успешно отправил файл '
         'по transport-инструкции. Проверяет staging-файл, '
-        'переносит его в постоянное '
-        'хранилище, назначает audio_file и position треку, помечает загрузку '
-        'завершённой и запускает подготовку audio preview/stream.'
+        'переносит его в постоянное хранилище мастер-записи, '
+        'помечает загрузку завершённой и запускает подготовку '
+        'audio preview/stream. В complete-ответе transport отсутствует.'
     ),
     request=None,
     responses={
@@ -87,23 +98,28 @@ track_upload_complete_schema = extend_schema(
 )
 
 
-track_file_upload_initiate_schema = extend_schema(
-    summary='Инициализировать замену файла трека',
+track_upload_replace_initiate_schema = extend_schema(
+    summary='Инициализировать замену оригинала записи',
     description=(
-        'Создаёт попытку прямой загрузки нового оригинального аудиофайла '
-        'для существующего трека и возвращает инструкцию для отправки файла. '
-        'Клиент должен отправить файл по адресу upload.transport.url, '
-        'передав все поля из upload.transport.fields и сам файл в поле '
-        'upload.transport.file_field_name. После успешной отправки файла '
-        'нужно вызвать upload.complete_url. При завершении загрузки '
-        'сохраняются id трека, альбом, позиция и данные продажи.'
+        'Создаёт попытку загрузки нового оригинального аудиофайла '
+        'для существующей мастер-записи. '
+        'Необходимо передать track_id или recording_id. '
+        'Если указаны оба идентификатора, они должны относиться '
+        'к одной Recording. '
+        'После отправки файла по инструкции upload.transport '
+        'необходимо вызвать upload.complete_url. '
+        'Замена оригинала не изменяет размещения в релизах '
+        'и их коммерческие параметры.'
     ),
-    request=TrackUploadFileInitiateSerializer,
+    request=TrackReplacementUploadInitiateSerializer,
     responses={
         201: TrackUploadResponseSerializer,
-        400: OpenApiResponse(description='Ошибка валидации файла.'),
-        403: OpenApiResponse(description='Нет доступа к треку.'),
-        404: OpenApiResponse(description='Трек не найден.'),
+        400: OpenApiResponse(
+            description='Некорректные идентификаторы или параметры файла.',
+        ),
+        403: OpenApiResponse(
+            description='Нет прав на мастер-запись.',
+        ),
         503: OpenApiResponse(
             description='Не настроен транспорт загрузки.',
         ),

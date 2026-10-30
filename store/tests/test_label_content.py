@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from store.models import Album, Merch, Track
+from store.models import Album, Merch, Recording, ReleaseTrack
 from store.tests.factories import (
     AlbumFactory,
     GenreFactory,
@@ -250,18 +250,19 @@ class TestLabelTrackCreate:
         label_created_artist,
         track_list_url,
     ):
+        """Лейбл создаёт трек для артиста под своим управлением."""
         album = AlbumFactory(
             artist=label_created_artist,
             created_by=label_user,
             payout_recipient=label_user,
         )
+
         response = label_client.post(
             track_list_url,
             {
                 'album': album.id,
                 'name': 'Трек артиста лейбла',
                 'audio_file': make_audio_file(),
-                'position': 1,
                 'price': '100.00',
                 'allow_overpay': False,
             },
@@ -270,16 +271,20 @@ class TestLabelTrackCreate:
 
         assert response.status_code == HTTPStatus.CREATED
 
-        track = Track.objects.get(
-            name='Трек артиста лейбла',
-        )
+        track = ReleaseTrack.objects.select_related(
+            'recording',
+            'release',
+        ).get(recording__name='Трек артиста лейбла')
+        recording = track.recording
 
-        assert track.album == album
+        assert track.release == album
         assert track.artist == label_created_artist
-        assert track.created_by == label_user
         assert track.payout_recipient == label_user
 
-        mocked_schedule.assert_called_once_with(track)
+        assert recording.owner == label_created_artist
+        assert recording.created_by == label_user
+
+        mocked_schedule.assert_called_once_with(recording)
 
     @patch(
         'store.serializers.track.TrackGeneratedAudioScheduler.schedule',
@@ -291,6 +296,7 @@ class TestLabelTrackCreate:
         other_artist_user,
         track_list_url,
     ):
+        """Лейбл не может создать трек в чужом релизе."""
         foreign_album = AlbumFactory(
             artist=other_artist_user.artist_profile,
             created_by=other_artist_user,
@@ -303,7 +309,6 @@ class TestLabelTrackCreate:
                 'album': foreign_album.id,
                 'name': 'Чужой трек',
                 'audio_file': make_audio_file(),
-                'position': 1,
                 'price': '100.00',
                 'allow_overpay': False,
             },
@@ -312,6 +317,9 @@ class TestLabelTrackCreate:
 
         assert response.status_code == HTTPStatus.BAD_REQUEST
         assert 'album' in response.data
-        assert not Track.objects.filter(name='Чужой трек').exists()
+
+        assert not Recording.objects.filter(
+            name='Чужой трек',
+        ).exists()
 
         mocked_schedule.assert_not_called()

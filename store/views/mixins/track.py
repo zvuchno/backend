@@ -1,6 +1,6 @@
 from django.db.models import BooleanField, Exists, OuterRef, Value
 
-from store.models import Favorite, ListenerTrackAccess, Track
+from store.models import Favorite, ListenerTrackAccess, ReleaseTrack
 
 
 class TrackReadQuerysetMixin:
@@ -17,7 +17,7 @@ class TrackReadQuerysetMixin:
         user = self.request.user
 
         if queryset is None:
-            queryset = Track.objects.all()
+            queryset = ReleaseTrack.objects.all()
 
         if player_preview is None:
             queryset = queryset.visible_for(
@@ -35,13 +35,14 @@ class TrackReadQuerysetMixin:
                     user=user,
                 ).values('track_id')
 
-                queryset = queryset | Track.objects.filter(
+                queryset = queryset | ReleaseTrack.objects.filter(
                     pk__in=accessible_track_ids,
                 )
 
         queryset = queryset.select_related(
-            'album',
-            'album__artist',
+            'release',
+            'release__artist',
+            'recording',
             'product',
         )
 

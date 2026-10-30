@@ -167,7 +167,7 @@ def test_artist_cannot_delete_track_from_purchased_release(
     track.refresh_from_db()
 
     assert track.is_active is True
-    assert track.album_id == album.pk
+    assert track.release_id == album.pk
 
 
 def test_admin_cannot_physically_delete_purchased_release(

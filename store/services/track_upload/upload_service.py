@@ -1,7 +1,6 @@
 """Сервис прямой загрузки оригинальных файлов треков."""
 
 from datetime import timedelta
-from decimal import Decimal
 from pathlib import Path
 
 from django.core.exceptions import ValidationError
@@ -12,12 +11,10 @@ from django.utils import timezone
 from store.constants import (
     ALLOWED_AUDIO_EXTENSIONS,
     MAX_AUDIOFILE_SIZE_MB,
-    SINGLE_TRACK_COUNT_ERROR,
-    ZERO_MONEY,
 )
-from store.models import Album, Track, TrackUpload
-from store.services.commerce import ProductService
+from store.models import Recording, TrackUpload
 from store.upload_paths import track_upload_staging_key
+from store.validators import validate_isrc_format
 
 TRACK_UPLOAD_TTL = timedelta(hours=1)
 
@@ -30,12 +27,12 @@ class TrackUploadService:
     def create_replacement_upload(
         cls,
         *,
-        track: Track,
+        recording: Recording,
         filename: str,
         size: int,
         content_type: str = '',
     ) -> TrackUpload:
-        """Создаёт попытку замены оригинального файла существующего трека."""
+        """Создаёт попытку замены оригинала мастер-записи."""
         filename = Path(filename).name
 
         cls._validate_file_metadata(
@@ -43,18 +40,13 @@ class TrackUploadService:
             size=size,
         )
 
-        track = (
-            Track.objects
-            .select_for_update()
-            .select_related('album')
-            .get(pk=track.pk)
-        )
+        recording = Recording.objects.select_for_update().get(pk=recording.pk)
 
         return TrackUpload.objects.create(
-            track=track,
+            track=recording,
             purpose=TrackUpload.Purpose.REPLACE,
             staging_key=track_upload_staging_key(
-                track.album_id,
+                recording.pk,
                 filename,
             ),
             original_filename=filename,
@@ -65,20 +57,19 @@ class TrackUploadService:
 
     @classmethod
     @transaction.atomic
-    def create_pending_track(
+    def create_recording_upload(
         cls,
         *,
-        album: Album,
+        owner,
         created_by,
         filename: str,
         size: int,
         content_type: str = '',
         name: str = '',
         description: str = '',
-        price: Decimal | None = None,
-        allow_overpay: bool = False,
-    ) -> tuple[Track, TrackUpload]:
-        """Создаёт черновой трек и попытку загрузки оригинального файла."""
+        isrc: str | None = None,
+    ) -> tuple[Recording, TrackUpload]:
+        """Создаёт мастер-запись и попытку загрузки оригинала."""
         filename = Path(filename).name
 
         cls._validate_file_metadata(
@@ -86,56 +77,23 @@ class TrackUploadService:
             size=size,
         )
 
-        album = Album.objects.select_for_update().get(pk=album.pk)
+        isrc = isrc or None
+        if isrc is not None:
+            validate_isrc_format(isrc)
 
-        if album.release_type == Album.ReleaseType.SINGLE:
-            errors = {}
-
-            if price is not None:
-                errors['price'] = (
-                    'Для сингла нельзя задать индивидуальную цену трека.'
-                )
-
-            if allow_overpay:
-                errors['allow_overpay'] = (
-                    'Для сингла нельзя настроить переплату за трек.'
-                )
-
-            if (
-                album.is_published
-                and album.tracks.filter(is_active=True).exists()
-            ):
-                errors['album'] = SINGLE_TRACK_COUNT_ERROR
-
-            if errors:
-                raise ValidationError(errors)
-
-        track_name = name.strip() or cls._get_track_name(filename)
-        track_price = price if price is not None else ZERO_MONEY
-
-        track = Track.objects.create(
-            album=album,
+        recording = Recording.objects.create(
+            owner=owner,
             created_by=created_by,
-            name=track_name,
+            name=name.strip() or cls._get_track_name(filename),
             description=description or '',
-            position=None,
-            is_active=True,
-        )
-
-        ProductService.ensure_commerce(
-            track,
-            validated_data={
-                'price': track_price,
-                'allow_overpay': allow_overpay,
-                'variants': [],
-            },
+            isrc=isrc,
         )
 
         upload = TrackUpload.objects.create(
-            track=track,
+            track=recording,
             purpose=TrackUpload.Purpose.CREATE,
             staging_key=track_upload_staging_key(
-                album.pk,
+                recording.pk,
                 filename,
             ),
             original_filename=filename,
@@ -144,7 +102,7 @@ class TrackUploadService:
             expires_at=timezone.now() + TRACK_UPLOAD_TTL,
         )
 
-        return track, upload
+        return recording, upload
 
     @classmethod
     @transaction.atomic

@@ -115,7 +115,7 @@ class OrderSerializer(ProductImagesMixin, serializers.ModelSerializer):
             if product.album_id:
                 items = self.get_album_image_items(product.album)
             elif product.track_id:
-                items = self.get_album_image_items(product.track.album)
+                items = self.get_album_image_items(product.track.release)
             elif product.merch_id:
                 items = self.get_merch_image_items(
                     product.merch.images_merch.all(),

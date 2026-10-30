@@ -13,16 +13,15 @@ from rest_framework.views import APIView
 from common.access import can_manage_artist
 from common.permissions import CanCreateArtistContent
 
-from store.constants import ZERO_MONEY
-from store.models import Album, Track, TrackUpload
+from store.models import Recording, TrackUpload
 from store.schema import (
-    track_file_upload_initiate_schema,
     track_upload_complete_schema,
     track_upload_initiate_schema,
     track_upload_receive_file_schema,
+    track_upload_replace_initiate_schema,
 )
 from store.serializers import (
-    TrackUploadFileInitiateSerializer,
+    TrackReplacementUploadInitiateSerializer,
     TrackUploadInitiateSerializer,
     TrackUploadResponseSerializer,
 )
@@ -35,48 +34,36 @@ from store.services.track_upload import (
 )
 
 
-def _check_album_access(*, request, album: Album) -> None:
-    """Проверяет, что текущий артист владеет альбомом."""
-    if not can_manage_artist(request.user, album.artist):
-        raise PermissionDenied(
-            'Нельзя загружать треки в чужой альбом.',
-        )
-
-
 def _check_upload_access(*, request, upload: TrackUpload) -> None:
-    """Проверяет, что текущий артист владеет альбомом загрузки."""
-    if not can_manage_artist(request.user, upload.track.album.artist):
+    """Проверяет право управлять загрузкой записи."""
+    if not can_manage_artist(
+        request.user,
+        upload.track.owner,
+    ):
         raise PermissionDenied(
             'Нельзя управлять чужой загрузкой трека.',
-        )
-
-
-def _check_track_upload_access(*, request, track: Track) -> None:
-    """Проверяет, что пользователь может управлять загрузкой файла трека."""
-    if not can_manage_artist(request.user, track.album.artist):
-        raise PermissionDenied(
-            'Нельзя управлять загрузкой файла чужого трека.',
         )
 
 
 def _build_track_upload_response(
     *,
     request,
+    recording: Recording,
     upload: TrackUpload,
     transport=None,
 ) -> dict:
-    """Формирует ответ API по попытке загрузки трека."""
-    track = upload.track
-    product = getattr(track, 'product', None)
+    """Формирует ответ API по попытке загрузки мастер-записи."""
+    complete_path = reverse(
+        'api:store:track-upload-complete',
+        args=(upload.pk,),
+    )
 
     data = {
-        'track': {
-            'id': track.pk,
-            'name': track.name,
-            'description': track.description,
-            'position': track.position,
-            'price': product.price if product else ZERO_MONEY,
-            'allow_overpay': product.allow_overpay if product else False,
+        'recording': {
+            'id': recording.pk,
+            'name': recording.name,
+            'description': recording.description,
+            'isrc': recording.isrc,
         },
         'upload': {
             'id': upload.pk,
@@ -85,10 +72,7 @@ def _build_track_upload_response(
             'expires_at': upload.expires_at,
             'completed_at': upload.completed_at,
             'complete_url': request.build_absolute_uri(
-                reverse(
-                    'api:store:track-upload-complete',
-                    args=(upload.pk,),
-                ),
+                complete_path,
             ),
         },
     }
@@ -105,31 +89,37 @@ def _build_track_upload_response(
     return data
 
 
-class AlbumTrackUploadInitiateView(APIView):
-    """Создаёт черновой трек и возвращает инструкцию загрузки."""
+class TrackUploadInitiateView(APIView):
+    """Создаёт мастер-запись и возвращает инструкцию загрузки."""
 
     permission_classes = (CanCreateArtistContent,)
 
     @track_upload_initiate_schema
-    def post(self, request, album_id):
-        """Инициализирует прямую загрузку оригинального файла трека."""
-        album = get_object_or_404(Album, pk=album_id)
-        _check_album_access(request=request, album=album)
-
-        serializer = TrackUploadInitiateSerializer(data=request.data)
+    def post(self, request):
+        """Инициализирует загрузку оригинала новой записи."""
+        serializer = TrackUploadInitiateSerializer(
+            data=request.data,
+        )
         serializer.is_valid(raise_exception=True)
 
+        data = serializer.validated_data
+        owner = data['owner']
+
+        if not can_manage_artist(request.user, owner):
+            raise PermissionDenied(
+                'Нельзя создавать записи для чужого артиста.',
+            )
+
         try:
-            track, upload = TrackUploadService.create_pending_track(
-                album=album,
+            recording, upload = TrackUploadService.create_recording_upload(
+                owner=owner,
                 created_by=request.user,
-                filename=serializer.validated_data['filename'],
-                size=serializer.validated_data['size'],
-                content_type=serializer.validated_data['content_type'],
-                name=serializer.validated_data['name'],
-                description=serializer.validated_data['description'],
-                price=serializer.validated_data.get('price'),
-                allow_overpay=serializer.validated_data['allow_overpay'],
+                filename=data['filename'],
+                size=data['size'],
+                content_type=data['content_type'],
+                name=data['name'],
+                description=data['description'],
+                isrc=data.get('isrc'),
             )
 
             local_upload_url = request.build_absolute_uri(
@@ -145,27 +135,24 @@ class AlbumTrackUploadInitiateView(APIView):
                     local_upload_url=local_upload_url,
                 )
             )
+
         except ValidationError as exc:
             return Response(
-                {
-                    'detail': exc.messages,
-                },
+                {'detail': exc.messages},
                 status=HTTPStatus.BAD_REQUEST,
             )
+
         except UploadTransportConfigurationError as exc:
             return Response(
-                {
-                    'detail': str(exc),
-                },
+                {'detail': str(exc)},
                 status=HTTPStatus.SERVICE_UNAVAILABLE,
             )
-
-        upload.track = track
 
         return Response(
             TrackUploadResponseSerializer(
                 instance=_build_track_upload_response(
                     request=request,
+                    recording=recording,
                     upload=upload,
                     transport=upload_instruction,
                 ),
@@ -188,7 +175,7 @@ class TrackUploadReceiveFileView(APIView):
 
         upload = get_object_or_404(
             TrackUpload.objects.select_related(
-                'track__album__artist__label',
+                'track__owner__label',
             ),
             pk=upload_id,
         )
@@ -235,22 +222,26 @@ class TrackUploadCompleteView(APIView):
 
     @track_upload_complete_schema
     def post(self, request, upload_id):
-        """Переносит staging-файл в постоянное хранилище."""
+        """Финализирует оригинальный файл мастер-записи."""
         upload = get_object_or_404(
             TrackUpload.objects.select_related(
-                'track__album__artist__label',
+                'track__owner__label',
             ),
             pk=upload_id,
         )
-        _check_upload_access(request=request, upload=upload)
+
+        _check_upload_access(
+            request=request,
+            upload=upload,
+        )
 
         try:
-            upload = TrackUploadStorageService.complete(upload=upload)
+            upload = TrackUploadStorageService.complete(
+                upload=upload,
+            )
         except TrackUploadStorageError as exc:
             return Response(
-                {
-                    'detail': str(exc),
-                },
+                {'detail': str(exc)},
                 status=HTTPStatus.BAD_REQUEST,
             )
 
@@ -258,35 +249,43 @@ class TrackUploadCompleteView(APIView):
             TrackUploadResponseSerializer(
                 instance=_build_track_upload_response(
                     request=request,
+                    recording=upload.track,
                     upload=upload,
                 ),
             ).data,
         )
 
 
-class TrackFileUploadInitiateView(APIView):
-    """Создаёт попытку замены оригинального файла трека."""
+class TrackReplacementUploadInitiateView(APIView):
+    """Создаёт попытку замены оригинала мастер-записи."""
 
     permission_classes = (CanCreateArtistContent,)
 
-    @track_file_upload_initiate_schema
-    def post(self, request, track_id):
-        """Инициализирует прямую замену оригинального файла трека."""
-        track = get_object_or_404(
-            Track.objects.select_related('album'),
-            pk=track_id,
+    @track_upload_replace_initiate_schema
+    def post(self, request):
+        """Инициализирует прямую замену оригинального файла."""
+        serializer = TrackReplacementUploadInitiateSerializer(
+            data=request.data,
         )
-        _check_track_upload_access(request=request, track=track)
-
-        serializer = TrackUploadFileInitiateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        recording = data['recording']
+
+        if not can_manage_artist(
+            request.user,
+            recording.owner,
+        ):
+            raise PermissionDenied(
+                'Нельзя заменять оригинал чужой записи.',
+            )
 
         try:
             upload = TrackUploadService.create_replacement_upload(
-                track=track,
-                filename=serializer.validated_data['filename'],
-                size=serializer.validated_data['size'],
-                content_type=serializer.validated_data['content_type'],
+                recording=recording,
+                filename=data['filename'],
+                size=data['size'],
+                content_type=data['content_type'],
             )
 
             local_upload_url = request.build_absolute_uri(
@@ -302,18 +301,16 @@ class TrackFileUploadInitiateView(APIView):
                     local_upload_url=local_upload_url,
                 )
             )
+
         except ValidationError as exc:
             return Response(
-                {
-                    'detail': exc.messages,
-                },
+                {'detail': exc.messages},
                 status=HTTPStatus.BAD_REQUEST,
             )
+
         except UploadTransportConfigurationError as exc:
             return Response(
-                {
-                    'detail': str(exc),
-                },
+                {'detail': str(exc)},
                 status=HTTPStatus.SERVICE_UNAVAILABLE,
             )
 
@@ -321,6 +318,7 @@ class TrackFileUploadInitiateView(APIView):
             TrackUploadResponseSerializer(
                 instance=_build_track_upload_response(
                     request=request,
+                    recording=recording,
                     upload=upload,
                     transport=upload_instruction,
                 ),

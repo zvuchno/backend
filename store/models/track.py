@@ -1,4 +1,4 @@
-"""Модель музыкального трека, входящего в состав альбома."""
+"""Модели музыкальных записей и треков в релизах."""
 
 from django.core.validators import FileExtensionValidator
 from django.db import models
@@ -13,27 +13,20 @@ from store.constants import (
     MAX_STR_LENGTH,
 )
 from store.models.abstract import BaseContent
-from store.querysets.track_visibility import TrackQuerySet
+from store.models.release_track import ReleaseTrack as ReleaseTrack
 from store.upload_paths import (
     track_audio_upload_to,
     track_preview_upload_to,
     track_stream_upload_to,
 )
-from store.validators import validate_audiofile_size
+from store.validators import validate_audiofile_size, validate_isrc_format
 
 
-class Track(BaseContent):
-    """Музыкальный трек в составе альбома.
+class Recording(BaseContent):
+    """Музыкальная запись, существующая независимо от конкретного релиза."""
 
-    Артист и получатель выплат определяются связанным альбомом.
-    """
+    position = None
 
-    album = models.ForeignKey(
-        'store.Album',
-        on_delete=models.CASCADE,
-        related_name='tracks',
-        verbose_name='Альбом',
-    )
     audio_file = models.FileField(
         'Файл трека',
         upload_to=track_audio_upload_to,
@@ -53,27 +46,38 @@ class Track(BaseContent):
         blank=True,
         help_text='Длительность трека в секундах',
     )
-
-    @property
-    def artist(self):
-        """Возвращает артиста связанного альбома."""
-        return self.album.artist
-
-    @property
-    def payout_recipient(self):
-        """Возвращает получателя выплат связанного альбома."""
-        return self.album.payout_recipient
-
-    objects = TrackQuerySet.as_manager()
+    owner = models.ForeignKey(
+        'users.ArtistProfile',
+        on_delete=models.PROTECT,
+        related_name='owned_recordings',
+        verbose_name='Владелец записи',
+        help_text='Профиль, управляющий мастер-записью.',
+    )
+    isrc = models.CharField(
+        'ISRC',
+        max_length=12,
+        null=True,
+        blank=True,
+        default=None,
+        validators=(validate_isrc_format,),
+        help_text='ISRC без дефисов, 12 символов.',
+    )
+    file_hash = models.CharField(
+        'SHA-256 аудиофайла',
+        max_length=64,
+        blank=True,
+        default='',
+        db_index=True,
+        editable=False,
+        help_text='SHA-256 оригинального аудиофайла.',
+    )
 
     class Meta:
-        verbose_name = 'трек'
-        verbose_name_plural = 'треки'
-        ordering = ('album', 'position', 'name')
+        verbose_name = 'музыкальная запись'
+        verbose_name_plural = 'музыкальные записи'
+        ordering = ('name', 'id')
 
     def __str__(self):
-        if self.position is not None:
-            return f'{self.position}. {self.name[:MAX_STR_LENGTH]}'
         return self.name[:MAX_STR_LENGTH]
 
 
@@ -96,7 +100,7 @@ class TrackUpload(TimestampModel):
         REPLACE = 'replace', 'Замена файла'
 
     track = models.ForeignKey(
-        'store.Track',
+        'store.Recording',
         on_delete=models.CASCADE,
         related_name='upload_attempts',
         verbose_name='Трек',
@@ -169,7 +173,7 @@ class TrackGeneratedAudio(models.Model):
         FAILED = 'failed', 'Ошибка подготовки'
 
     track = models.OneToOneField(
-        'store.Track',
+        'store.Recording',
         on_delete=models.CASCADE,
         related_name='generated',
         verbose_name='Трек',

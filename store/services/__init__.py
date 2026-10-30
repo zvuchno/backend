@@ -22,6 +22,7 @@ from .sales_statistics import (
     releases_have_direct_sales,
     tracks_have_sales,
 )
+from .track import TrackService
 
 __all__ = [
     'CartCalculationService',
@@ -45,4 +46,5 @@ __all__ = [
     'ReportFileBuilder',
     'ReservationService',
     'tracks_have_sales',
+    'TrackService',
 ]

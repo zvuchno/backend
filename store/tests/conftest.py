@@ -24,7 +24,8 @@ from store.models import (
     Merch,
     Product,
     ProductVariant,
-    Track,
+    Recording,
+    ReleaseTrack,
 )
 from store.tests.factories import GenreFactory
 from users.models import ConsentDocument
@@ -98,14 +99,20 @@ def variant_factory(artist_user):
                 or album.payout_recipient
             )
 
-            item = Track.objects.create(
+            recording = Recording.objects.create(
                 name=kwargs.get('name', 'Track'),
-                album=album,
+                owner=album.artist,
                 created_by=track_created_by,
                 audio_file=ContentFile(
                     b'fake mp3 content',
                     name='test_track.mp3',
                 ),
+            )
+
+            item = ReleaseTrack.objects.create(
+                release=album,
+                recording=recording,
+                position=kwargs.get('position'),
             )
             product = Product.objects.create(track=item, price=price or 500)
             stock_value = None
@@ -405,6 +412,19 @@ def bonus_detail_url():
         return reverse(
             'api:store:bonuses-detail',
             args=(bonus.id,),
+        )
+
+    return build
+
+
+@pytest.fixture
+def track_placement_url():
+    """URL добавления существующей записи в релиз."""
+
+    def build(album) -> str:
+        return reverse(
+            'api:store:album-track-create',
+            kwargs={'album_id': album.pk},
         )
 
     return build

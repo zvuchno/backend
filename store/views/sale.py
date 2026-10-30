@@ -68,7 +68,7 @@ class ArtistSaleViewSet(viewsets.ReadOnlyModelViewSet):
             .select_related(
                 'product_variant__product',
                 'product_variant__product__album',
-                'product_variant__product__track__album',
+                'product_variant__product__track__release',
                 'product_variant__product__merch',
             )
             # Изображения мерча, отсортированные -is_main

@@ -2,21 +2,23 @@
 
 from decimal import Decimal
 from http import HTTPStatus
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from django.contrib.admin import AdminSite
 from django.urls import reverse
 
-from store.admin import MerchAdmin, TrackAdmin
+from store.admin import MerchAdmin
 from store.admin.album import AlbumAdmin
+from store.admin.track import ReleaseTrackAdmin
 from store.constants import MISSING_TRACKS_ERROR
 from store.exceptions import PUBLICATION_BLOCKED_DETAIL
-from store.models import Album, Merch, Track
+from store.models import Album, Merch, ReleaseTrack
 from store.tests.factories import (
     AlbumFactory,
     GenreFactory,
     MerchFactory,
+    ReleaseTrackFactory,
     make_audio_file,
 )
 from store.tests.scenarios import create_album_product
@@ -133,13 +135,13 @@ def test_cannot_publish_album_with_pending_track(
         created_by=ready_artist_user,
         is_published=False,
     )
-    Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Незагруженный трек',
+    ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Незагруженный трек',
+        recording__audio_file='',
         position=1,
         is_active=True,
-        audio_file=None,
     )
 
     url = reverse(
@@ -170,12 +172,12 @@ def test_cannot_publish_album_with_only_inactive_track(
         created_by=ready_artist_user,
         is_published=False,
     )
-    Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Неактивный трек',
+    ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Неактивный трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=False,
     )
 
@@ -207,12 +209,12 @@ def test_can_publish_album_with_uploaded_active_track(
         created_by=ready_artist_user,
         is_published=False,
     )
-    Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Тестовый трек',
+    ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Тестовый трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=True,
     )
 
@@ -265,12 +267,12 @@ def test_deleting_last_track_unpublishes_album(
         created_by=ready_artist_user,
         is_published=True,
     )
-    track = Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Последний трек',
+    track = ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Последний трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=True,
     )
 
@@ -301,20 +303,20 @@ def test_deleting_one_of_multiple_tracks_keeps_album_published(
         created_by=ready_artist_user,
         is_published=True,
     )
-    track = Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Первый трек',
+    track = ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Первый трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=True,
     )
-    Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Второй трек',
+    ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Второй трек',
+        recording__audio_file=make_audio_file(),
         position=2,
-        audio_file=make_audio_file(),
         is_active=True,
     )
 
@@ -379,12 +381,12 @@ def test_admin_form_allows_publishing_album_with_uploaded_track(
         created_by=ready_artist_user,
         is_published=False,
     )
-    Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Трек',
+    ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=True,
     )
 
@@ -411,11 +413,7 @@ def test_admin_form_allows_publishing_album_with_uploaded_track(
     assert form.is_valid() is True
 
 
-@patch(
-    'store.admin.track.TrackGeneratedAudioScheduler.schedule',
-)
 def test_track_admin_unpublishes_album_when_last_track_deactivated(
-    mocked_schedule,
     ready_artist_user,
 ):
     """Деактивация последнего трека в админке снимает альбом с публикации."""
@@ -425,12 +423,12 @@ def test_track_admin_unpublishes_album_when_last_track_deactivated(
         created_by=ready_artist_user,
         is_published=True,
     )
-    track = Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Последний трек',
+    track = ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Последний трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=True,
     )
 
@@ -439,8 +437,8 @@ def test_track_admin_unpublishes_album_when_last_track_deactivated(
     form = Mock()
     form.changed_data = ['is_active']
 
-    admin = TrackAdmin(
-        Track,
+    admin = ReleaseTrackAdmin(
+        ReleaseTrack,
         AdminSite(),
     )
 
@@ -456,14 +454,9 @@ def test_track_admin_unpublishes_album_when_last_track_deactivated(
 
     assert track.is_active is False
     assert album.is_published is False
-    mocked_schedule.assert_not_called()
 
 
-@patch(
-    'store.admin.track.TrackGeneratedAudioScheduler.schedule',
-)
 def test_track_admin_keeps_album_published_when_active_track_remains(
-    mocked_schedule,
     ready_artist_user,
 ):
     """Деактивация одного трека не снимает альбом, если остался другой."""
@@ -473,20 +466,20 @@ def test_track_admin_keeps_album_published_when_active_track_remains(
         created_by=ready_artist_user,
         is_published=True,
     )
-    track = Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Первый трек',
+    track = ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Первый трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=True,
     )
-    Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Второй трек',
+    ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Второй трек',
+        recording__audio_file=make_audio_file(),
         position=2,
-        audio_file=make_audio_file(),
         is_active=True,
     )
 
@@ -495,8 +488,8 @@ def test_track_admin_keeps_album_published_when_active_track_remains(
     form = Mock()
     form.changed_data = ['is_active']
 
-    admin = TrackAdmin(
-        Track,
+    admin = ReleaseTrackAdmin(
+        ReleaseTrack,
         AdminSite(),
     )
 
@@ -510,7 +503,6 @@ def test_track_admin_keeps_album_published_when_active_track_remains(
     album.refresh_from_db()
 
     assert album.is_published is True
-    mocked_schedule.assert_not_called()
 
 
 def test_admin_form_rejects_creating_published_album_without_tracks(
@@ -555,12 +547,12 @@ def test_publishing_imported_draft_assigns_payout_recipient(
         payout_recipient=None,
         is_published=False,
     )
-    Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Загруженный трек',
+    ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Загруженный трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=True,
     )
 
@@ -612,11 +604,11 @@ def test_admin_changelist_publication(
     )
 
     if model is Album:
-        Track.objects.create(
-            album=content,
-            name='Загруженный трек',
+        ReleaseTrackFactory(
+            release=content,
+            recording__name='Загруженный трек',
+            recording__audio_file=make_audio_file(),
             position=1,
-            audio_file=make_audio_file(),
             is_active=True,
         )
 
@@ -665,12 +657,12 @@ def test_cannot_publish_album_with_zero_price(
         created_by=ready_artist_user,
         is_published=False,
     )
-    Track.objects.create(
-        album=album,
-        created_by=ready_artist_user,
-        name='Тестовый трек',
+    ReleaseTrackFactory(
+        release=album,
+        recording__created_by=ready_artist_user,
+        recording__name='Тестовый трек',
+        recording__audio_file=make_audio_file(),
         position=1,
-        audio_file=make_audio_file(),
         is_active=True,
     )
 

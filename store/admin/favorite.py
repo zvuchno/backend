@@ -30,7 +30,7 @@ class FavoriteAdmin(admin.ModelAdmin):
         'user__username',
         'user__email',
         'product_variant__sku',
-        'product_variant__product__track__name',
+        'product_variant__product__track__recording__name',
         'product_variant__product__album__name',
         'product_variant__product__merch__name',
     )
